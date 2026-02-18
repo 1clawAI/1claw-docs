@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# AI scrapers — you're welcome here
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://docs.1claw.xyz/sitemap.xml

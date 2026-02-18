@@ -1,0 +1,57 @@
+# 1claw
+
+> 1claw is a cloud-hosted Hardware Security Module (HSM) secrets manager that lets humans grant AI agents scoped, audited, revocable access to secrets — without ever exposing raw credentials to the agent.
+
+## What 1claw does
+
+1claw stores API keys, tokens, and other secrets inside a cloud HSM. Humans control which agents can access which secrets, with what permissions, and for how long. Agents authenticate with 1claw and receive secrets at runtime — they never hold secrets in their own environment or context window.
+
+## Two APIs
+
+- **Human API** — Used by the secret owner (a person or team). Create/manage vaults and secrets, register agents, create policies (grants), set permissions, view audit logs, rotate credentials, monitor billing.
+- **Agent API** — Same REST base URL; agents authenticate with an agent token (JWT from API key). Fetch authorized secrets by path, list accessible secrets, same audit surface.
+
+## MCP Server
+
+1claw provides a Model Context Protocol (MCP) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets.
+
+- **Hosted** at `mcp.1claw.xyz` — no installation needed; authenticate with `Authorization` and `X-Vault-ID` headers.
+- **Local (stdio)** — run via Claude Desktop or Cursor with agent token and vault ID as env vars.
+- **7 tools**: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`.
+- **Resource**: `vault://secrets` — browsable listing of all secret paths.
+- Secrets are fetched just-in-time, never cached, never logged.
+
+## Billing & Usage
+
+- **Free tier**: 1,000 API requests/month per organization.
+- **Pay-per-use**: x402 micropayments on Base (EIP-155:8453) after free tier.
+- **Pricing**: Read secret $0.001, write $0.005, share $0.002, audit $0.0005.
+- Usage is tracked across dashboard, SDK, and MCP — all count against the same quota.
+
+## Core concepts
+
+- **Vault** — A container for secrets; each vault has its own HSM-backed key (KEK). You create vaults, then store secrets inside them.
+- **Secret** — An encrypted credential stored in the vault (API key, token, password, certificate, etc.) at a path (e.g. `passwords/one`, `api-keys/stripe`).
+- **Agent** — A registered AI entity (Claude, GPT, custom bot, MCP server) that receives an API key and can be granted access via policies.
+- **Policy (grant)** — Links a principal (user or agent) to secret path patterns with permissions (read, write, delete, etc.) and optional conditions/expiry.
+- **HSM** — Hardware Security Module; in production 1claw uses Google Cloud KMS. DEKs wrap secrets; KEKs wrap DEKs and never leave the HSM.
+- **Human auth** — Email/password or Google OAuth → JWT. Personal API keys (`1ck_`) also get a JWT.
+- **Agent auth** — Agent API key (`ocv_`) exchanged for a short-lived JWT via `POST /v1/auth/agent-token`.
+
+## Docs
+
+- [Introduction](https://docs.1claw.xyz/docs/intro)
+- [Quickstart for Humans](https://docs.1claw.xyz/docs/quickstart/humans)
+- [Quickstart for Agents](https://docs.1claw.xyz/docs/quickstart/agents)
+- [Human API Reference](https://docs.1claw.xyz/docs/human-api/overview)
+- [Agent API Reference](https://docs.1claw.xyz/docs/agent-api/overview)
+- [MCP Server Overview](https://docs.1claw.xyz/docs/mcp/overview)
+- [MCP Setup Guide](https://docs.1claw.xyz/docs/mcp/setup)
+- [MCP Tool Reference](https://docs.1claw.xyz/docs/mcp/tools)
+- [Billing & Usage](https://docs.1claw.xyz/docs/guides/billing-and-usage)
+- [Security & HSM Architecture](https://docs.1claw.xyz/docs/security/hsm-overview)
+- [Full API Reference](https://docs.1claw.xyz/docs/reference/api-reference)
+
+## Optional
+
+- [llms-full.txt](https://docs.1claw.xyz/llms-full.txt)

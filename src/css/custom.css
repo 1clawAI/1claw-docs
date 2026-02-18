@@ -1,0 +1,19 @@
+/**
+ * 1claw Docs custom styles
+ */
+
+:root {
+  --ifm-color-primary: #6d5cff;
+  --ifm-color-primary-dark: #5339ff;
+  --ifm-color-primary-darker: #462bff;
+  --ifm-color-primary-darkest: #2d0fd9;
+  --ifm-color-primary-light: #877fff;
+  --ifm-color-primary-lighter: #948dff;
+  --ifm-color-primary-lightest: #bbbeff;
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #8b7cff;
+  --ifm-background-color: #09090b;
+  --ifm-background-surface-color: #0f0f12;
+}

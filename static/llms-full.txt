@@ -1,0 +1,3252 @@
+## Audit log (agents)
+
+---
+title: Audit log (agents)
+description: Agents can query audit events with GET /v1/audit/events; same endpoint as humans, scoped to the org.
+sidebar_position: 4
+---
+
+# Audit log (agents)
+
+**Endpoint:** `GET /v1/audit/events`  
+**Authentication:** Bearer JWT (agent or human)
+
+Returns audit events for the caller’s organization. Agents can use this to see their own access history (and other events they are allowed to see). Query parameters may include `resource_id`, `actor_id`, `action`, `from`, `to`, `limit`, `offset` (exact names depend on implementation).
+
+## Example request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/audit/events?limit=20" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Example response (200)
+
+```json
+{
+  "events": [
+    {
+      "id": "...",
+      "org_id": "...",
+      "actor_type": "agent",
+      "actor_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+      "action": "secret.read",
+      "resource_type": "secret",
+      "resource_id": "api-keys/openai",
+      "metadata": {},
+      "timestamp": "2026-02-18T14:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+Secret values are never included in audit payloads. See [Audit and compliance](/docs/guides/audit-and-compliance) for more context.
+
+
+---
+
+## Agent authentication
+
+---
+title: Agent authentication
+description: Exchange agent_id and api_key for a JWT using POST /v1/auth/agent-token; use the token as Bearer for all subsequent requests.
+sidebar_position: 1
+---
+
+# Agent authentication
+
+Agents authenticate by exchanging an **agent ID** and **API key** for a short-lived **JWT**. The API key is returned only when the agent is created (or when the key is rotated) and must be stored securely.
+
+## Endpoint
+
+**POST /v1/auth/agent-token**  
+**Security:** None (no Bearer required). Request body must contain valid agent credentials.
+
+## Request body
+
+| Field     | Type   | Required | Description |
+|----------|--------|----------|-------------|
+| agent_id | string | ✅       | UUID of the agent (from registration) |
+| api_key  | string | ✅       | Agent API key (e.g. `ocv_...`) |
+
+## Example request
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+  }'
+```
+
+## Example response (200)
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+Use `access_token` in the `Authorization` header for all subsequent API calls. When `expires_in` seconds have passed, call this endpoint again to get a new token.
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 401 | Invalid agent_id or api_key, agent inactive, or agent expired |
+
+Never log or expose the API key; treat it like a password.
+
+
+---
+
+## Agent API errors
+
+---
+title: Agent API errors
+description: Agent API uses the same error format and status codes as the Human API; 401 often means token expired and the agent should re-authenticate.
+sidebar_position: 5
+---
+
+# Agent API errors
+
+The Agent API uses the **same** error format and HTTP status codes as the Human API. All errors return RFC 7807 problem-details JSON.
+
+## Common cases for agents
+
+| Code | Meaning | What to do |
+|------|---------|------------|
+| 401 | Invalid or expired token | Call `POST /v1/auth/agent-token` again and use the new token |
+| 403 | No permission for this path | Human must add/update a policy granting the agent read (or write) |
+| 404 | Vault or secret not found | Check vault_id and path |
+| 410 | Secret expired, deleted, or over max_access_count | Use a different secret or ask human to create a new version |
+
+See [Human API errors](/docs/human-api/errors) and [Error codes reference](/docs/reference/error-codes) for the full list.
+
+
+---
+
+## Fetch a secret
+
+---
+title: Fetch a secret
+description: Retrieve a secret value by vault ID and path with GET /v1/vaults/{vault_id}/secrets/{path}; the agent must have read permission via policy.
+sidebar_position: 2
+---
+
+# Fetch a secret
+
+Same endpoint as for humans: **GET /v1/vaults/:vault_id/secrets/:path**. The agent sends its JWT; the server checks policies for that agent and returns the decrypted value only if allowed.
+
+## Request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
+  -H "Authorization: Bearer <agent_access_token>"
+```
+
+## Response (200)
+
+```json
+{
+  "id": "599dd304-920c-4459-ae07-d62a3515381b",
+  "path": "api-keys/openai",
+  "type": "api_key",
+  "value": "sk-proj-...",
+  "version": 1,
+  "metadata": {},
+  "created_by": "user:...",
+  "created_at": "2026-02-18T12:00:00Z"
+}
+```
+
+Use the `value` only for the intended operation; do not log or cache it longer than necessary.
+
+## Errors
+
+| Code | Meaning |
+|------|---------|
+| 401 | Invalid or expired token — refresh with POST /v1/auth/agent-token |
+| 403 | No read permission for this path |
+| 404 | Vault or secret not found |
+| 410 | Secret expired, deleted, or over max_access_count |
+
+
+---
+
+## List accessible secrets
+
+---
+title: List accessible secrets
+description: List secret metadata in a vault with GET /v1/vaults/{vault_id}/secrets; only paths the agent can read are visible; values are never in list responses.
+sidebar_position: 3
+---
+
+# List accessible secrets
+
+**Endpoint:** `GET /v1/vaults/:vault_id/secrets`  
+**Authentication:** Bearer JWT (agent)
+
+Returns **metadata** for secrets in the vault. The server applies policy so the agent only sees secrets it has read access to. Optional query: `?prefix=...` to filter by path prefix.
+
+## Example request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets?prefix=api-keys" \
+  -H "Authorization: Bearer <agent_token>"
+```
+
+## Example response (200)
+
+```json
+{
+  "secrets": [
+    {
+      "id": "599dd304-920c-4459-ae07-d62a3515381b",
+      "path": "api-keys/openai",
+      "type": "api_key",
+      "version": 1,
+      "metadata": {},
+      "created_at": "2026-02-18T12:00:00Z"
+    }
+  ]
+}
+```
+
+Values are **never** returned in list responses. To get a value, call [GET .../secrets/:path](/docs/agent-api/fetch-secret) for each path you need.
+
+
+---
+
+## Agent API overview
+
+---
+title: Agent API overview
+description: Agents use the same REST API as humans; they authenticate with POST /v1/auth/agent-token and then list and fetch secrets they are allowed to access.
+sidebar_position: 0
+---
+
+# Agent API overview
+
+The **Agent API** is the same REST API as the Human API, with a different **auth entry point**. Agents do not log in with email/password; they use an **agent API key** (`ocv_...`) to get a short-lived JWT, then call the same endpoints to list and fetch secrets.
+
+## Base URL
+
+Same as Human API: `https://api.1claw.xyz` (or your Cloud Run URL).
+
+## Authentication
+
+1. **Obtain agent credentials** — A human registers an agent via `POST /v1/agents` and receives an `api_key` (`ocv_...`). Store it securely in the agent’s config.
+2. **Exchange key for JWT** — `POST /v1/auth/agent-token` with `{ "agent_id": "<uuid>", "api_key": "ocv_..." }` → returns `access_token` and `expires_in`.
+3. **Use the JWT** — Send `Authorization: Bearer <access_token>` on every request. Refresh the token before it expires by calling the agent-token endpoint again.
+
+## What agents can do
+
+- **List secrets** — `GET /v1/vaults/:vault_id/secrets` — Returns metadata only for paths the agent is allowed to read.
+- **Get secret value** — `GET /v1/vaults/:vault_id/secrets/:path` — Returns decrypted value if policy grants read.
+- **Create/update secrets** — `PUT .../secrets/:path` — Only if a policy grants write.
+
+Agents typically **do not** create vaults, register other agents, or manage policies; those operations are for humans. Access is determined entirely by policies created by humans.
+
+## Next
+
+- [Agent authentication](/docs/agent-api/authentication) — Request/response for agent-token.
+- [Fetch a secret](/docs/agent-api/fetch-secret) — GET secret by path with examples.
+
+
+---
+
+## HSM architecture
+
+---
+title: HSM architecture
+description: 1claw uses envelope encryption with DEKs per secret and HSM-backed KEKs; in production Google Cloud KMS holds the keys.
+sidebar_position: 1
+---
+
+# HSM architecture
+
+1claw encrypts every secret with **envelope encryption**: a random **Data Encryption Key (DEK)** encrypts the secret; the DEK itself is encrypted (wrapped) by a **Key Encryption Key (KEK)** that lives in an HSM and never leaves it.
+
+## Key hierarchy
+
+- **KEK (Key Encryption Key)** — One per vault. Created in the HSM when you create a vault. Used only to wrap/unwrap DEKs. In production this is a symmetric key in **Google Cloud KMS**.
+- **DEK (Data Encryption Key)** — Generated per secret (or per operation). Used with AES-256-GCM to encrypt the secret value. The DEK is wrapped with the vault’s KEK and stored alongside the ciphertext; it never exists in plain form outside the HSM boundary during wrap/unwrap.
+- **JWT signing key** — A separate Ed25519 key in the same KMS key ring. Used to sign and verify JWTs for human and agent auth. Only the public part is used for verification; signing happens inside KMS.
+
+## Flow (create secret)
+
+1. Client sends plaintext secret to the API with a vault ID and path.
+2. API generates a new DEK, encrypts the plaintext with AES-256-GCM using the DEK.
+3. API calls KMS to wrap the DEK with the vault’s KEK; the wrapped DEK is stored with the ciphertext, IV, and auth tag.
+4. Stored row: `vault_id`, `path`, `ciphertext`, `wrapped_dek`, `iv`, `auth_tag`, metadata, version, etc.
+
+## Flow (read secret)
+
+1. Client requests secret by vault ID and path (with valid JWT and policy allowing read).
+2. API loads the latest version’s ciphertext and wrapped DEK.
+3. API calls KMS to unwrap the DEK with the vault’s KEK.
+4. API decrypts the ciphertext with the DEK and returns the plaintext to the client.
+
+## Production vs local
+
+- **Production** — KEKs and JWT key in **Google Cloud KMS** (same GCP project as Cloud Run). Service account has `cryptoKeyEncrypterDecrypter` and `signerVerifier` on the key ring.
+- **Local** — SoftHSM or in-memory provider for development; same envelope design, keys not persisted to real HSM.
+
+## Why this matters
+
+Secrets at rest are encrypted with keys that never leave the HSM. Compromise of the database or application only exposes ciphertext and wrapped DEKs; without KMS access, secrets cannot be decrypted. Access is always mediated by the API and policies, and can be audited.
+
+See [Key hierarchy](/docs/security/key-hierarchy) and [Security overview](/docs/security/hsm-overview) for more detail.
+
+
+---
+
+## Human vs Agent API
+
+---
+title: Human vs Agent API
+description: The same REST API serves humans and agents; auth and typical operations differ by persona — humans manage vaults and grants, agents fetch secrets.
+sidebar_position: 3
+---
+
+# Human vs Agent API
+
+1claw exposes **one REST API** at a single base URL. Whether you’re a **human** (developer, team) or an **AI agent**, you use the same base URL and the same endpoint paths. What changes is **how you authenticate** and **which operations** you typically perform.
+
+## Human API (secret owner)
+
+**Who:** A person or team that owns the vault and secrets.
+
+**Auth:**
+
+- **Email + password** — `POST /v1/auth/token` with `{ "email": "...", "password": "..." }` → JWT.
+- **Google OAuth** — `POST /v1/auth/google` with `{ "id_token": "..." }` → JWT.
+- **Personal API key** — `POST /v1/auth/api-key-token` with `{ "api_key": "1ck_..." }` → JWT.
+
+**Typical operations:**
+
+- Create/list/get/delete **vaults**.
+- Create/read/update/delete **secrets** (PUT/GET/DELETE by path).
+- List secrets (metadata only).
+- Create/list/update/delete **policies** (grants) for a vault.
+- **Register** agents, list agents, rotate agent keys, deactivate agents.
+- Create/revoke **share** links.
+- View **audit** events, **billing/usage**, **org members**, and **API keys**.
+
+All of these require a **Bearer JWT** in the `Authorization` header (from one of the auth methods above).
+
+## Agent API (consumer)
+
+**Who:** An AI agent (Claude, GPT, MCP server, custom bot) that has been registered and granted access via policies.
+
+**Auth:**
+
+- **Agent API key** — When you register an agent you receive an API key (`ocv_...`). The agent (or its runtime) calls `POST /v1/auth/agent-token` with `{ "agent_id": "<uuid>", "api_key": "ocv_..." }` and receives a short-lived JWT.
+
+**Typical operations:**
+
+- **List** secrets in a vault (metadata only) — `GET /v1/vaults/:vault_id/secrets`.
+- **Get** a secret’s value by path — `GET /v1/vaults/:vault_id/secrets/:path`.
+- Optionally **create/update** secrets if the policy grants `write`.
+
+The agent does **not** create vaults, register other agents, or manage policies. It only accesses secrets it’s allowed to by policy. Same endpoints, same JWT format; the `sub` claim is `agent:<uuid>` so the backend applies agent-scoped policies.
+
+## Why separate auth?
+
+Humans need long-lived sessions or API keys for dashboards and automation; agents need short-lived tokens so a leaked token has limited use. Both end up with a JWT; the **subject** (`user:<id>` vs `agent:<id>`) and **org** determine which policies apply. One API, one policy engine, two personas.
+
+## Next
+
+- [Quickstart for humans](/docs/quickstart/humans) — Get a JWT and create a vault and secret.
+- [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
+- [Give an agent access](/docs/guides/give-agent-access) — End-to-end: secret → agent → policy → fetch.
+
+
+---
+
+## Secrets model
+
+---
+title: Secrets model
+description: Secrets live in vaults at paths, have types and optional metadata, expiry, and versioning; values are encrypted and never returned in list responses.
+sidebar_position: 2
+---
+
+# Secrets model
+
+A **secret** is a named value stored inside a **vault** at a **path**. The path is a slash-separated identifier (e.g. `passwords/one`, `api-keys/stripe`). Paths must be alphanumeric with hyphens, underscores, and slashes; no leading or trailing slashes.
+
+## Secret types
+
+The API accepts a `type` field when creating or updating a secret. Allowed values (from the vault schema):
+
+- `password`
+- `api_key`
+- `private_key`
+- `certificate`
+- `file`
+- `note`
+- `ssh_key`
+- `env_bundle`
+
+The value is always stored as bytes; for display the API may return it as a UTF-8 string when possible.
+
+## Metadata and options
+
+- **metadata** — Optional JSON object (e.g. tags, description). Stored and returned with the secret.
+- **expires_at** — Optional ISO 8601 datetime. After this time the secret is treated as expired and will not be returned (410 Gone).
+- **max_access_count** — Optional integer. After this many reads, the secret returns 410 Gone.
+- **rotation_policy** — Optional; reserved for future rotation behavior.
+
+## Versioning
+
+Each `PUT` to the same vault and path creates a **new version** (version 1, 2, 3, …). Listing secrets returns the latest version per path; you can request a specific version via the versioned endpoint if the API exposes it. Delete is soft-delete (marks all versions of that path as deleted).
+
+## What is returned
+
+- **List secrets** (`GET /v1/vaults/:vault_id/secrets`) — Returns metadata only: id, path, type, version, metadata, created_at, expires_at. Never the value.
+- **Get secret** (`GET /v1/vaults/:vault_id/secrets/:path`) — Returns metadata **and** the decrypted value (only if the caller has read permission and the secret is not expired or over access count).
+
+Values are never logged or returned in list/audit responses; only “secret accessed” style events are recorded.
+
+
+---
+
+## Trust model
+
+---
+title: Trust model
+description: 1claw trusts the HSM and the API to enforce policy; clients get secrets only after authentication and policy checks; all access is audited.
+sidebar_position: 4
+---
+
+# Trust model
+
+## What 1claw trusts
+
+- **HSM (e.g. Cloud KMS)** — Keys are generated and used only inside the HSM. The API never has access to raw KEKs or long-term signing keys; it only requests wrap/unwrap/sign operations.
+- **Database** — Stores ciphertext, wrapped DEKs, metadata, policies, and audit events. The database is not trusted with plaintext secrets; it only holds encrypted data and policy records.
+- **API** — The only component that can decrypt secrets. It authenticates every request (JWT), loads policies for the caller, and returns secret values only when policy allows. All access is logged for audit.
+
+## What the client must do
+
+- **Humans** — Keep credentials (password, API key) secure; use HTTPS; treat the JWT as sensitive (short-lived in the case of agent tokens).
+- **Agents** — Store the agent API key securely (e.g. in the agent’s secure config, not in prompts or logs). Use the token endpoint to get a short-lived JWT and use it only over HTTPS.
+
+## Zero-trust style guarantees
+
+- **Secrets at rest** — Encrypted with DEKs wrapped by HSM KEKs; no plaintext in the DB.
+- **Secrets in transit** — Served only over HTTPS; client must use TLS.
+- **Access control** — Every request is authorized by policy; there is no “open” read. Vault creators can always access their vault; others need an explicit policy.
+- **Revocation** — Disable an agent, delete a policy, or rotate a key; subsequent requests fail. No long-lived cache of secrets in the API.
+- **Audit** — All access (and failures) can be recorded; see [Audit and compliance](/docs/guides/audit-and-compliance).
+
+See [Zero trust](/docs/security/zero-trust) for a longer treatment.
+
+
+---
+
+## What is 1claw?
+
+---
+title: What is 1claw?
+description: 1claw is a cloud HSM-backed secrets manager for humans and AI agents with vaults, path-based secrets, and policy-based access.
+sidebar_position: 0
+---
+
+# What is 1claw?
+
+1claw is a **cloud-hosted secrets manager** built for both **humans** (developers, teams) and **AI agents** (Claude, GPT, MCP servers, custom bots). Secrets are stored in **vaults** and encrypted with keys held in a **Hardware Security Module (HSM)** — in production, Google Cloud KMS. Access is controlled by **policies** that tie a principal (user or agent) to path patterns and permissions, with optional expiry and conditions.
+
+## Core ideas
+
+- **Vaults** — A vault is a named container (e.g. "Production", "CI"). Each vault has its own KEK in the HSM. You create vaults, then store secrets inside them at paths like `api-keys/stripe` or `passwords/db`.
+- **Secrets** — Stored by path within a vault. Each secret has a type (e.g. `password`, `api_key`), optional metadata, optional expiry, and versioning. The secret value is encrypted with a DEK that is wrapped by the vault’s KEK.
+- **Agents** — Registered identities that get an API key (`ocv_...`). They exchange the key for a JWT and then call the same REST API to list and fetch secrets they’re allowed to see.
+- **Policies (grants)** — Define who can do what: e.g. agent `X` can `read` secrets under `**` in vault `V`, or user `Y` can `read,write` paths matching `prod/*`. Policies can have conditions (IP, time window) and expiry.
+
+## Why two personas?
+
+Humans need to **create** vaults, **store** and **rotate** secrets, **register** agents, and **grant** or **revoke** access. Agents only need to **authenticate** and **fetch** the secrets they’re allowed to use. Same API, same base URL; the JWT identifies whether the caller is a user or an agent and which org they belong to. Policies are evaluated on every request so access is always up to date and auditable.
+
+## Next
+
+- [HSM architecture](/docs/concepts/hsm-architecture) — How keys and encryption work.
+- [Secrets model](/docs/concepts/secrets-model) — Paths, types, versioning.
+- [Human vs Agent API](/docs/concepts/human-vs-agent-api) — When to use which and how auth differs.
+
+
+---
+
+## Audit and compliance
+
+---
+title: Audit and compliance
+description: 1claw records access and failures in an audit log; query events via GET /v1/audit/events; secret values are never logged.
+sidebar_position: 5
+---
+
+# Audit and compliance
+
+All API access (and relevant failures) can be recorded in an **audit log**. Secret **values** are never stored in audit events; only metadata (e.g. path, action, actor, timestamp) is recorded.
+
+## Querying audit events
+
+**GET /v1/audit/events** — Returns events for the caller’s organization. Query parameters may include:
+
+- `resource_id` — Filter by resource (e.g. secret path).
+- `actor_id` — Filter by actor (user or agent UUID).
+- `action` — Filter by action type.
+- `from`, `to` — Time range (ISO 8601).
+- `limit`, `offset` — Pagination.
+
+Response shape: `{ "events": [ ... ], "count": N }`. Each event typically has id, org_id, actor_type, actor_id, action, resource_type, resource_id, metadata, timestamp.
+
+## Typical events
+
+- Secret read/write/delete (path and actor; no value).
+- Auth success/failure (no credentials).
+- Policy create/update/delete.
+- Agent registration, key rotation, deactivation.
+
+Use the audit log for compliance reviews, incident response, and access analysis. Export or forward events to your SIEM or logging pipeline as needed.
+
+
+---
+
+## Billing & Usage
+
+---
+title: Billing & Usage
+description: How 1claw tracks API usage, the free tier, x402 pay-per-use micropayments, and how to monitor your consumption.
+sidebar_position: 5
+---
+
+# Billing & Usage
+
+1claw tracks every API request and provides a free tier with optional pay-per-use billing via the x402 protocol.
+
+## Free tier
+
+Every organization gets **1,000 API requests per month** at no cost. This includes requests from all sources — dashboard, SDK, MCP server, and direct API calls. Auth and health endpoints are not counted.
+
+## Usage tracking
+
+Every authenticated API request is recorded as a usage event with:
+
+- **Method and endpoint** — e.g. `GET /v1/vaults/:id/secrets/:path`
+- **Principal** — Which user or agent made the request
+- **Status code** — Whether the request succeeded
+- **Price** — The cost of the operation (see pricing below)
+- **Timestamp** — When the request was made
+
+Usage is unified across all access methods. Whether a secret is read from the dashboard, the TypeScript SDK, or an MCP tool call, it counts as one request against the same quota.
+
+## Pricing
+
+| Endpoint | Price |
+|----------|-------|
+| Read a secret (`GET /v1/vaults/*/secrets/*`) | $0.001 |
+| Write a secret (`PUT /v1/vaults/*/secrets/*`) | $0.005 |
+| Create a share link (`POST /v1/secrets/*/share`) | $0.002 |
+| Access a shared secret (`GET /v1/share/*`) | $0.001 |
+| Query audit events (`GET /v1/audit/events`) | $0.0005 |
+| Auth, health, listing endpoints | Free |
+
+## x402 Payment Required
+
+When the free tier is exhausted, the API returns `402 Payment Required` with an [x402](https://www.x402.org/) payment envelope. Clients that support x402 can pay per-request on the Base network (EIP-155:8453).
+
+```json
+{
+  "type": "https://httpproblems.com/http-status/402",
+  "title": "Payment Required",
+  "status": 402,
+  "detail": "Free tier limit exceeded. Pay per-request or upgrade your plan.",
+  "x402": {
+    "scheme": "exact",
+    "network": "eip155:8453",
+    "maxAmountRequired": "0.001",
+    "resource": "/v1/vaults/:vault_id/secrets/:path",
+    "description": "Read a secret",
+    "payTo": "0x...",
+    "deadline": 1740000000
+  }
+}
+```
+
+## Monitoring usage
+
+### Dashboard
+
+Visit [1claw.xyz/settings/billing](https://1claw.xyz/settings/billing) to see:
+
+- Current month's total requests
+- Breakdown of free vs paid requests
+- Total cost
+- Recent usage history
+
+### API
+
+```bash
+# Get current month summary
+curl -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/usage
+
+# Get recent usage events
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://api.1claw.xyz/v1/billing/history?limit=50"
+```
+
+### Usage summary response
+
+```json
+{
+  "billing_tier": "free",
+  "free_tier_limit": 1000,
+  "current_month": {
+    "total_requests": 247,
+    "paid_requests": 0,
+    "free_requests": 247,
+    "total_cost_usd": 0.0
+  }
+}
+```
+
+## MCP and billing
+
+MCP tool calls go through the same vault API and count toward the same usage quota. When an agent calls `get_secret` via MCP, that's one API request.
+
+If the free tier is exhausted, the MCP server will return a clear error message:
+
+> "Free tier quota exhausted. Upgrade your plan or add payment at https://1claw.xyz/settings/billing"
+
+
+---
+
+## Deploying Updates
+
+---
+title: Deploying Updates
+description: How to deploy updates to each component of the 1claw stack — vault API, dashboard, docs, and MCP server.
+sidebar_position: 6
+---
+
+# Deploying Updates
+
+Every component of 1claw auto-deploys on push to `main`. This guide explains how each deployment works and how to trigger manual deploys.
+
+## Auto-deploy on push
+
+| Component | Path trigger | Deploys to | Workflow |
+|-----------|-------------|------------|----------|
+| Vault API | `vault/**` | Cloud Run (`oneclaw-vault`) | `.github/workflows/deploy-vault.yml` |
+| MCP Server | `packages/mcp/**` | Cloud Run (`oneclaw-mcp`) | `.github/workflows/deploy-mcp.yml` |
+| Dashboard | `dashboard/**` | Vercel (`1claw.xyz`) | Vercel Git integration |
+| Docs | `docs/**` | Vercel (`docs.1claw.xyz`) | Vercel Git integration |
+
+## Vault API
+
+The vault is a Rust binary deployed as a Docker container on Cloud Run.
+
+### Auto-deploy flow
+
+1. Push to `main` with changes in `vault/`.
+2. GitHub Actions builds a Docker image (`linux/amd64`).
+3. Image is pushed to Artifact Registry.
+4. Cloud Run service `oneclaw-vault` is updated.
+
+### Manual deploy
+
+```bash
+# From repo root
+IMAGE="us-west1-docker.pkg.dev/YOUR_PROJECT/oneclaw/vault"
+docker build --platform linux/amd64 -f vault/Dockerfile -t "$IMAGE:latest" vault/
+docker push "$IMAGE:latest"
+gcloud run services update oneclaw-vault --region us-west1 --image "$IMAGE:latest"
+```
+
+### Required GitHub secrets
+
+| Secret | Value |
+|--------|-------|
+| `GCP_PROJECT_ID` | Your GCP project ID |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Federation provider |
+| `GCP_SERVICE_ACCOUNT` | Service account email |
+
+## MCP Server
+
+The MCP server is a Node.js app deployed as a Docker container on Cloud Run.
+
+### Auto-deploy flow
+
+1. Push to `main` with changes in `packages/mcp/`.
+2. GitHub Actions builds a Docker image.
+3. Image is pushed to Artifact Registry.
+4. Cloud Run service `oneclaw-mcp` is updated.
+
+### Manual deploy
+
+```bash
+IMAGE="us-west1-docker.pkg.dev/YOUR_PROJECT/oneclaw/mcp"
+docker build --platform linux/amd64 -f packages/mcp/Dockerfile -t "$IMAGE:latest" packages/mcp/
+docker push "$IMAGE:latest"
+gcloud run services update oneclaw-mcp --region us-west1 --image "$IMAGE:latest"
+```
+
+Uses the same GitHub secrets as the vault.
+
+## Dashboard
+
+The Next.js dashboard is deployed to Vercel via Git integration.
+
+### Auto-deploy flow
+
+1. Push to `main` with changes in `dashboard/`.
+2. Vercel detects the change and builds automatically.
+3. Production deployment goes live at `1claw.xyz`.
+
+### Manual deploy
+
+```bash
+cd dashboard
+npx vercel --prod
+```
+
+### Vercel project settings
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `dashboard` |
+| Framework | Next.js |
+| Build Command | `pnpm build` |
+
+## Docs
+
+The Docusaurus docs site is deployed to Vercel via Git integration.
+
+### Auto-deploy flow
+
+1. Push to `main` with changes in `docs/`.
+2. Vercel detects the change and builds automatically.
+3. Production deployment goes live at `docs.1claw.xyz`.
+
+### Manual deploy
+
+```bash
+cd docs
+npx vercel --prod
+```
+
+### Vercel project settings
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `docs` |
+| Build Command | `pnpm run build` |
+| Output Directory | `build` |
+
+## Infrastructure changes
+
+Changes to `infra/` (Terraform) are not auto-deployed. Apply manually:
+
+```bash
+cd infra
+terraform plan    # Review changes
+terraform apply   # Apply
+```
+
+This is intentional — infrastructure changes should be reviewed before applying.
+
+
+---
+
+## Give an agent access
+
+---
+title: Give an agent access
+description: "End-to-end walkthrough: create a vault and secret, register an agent, create a policy granting read, then have the agent fetch the secret."
+sidebar_position: 0
+---
+
+# Give an agent access
+
+This is the **golden path**: you create a secret, register an agent, grant it read access via a policy, then the agent fetches the secret at runtime.
+
+## 1. Create a vault and secret (human)
+
+Log in (email/password or Google), then:
+
+```bash
+# Get token (see Quickstart for humans)
+export TOKEN="..."
+
+# Create vault
+VAULT_RESP=$(curl -s -X POST https://api.1claw.xyz/v1/vaults \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Production","description":"Prod secrets"}')
+VAULT_ID=$(echo "$VAULT_RESP" | jq -r '.id')
+
+# Store a secret
+curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"api_key","value":"sk-proj-..."}'
+```
+
+## 2. Register an agent (human)
+
+```bash
+AGENT_RESP=$(curl -s -X POST https://api.1claw.xyz/v1/agents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Bot","description":"CI agent","scopes":["vaults:read"]}')
+AGENT_ID=$(echo "$AGENT_RESP" | jq -r '.agent.id')
+API_KEY=$(echo "$AGENT_RESP" | jq -r '.api_key')
+# Store API_KEY securely; it is shown only once.
+```
+
+## 3. Create a policy (human)
+
+Grant the agent read access to all secrets in the vault (or use a narrower pattern like `api-keys/*`):
+
+```bash
+curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"secret_path_pattern\": \"**\",
+    \"principal_type\": \"agent\",
+    \"principal_id\": \"$AGENT_ID\",
+    \"permissions\": [\"read\"]
+  }"
+```
+
+## 4. Agent fetches the secret
+
+From the agent’s environment (with `AGENT_ID` and `API_KEY` stored securely):
+
+```bash
+# Get agent JWT
+AGENT_TOKEN=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d "{\"agent_id\":\"$AGENT_ID\",\"api_key\":\"$API_KEY\"}" | jq -r '.access_token')
+
+# Fetch secret
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $AGENT_TOKEN"
+```
+
+The response includes the decrypted `value`. The agent uses it for the intended call and does not persist or log it.
+
+## Summary
+
+| Step | Who   | Action |
+|------|--------|--------|
+| 1    | Human | Create vault, store secret |
+| 2    | Human | Register agent, save API key |
+| 3    | Human | Create policy: agent + path pattern + read |
+| 4    | Agent | Get token, GET secret by path |
+
+To revoke: delete the policy or deactivate the agent. To rotate: create a new secret version (PUT) or rotate the agent key.
+
+
+---
+
+## MCP Integration
+
+---
+title: MCP integration
+description: Connect AI agents to your 1claw vault using the Model Context Protocol. Hosted at mcp.1claw.xyz or run locally via stdio.
+sidebar_position: 4
+---
+
+# MCP Integration
+
+The 1claw MCP server gives AI agents (Claude, Cursor, GPT, and others) secure, just-in-time access to secrets stored in your vault via the [Model Context Protocol](https://modelcontextprotocol.io).
+
+## Quick start (hosted)
+
+The fastest way to connect an AI agent to your vault:
+
+1. **Register an agent** in the [1claw dashboard](https://1claw.xyz/agents/new) — save the API key (`ocv_...`).
+2. **Create a policy** granting the agent `read` access to the paths it needs.
+3. **Configure your MCP client** with the hosted server:
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "url": "https://mcp.1claw.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer ocv_your-agent-token",
+        "X-Vault-ID": "your-vault-uuid"
+      }
+    }
+  }
+}
+```
+
+That's it. The agent can now call `list_secrets`, `get_secret`, and other tools.
+
+## Quick start (local)
+
+For local/air-gapped setups, run the MCP server via stdio:
+
+```bash
+cd packages/mcp && pnpm install && pnpm run build
+```
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "command": "node",
+      "args": ["/path/to/packages/mcp/dist/index.js"],
+      "env": {
+        "ONECLAW_AGENT_TOKEN": "ocv_your-agent-token",
+        "ONECLAW_VAULT_ID": "your-vault-uuid"
+      }
+    }
+  }
+}
+```
+
+## Available tools
+
+| Tool | What it does |
+|------|-------------|
+| `list_secrets` | List all secrets (metadata only, never values) |
+| `get_secret` | Fetch decrypted value by path |
+| `put_secret` | Create or update a secret |
+| `delete_secret` | Soft-delete a secret |
+| `describe_secret` | Get metadata without the value |
+| `rotate_and_store` | Store a new version of an existing secret |
+| `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle |
+
+## Typical agent workflow
+
+1. **Discover** — `list_secrets` to see what's available.
+2. **Check** — `describe_secret` to verify it exists and hasn't expired.
+3. **Fetch** — `get_secret` to get the decrypted value.
+4. **Use** — Pass the value into the API call.
+5. **Forget** — Do not store the value in summaries, logs, or memory.
+
+## Security
+
+- Secrets are fetched just-in-time and never cached by the MCP server.
+- Secret values are never logged — only the path is recorded.
+- Each hosted connection authenticates independently (per-session isolation).
+- All access is recorded in the vault audit log.
+
+## Further reading
+
+- [MCP Server Overview](/docs/mcp/overview) — Architecture and how it works
+- [Setup Guide](/docs/mcp/setup) — Detailed config for Claude Desktop, Cursor, and more
+- [Tool Reference](/docs/mcp/tools) — Parameters, examples, and errors for each tool
+- [Security Model](/docs/mcp/security) — Threat model and best practices
+- [Deployment](/docs/mcp/deployment) — Deploy your own hosted MCP server
+
+
+---
+
+## Revoking access
+
+---
+title: Revoking access
+description: Revoke agent or user access by deleting the policy, or deactivate the agent; access is enforced on every request.
+sidebar_position: 3
+---
+
+# Revoking access
+
+Access is checked on **every request**. Revocation takes effect as soon as you remove the grant or deactivate the agent.
+
+## Remove a policy (grant)
+
+**DELETE /v1/vaults/:vault_id/policies/:policy_id**
+
+The principal (user or agent) immediately loses the permissions that policy granted. No cache; the next request fails with 403 if no other policy applies.
+
+## Deactivate an agent
+
+**DELETE /v1/agents/:agent_id**
+
+The agent is marked inactive. It can no longer exchange its API key for a JWT. Existing JWTs may still work until they expire (typically short-lived). For immediate effect, rotate the agent key (so the old key fails) and/or keep token lifetime short.
+
+## Rotate agent key
+
+**POST /v1/agents/:agent_id/rotate-key**
+
+Returns a new API key; the old one stops working. Use this to invalidate a leaked key without deactivating the agent.
+
+
+---
+
+## Rotating secrets
+
+---
+title: Rotating secrets
+description: Create a new version with PUT to the same path; optionally use expires_at or max_access_count to limit exposure.
+sidebar_position: 1
+---
+
+# Rotating secrets
+
+1claw does not yet expose a dedicated "rotate" endpoint that returns a new value from a provider. Rotation is done by **creating a new version** of the secret.
+
+## Steps
+
+1. Generate or obtain the new value (e.g. new API key from OpenAI, new DB password).
+2. **PUT** to the same vault and path with the new value (see [Create/update](/docs/human-api/secrets/create)).
+3. Update any consumers to use the new value (or rely on "latest" version).
+4. Optionally revoke or expire the old value at the external provider.
+
+## Optional: limit exposure
+
+- Set **expires_at** on the secret so it becomes unavailable after a date.
+- Set **max_access_count** so the secret stops being returned after N reads (e.g. one-time use).
+
+## Agent tokens
+
+To rotate an **agent API key**, use **POST /v1/agents/:agent_id/rotate-key**. The response includes the new key once; update the agent’s config and discard the old key.
+
+
+---
+
+## Scoped permissions
+
+---
+title: Scoped permissions
+description: Use path patterns and principal_type in policies to grant minimal read or write access to specific secrets.
+sidebar_position: 2
+---
+
+# Scoped permissions
+
+Policies tie a **principal** (user or agent) to **path patterns** and **permissions**. Use narrow patterns and only the permissions needed.
+
+## Path patterns
+
+- `**` — All paths in the vault (read or write depending on permissions).
+- `api-keys/*` — Only paths under `api-keys/` (e.g. `api-keys/openai`, `api-keys/stripe`).
+- `prod/db` — Exact path `prod/db` only.
+
+Patterns use glob rules: `*` matches one segment, `**` matches zero or more segments. Give agents the smallest set of paths they need.
+
+## Permissions
+
+- **read** — Can GET secret value and list (metadata).
+- **write** — Can PUT (create/update) and DELETE secrets at matching paths.
+
+Grant only `read` unless the agent must create or update secrets.
+
+## Example: agent for one key
+
+Policy: principal_type `agent`, principal_id `<agent_uuid>`, secret_path_pattern `api-keys/openai`, permissions `["read"]`. The agent can only read that one path.
+
+## Example: agent for all keys, read-only
+
+secret_path_pattern `api-keys/*`, permissions `["read"]`. The agent cannot write or delete.
+
+
+---
+
+## Deactivate agent / Rotate key
+
+---
+title: Deactivate agent / Rotate key
+description: Deactivate an agent with DELETE /v1/agents/{agent_id}; get a new API key with POST /v1/agents/{agent_id}/rotate-key.
+sidebar_position: 2
+---
+
+# Deactivate agent / Rotate key
+
+## Deactivate an agent
+
+**Endpoint:** `DELETE /v1/agents/:agent_id`  
+**Authentication:** Bearer JWT
+
+Marks the agent as inactive. The agent can no longer exchange its API key for a token; existing JWTs may still be valid until expiry.
+
+**Response:** 204 No Content.
+
+---
+
+## Rotate agent key
+
+**Endpoint:** `POST /v1/agents/:agent_id/rotate-key`  
+**Authentication:** Bearer JWT
+
+Generates a **new** API key for the agent. The old key stops working. Response includes the new key (shown only once).
+
+**Example request:**
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/ec7e0226-30f0-4dda-b169-f060a3502603/rotate-key" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example response (200):** Same shape as create agent: `{ "agent": { ... }, "api_key": "ocv_..." }`. Store the new `api_key` and update the agent’s config.
+
+---
+
+## Get or update agent
+
+- **GET /v1/agents/:agent_id** — Returns single agent metadata (no API key).
+- **PATCH /v1/agents/:agent_id** — Update name, description, scopes, is_active, expires_at.
+
+
+---
+
+## List agents
+
+---
+title: List agents
+description: List all agents in your org with GET /v1/agents.
+sidebar_position: 1
+---
+
+# List agents
+
+**Endpoint:** `GET /v1/agents`  
+**Authentication:** Bearer JWT
+
+Returns all agents in the caller’s organization. API keys are never returned; only metadata.
+
+## Example request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/agents" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Example response (200)
+
+```json
+{
+  "agents": [
+    {
+      "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+      "name": "CI Agent",
+      "description": "GitHub Actions deploy",
+      "auth_method": "api_key",
+      "scopes": ["vaults:read"],
+      "is_active": true,
+      "created_at": "2026-02-18T12:00:00Z",
+      "expires_at": null,
+      "last_active_at": "2026-02-18T14:00:00Z"
+    }
+  ]
+}
+```
+
+
+---
+
+## Register an agent
+
+---
+title: Register an agent
+description: Create an agent identity and receive an API key using POST /v1/agents; the key is shown only once.
+sidebar_position: 0
+---
+
+# Register an agent
+
+**Endpoint:** `POST /v1/agents`  
+**Authentication:** Bearer JWT (human)
+
+Creates a new agent identity and returns an **API key** (`ocv_...`). The key is returned only on create (and on rotate); store it securely for the agent to use with `POST /v1/auth/agent-token`.
+
+## Request body
+
+| Field       | Type   | Required | Description |
+|------------|--------|----------|-------------|
+| name       | string | ✅       | Display name for the agent |
+| description| string | ❌       | Optional description |
+| auth_method| string | ❌       | Default `api_key` |
+| scopes     | array  | ❌       | Optional scope strings |
+| expires_at | string | ❌       | ISO 8601; agent token exchange fails after this |
+
+## Example request
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "CI Agent",
+    "description": "GitHub Actions deploy",
+    "scopes": ["vaults:read"]
+  }'
+```
+
+## Example response (201)
+
+```json
+{
+  "agent": {
+    "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "name": "CI Agent",
+    "description": "GitHub Actions deploy",
+    "auth_method": "api_key",
+    "scopes": ["vaults:read"],
+    "is_active": true,
+    "created_at": "2026-02-18T12:00:00Z"
+  },
+  "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+}
+```
+
+Store the `api_key` securely; it cannot be retrieved again. Use [Deactivate agent / Rotate key](/docs/human-api/agents/deactivate-agent#rotate-agent-key) to get a new key if needed.
+
+
+---
+
+## Authentication
+
+---
+title: Authentication
+description: Get a JWT for the Human API using email/password, Google id_token, or a personal API key (Bearer token).
+sidebar_position: 1
+---
+
+# Authentication
+
+The Human API expects a **JWT** in the `Authorization` header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+You can obtain an access token in three ways: email/password, Google OAuth, or a personal API key.
+
+---
+
+## Email and password
+
+**Endpoint:** `POST /v1/auth/token`  
+**Request body:**
+
+| Field     | Type   | Required | Description |
+|----------|--------|----------|-------------|
+| email    | string | ✅       | User email  |
+| password | string | ✅       | Password    |
+
+**Example:**
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"your-password"}'
+```
+
+**Response (200):**
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+`expires_in` is in seconds (e.g. 900 = 15 minutes). On 401 you get a problem-details JSON body.
+
+---
+
+## Google OAuth
+
+**Endpoint:** `POST /v1/auth/google`  
+**Request body:**
+
+| Field     | Type   | Required | Description                    |
+|----------|--------|----------|--------------------------------|
+| id_token | string | ✅       | Google ID token from OAuth    |
+
+**Example:**
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/google \
+  -H "Content-Type: application/json" \
+  -d '{"id_token":"<google-id-token>"}'
+```
+
+**Response (200):** Same as email/password (`access_token`, `token_type`, `expires_in`).
+
+---
+
+## Personal API key
+
+If you have a **personal API key** (e.g. `1ck_...` from the dashboard or `POST /v1/auth/api-keys`), exchange it for a JWT:
+
+**Endpoint:** `POST /v1/auth/api-key-token`  
+**Request body:**
+
+| Field    | Type   | Required | Description      |
+|----------|--------|----------|------------------|
+| api_key  | string | ✅       | Your API key     |
+
+**Example:**
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/api-key-token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key":"1ck_..."}'
+```
+
+**Response (200):** Same shape as above.
+
+---
+
+## Revoke token
+
+**Endpoint:** `DELETE /v1/auth/token`  
+**Headers:** `Authorization: Bearer <token>`
+
+Returns **204 No Content** on success. Useful to invalidate the current token (e.g. on logout).
+
+---
+
+## Change password
+
+**Endpoint:** `POST /v1/auth/change-password`  
+**Headers:** `Authorization: Bearer <token>`  
+**Request body:**
+
+| Field            | Type   | Required | Description   |
+|------------------|--------|----------|---------------|
+| current_password | string | ✅       | Current pwd   |
+| new_password     | string | ✅       | New password  |
+
+**Response (200):** `{ "message": "Password changed successfully" }`
+
+---
+
+## Error responses
+
+| Status | Meaning                    |
+|--------|----------------------------|
+| 401    | Invalid credentials/token  |
+| 400    | Bad request (e.g. missing field) |
+
+All error bodies use the standard problem-details format (`type`, `title`, `status`, `detail`).
+
+
+---
+
+## Human API errors
+
+---
+title: Human API errors
+description: The Human API returns RFC 7807 problem-details and uses standard HTTP status codes for auth, validation, and server errors.
+sidebar_position: 99
+---
+
+# Human API errors
+
+All error responses use **RFC 7807** problem details: a JSON body with `type`, `title`, `status`, and `detail`. The API does not expose internal stack traces or key material.
+
+## HTTP status codes
+
+| Code | Meaning |
+|------|---------|
+| 400 | Bad Request — Invalid path, body, or parameters |
+| 401 | Unauthorized — Missing or invalid Authorization header / token |
+| 403 | Forbidden — Valid token but insufficient permission |
+| 404 | Not Found — Vault, secret, policy, or agent not found |
+| 409 | Conflict — e.g. name already in use (if applicable) |
+| 410 | Gone — Secret expired, deleted, or over max_access_count |
+| 429 | Too Many Requests — Rate limited |
+| 500 | Internal Server Error — Server-side failure (detail is generic) |
+
+## Response body
+
+```json
+{
+  "type": "about:blank",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid or expired token"
+}
+```
+
+`detail` may vary; it is safe to show to the client. For 500 errors the detail is generic (e.g. "An unexpected error occurred") to avoid leaking internals.
+
+## Common cases
+
+- **401** — Omit `Authorization`, invalid JWT, or expired JWT. Fix: obtain a new token.
+- **403** — Policy does not grant the requested permission, or not the vault owner. Fix: add/update policy or use an allowed principal.
+- **404** — Wrong vault_id or path, or resource was deleted. Fix: check IDs and path.
+- **410** — Secret is expired, soft-deleted, or over max_access_count. Fix: create a new version or new secret.
+
+See [Error codes reference](/docs/reference/error-codes) for a full list.
+
+
+---
+
+## Create a policy (grant)
+
+---
+title: Create a policy (grant)
+description: Grant a principal read/write/delete access to secret paths in a vault using POST /v1/vaults/{vault_id}/policies.
+sidebar_position: 0
+---
+
+# Create a policy (grant)
+
+Policies link a **principal** (user or agent) to **secret path patterns** with a set of **permissions** (e.g. read, write, delete). Path matching uses globs: `*` for one segment, `**` for any depth.
+
+**Endpoint:** `POST /v1/vaults/:vault_id/policies`  
+**Authentication:** Bearer JWT (vault access)
+
+## Request body
+
+| Field                | Type   | Required | Description |
+|----------------------|--------|----------|-------------|
+| secret_path_pattern  | string | ✅       | Glob pattern (e.g. `**`, `prod/*`, `api-keys/*`) |
+| principal_type       | string | ✅       | `user` or `agent` |
+| principal_id         | string | ✅       | UUID of the user or agent |
+| permissions          | array  | ✅       | e.g. `["read"]`, `["read","write"]` |
+| conditions           | object | ❌       | Optional (e.g. ip_allowlist, time_window) |
+| expires_at           | string | ❌       | ISO 8601; policy stops applying after this time |
+
+## Example request
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/policies" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "secret_path_pattern": "**",
+    "principal_type": "agent",
+    "principal_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "permissions": ["read"]
+  }'
+```
+
+## Example response (201)
+
+```json
+{
+  "id": "897b37da-a265-4bd4-818b-e716eeff3de3",
+  "vault_id": "ae370174-9aee-4b02-ba7c-d1519930c709",
+  "secret_path_pattern": "**",
+  "principal_type": "agent",
+  "principal_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+  "permissions": ["read"],
+  "conditions": {},
+  "created_by": "2a57eb5e-caac-4e34-9685-b94c37458eb1",
+  "created_at": "2026-02-18T12:00:00Z"
+}
+```
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 400 | Validation error (e.g. empty permissions) |
+| 401 | Invalid or missing token |
+| 403 | Not allowed to create policies on this vault |
+| 404 | Vault not found |
+
+
+---
+
+## List policies (grants)
+
+---
+title: List policies (grants)
+description: List all policies for a vault with GET /v1/vaults/{vault_id}/policies.
+sidebar_position: 2
+---
+
+# List policies (grants)
+
+**Endpoint:** `GET /v1/vaults/:vault_id/policies`  
+**Authentication:** Bearer JWT
+
+Returns all policies (grants) for the given vault.
+
+## Example request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/policies" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Example response (200)
+
+```json
+{
+  "policies": [
+    {
+      "id": "897b37da-a265-4bd4-818b-e716eeff3de3",
+      "vault_id": "ae370174-9aee-4b02-ba7c-d1519930c709",
+      "secret_path_pattern": "**",
+      "principal_type": "agent",
+      "principal_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+      "permissions": ["read"],
+      "conditions": {},
+      "created_by": "2a57eb5e-caac-4e34-9685-b94c37458eb1",
+      "created_at": "2026-02-18T12:00:00Z"
+    }
+  ]
+}
+```
+
+## Update a policy
+
+**Endpoint:** `PUT /v1/vaults/:vault_id/policies/:policy_id`  
+**Body:** Optional `permissions`, `conditions`, `expires_at` (and possibly `secret_path_pattern`). Omitted fields may be left unchanged depending on implementation.
+
+
+---
+
+## Revoke a policy (grant)
+
+---
+title: Revoke a policy (grant)
+description: Delete a policy with DELETE /v1/vaults/{vault_id}/policies/{policy_id}; the principal immediately loses the granted access.
+sidebar_position: 1
+---
+
+# Revoke a policy (grant)
+
+**Endpoint:** `DELETE /v1/vaults/:vault_id/policies/:policy_id`  
+**Authentication:** Bearer JWT
+
+Removes the policy. The principal (user or agent) immediately loses the permissions that policy granted.
+
+## Example request
+
+```bash
+curl -X DELETE "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies/897b37da-a265-4bd4-818b-e716eeff3de3" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Response
+
+**204 No Content** — Success.
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 401 | Invalid or missing token |
+| 403 | Not allowed |
+| 404 | Vault or policy not found |
+
+
+---
+
+## Human API overview
+
+---
+title: Human API overview
+description: The Human API is the full REST API for vaults, secrets, policies, agents, audit, and billing; authenticate with email/password, Google, or personal API key.
+sidebar_position: 0
+---
+
+# Human API overview
+
+The **Human API** is the full set of REST endpoints used by secret owners: create and manage vaults, store and retrieve secrets, define policies (grants), register and manage agents, view audit logs, and manage billing/usage. You use it with a **JWT** obtained via email/password, Google OAuth, or a personal API key.
+
+## Base URL
+
+- **Production:** `https://api.1claw.xyz` (or your Cloud Run URL, e.g. `https://oneclaw-vault-XXXX.run.app`)
+- **Dashboard proxy:** The app at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API, so from the browser the base is effectively `https://1claw.xyz/api`.
+
+All endpoints are under the `/v1` prefix.
+
+## Authentication
+
+Every request (except health and public auth endpoints) must include:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Ways to get an access token:
+
+| Method | Endpoint | Request body |
+|--------|----------|--------------|
+| Email + password | `POST /v1/auth/token` | `{ "email", "password" }` |
+| Google OAuth | `POST /v1/auth/google` | `{ "id_token" }` |
+| Personal API key | `POST /v1/auth/api-key-token` | `{ "api_key" }` (e.g. `1ck_...`) |
+
+See [Authentication](/docs/human-api/authentication) for details and response shape.
+
+## Main areas
+
+| Area | Endpoints | Purpose |
+|------|-----------|---------|
+| **Vaults** | POST/GET /v1/vaults, GET/DELETE /v1/vaults/:vault_id | Create, list, get, delete vaults |
+| **Secrets** | PUT/GET/DELETE /v1/vaults/:vault_id/secrets/:path, GET /v1/vaults/:vault_id/secrets | Store, read, list, delete secrets |
+| **Policies** | POST/GET /v1/vaults/:vault_id/policies, PUT/DELETE .../policies/:policy_id | Grant/revoke access to principals |
+| **Agents** | POST/GET /v1/agents, GET/PATCH/DELETE /v1/agents/:agent_id, POST .../rotate-key | Register agents, rotate keys |
+| **Sharing** | POST /v1/secrets/:secret_id/share, DELETE /v1/share/:share_id | Share links (optional) |
+| **Audit** | GET /v1/audit/events | Query audit events |
+| **Billing** | GET /v1/billing/usage, GET /v1/billing/history | Usage and history |
+| **Org** | GET /v1/org/members, PATCH/DELETE /v1/org/members/:user_id | Team members |
+| **API keys** | POST/GET /v1/auth/api-keys, DELETE /v1/auth/api-keys/:key_id | Personal API keys |
+
+## Response and errors
+
+- Success responses return JSON with the documented shape (or 204 No Content for deletes).
+- Errors use **RFC 7807**-style JSON: `type`, `title`, `status`, `detail`. See [Error codes](/docs/reference/error-codes) and [Human API errors](/docs/human-api/errors).
+
+## Next
+
+- [Authentication](/docs/human-api/authentication) — All ways to get a JWT.
+- [Secrets: create](/docs/human-api/secrets/create) — PUT a secret with full request/response.
+
+
+---
+
+## Create or update a secret
+
+---
+title: Create or update a secret
+description: Store a new secret or new version at a path in a vault using PUT /v1/vaults/{vault_id}/secrets/{path}; authentication is Bearer JWT.
+sidebar_position: 0
+---
+
+# Create or update a secret
+
+Store a secret in a vault at a given **path**. If the path already exists, this creates a **new version**. Path is slash-separated (e.g. `passwords/one`, `api-keys/stripe`). Paths must be alphanumeric with hyphens, underscores, and slashes; no leading or trailing slashes.
+
+**Endpoint:** `PUT /v1/vaults/:vault_id/secrets/:path`  
+**Authentication:** Human API Key (Bearer JWT)
+
+## Path
+
+- `vault_id` — UUID of the vault.
+- `path` — Secret path (e.g. `api-keys/openai`). Can contain multiple segments; the API uses a wildcard `{*path}` so use the full path as in the URL.
+
+## Request body
+
+| Field           | Type   | Required | Description |
+|----------------|--------|----------|-------------|
+| type           | string | ✅       | One of: `password`, `api_key`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle` |
+| value          | string | ✅       | The secret value (plaintext) to store |
+| metadata       | object | ❌       | Optional JSON (e.g. tags, description) |
+| expires_at     | string | ❌       | ISO 8601 datetime; secret unavailable after this time |
+| rotation_policy| object | ❌       | Reserved for future use |
+| max_access_count | number | ❌    | After this many reads, secret returns 410 Gone |
+
+## Example request
+
+```bash
+curl -X PUT "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "api_key",
+    "value": "sk-proj-...",
+    "metadata": {"tags": ["openai", "production"], "description": "OpenAI production key"},
+    "expires_at": "2026-12-31T23:59:59Z"
+  }'
+```
+
+## Example response (201 Created)
+
+```json
+{
+  "id": "599dd304-920c-4459-ae07-d62a3515381b",
+  "path": "api-keys/openai",
+  "type": "api_key",
+  "version": 1,
+  "metadata": {"tags": ["openai", "production"], "description": "OpenAI production key"},
+  "created_at": "2026-02-18T12:00:00Z",
+  "expires_at": "2026-12-31T23:59:59Z"
+}
+```
+
+If the path already had a version, the new version number is incremented and you still get **201**.
+
+> ⚠️ The secret `value` is **never** returned after creation. Only metadata is returned.
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 400 | Invalid path format or request body |
+| 401 | Invalid or missing token |
+| 403 | No write permission for this path (policy or vault owner) |
+| 404 | Vault not found |
+| 500 | Internal error (e.g. HSM or DB) |
+
+All error bodies use RFC 7807 problem-details (`type`, `title`, `status`, `detail`).
+
+
+---
+
+## Delete a secret
+
+---
+title: Delete a secret
+description: Soft-delete a secret at a path using DELETE /v1/vaults/{vault_id}/secrets/{path}; subsequent reads return 410 Gone.
+sidebar_position: 3
+---
+
+# Delete a secret
+
+Soft-delete a secret at a path. All versions of that path are marked deleted; they are not returned in list or get, and GET returns **410 Gone**.
+
+**Endpoint:** `DELETE /v1/vaults/:vault_id/secrets/:path`  
+**Authentication:** Bearer JWT (write permission or vault owner)
+
+## Example request
+
+```bash
+curl -X DELETE "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/old-key" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Response
+
+**204 No Content** — Success. No body.
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 401 | Invalid or missing token |
+| 403 | No delete/write permission |
+| 404 | Vault not found |
+
+After deletion, `GET .../secrets/:path` for that path returns **410 Gone**.
+
+
+---
+
+## Read a secret
+
+---
+title: Read a secret
+description: Retrieve the decrypted value and metadata of a secret by vault ID and path using GET /v1/vaults/{vault_id}/secrets/{path}.
+sidebar_position: 1
+---
+
+# Read a secret
+
+Retrieve the **decrypted value** and metadata of a secret. Requires read permission (policy or vault owner).
+
+**Endpoint:** `GET /v1/vaults/:vault_id/secrets/:path`  
+**Authentication:** Bearer JWT (human or agent)
+
+## Path
+
+- `vault_id` — UUID of the vault.
+- `path` — Secret path (e.g. `api-keys/openai`). Returns the **latest** version unless you use a versioned endpoint (if available).
+
+## Example request
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
+  -H "Authorization: Bearer <token>"
+```
+
+## Example response (200)
+
+```json
+{
+  "id": "599dd304-920c-4459-ae07-d62a3515381b",
+  "path": "api-keys/openai",
+  "type": "api_key",
+  "value": "sk-proj-...",
+  "version": 1,
+  "metadata": {"tags": ["openai", "production"]},
+  "created_by": "user:2a57eb5e-caac-4e34-9685-b94c37458eb1",
+  "created_at": "2026-02-18T12:00:00Z",
+  "expires_at": "2026-12-31T23:59:59Z"
+}
+```
+
+Treat the `value` field as highly sensitive; do not log or persist it unnecessarily.
+
+## Error responses
+
+| Code | Meaning |
+|------|---------|
+| 401 | Invalid or missing token |
+| 403 | No read permission |
+| 404 | Vault or secret not found |
+| 410 | Secret expired, deleted, or over max_access_count (Gone) |
+
+
+---
+
+## Rotate a secret
+
+---
+title: Rotate a secret
+description: The rotate endpoint may return 400 not yet implemented; for now create a new version with PUT to the same path.
+sidebar_position: 4
+---
+
+# Rotate a secret
+
+**Endpoint:** `POST /v1/vaults/:vault_id/secrets/:path/rotate`  
+**Authentication:** Bearer JWT
+
+<!-- TODO: verify --> The vault implementation may return **400 Bad Request** with a message that secret rotation is not yet implemented. When that is the case, "rotation" is achieved by creating a **new version** of the secret:
+
+1. Generate a new value (e.g. new API key from the provider).
+2. **PUT** to the same path with the new value (see [Create](/docs/human-api/secrets/create) / [Update](/docs/human-api/secrets/update)).
+3. Optionally revoke or expire the old key at the provider.
+
+Once rotation is implemented, this endpoint may accept an optional body (e.g. `new_value` or trigger provider rotation) and return the new secret metadata. Check the [API reference](/docs/reference/api-reference) or OpenAPI spec for the current contract.
+
+## Example (when implemented)
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai/rotate" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"new_value":"sk-proj-..."}'
+```
+
+## Current behavior
+
+If the server responds with **400** and a message like "Secret rotation not yet implemented", use **PUT** to the same path with the new value instead.
+
+
+---
+
+## Update a secret (new version)
+
+---
+title: Update a secret (new version)
+description: Creating a new version of a secret is done by PUT to the same path; the API creates a new version and returns 201 with updated metadata.
+sidebar_position: 2
+---
+
+# Update a secret (new version)
+
+In 1claw, there is no separate "update" endpoint. To **update** a secret you **PUT** to the same vault and path with a new body. That creates a **new version** (version 2, 3, …). The previous version remains stored but the default "latest" read returns the newest version.
+
+**Endpoint:** `PUT /v1/vaults/:vault_id/secrets/:path`  
+**Authentication:** Bearer JWT
+
+Same request body as [Create a secret](/docs/human-api/secrets/create): `type`, `value`, and optional `metadata`, `expires_at`, `rotation_policy`, `max_access_count`.
+
+## Example
+
+```bash
+curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"api_key","value":"sk-proj-NEW-KEY..."}'
+```
+
+**Response (201):** Same shape as create; `version` will be 2 (or next). The secret value is never returned.
+
+To read a **specific** version, use the versioned endpoint if your deployment supports it (e.g. `GET .../secrets/:path/versions/:v`). Otherwise only the latest is available via `GET .../secrets/:path`.
+
+## Related
+
+- [Create a secret](/docs/human-api/secrets/create) — Full request/response.
+- [Rotate a secret](/docs/human-api/secrets/rotate) — Rotation endpoint (may return 400 "not yet implemented").
+
+
+---
+
+## Introduction
+
+---
+title: Introduction
+description: 1claw is a cloud HSM secrets manager that lets humans grant AI agents scoped, audited, revocable access to secrets without exposing raw credentials.
+sidebar_position: 0
+---
+
+# Introduction
+
+1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
+
+## The problem 1claw solves
+
+AI agents often need secrets (API keys, tokens, DB credentials) to call external services. If you paste a secret into a chat or put it in an agent's environment, it can be logged, leaked, or retained. 1claw keeps secrets in an HSM-backed vault and gives agents **scoped, audited, revocable** access: the agent authenticates to 1claw and requests a secret by path; 1claw returns the decrypted value only if the agent is allowed. The agent never stores the secret; you can revoke access or rotate the secret at any time.
+
+## How it works (high level)
+
+```
+┌─────────────┐     JWT (user or agent)      ┌─────────────┐
+│  Human or   │ ───────────────────────────▶ │  Vault API  │
+│  AI Agent   │                               │  (Rust)     │
+└─────────────┘                               └──────┬──────┘
+                                                    │
+                    ┌───────────────────────────────┼───────────────────────────────┐
+                    ▼                               ▼                               ▼
+             ┌──────────────┐               ┌──────────────┐               ┌──────────────┐
+             │  Supabase    │               │  Cloud KMS   │               │  Audit log   │
+             │  (Postgres)  │               │  (KEK/JWT)   │               │  (events)    │
+             └──────────────┘               └──────────────┘               └──────────────┘
+```
+
+- **Humans** log in (email/password or Google) or use a personal API key (`1ck_`). They create vaults, store secrets at paths, register agents, and attach policies that grant agents (or users) read/write access to path patterns.
+- **Agents** authenticate with an agent API key (`ocv_`) via `POST /v1/auth/agent-token` to get a short-lived JWT, then call the same API to list secrets and fetch secret values by path. Access is enforced by policies; all access is audited.
+
+## Two APIs, one base URL
+
+The same REST API serves both personas:
+
+| Persona | Auth | Typical operations |
+|--------|------|---------------------|
+| **Human** | Email/password or Google → JWT; or personal API key → JWT | Create vaults, PUT/GET/DELETE secrets, create/list policies, register agents, audit logs |
+| **Agent** | Agent API key → JWT via `/v1/auth/agent-token` | GET secret by path, list secrets in a vault (subject to policies) |
+
+Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
+
+## What you'll find in these docs
+
+- **Concepts** — Vaults, secrets, policies, agents, HSM architecture.
+- **Quickstart** — Get a token (human or agent) and read/write a secret.
+- **Human API** — Every endpoint for vaults, secrets, policies, agents, billing, audit.
+- **Agent API** — Auth and fetching secrets; same endpoints with agent JWT.
+- **MCP Server** — Give AI agents (Claude, Cursor, GPT) direct access to secrets via the Model Context Protocol. Hosted at `mcp.1claw.xyz` or run locally.
+- **SDKs** — TypeScript/JavaScript and curl examples.
+- **Guides** — Give an agent access, rotate secrets, revoke access, billing & usage, deploying updates, audit.
+- **Security** — HSM, key hierarchy, zero-trust, compliance.
+- **Reference** — Error codes, rate limits, changelog.
+
+## Next steps
+
+- [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
+- [Quickstart for humans](/docs/quickstart/humans) — Log in and store your first secret.
+- [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
+- [MCP Server](/docs/mcp/overview) — Connect AI agents to your vault via MCP.
+
+
+---
+
+## MCP Deployment
+
+---
+title: MCP Deployment
+description: Deploy the 1claw MCP server to Cloud Run for hosted access at mcp.1claw.xyz, or self-host on any container platform.
+sidebar_position: 4
+---
+
+# MCP Deployment
+
+## Hosted deployment (Cloud Run)
+
+The MCP server auto-deploys to Google Cloud Run on every push to `main` that modifies `packages/mcp/**`. The GitHub Actions workflow is at `.github/workflows/deploy-mcp.yml`.
+
+### How it works
+
+1. Push to `main` triggers the workflow.
+2. Docker image is built and pushed to Artifact Registry.
+3. Cloud Run service `oneclaw-mcp` is updated with the new image.
+4. The service is available at its Cloud Run URL (and at `mcp.1claw.xyz` if domain mapping is configured).
+
+### Infrastructure (Terraform)
+
+The Cloud Run service and domain mapping are defined in `infra/main.tf`. To set up:
+
+```hcl
+# In infra/terraform.tfvars
+mcp_domain = "mcp.1claw.xyz"
+```
+
+Then run `terraform apply`. This creates:
+
+- `google_cloud_run_v2_service.mcp` — The Cloud Run service with health checks, auto-scaling (0–5 instances), and the vault API URL injected as an environment variable.
+- `google_cloud_run_domain_mapping.mcp` — Maps `mcp.1claw.xyz` to the service (requires a CNAME DNS record pointing to Cloud Run).
+
+### Environment variables (set automatically)
+
+| Variable | Value | Source |
+|----------|-------|--------|
+| `MCP_TRANSPORT` | `httpStream` | Dockerfile default |
+| `PORT` | `8080` | Dockerfile default |
+| `ONECLAW_BASE_URL` | Vault Cloud Run URL | Terraform |
+
+### Health check
+
+The server exposes `GET /health` which returns `200 OK` with body `✓ Ok`. Cloud Run uses this for startup and liveness probes.
+
+## Self-hosting
+
+The MCP server is a standard Node.js Docker container. You can deploy it anywhere that runs containers.
+
+### Docker
+
+```bash
+cd packages/mcp
+docker build -t my-mcp-server .
+docker run -p 8080:8080 \
+  -e MCP_TRANSPORT=httpStream \
+  -e ONECLAW_BASE_URL=https://api.1claw.xyz \
+  my-mcp-server
+```
+
+### Required configuration
+
+| Variable | Description |
+|----------|-------------|
+| `MCP_TRANSPORT` | Set to `httpStream` for hosted mode |
+| `PORT` | HTTP port (default: `8080`) |
+| `ONECLAW_BASE_URL` | Your vault API URL |
+
+Note: In hosted mode, auth credentials come from client request headers (`Authorization` and `X-Vault-ID`), not from environment variables. The server creates a new vault client per connection using the caller's credentials.
+
+
+---
+
+## MCP Server
+
+---
+title: MCP Server Overview
+description: The 1claw MCP server gives AI agents secure, just-in-time access to secrets via the Model Context Protocol. Available as a hosted service or local stdio process.
+sidebar_position: 0
+---
+
+# MCP Server
+
+The **1claw MCP server** (`@1claw/mcp`) implements the [Model Context Protocol](https://modelcontextprotocol.io) to give AI agents secure, just-in-time access to secrets stored in a 1claw vault.
+
+Secrets are fetched at runtime and never persisted in the LLM context window beyond the moment they are used.
+
+## How it works
+
+```
+┌──────────────┐         MCP protocol          ┌──────────────┐
+│  AI Agent    │ ◀─────────────────────────────▶│  1claw MCP   │
+│  (Claude,    │   list_secrets, get_secret,    │  Server      │
+│   Cursor,    │   put_secret, rotate_and_store │              │
+│   GPT, etc.) │                                └──────┬───────┘
+└──────────────┘                                       │
+                                                       │ HTTPS
+                                                       ▼
+                                                ┌──────────────┐
+                                                │  Vault API   │
+                                                │ api.1claw.xyz│
+                                                └──────────────┘
+```
+
+1. The AI agent calls an MCP tool (e.g. `get_secret`).
+2. The MCP server authenticates with the vault API using an agent token.
+3. The vault returns the decrypted secret value.
+4. The MCP server passes the value back to the agent.
+5. The agent uses the secret and discards it.
+
+## Transport modes
+
+| Mode | Use case | Auth | URL |
+|------|----------|------|-----|
+| **stdio** | Local — Claude Desktop, Cursor, any MCP client | Env vars | N/A (runs locally) |
+| **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.xyz/mcp` |
+
+## Tools
+
+| Tool | Description | Read/Write |
+|------|-------------|------------|
+| `list_secrets` | List all secrets in the vault (metadata only, never values) | Read |
+| `get_secret` | Fetch the decrypted value of a secret by path | Read |
+| `put_secret` | Create or update a secret (creates a new version) | Write |
+| `delete_secret` | Soft-delete a secret at a given path | Write |
+| `describe_secret` | Get metadata (type, version, expiry) without fetching the value | Read |
+| `rotate_and_store` | Store a new value for an existing secret and return the new version | Write |
+| `get_env_bundle` | Fetch an `env_bundle` secret and parse its KEY=VALUE lines as JSON | Read |
+
+## Resources
+
+| URI | Description |
+|-----|-------------|
+| `vault://secrets` | Browsable listing of all secret paths (metadata only, no values) |
+
+## Next steps
+
+- [Setup Guide](/docs/mcp/setup) — Install and configure the MCP server
+- [Tool Reference](/docs/mcp/tools) — Detailed documentation for each tool
+- [Security](/docs/mcp/security) — Security model and best practices
+- [Deployment](/docs/mcp/deployment) — Deploy the hosted MCP server
+
+
+---
+
+## MCP Security
+
+---
+title: MCP Security
+description: Security model, best practices, and threat mitigations for the 1claw MCP server.
+sidebar_position: 3
+---
+
+# MCP Security
+
+## Security model
+
+The 1claw MCP server is designed around the principle that **secrets should exist in an agent's context for the shortest possible time**.
+
+### Secret value handling
+
+- **Values are never logged.** When `get_secret` is called, only `"secret accessed: <path>"` appears in the MCP server logs. The actual value is never written to disk or stdout.
+- **Values are never cached.** Each `get_secret` call makes a fresh request to the vault API. No secret values are stored in memory between tool calls.
+- **Values are returned directly.** The decrypted value passes from the vault API through the MCP server to the agent in a single request cycle.
+
+### Authentication
+
+| Transport | How auth works |
+|-----------|---------------|
+| **stdio** | Agent token and vault ID are set as environment variables at startup. A single client is created for the process lifetime. |
+| **httpStream** | Each HTTP streaming connection sends `Authorization` and `X-Vault-ID` headers. A new client is created per session. Sessions are isolated — no shared state. |
+
+### Authorization
+
+The MCP server itself does not enforce access control. Authorization is handled by the vault API's policy engine:
+
+1. The MCP server authenticates as an **agent** using the agent token.
+2. Every API call (list, read, write, delete) is checked against the **policies** attached to that agent.
+3. If the agent doesn't have a policy granting access to a path, the vault returns `403 Forbidden`.
+
+This means you control what the AI agent can access by configuring policies in the 1claw dashboard — the MCP server just relays requests.
+
+### Audit trail
+
+Every secret access through the MCP server is recorded in the vault's audit log. You can view audit events in the dashboard or query them via `GET /v1/audit/events`.
+
+## Best practices
+
+### Token scoping
+
+Create dedicated agents for each use case with the minimum permissions needed:
+
+- **Read-only agent** — Policy with only `read` permission on specific paths
+- **CI/CD agent** — Policy with `read` on `config/*` and `api-keys/*`
+- **Rotation agent** — Policy with `read` and `write` on paths it manages
+
+### Path prefix isolation
+
+Use path prefixes to organize secrets and scope agent access:
+
+```
+api-keys/stripe          → Agent A (read)
+api-keys/openai          → Agent A (read)
+config/prod-env          → Agent B (read)
+internal/db-credentials  → No agent access
+```
+
+### Expiry and access limits
+
+Set `expires_at` and `max_access_count` on sensitive secrets:
+
+```
+put_secret(
+  path: "temp/deploy-key",
+  value: "...",
+  expires_at: "2026-03-01T00:00:00Z",
+  max_access_count: 5
+)
+```
+
+The secret auto-expires after the date or after 5 reads, whichever comes first.
+
+### Hosted vs local
+
+| Consideration | Hosted (`mcp.1claw.xyz`) | Local (stdio) |
+|--------------|--------------------------|---------------|
+| Setup complexity | Minimal (URL + headers) | Requires Node.js, build step |
+| Network path | Agent → MCP server → Vault API | Agent → local MCP → Vault API |
+| Token exposure | Headers sent over HTTPS | Env vars on local machine |
+| Isolation | Per-session, stateless | Single process, single client |
+
+For most use cases, the hosted mode is recommended. Use local mode when you need air-gapped operation or want to run against a self-hosted vault.
+
+## Error handling
+
+The MCP server translates vault API errors into clear, actionable messages:
+
+| HTTP status | MCP error message |
+|------------|-------------------|
+| 404 | `No secret found at path '<path>'.` |
+| 410 | `Secret at path '<path>' is expired or has exceeded its maximum access count.` |
+| 402 | `Free tier quota exhausted. Upgrade your plan or add payment at https://1claw.xyz/settings/billing` |
+| 403 | `Access denied` (agent doesn't have a policy for this path) |
+
+
+---
+
+## Setup Guide
+
+---
+title: MCP Setup Guide
+description: Step-by-step instructions for installing and configuring the 1claw MCP server with Claude Desktop, Cursor, and other MCP clients.
+sidebar_position: 1
+---
+
+# Setup Guide
+
+## Prerequisites
+
+Before configuring the MCP server, you need:
+
+1. **A 1claw account** — Sign up at [1claw.xyz](https://1claw.xyz)
+2. **A vault** — Create one from the dashboard
+3. **An agent** — Register an agent and save the API key (`ocv_...`)
+4. **A policy** — Grant the agent read access to the secret paths it needs
+
+## Option 1: Hosted server (recommended)
+
+The simplest setup — no local installation needed. The hosted MCP server runs at `mcp.1claw.xyz` and authenticates per-connection.
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "url": "https://mcp.1claw.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer ocv_your-agent-token-here",
+        "X-Vault-ID": "your-vault-uuid-here"
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "url": "https://mcp.1claw.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer ocv_your-agent-token-here",
+        "X-Vault-ID": "your-vault-uuid-here"
+      }
+    }
+  }
+}
+```
+
+### Any MCP client
+
+Any client that supports HTTP streaming can connect:
+
+- **Endpoint:** `https://mcp.1claw.xyz/mcp`
+- **Headers:** `Authorization: Bearer <agent-token>` and `X-Vault-ID: <vault-uuid>`
+
+## Option 2: Local server (stdio)
+
+Run the MCP server as a local process. Useful for development, air-gapped environments, or when you want full control.
+
+### Install
+
+```bash
+cd packages/mcp
+pnpm install
+pnpm run build
+```
+
+### Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "command": "node",
+      "args": ["/absolute/path/to/packages/mcp/dist/index.js"],
+      "env": {
+        "ONECLAW_AGENT_TOKEN": "ocv_your-agent-token-here",
+        "ONECLAW_VAULT_ID": "your-vault-uuid-here"
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "command": "node",
+      "args": ["./packages/mcp/dist/index.js"],
+      "env": {
+        "ONECLAW_AGENT_TOKEN": "${env:ONECLAW_AGENT_TOKEN}",
+        "ONECLAW_VAULT_ID": "${env:ONECLAW_VAULT_ID}"
+      }
+    }
+  }
+}
+```
+
+Then set the environment variables in your shell:
+
+```bash
+export ONECLAW_AGENT_TOKEN="ocv_your-agent-token-here"
+export ONECLAW_VAULT_ID="your-vault-uuid-here"
+```
+
+### Environment variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ONECLAW_AGENT_TOKEN` | Yes (stdio) | — | Agent API key (`ocv_...`) |
+| `ONECLAW_VAULT_ID` | Yes (stdio) | — | UUID of the vault to operate on |
+| `ONECLAW_BASE_URL` | No | `https://api.1claw.xyz` | Override for self-hosted vault |
+
+## Verifying the connection
+
+After configuration, ask your AI agent:
+
+> "List the secrets in my 1claw vault."
+
+The agent should call `list_secrets` and return the paths and metadata of your secrets. If you get an authentication error, verify your agent token and vault ID.
+
+## Development tools
+
+```bash
+# Interactive CLI testing
+pnpm dev
+
+# MCP Inspector (browser UI for testing tools)
+pnpm inspect
+```
+
+
+---
+
+## Tool Reference
+
+---
+title: MCP Tool Reference
+description: Detailed documentation for every tool provided by the 1claw MCP server, including parameters, examples, and error handling.
+sidebar_position: 2
+---
+
+# Tool Reference
+
+## list_secrets
+
+List all secrets stored in the vault. Returns paths, types, versions, and metadata — **never secret values**.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `prefix` | string | No | Filter secrets by path prefix (e.g. `api-keys/`) |
+
+### Example
+
+```
+Agent: "What secrets are available?"
+→ list_secrets()
+
+Found 3 secret(s):
+- api-keys/stripe  (type: api_key, version: 2, expires: never)
+- api-keys/openai  (type: api_key, version: 1, expires: 2026-12-31T23:59:59Z)
+- passwords/db-prod  (type: password, version: 5, expires: never)
+```
+
+---
+
+## get_secret
+
+Fetch the decrypted value of a secret by its path. Use this immediately before making an API call that requires the credential.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Secret path (e.g. `api-keys/stripe`) |
+
+### Example
+
+```
+Agent: "I need the Stripe API key"
+→ get_secret(path: "api-keys/stripe")
+
+{"path":"api-keys/stripe","type":"api_key","version":2,"value":"sk_live_..."}
+```
+
+### Errors
+
+| Status | Meaning |
+|--------|---------|
+| 404 | No secret found at this path |
+| 410 | Secret is expired or has exceeded its maximum access count |
+| 402 | Free tier quota exhausted — upgrade at 1claw.xyz/settings/billing |
+
+---
+
+## put_secret
+
+Create a new secret or update an existing one. Each call creates a new version.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Secret path (e.g. `api-keys/stripe`) |
+| `value` | string | Yes | The secret value to store |
+| `type` | string | No | Secret type. Default: `api_key`. Options: `api_key`, `password`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle` |
+| `metadata` | object | No | Arbitrary JSON metadata to attach |
+| `expires_at` | string | No | ISO 8601 expiry datetime |
+| `max_access_count` | number | No | Auto-expire after this many reads |
+
+### Example
+
+```
+Agent: "Store this new API key"
+→ put_secret(path: "api-keys/stripe", value: "sk_live_new...", type: "api_key")
+
+Secret stored at 'api-keys/stripe' (version 3, type: api_key).
+```
+
+---
+
+## delete_secret
+
+Soft-delete a secret. All versions are marked as deleted. This is reversible by an admin.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Secret path to delete |
+
+### Example
+
+```
+Agent: "Delete the old Stripe key"
+→ delete_secret(path: "api-keys/old-stripe")
+
+Secret at 'api-keys/old-stripe' has been soft-deleted.
+```
+
+---
+
+## describe_secret
+
+Get metadata for a secret without fetching its value. Use this to check if a secret exists or is still valid.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Secret path to describe |
+
+### Example
+
+```
+Agent: "Is the Stripe key still valid?"
+→ describe_secret(path: "api-keys/stripe")
+
+{
+  "path": "api-keys/stripe",
+  "type": "api_key",
+  "version": 2,
+  "metadata": {},
+  "created_at": "2026-01-15T10:30:00Z",
+  "expires_at": null
+}
+```
+
+---
+
+## rotate_and_store
+
+Store a new value for an existing secret, creating a new version. Useful when an agent has regenerated an API key and needs to persist it.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Secret path to rotate |
+| `value` | string | Yes | The new secret value |
+
+### Example
+
+```
+Agent: "I regenerated the Stripe key, store the new one"
+→ rotate_and_store(path: "api-keys/stripe", value: "sk_live_rotated...")
+
+Rotated secret at 'api-keys/stripe'. New version: 3.
+```
+
+---
+
+## get_env_bundle
+
+Fetch a secret of type `env_bundle`, parse its `KEY=VALUE` lines, and return a structured JSON object. Useful for injecting environment variables into subprocesses.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Path to an `env_bundle` secret |
+
+### Example
+
+```
+Agent: "Get the production environment variables"
+→ get_env_bundle(path: "config/prod-env")
+
+{
+  "DATABASE_URL": "postgres://...",
+  "REDIS_URL": "redis://...",
+  "API_KEY": "sk_..."
+}
+```
+
+The secret value should contain one `KEY=VALUE` per line. Lines starting with `#` and blank lines are ignored.
+
+
+---
+
+## Quickstart for agents
+
+---
+title: Quickstart for agents
+description: Exchange an agent API key for a JWT, then list and fetch secrets the agent is allowed to access.
+sidebar_position: 1
+---
+
+# Quickstart for agents
+
+An **agent** is registered by a human; when registered, it receives an **API key** (`ocv_...`). The agent (or its runtime) exchanges this key for a short-lived JWT, then calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
+
+## 1. Get an agent token
+
+You need the **agent ID** (UUID) and the **API key** that was returned when the agent was registered (or rotated).
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIs...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+Use this as `Authorization: Bearer <access_token>` for subsequent requests. Token is short-lived (e.g. 1 hour).
+
+## 2. List secrets you can access
+
+With the agent JWT you can list secrets in a vault (metadata only). You only see secrets for vaults and paths your policies allow.
+
+```bash
+export TOKEN="<agent access_token>"
+export VAULT_ID="ae370174-9aee-4b02-ba7c-d1519930c709"
+
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** `{ "secrets": [ { "id", "path", "type", "version", "metadata", "created_at", "expires_at" }, ... ] }`
+
+## 3. Fetch a secret value
+
+Request a secret by vault ID and path. The server checks policy; if the agent has read access, it decrypts and returns the value.
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (200):** Includes `value` (plaintext) and metadata. Use the value only for the intended call; don’t log or persist it.
+
+If the agent has no read permission for that path, or the secret is expired/deleted, you get **403** or **404/410**.
+
+## Important
+
+- **Store the API key securely** — In the agent’s config or secrets store, not in code or prompts.
+- **Refresh the JWT** before it expires — Call `POST /v1/auth/agent-token` again when `expires_in` has passed.
+- **Same API as humans** — Same base URL and paths; only the way you get the JWT (agent-token vs email/password or Google) and the permissions (policies) differ.
+
+## Next steps
+
+- [Agent API overview](/docs/agent-api/overview) — Auth and endpoints in one place.
+- [Give an agent access](/docs/guides/give-agent-access) — How a human registers an agent and creates a policy.
+- [Fetch secret](/docs/agent-api/fetch-secret) — Full request/response and errors.
+
+
+---
+
+## Quickstart for humans
+
+---
+title: Quickstart for humans
+description: Log in with email and password, create a vault, store a secret, and read it back using the Human API.
+sidebar_position: 0
+---
+
+# Quickstart for humans
+
+This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
+
+## 1. Get a JWT
+
+Exchange email and password for an access token. Base URL: `https://api.1claw.xyz` (or your Cloud Run URL).
+
+```bash
+curl -X POST https://api.1claw.xyz/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"your-password"}'
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIs...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+Use `access_token` as a Bearer token in all following requests.
+
+## 2. Create a vault
+
+Vaults are containers for secrets. Each vault has its own HSM-backed key.
+
+```bash
+export TOKEN="<your access_token>"
+
+curl -X POST https://api.1claw.xyz/v1/vaults \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Vault","description":"Secrets for my app"}'
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "ae370174-9aee-4b02-ba7c-d1519930c709",
+  "name": "My Vault",
+  "description": "Secrets for my app",
+  "created_by": "2a57eb5e-caac-4e34-9685-b94c37458eb1",
+  "created_at": "2026-02-18T12:00:00Z"
+}
+```
+
+Save the `id`; you'll use it as `vault_id`.
+
+## 3. Store a secret
+
+Secrets live at **paths** inside a vault. Paths are slash-separated (e.g. `api-keys/stripe`, `passwords/db`).
+
+```bash
+export VAULT_ID="ae370174-9aee-4b02-ba7c-d1519930c709"
+
+curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "api_key",
+    "value": "sk-proj-...",
+    "metadata": {"tags": ["openai", "production"]}
+  }'
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "599dd304-920c-4459-ae07-d62a3515381b",
+  "path": "api-keys/openai",
+  "type": "api_key",
+  "version": 1,
+  "metadata": {"tags": ["openai", "production"]},
+  "created_at": "2026-02-18T12:01:00Z"
+}
+```
+
+The secret **value** is never returned after creation; only metadata.
+
+## 4. Read the secret
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (200):** Includes decrypted `value` plus metadata. Keep this response secure.
+
+## 5. List secrets (metadata only)
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Returns `{ "secrets": [ ... ] }` with id, path, type, version, metadata, created_at, expires_at — **no** value.
+
+## Next steps
+
+- [Human API overview](/docs/human-api/overview) — All endpoints and auth options.
+- [Create a secret](/docs/human-api/secrets/create) — Full request/response and options.
+- [Give an agent access](/docs/guides/give-agent-access) — Register an agent and grant read access.
+
+
+---
+
+## API reference
+
+---
+title: API reference
+description: Full API reference is provided by the OpenAPI 3.1 spec in the repository; base URL and all v1 endpoints are listed here.
+sidebar_position: 0
+---
+
+# API reference
+
+The canonical API spec is the **OpenAPI 3.1** document in the monorepo root: [openapi.yaml](https://github.com/kmjones1979/1claw/blob/main/openapi.yaml). It defines all paths, request/response schemas, and error shapes.
+
+## Base URL
+
+- **Production:** `https://api.1claw.xyz` (or your Cloud Run URL)
+- **Dashboard proxy:** `https://1claw.xyz/api` (proxies to the same API)
+
+All endpoints are under **/v1**.
+
+## Endpoints summary
+
+- **POST** `/v1/auth/token` — Email/password to JWT
+- **POST** `/v1/auth/agent-token` — Agent ID + API key to JWT
+- **POST** `/v1/auth/api-key-token` — Personal API key to JWT
+- **POST** `/v1/auth/google` — Google id_token to JWT
+- **POST** `/v1/auth/refresh` — Refresh token to JWT
+- **DELETE** `/v1/auth/token` — Revoke token
+- **POST** `/v1/auth/change-password` — Change password
+- **GET** `/v1/health` — Service health
+- **GET** `/v1/health/hsm` — HSM connectivity
+- **POST** `/v1/vaults` — Create vault
+- **GET** `/v1/vaults` — List vaults
+- **GET** `/v1/vaults/:vault_id` — Get vault
+- **DELETE** `/v1/vaults/:vault_id` — Delete vault
+- **GET** `/v1/vaults/:vault_id/secrets` — List secrets
+- **PUT** `/v1/vaults/:vault_id/secrets/:path` — Create/update secret (path is wildcard)
+- **GET** `/v1/vaults/:vault_id/secrets/:path` — Get secret value
+- **DELETE** `/v1/vaults/:vault_id/secrets/:path` — Delete secret
+- **POST** `/v1/vaults/:vault_id/policies` — Create policy
+- **GET** `/v1/vaults/:vault_id/policies` — List policies
+- **PUT** `/v1/vaults/:vault_id/policies/:policy_id` — Update policy
+- **DELETE** `/v1/vaults/:vault_id/policies/:policy_id` — Delete policy
+- **POST** `/v1/agents` — Register agent
+- **GET** `/v1/agents` — List agents
+- **GET** `/v1/agents/:agent_id` — Get agent
+- **PATCH** `/v1/agents/:agent_id` — Update agent
+- **DELETE** `/v1/agents/:agent_id` — Deactivate agent
+- **POST** `/v1/agents/:agent_id/rotate-key` — Rotate agent key
+- **POST** `/v1/secrets/:secret_id/share` — Create share link
+- **GET** `/v1/share/:share_id` — Access share (public)
+- **DELETE** `/v1/share/:share_id` — Revoke share
+- **GET** `/v1/billing/usage` — Usage summary
+- **GET** `/v1/billing/history` — Usage history
+- **GET** `/v1/audit/events` — Query audit events
+- **GET** `/v1/org/members` — List org members
+- **PATCH** `/v1/org/members/:user_id` — Update member role
+- **DELETE** `/v1/org/members/:user_id` — Remove member
+- **POST** `/v1/auth/api-keys` — Create API key
+- **GET** `/v1/auth/api-keys` — List API keys
+- **DELETE** `/v1/auth/api-keys/:key_id` — Revoke API key
+
+Note: The OpenAPI spec may use `username` for `/v1/auth/token`; the **actual** API expects `email` and `password`. See [Authentication](/docs/human-api/authentication).
+
+
+---
+
+## Changelog
+
+---
+title: Changelog
+description: Product and API changelog for 1claw.
+sidebar_position: 3
+---
+
+# Changelog
+
+For detailed release history, see the [1claw repository](https://github.com/kmjones1979/1claw) commits.
+
+## API stability
+
+The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
+
+## 2026-02
+
+### MCP server (`@1claw/mcp`)
+
+- **New:** MCP server for AI agent access to secrets via the Model Context Protocol.
+- 7 tools: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`.
+- Browsable `vault://secrets` resource.
+- **Dual transport:** Local stdio mode (Claude Desktop, Cursor) and hosted HTTP streaming mode (`mcp.1claw.xyz`).
+- Per-session authentication in hosted mode — each connection gets its own vault client.
+- Auto-deploy to Cloud Run via GitHub Actions.
+
+### Billing & usage tracking
+
+- **New:** Usage tracking middleware records every authenticated API request.
+- **New:** Free tier — 1,000 requests/month per organization.
+- **New:** x402 Payment Required responses when free tier is exhausted, with on-chain payment on Base (EIP-155:8453).
+- **New:** Billing API — `GET /v1/billing/usage` (summary) and `GET /v1/billing/history` (event log).
+- Unified billing across dashboard, SDK, and MCP — all count against the same quota.
+
+### Vault API
+
+- Added `POST /v1/agents/:agent_id/rotate-key` endpoint for agent key rotation.
+- Added `GET /v1/billing/usage` and `GET /v1/billing/history` endpoints.
+- Usage middleware tracks method, endpoint, principal, status code, and price per request.
+- x402 middleware enforces free tier limits and returns payment-required responses.
+
+### Infrastructure
+
+- Cloud Run deployment for MCP server (`oneclaw-mcp`).
+- Terraform resources for MCP service and domain mapping.
+- GitHub Actions workflow for MCP auto-deploy.
+- CI pipeline expanded: MCP type check, build, Docker image build and Trivy scan.
+
+### Documentation
+
+- **New:** Full MCP documentation section (overview, setup, tool reference, security, deployment).
+- **New:** Billing & usage guide.
+- **New:** Deploying updates guide.
+- Updated intro, MCP integration guide, and changelog.
+- Updated `llms.txt` and `llms-full.txt` with MCP and billing content.
+
+### Initial release (2026-02 early)
+
+- Vault API: vaults, secrets (CRUD + versioning), policies, agents, sharing, audit log, org management.
+- Human auth: email/password, Google OAuth, personal API keys (`1ck_`).
+- Agent auth: agent API keys (`ocv_`) exchanged for short-lived JWTs.
+- Envelope encryption with Cloud KMS (or SoftHSM for local dev).
+- Dashboard: Next.js with full secret management UI.
+- TypeScript SDK (`@1claw/sdk`).
+- Docusaurus docs site.
+- Terraform infrastructure (Supabase, GCP, Vercel).
+
+
+---
+
+## Error codes
+
+---
+title: Error codes
+description: HTTP status codes and RFC 7807 problem-details returned by the 1claw API; 400, 401, 403, 404, 409, 410, 429, 500.
+sidebar_position: 1
+---
+
+# Error codes
+
+All errors return a JSON body with **RFC 7807** fields: `type`, `title`, `status`, `detail`. The API does not expose stack traces or internal details in 500 responses.
+
+## HTTP status codes
+
+| Code | Title | When |
+|------|--------|------|
+| 400 | Bad Request | Invalid path format, invalid request body, validation failure (e.g. empty permissions). |
+| 401 | Unauthorized | Missing `Authorization` header, invalid Bearer format, invalid or expired JWT, wrong credentials (email/password or API key). |
+| 403 | Forbidden | Valid JWT but no permission for this resource (policy does not grant the action, or not vault owner). |
+| 404 | Not Found | Vault, secret, policy, or agent not found (wrong ID or path). |
+| 409 | Conflict | Request conflicts with current state (e.g. name already exists, if applicable). |
+| 410 | Gone | Secret has expired, been soft-deleted, or exceeded max_access_count. |
+| 429 | Too Many Requests | Rate limit exceeded. |
+| 500 | Internal Server Error | Server-side failure (e.g. database, KMS). Detail is generic. |
+
+## Example body
+
+```json
+{
+  "type": "about:blank",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "Insufficient permissions"
+}
+```
+
+Use `status` for programmatic handling; use `detail` for user-facing messages (it may vary by endpoint).
+
+
+---
+
+## Rate limits
+
+---
+title: Rate limits
+description: Rate limiting may be applied per org or per token; 429 responses indicate limit exceeded; exact limits depend on deployment.
+sidebar_position: 2
+---
+
+# Rate limits
+
+<!-- TODO: verify --> The vault API may enforce rate limits per organization or per token. When a limit is exceeded, the server returns **429 Too Many Requests** with a problem-details body.
+
+Exact limits (requests per minute or per hour) depend on your deployment (e.g. Cloud Run and any API gateway in front). Check your infrastructure config or contact the operator. Common practice is to use exponential backoff and retry when you receive 429.
+
+
+---
+
+## curl examples
+
+---
+title: curl examples
+description: Example curl commands for 1claw auth, vaults, secrets, and agents; works with any environment that has curl.
+sidebar_position: 3
+---
+
+# curl examples
+
+Base URL used: `https://api.1claw.xyz`. Replace with your Cloud Run URL if different.
+
+## Human: get JWT
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"your-password"}'
+# Save access_token as $TOKEN
+```
+
+## Human: create vault and secret
+
+```bash
+export TOKEN="<access_token>"
+
+# Create vault
+curl -s -X POST https://api.1claw.xyz/v1/vaults \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Vault","description":"Secrets"}'
+
+# Store secret (use vault id from response)
+export VAULT_ID="<vault_id>"
+curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"api_key","value":"sk-proj-..."}'
+
+# Read secret
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Agent: get JWT and read secret
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"<uuid>","api_key":"ocv_..."}'
+# Save access_token
+
+export TOKEN="<agent_access_token>"
+export VAULT_ID="<vault_id>"
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## List secrets (metadata only)
+
+```bash
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create policy (grant agent read)
+
+```bash
+curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "secret_path_pattern": "**",
+    "principal_type": "agent",
+    "principal_id": "<agent_uuid>",
+    "permissions": ["read"]
+  }'
+```
+
+
+---
+
+## JavaScript / TypeScript SDK
+
+---
+title: JavaScript / TypeScript SDK
+description: Use @1claw/sdk to authenticate as an agent and fetch secrets; the SDK handles JWT exchange and optional x402 payment errors.
+sidebar_position: 1
+---
+
+# JavaScript / TypeScript SDK
+
+The official SDK lives in the monorepo at `packages/sdk` and is published as **@1claw/sdk**. It is aimed at **agent** use: authenticate with agent ID and API key, then fetch secrets.
+
+## Install
+
+```bash
+npm install @1claw/sdk
+# or
+pnpm add @1claw/sdk
+```
+
+## Configuration
+
+```ts
+import { OneClawClient } from "@1claw/sdk";
+
+const client = new OneClawClient({
+  baseUrl: "https://api.1claw.xyz",
+  apiKey: process.env.ONECLAW_AGENT_API_KEY,
+  maxPaymentPerRequest: 1.0, // optional; for x402 payment safety
+});
+```
+
+## Authenticate (agent)
+
+```ts
+await client.authenticate(process.env.ONECLAW_AGENT_ID!);
+// SDK stores the JWT and uses it for subsequent requests
+```
+
+This calls `POST /v1/auth/agent-token` and stores the returned `access_token`.
+
+## Fetch a secret
+
+After authentication, use the client to fetch a secret by vault ID and path. The SDK uses the stored JWT and handles 402 (payment required) according to config; wallet-based x402 may not be implemented yet.
+
+```ts
+const vaultId = "ae370174-9aee-4b02-ba7c-d1519930c709";
+const secret = await client.getSecret(vaultId, "api-keys/openai");
+console.log(secret.value); // use securely; don't log
+```
+
+## Types
+
+Exported types include `OneClawConfig`, `SecretResponse`, `VaultResponse`, `ShareOptions`, and `PaymentRequired`. See `packages/sdk/src/types.ts` in the repo.
+
+## Human API (dashboard / server)
+
+The dashboard uses **fetch** and **TanStack Query** with the same base URL and JWT from login (email/password or Google). There is no separate “human” SDK package; use fetch or your own client with the [Human API](/docs/human-api/overview) and [Authentication](/docs/human-api/authentication) docs.
+
+
+---
+
+## SDKs overview
+
+---
+title: SDKs overview
+description: 1claw provides a TypeScript/JavaScript SDK (@1claw/sdk); curl and fetch examples work with any language.
+sidebar_position: 0
+---
+
+# SDKs overview
+
+- **JavaScript/TypeScript** — Official `@1claw/sdk` in the monorepo (`packages/sdk`). Supports agent auth and fetching secrets; optional x402 payment handling. See [JavaScript SDK](/docs/sdks/javascript).
+- **Python** — No official SDK yet; use [curl examples](/docs/sdks/curl-examples) or implement a thin client with `requests`/`httpx`. See [Python](/docs/sdks/python).
+- **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
+
+The API is stable and documented in the [OpenAPI spec](https://github.com/kmjones1979/1claw/blob/main/openapi.yaml) in the repo root.
+
+
+---
+
+## Python
+
+---
+title: Python
+description: Use requests or httpx with the 1claw REST API from Python; no official SDK yet; examples show agent auth and fetching a secret.
+sidebar_position: 2
+---
+
+# Python
+
+There is no official Python SDK. Use **requests** or **httpx** with the same REST endpoints. Below: agent auth and fetch secret.
+
+## Agent: get token and fetch secret
+
+```python
+import os
+import requests
+
+BASE = "https://api.1claw.xyz"
+AGENT_ID = os.environ["ONECLAW_AGENT_ID"]
+API_KEY = os.environ["ONECLAW_AGENT_API_KEY"]
+
+# Get JWT
+r = requests.post(
+    f"{BASE}/v1/auth/agent-token",
+    json={"agent_id": AGENT_ID, "api_key": API_KEY},
+)
+r.raise_for_status()
+token = r.json()["access_token"]
+headers = {"Authorization": f"Bearer {token}"}
+
+# List secrets (metadata only)
+vault_id = "ae370174-9aee-4b02-ba7c-d1519930c709"
+r = requests.get(f"{BASE}/v1/vaults/{vault_id}/secrets", headers=headers)
+r.raise_for_status()
+for s in r.json()["secrets"]:
+    print(s["path"], s["type"])
+
+# Get secret value
+r = requests.get(
+    f"{BASE}/v1/vaults/{vault_id}/secrets/api-keys/openai",
+    headers=headers,
+)
+r.raise_for_status()
+value = r.json()["value"]
+# Use value only as needed; don't log or persist
+```
+
+## Human: email/password token
+
+```python
+r = requests.post(
+    f"{BASE}/v1/auth/token",
+    json={"email": "you@example.com", "password": "your-password"},
+)
+r.raise_for_status()
+token = r.json()["access_token"]
+```
+
+Then use `Authorization: Bearer <token>` for vaults, secrets, policies, and agents as in the [Human API](/docs/human-api/overview) docs.
+
+
+---
+
+## Compliance
+
+---
+title: Compliance
+description: 1claw supports compliance efforts through HSM-backed encryption, access control, audit logging, and revocation; use the audit log and policies to demonstrate control.
+sidebar_position: 3
+---
+
+# Compliance
+
+1claw supports common compliance requirements by design:
+
+- **Encryption at rest** — All secrets are encrypted with HSM-backed keys (envelope encryption). Keys never leave the HSM. This supports requirements for strong encryption and key management.
+
+- **Access control** — Access is granted only via explicit policies. No default read; every request is authorized. Supports least-privilege and access review.
+
+- **Audit trail** — All access (and failures) can be recorded. Secret values are never logged. You can export or forward events to your SIEM or compliance tooling. Supports accountability and incident response.
+
+- **Revocation** — Policies can be deleted and agents deactivated immediately. Supports “revoke access when needed” and offboarding.
+
+- **No long-term secret storage in clients** — Agents fetch secrets at runtime and do not need to store them. Reduces exposure in agent environments.
+
+Use the [Audit API](/docs/guides/audit-and-compliance) and policy model to document who had access to what and when. For specific standards (e.g. SOC 2, HIPAA), work with your compliance team to map controls to 1claw’s capabilities and your deployment (e.g. GCP and Supabase compliance offerings).
+
+
+---
+
+## HSM overview
+
+---
+title: HSM overview
+description: 1claw uses an HSM to hold KEKs and the JWT signing key; in production this is Google Cloud KMS; secrets are encrypted with keys that never leave the HSM.
+sidebar_position: 0
+---
+
+# HSM overview
+
+1claw encrypts secrets with keys that never leave a **Hardware Security Module (HSM)**. In production the HSM is **Google Cloud KMS**: a key ring holds the JWT signing key (Ed25519) and one Key Encryption Key (KEK) per vault (symmetric). The vault API runs on Cloud Run and has IAM permissions to use KMS for sign, encrypt, and decrypt; it never has access to raw key material.
+
+## What the HSM protects
+
+- **KEKs** — Used only to wrap and unwrap Data Encryption Keys (DEKs). Each vault has one KEK. DEKs encrypt secret values; KEKs encrypt DEKs. Without KMS access, ciphertext and wrapped DEKs in the database are useless.
+- **JWT signing key** — Ed25519 key used to sign and verify access tokens. Signing is done inside KMS; only the public key is used for verification. This prevents token forgery.
+
+## Operational security
+
+- Key material does not exist in application memory except as wrapped ciphertext or short-lived DEK during decrypt.
+- Access to KMS is via IAM; the vault service account has least-privilege roles (cryptoKeyEncrypterDecrypter for KEKs, signerVerifier for JWT).
+- Audit logging records access and failures without logging secret values.
+
+See [Key hierarchy](/docs/security/key-hierarchy) and [HSM architecture](/docs/concepts/hsm-architecture) for the encryption flow.
+
+
+---
+
+## Key hierarchy
+
+---
+title: Key hierarchy
+description: KEK per vault in HSM; DEK per secret (or operation); DEK wraps plaintext, KEK wraps DEK; JWT key is separate Ed25519 in same key ring.
+sidebar_position: 1
+---
+
+# Key hierarchy
+
+1. **JWT signing key (Ed25519)** — One per deployment. Lives in the same KMS key ring. Used only to sign and verify JWTs. Public key is used by the API to validate tokens; private key never leaves KMS.
+
+2. **KEK (Key Encryption Key)** — One per vault. Symmetric key in KMS. Created when the vault is created. Used only to:
+   - **Wrap** a DEK (encrypt the DEK) when storing a secret.
+   - **Unwrap** a DEK (decrypt the DEK) when reading a secret.
+
+3. **DEK (Data Encryption Key)** — Random 256-bit key generated per secret (or per write). Used with AES-256-GCM to encrypt the secret value. The DEK is then wrapped by the vault’s KEK and stored with the ciphertext. It exists in plain form only inside the API during the encrypt/decrypt operation and is never persisted in the clear.
+
+## Flow summary
+
+- **Write:** Generate DEK → Encrypt plaintext with DEK (AES-GCM) → Wrap DEK with KEK (KMS) → Store ciphertext + wrapped DEK + IV + tag.
+- **Read:** Load ciphertext + wrapped DEK → Unwrap DEK with KEK (KMS) → Decrypt ciphertext with DEK → Return plaintext.
+
+This is standard **envelope encryption**. Compromise of the database or application does not reveal secrets without KMS access.
+
+
+---
+
+## Zero trust
+
+---
+title: Zero trust
+description: "1claw enforces zero-trust style guarantees: secrets at rest encrypted, access only after auth and policy check, revocation immediate, all access audited."
+sidebar_position: 2
+---
+
+# Zero trust
+
+1claw is designed with zero-trust principles: no implicit trust of the network or the database; every access is authenticated and authorized, and secrets are protected at rest and in use.
+
+## Secrets at rest
+
+- Every secret is encrypted with a DEK; the DEK is wrapped by a KEK that never leaves the HSM. The database stores only ciphertext and wrapped DEKs. There is no “master key” in the app; decryption requires a successful KMS unwrap.
+
+## No implicit access
+
+- Every request must present a valid JWT. There is no “open” read. Policies explicitly grant read/write to principals for path patterns. Vault owners have full access to their vault; everyone else needs a policy. Agents have no access until a human creates a policy.
+
+## Revocation is immediate
+
+- Deleting a policy removes access on the next request. Deactivating an agent prevents new tokens; existing short-lived JWTs expire. Rotating an agent key invalidates the old key. There is no long-lived cache of secrets in the API.
+
+## Audit
+
+- Access (and relevant failures) are logged. Secret values are never written to the audit log. You can use the log for compliance and incident response.
+
+## In transit
+
+- Clients must use HTTPS. The API is served over TLS. Do not send tokens or secrets over plain HTTP.
+
+See [Trust model](/docs/concepts/trust-model) for a short summary.
