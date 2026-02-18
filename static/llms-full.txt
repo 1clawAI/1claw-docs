@@ -929,6 +929,9 @@ cd packages/mcp && pnpm install && pnpm run build
 | `describe_secret` | Get metadata without the value |
 | `rotate_and_store` | Store a new version of an existing secret |
 | `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle |
+| `create_vault` | Create a new vault (auto-shared with agent's creator) |
+| `list_vaults` | List all vaults the agent has access to |
+| `grant_access` | Share a vault with a user or agent (own vaults only) |
 
 ## Typical agent workflow
 
@@ -2058,6 +2061,9 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | `describe_secret` | Get metadata (type, version, expiry) without fetching the value | Read |
 | `rotate_and_store` | Store a new value for an existing secret and return the new version | Write |
 | `get_env_bundle` | Fetch an `env_bundle` secret and parse its KEY=VALUE lines as JSON | Read |
+| `create_vault` | Create a new vault owned by the agent; auto-shares with creator | — |
+| `list_vaults` | List all vaults accessible to the agent (own + shared) | — |
+| `grant_access` | Create an access policy sharing a vault with another principal | — |
 
 ## Resources
 
@@ -2510,6 +2516,86 @@ Agent: "Get the production environment variables"
 
 The secret value should contain one `KEY=VALUE` per line. Lines starting with `#` and blank lines are ignored.
 
+---
+
+## create_vault
+
+Create a new vault owned by the agent. The vault is automatically shared with the human who registered the agent (full read/write/delete access). Use descriptive names so your human collaborator can find it in the dashboard.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `name` | string | Yes | Vault name (e.g. `stripe-production`, `ci-deploy-keys`) |
+| `description` | string | No | Short description of what the vault is for |
+
+### Example
+
+```
+Agent: "Create a vault for the Stripe API keys I found"
+→ create_vault(name: "stripe-production", description: "Production Stripe credentials")
+
+Vault created successfully.
+  ID: abc-123
+  Name: stripe-production
+  Owner: agent:ec7e0226-...
+
+The vault has been automatically shared with your creator.
+You can now store secrets with put_secret.
+```
+
+---
+
+## list_vaults
+
+List all vaults accessible to the agent — both vaults the agent created and vaults shared with it via policies.
+
+### Parameters
+
+None.
+
+### Example
+
+```
+Agent: "What vaults do I have access to?"
+→ list_vaults()
+
+Found 3 vault(s):
+- My Vault  (id: ae370174-..., created by: user, 2026-02-15T10:00:00Z)
+- stripe-production  (id: abc-123, created by: agent, 2026-02-18T20:00:00Z)
+- ci-keys  (id: def-456, created by: agent, 2026-02-18T21:00:00Z)
+```
+
+---
+
+## grant_access
+
+Grant a user or agent access to one of your vaults. Agents can only grant access on vaults they own (created_by_type = agent). Use this to share secrets with team members or other agents.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `vault_id` | string (UUID) | Yes | ID of the vault to share |
+| `principal_type` | `user` or `agent` | Yes | Type of principal to grant access to |
+| `principal_id` | string (UUID) | Yes | UUID of the user or agent |
+| `permissions` | array of strings | No | Permissions to grant (default: `["read"]`) |
+| `secret_path_pattern` | string | No | Glob pattern for which secrets the policy covers (default: `**`) |
+
+### Example
+
+```
+Agent: "Share the stripe vault with user abc-123 for read-only access"
+→ grant_access(vault_id: "abc-123", principal_type: "user", principal_id: "2a57eb5e-...", permissions: ["read"])
+
+Access granted.
+  Policy ID: pol-789
+  Vault: abc-123
+  Granted to: user:2a57eb5e-...
+  Permissions: read
+  Path pattern: **
+```
+
 
 ---
 
@@ -2799,7 +2885,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 ### MCP server (`@1claw/mcp`)
 
 - **New:** MCP server for AI agent access to secrets via the Model Context Protocol.
-- 7 tools: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`.
+- 10 tools: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`, `create_vault`, `list_vaults`, `grant_access`.
 - Browsable `vault://secrets` resource.
 - **Dual transport:** Local stdio mode (Claude Desktop, Cursor) and hosted HTTP streaming mode (`mcp.1claw.xyz`).
 - Per-session authentication in hosted mode — each connection gets its own vault client.

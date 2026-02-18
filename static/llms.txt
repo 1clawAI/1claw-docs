@@ -6,10 +6,20 @@
 
 1claw stores API keys, tokens, and other secrets inside a cloud HSM. Humans control which agents can access which secrets, with what permissions, and for how long. Agents authenticate with 1claw and receive secrets at runtime — they never hold secrets in their own environment or context window.
 
-## Two APIs
+## Bi-directional Human/Agent Access
 
-- **Human API** — Used by the secret owner (a person or team). Create/manage vaults and secrets, register agents, create policies (grants), set permissions, view audit logs, rotate credentials, monitor billing.
-- **Agent API** — Same REST base URL; agents authenticate with an agent token (JWT from API key). Fetch authorized secrets by path, list accessible secrets, same audit surface.
+Both humans and agents are first-class principals. Either can create vaults, store secrets, and share access with the other.
+
+- **Humans** create vaults, store secrets, register agents, grant agents scoped access via policies, view audit logs, monitor billing.
+- **Agents** can also create their own vaults, store secrets they discover or generate, and share those vaults back with their human creator or other org members. When an agent creates a vault, its human creator automatically gets full access.
+- **Same REST API** at `api.1claw.xyz` — both humans and agents authenticate with JWTs. The `created_by_type` field (`user` or `agent`) on vaults, secrets, and policies tracks who created each resource.
+
+### Security guardrails
+
+- Agents can only create/update/delete policies on vaults they own — they cannot modify policies on human-created vaults.
+- Auto-share ensures humans always have visibility into agent-created resources.
+- All resources are org-scoped; agents cannot reach outside their organization.
+- Every action is audit-logged with actor type and identity.
 
 ## MCP Server
 
@@ -17,9 +27,10 @@
 
 - **Hosted** at `mcp.1claw.xyz` — no installation needed; authenticate with `Authorization` and `X-Vault-ID` headers.
 - **Local (stdio)** — run via Claude Desktop or Cursor with agent token and vault ID as env vars.
-- **7 tools**: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`.
+- **10 tools**: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`, `create_vault`, `list_vaults`, `grant_access`.
 - **Resource**: `vault://secrets` — browsable listing of all secret paths.
 - Secrets are fetched just-in-time, never cached, never logged.
+- Agents can create vaults (`create_vault`), discover available vaults (`list_vaults`), and share access with humans or other agents (`grant_access`).
 
 ## Billing & Usage
 
@@ -30,10 +41,11 @@
 
 ## Core concepts
 
-- **Vault** — A container for secrets; each vault has its own HSM-backed key (KEK). You create vaults, then store secrets inside them.
+- **Vault** — A container for secrets; each vault has its own HSM-backed key (KEK). Both humans and agents can create vaults. Agent-created vaults are automatically shared with the agent's human creator.
 - **Secret** — An encrypted credential stored in the vault (API key, token, password, certificate, etc.) at a path (e.g. `passwords/one`, `api-keys/stripe`).
-- **Agent** — A registered AI entity (Claude, GPT, custom bot, MCP server) that receives an API key and can be granted access via policies.
+- **Agent** — A registered AI entity (Claude, GPT, custom bot, MCP server) that receives an API key and can be granted access via policies. Agents are first-class principals that can create vaults, store secrets, and share access.
 - **Policy (grant)** — Links a principal (user or agent) to secret path patterns with permissions (read, write, delete, etc.) and optional conditions/expiry.
+- **Principal type** — Every creator is tracked with a `created_by_type` of `user` or `agent`, matching the JWT `sub` claim format (`user:UUID` or `agent:UUID`).
 - **HSM** — Hardware Security Module; in production 1claw uses Google Cloud KMS. DEKs wrap secrets; KEKs wrap DEKs and never leave the HSM.
 - **Human auth** — Email/password or Google OAuth → JWT. Personal API keys (`1ck_`) also get a JWT.
 - **Agent auth** — Agent API key (`ocv_`) exchanged for a short-lived JWT via `POST /v1/auth/agent-token`.
