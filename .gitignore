@@ -1,5 +1,13 @@
+node_modules/
+build/
+.docusaurus/
+.cache-loader/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.tsbuildinfo
+*.log
+.DS_Store
 .vercel
-.docusaurus
-build
-node_modules
-.env*.local
