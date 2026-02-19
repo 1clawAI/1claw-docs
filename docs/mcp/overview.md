@@ -35,31 +35,31 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 
 ## Transport modes
 
-| Mode | Use case | Auth | URL |
-|------|----------|------|-----|
-| **stdio** | Local — Claude Desktop, Cursor, any MCP client | Env vars | N/A (runs locally) |
+| Mode           | Use case                                            | Auth                | URL                         |
+| -------------- | --------------------------------------------------- | ------------------- | --------------------------- |
+| **stdio**      | Local — Claude Desktop, Cursor, any MCP client      | Env vars            | N/A (runs locally)          |
 | **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.xyz/mcp` |
 
 ## Tools
 
-| Tool | Description | Read/Write |
-|------|-------------|------------|
-| `list_secrets` | List all secrets in the vault (metadata only, never values) | Read |
-| `get_secret` | Fetch the decrypted value of a secret by path | Read |
-| `put_secret` | Create or update a secret (creates a new version) | Write |
-| `delete_secret` | Soft-delete a secret at a given path | Write |
-| `describe_secret` | Get metadata (type, version, expiry) without fetching the value | Read |
-| `rotate_and_store` | Store a new value for an existing secret and return the new version | Write |
-| `get_env_bundle` | Fetch an `env_bundle` secret and parse its KEY=VALUE lines as JSON | Read |
-| `create_vault` | Create a new vault | Write |
-| `list_vaults` | List all accessible vaults | Read |
-| `grant_access` | Grant a user or agent access to a vault | Write |
-| `share_secret` | Share a secret with someone by email | Write |
+| Tool               | Description                                                         | Read/Write |
+| ------------------ | ------------------------------------------------------------------- | ---------- |
+| `list_secrets`     | List all secrets in the vault (metadata only, never values)         | Read       |
+| `get_secret`       | Fetch the decrypted value of a secret by path                       | Read       |
+| `put_secret`       | Create or update a secret (creates a new version)                   | Write      |
+| `delete_secret`    | Soft-delete a secret at a given path                                | Write      |
+| `describe_secret`  | Get metadata (type, version, expiry) without fetching the value     | Read       |
+| `rotate_and_store` | Store a new value for an existing secret and return the new version | Write      |
+| `get_env_bundle`   | Fetch an `env_bundle` secret and parse its KEY=VALUE lines as JSON  | Read       |
+| `create_vault`     | Create a new vault                                                  | Write      |
+| `list_vaults`      | List all accessible vaults                                          | Read       |
+| `grant_access`     | Grant a user or agent access to a vault                             | Write      |
+| `share_secret`     | Share a secret with someone by email                                | Write      |
 
 ## Resources
 
-| URI | Description |
-|-----|-------------|
+| URI               | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
 | `vault://secrets` | Browsable listing of all secret paths (metadata only, no values) |
 
 ## Next steps

@@ -12,9 +12,9 @@ List all secrets stored in the vault. Returns paths, types, versions, and metada
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `prefix` | string | No | Filter secrets by path prefix (e.g. `api-keys/`) |
+| Name     | Type   | Required | Description                                      |
+| -------- | ------ | -------- | ------------------------------------------------ |
+| `prefix` | string | No       | Filter secrets by path prefix (e.g. `api-keys/`) |
 
 ### Example
 
@@ -36,9 +36,9 @@ Fetch the decrypted value of a secret by its path. Use this immediately before m
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Secret path (e.g. `api-keys/stripe`) |
+| Name   | Type   | Required | Description                          |
+| ------ | ------ | -------- | ------------------------------------ |
+| `path` | string | Yes      | Secret path (e.g. `api-keys/stripe`) |
 
 ### Example
 
@@ -51,11 +51,11 @@ Agent: "I need the Stripe API key"
 
 ### Errors
 
-| Status | Meaning |
-|--------|---------|
-| 404 | No secret found at this path |
-| 410 | Secret is expired or has exceeded its maximum access count |
-| 402 | Free tier quota exhausted — upgrade at 1claw.xyz/settings/billing |
+| Status | Meaning                                                           |
+| ------ | ----------------------------------------------------------------- |
+| 404    | No secret found at this path                                      |
+| 410    | Secret is expired or has exceeded its maximum access count        |
+| 402    | Free tier quota exhausted — upgrade at 1claw.xyz/settings/billing |
 
 ---
 
@@ -65,14 +65,14 @@ Create a new secret or update an existing one. Each call creates a new version.
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Secret path (e.g. `api-keys/stripe`) |
-| `value` | string | Yes | The secret value to store |
-| `type` | string | No | Secret type. Default: `api_key`. Options: `api_key`, `password`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle` |
-| `metadata` | object | No | Arbitrary JSON metadata to attach |
-| `expires_at` | string | No | ISO 8601 expiry datetime |
-| `max_access_count` | number | No | Auto-expire after this many reads |
+| Name               | Type   | Required | Description                                                                                                                            |
+| ------------------ | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`             | string | Yes      | Secret path (e.g. `api-keys/stripe`)                                                                                                   |
+| `value`            | string | Yes      | The secret value to store                                                                                                              |
+| `type`             | string | No       | Secret type. Default: `api_key`. Options: `api_key`, `password`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle` |
+| `metadata`         | object | No       | Arbitrary JSON metadata to attach                                                                                                      |
+| `expires_at`       | string | No       | ISO 8601 expiry datetime                                                                                                               |
+| `max_access_count` | number | No       | Auto-expire after this many reads                                                                                                      |
 
 ### Example
 
@@ -91,9 +91,9 @@ Soft-delete a secret. All versions are marked as deleted. This is reversible by 
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Secret path to delete |
+| Name   | Type   | Required | Description           |
+| ------ | ------ | -------- | --------------------- |
+| `path` | string | Yes      | Secret path to delete |
 
 ### Example
 
@@ -112,9 +112,9 @@ Get metadata for a secret without fetching its value. Use this to check if a sec
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Secret path to describe |
+| Name   | Type   | Required | Description             |
+| ------ | ------ | -------- | ----------------------- |
+| `path` | string | Yes      | Secret path to describe |
 
 ### Example
 
@@ -140,10 +140,10 @@ Store a new value for an existing secret, creating a new version. Useful when an
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Secret path to rotate |
-| `value` | string | Yes | The new secret value |
+| Name    | Type   | Required | Description           |
+| ------- | ------ | -------- | --------------------- |
+| `path`  | string | Yes      | Secret path to rotate |
+| `value` | string | Yes      | The new secret value  |
 
 ### Example
 
@@ -162,9 +162,9 @@ Fetch a secret of type `env_bundle`, parse its `KEY=VALUE` lines, and return a s
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Path to an `env_bundle` secret |
+| Name   | Type   | Required | Description                    |
+| ------ | ------ | -------- | ------------------------------ |
+| `path` | string | Yes      | Path to an `env_bundle` secret |
 
 ### Example
 
@@ -189,10 +189,10 @@ Create a new vault for organizing secrets.
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `name` | string | Yes | Vault name |
-| `description` | string | No | Description of the vault's purpose |
+| Name          | Type   | Required | Description                        |
+| ------------- | ------ | -------- | ---------------------------------- |
+| `name`        | string | Yes      | Vault name                         |
+| `description` | string | No       | Description of the vault's purpose |
 
 ### Example
 
@@ -232,13 +232,13 @@ Grant a user or agent access to a vault by creating an access policy.
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `vault_id` | string | Yes | UUID of the vault |
-| `principal_type` | string | Yes | `user` or `agent` |
-| `principal_id` | string | Yes | UUID of the user or agent |
-| `permissions` | string[] | No | Array of permissions: `read`, `write`, `delete` (default: `["read"]`) |
-| `secret_path_pattern` | string | No | Glob pattern to restrict access (default: `**` — all secrets) |
+| Name                  | Type     | Required | Description                                                           |
+| --------------------- | -------- | -------- | --------------------------------------------------------------------- |
+| `vault_id`            | string   | Yes      | UUID of the vault                                                     |
+| `principal_type`      | string   | Yes      | `user` or `agent`                                                     |
+| `principal_id`        | string   | Yes      | UUID of the user or agent                                             |
+| `permissions`         | string[] | No       | Array of permissions: `read`, `write`, `delete` (default: `["read"]`) |
+| `secret_path_pattern` | string   | No       | Glob pattern to restrict access (default: `**` — all secrets)         |
 
 ### Example
 
@@ -257,12 +257,12 @@ Share a secret with someone via email. The recipient doesn't need a 1Claw accoun
 
 ### Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `secret_id` | string | Yes | UUID of the secret to share |
-| `email` | string | Yes | Recipient's email address |
-| `expires_at` | string | Yes | ISO 8601 expiry datetime (e.g. `2026-03-01T00:00:00Z`) |
-| `max_access_count` | number | No | Maximum number of times the share can be accessed (default: 5) |
+| Name               | Type   | Required | Description                                                    |
+| ------------------ | ------ | -------- | -------------------------------------------------------------- |
+| `secret_id`        | string | Yes      | UUID of the secret to share                                    |
+| `email`            | string | Yes      | Recipient's email address                                      |
+| `expires_at`       | string | Yes      | ISO 8601 expiry datetime (e.g. `2026-03-01T00:00:00Z`)         |
+| `max_access_count` | number | No       | Maximum number of times the share can be accessed (default: 5) |
 
 ### Example
 

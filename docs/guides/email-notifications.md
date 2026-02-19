@@ -10,23 +10,23 @@ sidebar_position: 9
 
 ## Notification events
 
-| Event | Recipient | When |
-|-------|-----------|------|
-| **Welcome** | New user | Account created via email/password signup or Google OAuth |
-| **Secret shared** | Share recipient | A secret is shared with them via email (`external_email` share) |
-| **Shared secret accessed** | Share creator | Someone accesses a secret the user shared |
-| **Password changed** | User | Password is successfully changed |
-| **API key created** | User | A new personal API key is created on their account |
+| Event                      | Recipient       | When                                                            |
+| -------------------------- | --------------- | --------------------------------------------------------------- |
+| **Welcome**                | New user        | Account created via email/password signup or Google OAuth       |
+| **Secret shared**          | Share recipient | A secret is shared with them via email (`external_email` share) |
+| **Shared secret accessed** | Share creator   | Someone accesses a secret the user shared                       |
+| **Password changed**       | User            | Password is successfully changed                                |
+| **API key created**        | User            | A new personal API key is created on their account              |
 
 ## Configuration
 
 Email sending requires a Resend API key. Set these environment variables on the vault server:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RESEND_API_KEY` | Yes | — | Your Resend API key (`re_...`) |
-| `ONECLAW_EMAIL_FROM` | No | `1Claw <noreply@1claw.xyz>` | Sender address |
-| `ONECLAW_PUBLIC_URL` | No | `https://1claw.xyz` | Base URL for links in emails |
+| Variable             | Required | Default                     | Description                    |
+| -------------------- | -------- | --------------------------- | ------------------------------ |
+| `RESEND_API_KEY`     | Yes      | —                           | Your Resend API key (`re_...`) |
+| `ONECLAW_EMAIL_FROM` | No       | `1Claw <noreply@1claw.xyz>` | Sender address                 |
+| `ONECLAW_PUBLIC_URL` | No       | `https://1claw.xyz`         | Base URL for links in emails   |
 
 If `RESEND_API_KEY` is not set, email sending is silently skipped and a log message is emitted instead. This is useful for local development.
 

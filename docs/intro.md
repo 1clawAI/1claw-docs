@@ -42,10 +42,10 @@ AI agents often need secrets (API keys, tokens, DB credentials) to call external
 
 The same REST API serves both personas:
 
-| Persona | Auth | Typical operations |
-|--------|------|---------------------|
+| Persona   | Auth                                                      | Typical operations                                                                       |
+| --------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | **Human** | Email/password or Google → JWT; or personal API key → JWT | Create vaults, PUT/GET/DELETE secrets, create/list policies, register agents, audit logs |
-| **Agent** | Agent API key → JWT via `/v1/auth/agent-token` | GET secret by path, list secrets in a vault (subject to policies) |
+| **Agent** | Agent API key → JWT via `/v1/auth/agent-token`            | GET secret by path, list secrets in a vault (subject to policies)                        |
 
 Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
 

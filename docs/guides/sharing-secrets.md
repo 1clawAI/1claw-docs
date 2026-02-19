@@ -10,12 +10,12 @@ sidebar_position: 4
 
 ## Share types
 
-| `recipient_type` | Description |
-|-------------------|-------------|
-| `user` | Direct share to an existing 1Claw user by ID |
-| `agent` | Direct share to a registered agent by ID |
-| `external_email` | Invite-by-email — the recipient doesn't need an account yet |
-| `anyone_with_link` | Anyone with the share URL can access |
+| `recipient_type`   | Description                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| `user`             | Direct share to an existing 1Claw user by ID                |
+| `agent`            | Direct share to a registered agent by ID                    |
+| `external_email`   | Invite-by-email — the recipient doesn't need an account yet |
+| `anyone_with_link` | Anyone with the share URL can access                        |
 
 ## Create a share
 
@@ -35,12 +35,12 @@ curl -X POST https://api.1claw.xyz/v1/secrets/{secret_id}/share \
 
 ```json
 {
-  "id": "uuid",
-  "share_url": "https://api.1claw.xyz/v1/share/uuid",
-  "recipient_type": "external_email",
-  "recipient_email": "colleague@example.com",
-  "expires_at": "2026-03-15T00:00:00Z",
-  "max_access_count": 5
+    "id": "uuid",
+    "share_url": "https://api.1claw.xyz/v1/share/uuid",
+    "recipient_type": "external_email",
+    "recipient_email": "colleague@example.com",
+    "expires_at": "2026-03-15T00:00:00Z",
+    "max_access_count": 5
 }
 ```
 
@@ -77,14 +77,17 @@ curl -X DELETE https://api.1claw.xyz/v1/share/{share_id} \
 ```ts
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz", apiKey: "..." });
+const client = createClient({
+    baseUrl: "https://api.1claw.xyz",
+    apiKey: "...",
+});
 
 // Share by email
 const share = await client.sharing.create(secretId, {
-  recipient_type: "external_email",
-  email: "colleague@example.com",
-  expires_at: "2026-03-15T00:00:00Z",
-  max_access_count: 5,
+    recipient_type: "external_email",
+    email: "colleague@example.com",
+    expires_at: "2026-03-15T00:00:00Z",
+    max_access_count: 5,
 });
 
 // Access a share

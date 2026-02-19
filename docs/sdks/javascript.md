@@ -22,19 +22,19 @@ npm install @1claw/sdk
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
-  apiKey: process.env.ONECLAW_API_KEY, // personal API key (1ck_...)
+    baseUrl: "https://api.1claw.xyz",
+    apiKey: process.env.ONECLAW_API_KEY, // personal API key (1ck_...)
 });
 
 // Create a vault
 const { data: vault } = await client.vault.create({
-  name: "my-vault",
-  description: "Production secrets",
+    name: "my-vault",
+    description: "Production secrets",
 });
 
 // Store a secret
 await client.secrets.set(vault.id, "STRIPE_KEY", "sk_live_...", {
-  type: "api_key",
+    type: "api_key",
 });
 
 // Retrieve a secret
@@ -49,20 +49,24 @@ The SDK supports three authentication methods:
 ```ts
 // 1. Personal API key (recommended for server-side)
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
-  apiKey: "1ck_...",
+    baseUrl: "https://api.1claw.xyz",
+    apiKey: "1ck_...",
 });
 
 // 2. Agent credentials
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
-  agentId: "uuid",
-  apiKey: "ocv_...",
+    baseUrl: "https://api.1claw.xyz",
+    agentId: "uuid",
+    apiKey: "ocv_...",
 });
 
 // 3. Manual auth (signup, email/password)
 const client = createClient({ baseUrl: "https://api.1claw.xyz" });
-await client.auth.signup({ email: "me@example.com", password: "...", display_name: "Me" });
+await client.auth.signup({
+    email: "me@example.com",
+    password: "...",
+    display_name: "Me",
+});
 // or
 await client.auth.login({ email: "me@example.com", password: "..." });
 ```
@@ -71,20 +75,20 @@ await client.auth.login({ email: "me@example.com", password: "..." });
 
 All API endpoints are organized into resource modules:
 
-| Module | Methods |
-|--------|---------|
-| `client.auth` | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()` |
-| `client.vault` | `create()`, `list()`, `get()`, `delete()` |
-| `client.secrets` | `set()`, `get()`, `list()`, `delete()`, `rotate()` |
-| `client.access` | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()` |
-| `client.agents` | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()` |
-| `client.sharing` | `create()`, `access()`, `revoke()` |
-| `client.approvals` | `request()`, `list()`, `approve()`, `deny()`, `check()` |
-| `client.apiKeys` | `create()`, `list()`, `revoke()` |
-| `client.billing` | `usage()`, `history()` |
-| `client.audit` | `query()` |
-| `client.org` | `listMembers()`, `updateMemberRole()`, `removeMember()` |
-| `client.x402` | `getPaymentRequirement()`, `pay()`, `verifyReceipt()`, `withPayment()` |
+| Module             | Methods                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `client.auth`      | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()` |
+| `client.vault`     | `create()`, `list()`, `get()`, `delete()`                                                          |
+| `client.secrets`   | `set()`, `get()`, `list()`, `delete()`, `rotate()`                                                 |
+| `client.access`    | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
+| `client.agents`    | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`                               |
+| `client.sharing`   | `create()`, `access()`, `revoke()`                                                                 |
+| `client.approvals` | `request()`, `list()`, `approve()`, `deny()`, `check()`                                            |
+| `client.apiKeys`   | `create()`, `list()`, `revoke()`                                                                   |
+| `client.billing`   | `usage()`, `history()`                                                                             |
+| `client.audit`     | `query()`                                                                                          |
+| `client.org`       | `listMembers()`, `updateMemberRole()`, `removeMember()`                                            |
+| `client.x402`      | `getPaymentRequirement()`, `pay()`, `verifyReceipt()`, `withPayment()`                             |
 
 ## Sharing by email
 
@@ -92,10 +96,10 @@ Share a secret with someone who may not have an account yet:
 
 ```ts
 const { data: share } = await client.sharing.create(secretId, {
-  recipient_type: "external_email",
-  email: "colleague@example.com",
-  expires_at: "2026-04-01T00:00:00Z",
-  max_access_count: 3,
+    recipient_type: "external_email",
+    email: "colleague@example.com",
+    expires_at: "2026-04-01T00:00:00Z",
+    max_access_count: 3,
 });
 // Recipient gets an email; the share auto-claims when they sign up/log in
 ```
@@ -107,9 +111,9 @@ Every method returns `{ data, error, meta }`:
 ```ts
 const res = await client.secrets.get(vaultId, "MY_KEY");
 if (res.error) {
-  console.error(res.error.message); // typed error
+    console.error(res.error.message); // typed error
 } else {
-  console.log(res.data.value);
+    console.log(res.data.value);
 }
 ```
 
@@ -117,12 +121,12 @@ if (res.error) {
 
 ```ts
 import {
-  OneclawError,
-  AuthError,              // 401
-  PaymentRequiredError,   // 402 (x402)
-  ApprovalRequiredError,  // 403 (approval pending)
-  NotFoundError,          // 404
-  RateLimitError,         // 429
+    OneclawError,
+    AuthError, // 401
+    PaymentRequiredError, // 402 (x402)
+    ApprovalRequiredError, // 403 (approval pending)
+    NotFoundError, // 404
+    RateLimitError, // 429
 } from "@1claw/sdk";
 ```
 
@@ -139,8 +143,8 @@ const tools = getMcpToolDefinitions();
 // Handle tool calls
 const handler = new McpHandler(client);
 const result = await handler.handle("1claw_get_secret", {
-  vault_id: "...",
-  key: "STRIPE_KEY",
+    vault_id: "...",
+    key: "STRIPE_KEY",
 });
 ```
 
