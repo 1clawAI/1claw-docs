@@ -6,7 +6,7 @@ sidebar_position: 3
 
 # Changelog
 
-For detailed release history, see the [1claw repository](https://github.com/kmjones1979/1claw) commits.
+For detailed release history, see the [1claw repository](https://github.com/1clawAI/1claw) commits.
 
 ## API stability
 

@@ -6,7 +6,7 @@ sidebar_position: 0
 
 # API reference
 
-The canonical API spec is the **OpenAPI 3.1** document in the monorepo root: [openapi.yaml](https://github.com/kmjones1979/1claw/blob/main/openapi.yaml). It defines all paths, request/response schemas, and error shapes.
+The canonical API spec is the **OpenAPI 3.1** document in the monorepo root: [openapi.yaml](https://github.com/1clawAI/1claw/blob/main/openapi.yaml). It defines all paths, request/response schemas, and error shapes.
 
 ## Base URL
 

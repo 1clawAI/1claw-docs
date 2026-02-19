@@ -10,4 +10,4 @@ sidebar_position: 0
 - **Python** — No official SDK yet; use [curl examples](/docs/sdks/curl-examples) or implement a thin client with `requests`/`httpx`. See [Python](/docs/sdks/python).
 - **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
 
-The API is stable and documented in the [OpenAPI spec](https://github.com/kmjones1979/1claw/blob/main/openapi.yaml) in the repo root.
+The API is stable and documented in the [OpenAPI spec](https://github.com/1clawAI/1claw/blob/main/openapi.yaml) in the repo root.

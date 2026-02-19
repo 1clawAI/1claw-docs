@@ -8,7 +8,7 @@ sidebar_position: 1
 
 The official TypeScript SDK provides full API parity with the 1Claw REST API. It supports both human and agent workflows, x402 auto-payment, and an MCP tool layer for AI agents.
 
-**Repository:** [github.com/kmjones1979/1claw-sdk](https://github.com/kmjones1979/1claw-sdk)
+**Repository:** [github.com/1clawAI/1claw-sdk](https://github.com/1clawAI/1claw-sdk)
 
 ## Install
 
@@ -146,7 +146,7 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/kmjones1979/1claw-examples) for runnable demos:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) for runnable demos:
 
 - **basic/** — Vault CRUD, secrets, billing, signup, email-based sharing
 - **nextjs-agent-secret/** — AI agent with Claude accessing vault secrets via MCP tools
