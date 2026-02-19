@@ -51,7 +51,7 @@ const config: Config = {
         { to: "/docs/agent-api/overview", label: "Agent API", position: "left" },
         { to: "/docs/mcp/overview", label: "MCP", position: "left" },
         {
-          href: "https://github.com/1clawAI/1claw",
+          href: "https://github.com/1clawAI",
           label: "GitHub",
           position: "right",
         },
@@ -61,7 +61,7 @@ const config: Config = {
       links: [
         { label: "Privacy", href: "https://1claw.xyz/privacy" },
         { label: "Terms", href: "https://1claw.xyz/terms" },
-        { label: "GitHub", href: "https://github.com/1clawAI/1claw" },
+        { label: "GitHub", href: "https://github.com/1clawAI" },
         { label: "Status", href: "https://1claw.xyz/status" },
       ],
       copyright: "Copyright © 1claw. PolyForm Noncommercial 1.0.0.",
