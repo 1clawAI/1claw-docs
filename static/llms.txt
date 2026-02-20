@@ -70,6 +70,29 @@ Use `share_secret` or `POST /v1/secrets/{id}/share` to create a time-limited, ac
 
 Shares support optional passphrase protection and IP allowlists, both enforced server-side. Recipients of targeted shares must explicitly accept before accessing the secret.
 
+## Crypto Transaction Proxy
+
+Agents can be granted the ability to sign and broadcast on-chain transactions through a controlled signing proxy. Private keys stay in the HSM — the agent submits intent, the proxy signs and (optionally) broadcasts.
+
+- **Enable per-agent**: set `crypto_proxy_enabled: true` when creating or updating an agent. Disabled by default.
+- **Submit a transaction**: `POST /v1/agents/{id}/transactions` with `{ to, value, chain }`. Optional fields: `data`, `signing_key_path`, `nonce`, `gas_price`, `gas_limit`.
+- **List transactions**: `GET /v1/agents/{id}/transactions`.
+- **Get transaction**: `GET /v1/agents/{id}/transactions/{tx_id}`.
+- The backend fetches the signing key from the vault (agent must have a read policy on the key path), signs an EIP-155 legacy transaction using secp256k1, and returns the signed transaction hex + keccak tx hash.
+- If the chain has an RPC URL configured, the backend broadcasts via `eth_sendRawTransaction` and returns `status: "broadcast"`.
+- Default signing key path: `keys/{chain}-signer`. Caller can override via `signing_key_path`.
+- Key properties: disabled by default, signing keys never leave the server, every transaction is audit-logged, revocable instantly.
+
+## Chain Registry
+
+1claw maintains a configurable registry of supported blockchains.
+
+- **List enabled chains**: `GET /v1/chains` — returns name, chain_id, explorer URL, native currency, testnet flag.
+- **Get chain details**: `GET /v1/chains/{name_or_chain_id}` — look up by name (e.g. "base") or numeric ID (e.g. "8453").
+- **Admin management**: `POST /v1/admin/chains`, `PUT /v1/admin/chains/{id}`, `DELETE /v1/admin/chains/{id}` — add chains, configure RPC URLs, enable/disable.
+- Default chains: Ethereum (1), Base (8453), Optimism (10), Arbitrum One (42161), Polygon (137), Sepolia (11155111), Base Sepolia (84532).
+- Configuring an RPC URL on a chain enables automatic transaction broadcasting for the crypto proxy.
+
 ## MCP Server
 
 1claw provides a Model Context Protocol (MCP) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets.
@@ -101,6 +124,8 @@ At [1claw.xyz](https://1claw.xyz) you sign in (email/password or Google), then u
 - **Policy (grant)** — Links a principal (user or agent) to secret path patterns with permissions (read, write, delete, etc.) and optional conditions/expiry. This is the primary access control mechanism.
 - **Share link** — A one-off, time-limited link to a single secret. Recipients must explicitly accept before accessing. Separate from policy-based access.
 - **Principal type** — Every creator is tracked with a `created_by_type` of `user` or `agent`, matching the JWT `sub` claim format (`user:UUID` or `agent:UUID`).
+- **Chain** — A registered blockchain in the chain registry. Each chain has a name, chain_id, optional RPC URL (for broadcasting), explorer URL, and native currency.
+- **Transaction** — A signed EVM transaction created via the crypto proxy. Agents submit intents; the backend signs using vault-stored keys.
 - **HSM** — Hardware Security Module; in production 1claw uses Google Cloud KMS. DEKs wrap secrets; KEKs wrap DEKs and never leave the HSM.
 - **Human auth** — Email/password or Google OAuth → JWT. Personal API keys (`1ck_`) also get a JWT.
 - **Agent auth** — Agent API key (`ocv_`) exchanged for a short-lived JWT via `POST /v1/auth/agent-token`.
