@@ -120,6 +120,19 @@ Requires `crypto_proxy_enabled: true` on the agent. When enabled, the agent is a
 | GET | `/v1/billing/usage` | Usage summary (current period) |
 | GET | `/v1/billing/history` | Usage history |
 
+## Billing V2: Subscriptions & Credits
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/v1/billing/subscribe` | Start subscription checkout (Stripe) |
+| POST | `/v1/billing/portal` | Open Stripe customer portal |
+| GET | `/v1/billing/subscription` | Full subscription + usage + credits summary |
+| POST | `/v1/billing/credits/topup` | Start credit top-up checkout (Stripe) |
+| GET | `/v1/billing/credits/balance` | Credit balance + expiring credits |
+| GET | `/v1/billing/credits/transactions` | Paginated credit transaction ledger |
+| PATCH | `/v1/billing/overage-method` | Toggle overage method (credits or x402) |
+| POST | `/v1/billing/webhooks` | Stripe webhook handler (no auth — signature verified) |
+
 ## Audit
 
 | Method | Path | Description |
