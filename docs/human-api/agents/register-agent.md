@@ -13,14 +13,14 @@ Creates a new agent identity and returns an **API key** (`ocv_...`). The key is 
 
 ## Request body
 
-| Field       | Type   | Required | Description |
-|------------|--------|----------|-------------|
-| name       | string | ✅       | Display name for the agent |
-| description| string | ❌       | Optional description |
-| auth_method| string | ❌       | Default `api_key` |
-| scopes     | array  | ❌       | Optional scope strings |
-| expires_at | string | ❌       | ISO 8601; agent token exchange fails after this |
-| crypto_proxy_enabled | boolean | ❌ | Default `false`. When `true`, the agent **must** use the transaction proxy to broadcast crypto transactions and is **blocked** from reading `private_key` and `ssh_key` type secrets directly. See [Crypto Transaction Proxy](#crypto-transaction-proxy) below. |
+| Field                | Type    | Required | Description                                                                                                                                                                                                                                                     |
+| -------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name                 | string  | ✅       | Display name for the agent                                                                                                                                                                                                                                      |
+| description          | string  | ❌       | Optional description                                                                                                                                                                                                                                            |
+| auth_method          | string  | ❌       | Default `api_key`                                                                                                                                                                                                                                               |
+| scopes               | array   | ❌       | Optional scope strings                                                                                                                                                                                                                                          |
+| expires_at           | string  | ❌       | ISO 8601; agent token exchange fails after this                                                                                                                                                                                                                 |
+| crypto_proxy_enabled | boolean | ❌       | Default `false`. When `true`, the agent **must** use the transaction proxy to broadcast crypto transactions and is **blocked** from reading `private_key` and `ssh_key` type secrets directly. See [Crypto Transaction Proxy](#crypto-transaction-proxy) below. |
 
 ## Example request
 
@@ -40,17 +40,17 @@ curl -X POST "https://api.1claw.xyz/v1/agents" \
 
 ```json
 {
-  "agent": {
-    "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
-    "name": "DeFi Bot",
-    "description": "Automated trading agent",
-    "auth_method": "api_key",
-    "scopes": ["vaults:read"],
-    "is_active": true,
-    "crypto_proxy_enabled": true,
-    "created_at": "2026-02-18T12:00:00Z"
-  },
-  "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+    "agent": {
+        "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+        "name": "DeFi Bot",
+        "description": "Automated trading agent",
+        "auth_method": "api_key",
+        "scopes": ["vaults:read"],
+        "is_active": true,
+        "crypto_proxy_enabled": true,
+        "created_at": "2026-02-18T12:00:00Z"
+    },
+    "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
 }
 ```
 

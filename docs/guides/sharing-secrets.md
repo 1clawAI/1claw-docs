@@ -10,13 +10,13 @@ sidebar_position: 4
 
 ## Share types
 
-| `recipient_type`   | Description                                                 |
-| ------------------ | ----------------------------------------------------------- |
+| `recipient_type`   | Description                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
 | `creator`          | Share back with the human who registered this agent (agents only, no ID needed) |
-| `user`             | Direct share to an existing 1Claw user by ID                |
-| `agent`            | Direct share to a registered agent by ID                    |
-| `external_email`   | Invite-by-email — the recipient doesn't need an account yet (humans only) |
-| `anyone_with_link` | Anyone with the share URL can access                        |
+| `user`             | Direct share to an existing 1Claw user by ID                                    |
+| `agent`            | Direct share to a registered agent by ID                                        |
+| `external_email`   | Invite-by-email — the recipient doesn't need an account yet (humans only)       |
+| `anyone_with_link` | Anyone with the share URL can access                                            |
 
 ## Create a share
 

@@ -575,17 +575,17 @@ Or add to your MCP client configuration (e.g. Claude Desktop, Cursor):
 
 ```json
 {
-  "mcpServers": {
-    "1claw": {
-      "command": "npx",
-      "args": ["-y", "@1claw/mcp"],
-      "env": {
-        "ONECLAW_API_URL": "https://api.1claw.xyz",
-        "ONECLAW_AGENT_ID": "<agent-uuid>",
-        "ONECLAW_API_KEY": "ocv_..."
-      }
+    "mcpServers": {
+        "1claw": {
+            "command": "npx",
+            "args": ["-y", "@1claw/mcp"],
+            "env": {
+                "ONECLAW_API_URL": "https://api.1claw.xyz",
+                "ONECLAW_AGENT_ID": "<agent-uuid>",
+                "ONECLAW_API_KEY": "ocv_..."
+            }
+        }
     }
-  }
 }
 ```
 

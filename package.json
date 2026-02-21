@@ -2,6 +2,7 @@
   "name": "@1claw/docs",
   "version": "0.1.0",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
     "start": "docusaurus start",
     "build": "node scripts/generate-llms-full.js && docusaurus build",

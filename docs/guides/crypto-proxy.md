@@ -47,12 +47,12 @@ curl -X POST "https://api.1claw.xyz/v1/agents" \
 
 ### What changes when enabled
 
-| Behaviour | `crypto_proxy_enabled: false` | `crypto_proxy_enabled: true` |
-|---|---|---|
-| Read `api_key`, `password`, etc. | Allowed | Allowed |
-| Read `private_key` or `ssh_key` | Allowed | **Blocked (403)** |
-| Submit proxy transactions | Not available | Allowed |
-| Audit trail per transaction | N/A | Full trace with `tx_id` |
+| Behaviour                        | `crypto_proxy_enabled: false` | `crypto_proxy_enabled: true` |
+| -------------------------------- | ----------------------------- | ---------------------------- |
+| Read `api_key`, `password`, etc. | Allowed                       | Allowed                      |
+| Read `private_key` or `ssh_key`  | Allowed                       | **Blocked (403)**            |
+| Submit proxy transactions        | Not available                 | Allowed                      |
+| Audit trail per transaction      | N/A                           | Full trace with `tx_id`      |
 
 The enforcement is two-sided: the flag both **grants** access to the transaction endpoints and **blocks** direct reads of signing keys through the standard secrets endpoint. This guarantees the agent can only use keys through the proxy.
 
@@ -75,10 +75,10 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
 
 ```json
 {
-  "tx_id": "a7e2c...",
-  "tx_hash": "0xabc123...",
-  "chain_id": 1,
-  "status": "submitted"
+    "tx_id": "a7e2c...",
+    "tx_hash": "0xabc123...",
+    "chain_id": 1,
+    "status": "submitted"
 }
 ```
 
@@ -120,43 +120,43 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 
 ### Mainnet chains (28)
 
-| Chain | Chain ID | Native token | Explorer |
-|---|---|---|---|
-| Ethereum | 1 | ETH | [etherscan.io](https://etherscan.io) |
-| Optimism | 10 | ETH | [optimistic.etherscan.io](https://optimistic.etherscan.io) |
-| Cronos | 25 | CRO | [cronoscan.com](https://cronoscan.com) |
-| BNB Smart Chain | 56 | BNB | [bscscan.com](https://bscscan.com) |
-| Gnosis | 100 | xDAI | [gnosisscan.io](https://gnosisscan.io) |
-| Polygon | 137 | POL | [polygonscan.com](https://polygonscan.com) |
-| Sonic | 146 | S | [sonicscan.org](https://sonicscan.org) |
-| Fantom | 250 | FTM | [ftmscan.com](https://ftmscan.com) |
-| zkSync Era | 324 | ETH | [explorer.zksync.io](https://explorer.zksync.io) |
-| World Chain | 480 | ETH | [worldscan.org](https://worldscan.org) |
-| Metis | 1088 | METIS | [andromeda-explorer.metis.io](https://andromeda-explorer.metis.io) |
-| Polygon zkEVM | 1101 | ETH | [zkevm.polygonscan.com](https://zkevm.polygonscan.com) |
-| Moonbeam | 1284 | GLMR | [moonscan.io](https://moonscan.io) |
-| Sei | 1329 | SEI | [seitrace.com](https://seitrace.com) |
-| Mantle | 5000 | MNT | [mantlescan.xyz](https://mantlescan.xyz) |
-| Kaia | 8217 | KAIA | [kaiascan.io](https://kaiascan.io) |
-| Base | 8453 | ETH | [basescan.org](https://basescan.org) |
-| Mode | 34443 | ETH | [modescan.io](https://modescan.io) |
-| Arbitrum One | 42161 | ETH | [arbiscan.io](https://arbiscan.io) |
-| Arbitrum Nova | 42170 | ETH | [nova.arbiscan.io](https://nova.arbiscan.io) |
-| Celo | 42220 | CELO | [celoscan.io](https://celoscan.io) |
-| Avalanche C-Chain | 43114 | AVAX | [snowtrace.io](https://snowtrace.io) |
-| Linea | 59144 | ETH | [lineascan.build](https://lineascan.build) |
-| Berachain | 80094 | BERA | [berascan.com](https://berascan.com) |
-| Blast | 81457 | ETH | [blastscan.io](https://blastscan.io) |
-| Taiko | 167000 | ETH | [taikoscan.io](https://taikoscan.io) |
-| Scroll | 534352 | ETH | [scrollscan.com](https://scrollscan.com) |
-| Zora | 7777777 | ETH | [explorer.zora.energy](https://explorer.zora.energy) |
+| Chain             | Chain ID | Native token | Explorer                                                           |
+| ----------------- | -------- | ------------ | ------------------------------------------------------------------ |
+| Ethereum          | 1        | ETH          | [etherscan.io](https://etherscan.io)                               |
+| Optimism          | 10       | ETH          | [optimistic.etherscan.io](https://optimistic.etherscan.io)         |
+| Cronos            | 25       | CRO          | [cronoscan.com](https://cronoscan.com)                             |
+| BNB Smart Chain   | 56       | BNB          | [bscscan.com](https://bscscan.com)                                 |
+| Gnosis            | 100      | xDAI         | [gnosisscan.io](https://gnosisscan.io)                             |
+| Polygon           | 137      | POL          | [polygonscan.com](https://polygonscan.com)                         |
+| Sonic             | 146      | S            | [sonicscan.org](https://sonicscan.org)                             |
+| Fantom            | 250      | FTM          | [ftmscan.com](https://ftmscan.com)                                 |
+| zkSync Era        | 324      | ETH          | [explorer.zksync.io](https://explorer.zksync.io)                   |
+| World Chain       | 480      | ETH          | [worldscan.org](https://worldscan.org)                             |
+| Metis             | 1088     | METIS        | [andromeda-explorer.metis.io](https://andromeda-explorer.metis.io) |
+| Polygon zkEVM     | 1101     | ETH          | [zkevm.polygonscan.com](https://zkevm.polygonscan.com)             |
+| Moonbeam          | 1284     | GLMR         | [moonscan.io](https://moonscan.io)                                 |
+| Sei               | 1329     | SEI          | [seitrace.com](https://seitrace.com)                               |
+| Mantle            | 5000     | MNT          | [mantlescan.xyz](https://mantlescan.xyz)                           |
+| Kaia              | 8217     | KAIA         | [kaiascan.io](https://kaiascan.io)                                 |
+| Base              | 8453     | ETH          | [basescan.org](https://basescan.org)                               |
+| Mode              | 34443    | ETH          | [modescan.io](https://modescan.io)                                 |
+| Arbitrum One      | 42161    | ETH          | [arbiscan.io](https://arbiscan.io)                                 |
+| Arbitrum Nova     | 42170    | ETH          | [nova.arbiscan.io](https://nova.arbiscan.io)                       |
+| Celo              | 42220    | CELO         | [celoscan.io](https://celoscan.io)                                 |
+| Avalanche C-Chain | 43114    | AVAX         | [snowtrace.io](https://snowtrace.io)                               |
+| Linea             | 59144    | ETH          | [lineascan.build](https://lineascan.build)                         |
+| Berachain         | 80094    | BERA         | [berascan.com](https://berascan.com)                               |
+| Blast             | 81457    | ETH          | [blastscan.io](https://blastscan.io)                               |
+| Taiko             | 167000   | ETH          | [taikoscan.io](https://taikoscan.io)                               |
+| Scroll            | 534352   | ETH          | [scrollscan.com](https://scrollscan.com)                           |
+| Zora              | 7777777  | ETH          | [explorer.zora.energy](https://explorer.zora.energy)               |
 
 ### Testnet chains
 
-| Chain | Chain ID | Native token |
-|---|---|---|
-| Sepolia | 11155111 | ETH |
-| Base Sepolia | 84532 | ETH |
+| Chain        | Chain ID | Native token |
+| ------------ | -------- | ------------ |
+| Sepolia      | 11155111 | ETH          |
+| Base Sepolia | 84532    | ETH          |
 
 ### Adding a chain
 

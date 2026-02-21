@@ -34,8 +34,8 @@ An agent accesses secrets that a human has shared. Exchange an API key for a JWT
 
 ## Prerequisites
 
-| Requirement | Details |
-|---|---|
-| **Account** | Sign up at [1claw.xyz](https://1claw.xyz) (free tier: 1,000 requests/month) |
-| **curl** | All examples use `curl`; any HTTP client works |
-| **Base URL** | `https://api.1claw.xyz` |
+| Requirement  | Details                                                                     |
+| ------------ | --------------------------------------------------------------------------- |
+| **Account**  | Sign up at [1claw.xyz](https://1claw.xyz) (free tier: 1,000 requests/month) |
+| **curl**     | All examples use `curl`; any HTTP client works                              |
+| **Base URL** | `https://api.1claw.xyz`                                                     |
