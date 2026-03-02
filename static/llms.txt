@@ -35,7 +35,7 @@ Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud a
 ## Authentication
 
 - **Human users**: Email/password, Google OAuth, or personal API keys (`1ck_` prefix)
-- **AI agents**: Three auth methods — API key (`ocv_` prefix, default), mTLS (client certificate), or OIDC Client Credentials. API key agents exchange credentials for short-lived JWT via `POST /v1/auth/agent-token`.
+- **AI agents**: Three auth methods — API key (`ocv_` prefix, default), mTLS (client certificate), or OIDC Client Credentials. API key agents exchange credentials for short-lived JWT via `POST /v1/auth/agent-token`. Supports key-only auth: agents can provide just `api_key` (without `agent_id`) and the server resolves the agent from a stored key prefix.
 - **MFA**: Optional TOTP 2FA for human logins (Pro tier and above)
 - **API keys**: `1ck_` keys work as Bearer tokens on all authenticated endpoints
 
@@ -78,7 +78,7 @@ Base URL: `https://api.1claw.xyz`
 Key endpoints:
 - `POST /v1/auth/token` — Login
 - `DELETE /v1/auth/token` — Revoke current Bearer token (returns 200; reused token then returns 401)
-- `POST /v1/auth/agent-token` — Agent token exchange (requires agent_id + api_key)
+- `POST /v1/auth/agent-token` — Agent token exchange (accepts `api_key` alone or `agent_id` + `api_key`; returns `agent_id` and `vault_ids` for auto-discovery)
 - `GET/POST /v1/vaults` — List/create vaults
 - `GET/DELETE /v1/vaults/{id}` — Get/delete vault
 - `POST/DELETE /v1/vaults/{id}/cmek` — Enable/disable CMEK
@@ -114,7 +114,7 @@ Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 4. Human receives credentials by email, creates policies in dashboard
 5. Agent exchanges API key for JWT, reads/writes secrets, shares back to human
 
-### MCP configuration
+### MCP configuration (single credential)
 ```json
 {
   "mcpServers": {
@@ -122,16 +122,16 @@ Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
       "command": "npx",
       "args": ["-y", "@1claw/mcp"],
       "env": {
-        "ONECLAW_AGENT_ID": "<agent-uuid>",
-        "ONECLAW_AGENT_API_KEY": "<agent-api-key>",
-        "ONECLAW_VAULT_ID": "<vault-uuid>"
+        "ONECLAW_AGENT_API_KEY": "<agent-api-key>"
       }
     }
   }
 }
 ```
 
-Note: Currently requires all three env vars. Agent ID is needed because agent API keys are stored as hashes (no prefix-based lookup). Vault ID is needed to scope operations.
+Only `ONECLAW_AGENT_API_KEY` is required. Agent ID and vault are auto-discovered from the token exchange response. Optional overrides: `ONECLAW_AGENT_ID` (explicit agent), `ONECLAW_VAULT_ID` (explicit vault), `ONECLAW_BASE_URL` (default: https://api.1claw.xyz).
+
+Note: Key-only auth requires agents created or key-rotated after the prefix feature was deployed. Older agents should provide `ONECLAW_AGENT_ID` or rotate their key.
 
 ## Fleet Management
 
@@ -160,4 +160,4 @@ The MCP server at mcp.1claw.xyz provides these tools:
 - create_vault, list_vaults, grant_access, share_secret
 - simulate_transaction, submit_transaction
 
-Configure in Claude Desktop, Cursor, or any MCP-compatible client with agent credentials (ONECLAW_AGENT_ID + ONECLAW_AGENT_API_KEY + ONECLAW_VAULT_ID).
+Configure in Claude Desktop, Cursor, or any MCP-compatible client. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
