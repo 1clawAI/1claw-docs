@@ -173,6 +173,26 @@ When a share is created with `external_email`, the recipient receives an email. 
 
 See [Email Notifications](/docs/guides/email-notifications) for the full list of automated emails.
 
+## Agent fleet sharing patterns
+
+When you have many agents sharing secrets with their humans, the `creator` pattern scales naturally:
+
+- Each agent uses `recipient_type: "creator"` — no need to track user IDs or emails.
+- The human sees all agent shares in their **Inbound** tab, grouped by agent.
+- Share creation is rate-limited to 10/minute per org, so agents should avoid creating shares in tight loops.
+
+**Tip:** For agents that generate credentials frequently (e.g. rotating tokens), update the same secret path rather than creating new shares for each rotation. The human's existing share remains valid as long as the secret exists.
+
+```typescript
+// Agent updates the secret in-place (new version)
+await client.secrets.set(VAULT_ID, "credentials/session-token", newToken, {
+  type: "api_key",
+});
+// No new share needed — the existing share points to the latest version
+```
+
+For bulk operations across many agents, see [Managing Agent Fleets](/docs/guides/agent-fleet-management).
+
 ## Security considerations
 
 - Shares respect the `max_access_count` — once exhausted, the link is dead.

@@ -158,6 +158,35 @@ console.log(`Retrieved ${secret.path} (${secret.type}, v${secret.version})`);
 
 If the agent has no read permission for that path, or the secret is expired/deleted, you get **403** or **404/410**.
 
+## 4. Share a secret back to your human
+
+Agents can share secrets with the human who created or enrolled them using `recipient_type: "creator"`. No email address or user ID is needed.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -s -X POST "https://api.1claw.xyz/v1/secrets/$SECRET_ID/share" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"recipient_type":"creator","expires_at":"2026-12-31T00:00:00Z"}'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+await client.sharing.create(secretId, {
+  recipient_type: "creator",
+  expires_at: "2026-12-31T00:00:00Z",
+});
+```
+
+</TabItem>
+</Tabs>
+
+The human sees the share in their **Inbound** shares in the dashboard and accepts it.
+
 ## Important
 
 - **Store the API key securely** — In the agent's config or secrets store, not in code or prompts.
@@ -166,6 +195,8 @@ If the agent has no read permission for that path, or the secret is expired/dele
 
 ## Next steps
 
+- [Agent Self-Onboarding](/docs/guides/agent-self-onboarding) — Full agent-first journey: enroll, read, write, share.
+- [Managing Agent Fleets](/docs/guides/agent-fleet-management) — Patterns for operating 100+ agents.
 - [Agent API overview](/docs/agent-api/overview) — Auth and endpoints in one place.
 - [Give an agent access](/docs/guides/give-agent-access) — How a human registers an agent and creates a policy (or, after self-enrollment, how they grant the new agent access to vaults).
 - [Fetch secret](/docs/agent-api/fetch-secret) — Full request/response and errors.

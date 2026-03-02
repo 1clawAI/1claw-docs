@@ -175,3 +175,30 @@ The response includes the decrypted `value`. The agent uses it for the intended 
 | 4    | Agent | Get token, GET secret by path |
 
 To revoke: delete the policy or deactivate the agent. To rotate: create a new secret version (PUT) or rotate the agent key.
+
+## Alternative: Agent self-enrollment
+
+Instead of steps 1-2 above, the agent can **self-enroll** by calling a public endpoint with no credentials:
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","human_email":"you@example.com"}'
+```
+
+Or via the CLI:
+
+```bash
+npx @1claw/cli agent enroll my-agent --email you@example.com
+```
+
+The human receives the agent's credentials by email and still needs to create a policy (step 3). After that, the agent proceeds with step 4 as normal.
+
+This is particularly useful when:
+- The agent is deployed independently and doesn't have access to the human's dashboard.
+- You're onboarding many agents that each need to register with their human counterpart.
+- The agent is an AI assistant that wants to store and share secrets with its user.
+
+See [Agent Self-Onboarding](/docs/guides/agent-self-onboarding) for the full agent-first flow, including sharing secrets back to the human.
+
+For managing large numbers of agents, see [Managing Agent Fleets](/docs/guides/agent-fleet-management).
