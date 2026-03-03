@@ -848,27 +848,7 @@ Pay per-request on the Base network (EIP-155:8453) using the [x402 protocol](htt
 - Works with any x402-compatible wallet
 
 **How it works:**
-When the free tier is exhausted, the API returns `402 Payment Required` with an x402 payment envelope:
-
-```json
-{
-    "type": "https://httpproblems.com/http-status/402",
-    "title": "Payment Required",
-    "status": 402,
-    "detail": "Tier limit exceeded. Pay per-request or top up credits.",
-    "x402": {
-        "scheme": "exact",
-        "network": "eip155:8453",
-        "maxAmountRequired": "0.001",
-        "resource": "/v1/vaults/:vault_id/secrets/:path",
-        "description": "Read a secret",
-        "payTo": "0x...",
-        "deadline": 1740000000
-    }
-}
-```
-
-Clients that support x402 can pay the required amount on-chain and retry the request.
+When the free tier is exhausted (or the request is unauthenticated on a paid route), the API returns `402 Payment Required` with a spec-compliant body (docs.g402.ai / x402scan): `x402Version`, `accepts[]` with `maxAmountRequired` (atomic units), `resource` (full URL), `payTo`, `maxTimeoutSeconds`, `asset`, `description`, `mimeType`. Clients that support x402 pay the required amount on-chain and retry with the `X-PAYMENT` header.
 
 ### Choosing Your Overage Method
 

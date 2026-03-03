@@ -150,7 +150,7 @@ For operating dozens or hundreds of agents:
 - Business ($149/mo): 100,000 req/mo, 100 vaults, 5,000 secrets, 50 agents, CMEK
 - Enterprise: Custom, unlimited, KMS delegation, BAA
 
-Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Intents API submit when over quota: 0.25% of transaction value (USD), no cap; config ONECLAW_ETH_USD_PRICE (default 2500). 402 response when payment required: body includes code "payment_required", required_usd, message — client can pay and retry with X-PAYMENT.
+Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Intents API submit when over quota: 0.25% of transaction value (USD), no cap; config ONECLAW_ETH_USD_PRICE (default 2500). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
 
 ## MCP Tools (for AI agents)
 

@@ -112,27 +112,28 @@ Pay per-request on the Base network (EIP-155:8453) using the [x402 protocol](htt
 - Works with any x402-compatible wallet
 
 **How it works:**
-When the free tier is exhausted, the API returns `402 Payment Required` with an x402 payment envelope:
+When the free tier is exhausted (or the request is unauthenticated on a paid route), the API returns `402 Payment Required` with a spec-compliant body ([docs.g402.ai](https://docs.g402.ai/docs/api/response-format), x402scan marketplace):
 
 ```json
 {
-    "type": "https://httpproblems.com/http-status/402",
-    "title": "Payment Required",
-    "status": 402,
-    "detail": "Tier limit exceeded. Pay per-request or top up credits.",
-    "x402": {
+    "x402Version": 1,
+    "error": "X-PAYMENT header is required",
+    "accepts": [{
         "scheme": "exact",
         "network": "eip155:8453",
-        "maxAmountRequired": "0.001",
-        "resource": "/v1/vaults/:vault_id/secrets/:path",
-        "description": "Read a secret",
+        "maxAmountRequired": "1500",
+        "resource": "https://api.1claw.xyz/v1/vaults/{vault_id}/secrets/{path}",
         "payTo": "0x...",
-        "deadline": 1740000000
-    }
+        "maxTimeoutSeconds": 60,
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "description": "read_secret",
+        "mimeType": "application/json"
+    }],
+    "description": "read_secret"
 }
 ```
 
-Clients that support x402 can pay the required amount on-chain and retry the request.
+Amounts are in atomic units (e.g. USDC 6 decimals). Clients that support x402 pay the required amount on-chain and retry with the `X-PAYMENT` header.
 
 ### Choosing Your Overage Method
 
