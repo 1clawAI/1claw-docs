@@ -102,6 +102,28 @@ LLM responses also pass through inspection before reaching the agent:
 
 Each agent has a `shroud_enabled` toggle and an optional `shroud_config` JSON object that controls inspection behavior. Configure these in the dashboard (Agent detail → Shroud LLM Proxy card), via the API, SDK, or CLI.
 
+### Understanding the dashboard settings
+
+In the dashboard, the **Shroud LLM Proxy** card on an agent’s detail page shows:
+
+- **Enable Shroud** — When on, this agent’s LLM traffic is sent through `shroud.1claw.xyz` for secret redaction, PII scrubbing, prompt-injection defense, and policy enforcement inside the TEE. When off, the agent talks to LLM providers directly.
+
+- **PII Policy** — How Shroud handles detected PII (emails, phones, tokens, etc.) in prompts and responses. Options: **block** (reject the request), **redact** (mask PII so the model or agent doesn’t see raw values), **warn** (allow but log), **allow** (no action). Default: redact.
+
+- **Injection Threshold (0.0–1.0)** — Each request gets a prompt-injection risk score. Requests scoring **above** this value are **blocked**. Lower = stricter (more requests blocked); higher = looser. Default: 0.7.
+
+- **Allowed Providers** — Only these LLM providers are allowed (e.g. `openai`, `anthropic`). Empty = all supported providers allowed.
+
+- **Allowed Models** — Only these model names are allowed (e.g. `gpt-4`, `claude-3-opus`). Empty = all models (within allowed providers).
+
+- **Max Tokens / Request** — Hard cap on tokens per request. Empty = use Shroud’s default.
+
+- **Daily Budget (USD)** — Maximum daily spend for this agent’s LLM usage through Shroud. 0 = unlimited.
+
+- **Secret Redaction** — When on, Shroud redacts vault secrets from prompts (and responses) so the model never sees raw secret values.
+
+- **Response Credential Filtering** — When on, Shroud scans LLM responses for leaked credentials (API keys, tokens, private keys, etc.) and redacts or flags them before the agent sees the response.
+
 ### Enable Shroud for an agent
 
 ```bash
