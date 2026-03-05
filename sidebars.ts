@@ -94,6 +94,7 @@ const sidebars: SidebarsConfig = {
                 "guides/customer-managed-keys",
                 "guides/sharing-secrets",
                 "guides/intents-api",
+                "guides/shroud",
                 "guides/revoking-access",
                 "guides/openclaw",
                 "guides/mcp-integration",

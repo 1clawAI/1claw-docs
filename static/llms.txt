@@ -69,7 +69,9 @@ Agents can sign and broadcast EVM transactions without seeing private keys. Keys
 Secrets can be shared between users and agents via links (with optional passphrase and IP restrictions), direct user/agent shares, email invites (humans only), or "share back to creator" for agents. Inbound shares require explicit accept/decline.
 
 ### Shroud (TEE Proxy)
-Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits between AI agents and LLM providers, performing real-time security inspection of all traffic. Supports OpenAI, Anthropic, Google Gemini, Mistral, and Cohere. Inspection pipeline: secret redaction, PII scrubbing, prompt injection detection, context injection defense, hidden content stripping, policy enforcement. Also handles transaction signing with keys that never leave the TEE.
+Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits between AI agents and LLM providers, performing real-time security inspection of all traffic. Supports OpenAI, Anthropic, Google Gemini, Mistral, and Cohere. Inspection pipeline: hidden content stripping, secret redaction (Aho-Corasick matching against vault manifest), PII detection, context injection defense, prompt injection detection, token counting, policy enforcement, and response credential scanning. Also handles transaction signing with keys that never leave the TEE.
+
+Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_config` (JSON) fields. Config options: `pii_policy` (block/redact/warn/allow), `injection_threshold` (0.0–1.0), `context_injection_threshold`, `allowed_providers`, `allowed_models`, `denied_models`, `max_tokens_per_request`, `max_requests_per_minute`, `max_requests_per_day`, `daily_budget_usd`, `enable_secret_redaction`, `enable_response_filtering`. Configure via dashboard (Agent → Shroud LLM Proxy card), API (`PUT /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
 ## API (OpenAPI 3.1)
 
