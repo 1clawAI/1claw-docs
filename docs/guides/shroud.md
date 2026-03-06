@@ -79,6 +79,23 @@ curl -X POST https://shroud.1claw.xyz/v1/chat/completions \
 | `X-Shroud-Provider` | Yes | LLM provider: `openai`, `anthropic`, `google`, `mistral`, `cohere` |
 | `X-Shroud-Api-Key` | Optional | Fallback LLM API key (used if vault lookup fails) |
 
+### LLM provider API keys (bring your own)
+
+1Claw does **not** provide LLM API keys. You must supply your own keys for OpenAI, Anthropic, Google, Mistral, or Cohere. Shroud uses them only to forward requests to the provider after inspection; the key never leaves the TEE in plaintext to the agent.
+
+You can provide the key in either of these ways:
+
+1. **Store in the vault (recommended)** — Store each provider’s API key in a vault the agent can read, at the path **`providers/{provider}/api-key`**. For example:
+   - `providers/openai/api-key` for OpenAI
+   - `providers/anthropic/api-key` for Anthropic  
+   Shroud looks up the key using the agent’s JWT and caches it briefly. The agent never sees the key; Shroud fetches it when proxying.
+
+2. **Pass per request via header** — Send the key in the **`X-Shroud-Api-Key`** header. This is used when the vault has no key at `providers/{provider}/api-key` or the agent has no read access. Useful for quick testing or when you don’t want to store the key in the vault.
+
+If neither a vault key nor the header is present (or the vault lookup fails and the header is missing), Shroud returns **401** with a message that no API key was provided.
+
+Example: store the OpenAI key in the vault, then grant the agent read access to that path (e.g. policy with `secret_path_pattern`: `providers/openai/api-key` and `read` permission).
+
 ### Inspection pipeline
 
 Every request passes through Shroud's inspection pipeline before reaching the LLM:
