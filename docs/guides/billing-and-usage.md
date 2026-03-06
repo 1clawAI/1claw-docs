@@ -25,10 +25,10 @@ Each tier enforces hard limits on the number of vaults, secrets, and agents your
 
 ```json
 {
-  "type": "resource_limit_exceeded",
-  "title": "Resource Limit Exceeded",
-  "status": 403,
-  "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
+    "type": "resource_limit_exceeded",
+    "title": "Resource Limit Exceeded",
+    "status": 403,
+    "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
 }
 ```
 
@@ -118,17 +118,19 @@ When the free tier is exhausted (or the request is unauthenticated on a paid rou
 {
     "x402Version": 1,
     "error": "X-PAYMENT header is required",
-    "accepts": [{
-        "scheme": "exact",
-        "network": "eip155:8453",
-        "maxAmountRequired": "1500",
-        "resource": "https://api.1claw.xyz/v1/vaults/{vault_id}/secrets/{path}",
-        "payTo": "0x...",
-        "maxTimeoutSeconds": 60,
-        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "description": "read_secret",
-        "mimeType": "application/json"
-    }],
+    "accepts": [
+        {
+            "scheme": "exact",
+            "network": "eip155:8453",
+            "maxAmountRequired": "1500",
+            "resource": "https://api.1claw.xyz/v1/vaults/{vault_id}/secrets/{path}",
+            "payTo": "0x...",
+            "maxTimeoutSeconds": 60,
+            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "description": "read_secret",
+            "mimeType": "application/json"
+        }
+    ],
     "description": "read_secret"
 }
 ```
@@ -269,15 +271,15 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 Every authenticated API response includes headers that let you monitor usage programmatically without polling the billing endpoint:
 
-| Header | Description |
-| ------ | ----------- |
-| `X-RateLimit-Requests-Used` | Requests consumed this billing period |
-| `X-RateLimit-Requests-Limit` | Tier request limit for this period |
-| `X-RateLimit-Requests-Percent` | Usage percentage (e.g. `74`) |
-| `X-Quota-Warning` | Present when usage exceeds 80% of the tier limit |
-| `X-Credit-Balance-Cents` | Current credit balance in cents |
-| `X-Credit-Expiring-Soon` | Present when credits expire within 30 days |
-| `X-Overage-Method` | Active overage method (`credits` or `x402`) |
+| Header                         | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `X-RateLimit-Requests-Used`    | Requests consumed this billing period            |
+| `X-RateLimit-Requests-Limit`   | Tier request limit for this period               |
+| `X-RateLimit-Requests-Percent` | Usage percentage (e.g. `74`)                     |
+| `X-Quota-Warning`              | Present when usage exceeds 80% of the tier limit |
+| `X-Credit-Balance-Cents`       | Current credit balance in cents                  |
+| `X-Credit-Expiring-Soon`       | Present when credits expire within 30 days       |
+| `X-Overage-Method`             | Active overage method (`credits` or `x402`)      |
 
 These headers are useful for building dashboards, alerting on approaching limits, and triggering automatic credit top-ups.
 

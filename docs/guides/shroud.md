@@ -31,32 +31,32 @@ Agent
 
 **Shroud-hosted (TEE signing):**
 
-| Method | Path | Description |
-| --- | --- | --- |
-| POST | `/v1/agents/:id/transactions` | Sign and broadcast a transaction inside the TEE |
+| Method | Path                          | Description                                     |
+| ------ | ----------------------------- | ----------------------------------------------- |
+| POST   | `/v1/agents/:id/transactions` | Sign and broadcast a transaction inside the TEE |
 
 **Proxied to Vault API:**
 
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/v1/agents/:id/transactions` | List agent transactions |
-| GET | `/v1/agents/:id/transactions/:tx_id` | Get a specific transaction |
-| POST | `/v1/agents/:id/transactions/simulate` | Simulate a transaction (Tenderly) |
-| POST | `/v1/agents/:id/transactions/simulate-bundle` | Simulate a bundle |
+| Method | Path                                          | Description                       |
+| ------ | --------------------------------------------- | --------------------------------- |
+| GET    | `/v1/agents/:id/transactions`                 | List agent transactions           |
+| GET    | `/v1/agents/:id/transactions/:tx_id`          | Get a specific transaction        |
+| POST   | `/v1/agents/:id/transactions/simulate`        | Simulate a transaction (Tenderly) |
+| POST   | `/v1/agents/:id/transactions/simulate-bundle` | Simulate a bundle                 |
 
 **Health/ops (port 8080):**
 
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/healthz` | Liveness probe |
-| GET | `/readyz` | Readiness probe |
-| GET | `/livez` | Deadlock detection |
+| Method | Path       | Description        |
+| ------ | ---------- | ------------------ |
+| GET    | `/healthz` | Liveness probe     |
+| GET    | `/readyz`  | Readiness probe    |
+| GET    | `/livez`   | Deadlock detection |
 
 **Metrics (port 9090):**
 
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/metrics` | Prometheus metrics |
+| Method | Path       | Description        |
+| ------ | ---------- | ------------------ |
+| GET    | `/metrics` | Prometheus metrics |
 
 ## LLM Proxy
 
@@ -73,11 +73,11 @@ curl -X POST https://shroud.1claw.xyz/v1/chat/completions \
   }'
 ```
 
-| Header | Required | Description |
-| --- | --- | --- |
-| `Authorization` | Yes | Agent JWT (from `POST /v1/auth/agent-token`) |
-| `X-Shroud-Provider` | Yes | LLM provider: `openai`, `anthropic`, `google`, `mistral`, `cohere` |
-| `X-Shroud-Api-Key` | Optional | Fallback LLM API key (used if vault lookup fails) |
+| Header              | Required | Description                                                        |
+| ------------------- | -------- | ------------------------------------------------------------------ |
+| `Authorization`     | Yes      | Agent JWT (from `POST /v1/auth/agent-token`)                       |
+| `X-Shroud-Provider` | Yes      | LLM provider: `openai`, `anthropic`, `google`, `mistral`, `cohere` |
+| `X-Shroud-Api-Key`  | Optional | Fallback LLM API key (used if vault lookup fails)                  |
 
 ### LLM provider API keys (bring your own)
 
@@ -86,9 +86,9 @@ curl -X POST https://shroud.1claw.xyz/v1/chat/completions \
 You can provide the key in either of these ways:
 
 1. **Store in the vault (recommended)** — Store each provider’s API key in a vault the agent can read, at the path **`providers/{provider}/api-key`**. For example:
-   - `providers/openai/api-key` for OpenAI
-   - `providers/anthropic/api-key` for Anthropic  
-   Shroud looks up the key using the agent’s JWT and caches it briefly. The agent never sees the key; Shroud fetches it when proxying.
+    - `providers/openai/api-key` for OpenAI
+    - `providers/anthropic/api-key` for Anthropic  
+      Shroud looks up the key using the agent’s JWT and caches it briefly. The agent never sees the key; Shroud fetches it when proxying.
 
 2. **Pass per request via header** — Send the key in the **`X-Shroud-Api-Key`** header. This is used when the vault has no key at `providers/{provider}/api-key` or the agent has no read access. Useful for quick testing or when you don’t want to store the key in the vault.
 
@@ -159,20 +159,20 @@ await client.agents.update(agentId, { shroud_enabled: true });
 
 ### Shroud config fields
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `pii_policy` | `"block"` \| `"redact"` \| `"warn"` \| `"allow"` | `"redact"` | How PII detections are handled |
-| `injection_threshold` | `number` (0.0–1.0) | `0.7` | Requests scoring above this are blocked. Lower = stricter |
-| `context_injection_threshold` | `number` (0.0–1.0) | `0.7` | Context injection score threshold |
-| `allowed_providers` | `string[]` | `[]` (all) | LLM providers this agent may use (e.g. `["openai", "anthropic"]`) |
-| `allowed_models` | `string[]` | `[]` (all) | Specific models allowed (e.g. `["gpt-4", "claude-3-opus"]`) |
-| `denied_models` | `string[]` | `[]` | Models explicitly blocked |
-| `max_tokens_per_request` | `number` | `8192` | Maximum input tokens per request |
-| `max_requests_per_minute` | `number` | `60` | Rate limit (requests/minute) |
-| `max_requests_per_day` | `number` | `10000` | Rate limit (requests/day) |
-| `daily_budget_usd` | `number` | `0` (unlimited) | Daily LLM spend cap in USD |
-| `enable_secret_redaction` | `boolean` | `true` | Whether vault secrets are redacted from prompts/responses |
-| `enable_response_filtering` | `boolean` | `true` | Whether response credential scanning is active |
+| Field                         | Type                                             | Default         | Description                                                       |
+| ----------------------------- | ------------------------------------------------ | --------------- | ----------------------------------------------------------------- |
+| `pii_policy`                  | `"block"` \| `"redact"` \| `"warn"` \| `"allow"` | `"redact"`      | How PII detections are handled                                    |
+| `injection_threshold`         | `number` (0.0–1.0)                               | `0.7`           | Requests scoring above this are blocked. Lower = stricter         |
+| `context_injection_threshold` | `number` (0.0–1.0)                               | `0.7`           | Context injection score threshold                                 |
+| `allowed_providers`           | `string[]`                                       | `[]` (all)      | LLM providers this agent may use (e.g. `["openai", "anthropic"]`) |
+| `allowed_models`              | `string[]`                                       | `[]` (all)      | Specific models allowed (e.g. `["gpt-4", "claude-3-opus"]`)       |
+| `denied_models`               | `string[]`                                       | `[]`            | Models explicitly blocked                                         |
+| `max_tokens_per_request`      | `number`                                         | `8192`          | Maximum input tokens per request                                  |
+| `max_requests_per_minute`     | `number`                                         | `60`            | Rate limit (requests/minute)                                      |
+| `max_requests_per_day`        | `number`                                         | `10000`         | Rate limit (requests/day)                                         |
+| `daily_budget_usd`            | `number`                                         | `0` (unlimited) | Daily LLM spend cap in USD                                        |
+| `enable_secret_redaction`     | `boolean`                                        | `true`          | Whether vault secrets are redacted from prompts/responses         |
+| `enable_response_filtering`   | `boolean`                                        | `true`          | Whether response credential scanning is active                    |
 
 ### Example: strict config
 
