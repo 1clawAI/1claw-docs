@@ -69,9 +69,31 @@ Agents can sign and broadcast EVM transactions without seeing private keys. Keys
 Secrets can be shared between users and agents via links (with optional passphrase and IP restrictions), direct user/agent shares, email invites (humans only), or "share back to creator" for agents. Inbound shares require explicit accept/decline.
 
 ### Shroud (TEE Proxy)
-Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits between AI agents and LLM providers, performing real-time security inspection of all traffic. Supports OpenAI, Anthropic, Google Gemini, Mistral, and Cohere. Inspection pipeline: hidden content stripping, secret redaction (Aho-Corasick matching against vault manifest), PII detection, context injection defense, prompt injection detection, token counting, policy enforcement, and response credential scanning. Also handles transaction signing with keys that never leave the TEE.
+Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits between AI agents and LLM providers, performing real-time security inspection of all traffic. Supports OpenAI, Anthropic, Google Gemini, Mistral, and Cohere. Also handles transaction signing with keys that never leave the TEE.
 
-Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_config` (JSON) fields. Config options: `pii_policy` (block/redact/warn/allow), `injection_threshold` (0.0–1.0), `context_injection_threshold`, `allowed_providers`, `allowed_models`, `denied_models`, `max_tokens_per_request`, `max_requests_per_minute`, `max_requests_per_day`, `daily_budget_usd`, `enable_secret_redaction`, `enable_response_filtering`. Configure via dashboard (Agent → Shroud LLM Proxy card), API (`PUT /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
+**Security inspection pipeline** (in order):
+1. **Unicode normalization** — Strips zero-width characters, normalizes homoglyphs (Cyrillic а → Latin a)
+2. **Hidden content stripping** — Removes markdown comments, HTML tags
+3. **Secret redaction** — Aho-Corasick matching against vault manifest
+4. **PII detection** — Emails, SSNs, phone numbers, credit cards
+5. **Command injection detection** — Shell metacharacters, path traversal, reverse shells
+6. **Social engineering detection** — Urgency, authority claims, secrecy requests, bypass attempts
+7. **Encoding detection** — Base64, hex escapes, Unicode escapes that may hide payloads
+8. **Network detection** — Blocked domains (pastebin, ngrok), IP URLs, data exfiltration patterns
+9. **Filesystem detection** — Sensitive paths (/etc/passwd, .ssh/, .env)
+10. **Context injection defense** — Detects injected system prompts
+11. **Prompt injection detection** — ML-based scoring
+12. **Token counting** — Enforces per-request and daily limits
+13. **Policy enforcement** — Provider/model allowlists, rate limits
+14. **Response filtering** — Scans LLM responses for leaked credentials
+
+Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_config` (JSON) fields.
+
+**Basic config options:** `pii_policy` (block/redact/warn/allow), `injection_threshold` (0.0–1.0), `context_injection_threshold`, `allowed_providers`, `allowed_models`, `denied_models`, `max_tokens_per_request`, `max_requests_per_minute`, `max_requests_per_day`, `daily_budget_usd`, `enable_secret_redaction`, `enable_response_filtering`.
+
+**Threat detection config options:** `unicode_normalization` (enabled, strip_zero_width, normalize_homoglyphs, normalization_form), `command_injection_detection` (action: block/sanitize/warn, strictness), `social_engineering_detection` (action, sensitivity), `encoding_detection` (action, detect_base64/hex/unicode), `network_detection` (action, blocked_domains, allowed_domains), `filesystem_detection` (action, blocked_paths), `sanitization_mode` (block/sanitize/warn), `threat_logging` (boolean).
+
+Configure via dashboard (Agent → Shroud LLM Proxy card → Threat Detection section), API (`PUT /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
 ## API (OpenAPI 3.1)
 
