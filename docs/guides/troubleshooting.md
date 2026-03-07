@@ -56,3 +56,8 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 ---
 
 For a full list of error codes and response shapes, see [Error codes](/docs/reference/error-codes). For how the API processes requests (auth, rate limit, billing), see [Request pipeline](/docs/reference/request-pipeline).
+
+## Need help?
+
+- **Community:** [Join the 1claw Telegram group](https://t.me/+jG4Rm7XHJ79mNDRh) for questions and support.
+- **Email:** [ops@1claw.xyz](mailto:ops@1claw.xyz) for account or billing issues.

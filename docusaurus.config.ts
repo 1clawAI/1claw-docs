@@ -79,6 +79,7 @@ const config: Config = {
                 { label: "Terms", href: "https://1claw.xyz/terms" },
                 { label: "GitHub", href: "https://github.com/1clawAI" },
                 { label: "Status", href: "https://1claw.xyz/status" },
+                { label: "Support (Telegram)", href: "https://t.me/+jG4Rm7XHJ79mNDRh" },
             ],
             copyright: "Copyright © 1claw. PolyForm Noncommercial 1.0.0.",
         },
