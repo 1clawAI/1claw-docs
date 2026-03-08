@@ -94,11 +94,8 @@ for (const agentName of agents) {
   });
 
   // Create a policy granting this agent access to its own vault
-  await client.access.grantAgent({
-    vault_id: vault.id,
-    secret_path_pattern: "**",
-    principal_id: agentIds[agentName],
-    permissions: ["read", "write"],
+  await client.access.grantAgent(vault.id, agentIds[agentName], ["read", "write"], {
+    secretPathPattern: "**",
   });
 }
 ```

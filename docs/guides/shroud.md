@@ -9,6 +9,134 @@ tags: [shroud, security, threat-detection]
 
 Shroud includes comprehensive threat detection and input sanitization to protect AI agents from various attack vectors. All features are configurable on a per-agent basis via the Dashboard, SDK, or API.
 
+## Using the LLM Proxy
+
+Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
+
+### Endpoint
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST   | `https://shroud.1claw.xyz/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
+
+Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes by provider.
+
+### Required headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Agent-Key` | **Required.** Agent credentials in the form `agent_id:api_key` (e.g. `550e8400-e29b-41d4-a716-446655440000:ocv_...`). The API key is the agent’s `ocv_` key from 1Claw. |
+| `X-Shroud-Provider` | **Required.** Provider identifier. Must match a [supported provider](#supported-providers) name (e.g. `openai`, `anthropic`, `google`, `gemini`). |
+| `Content-Type` | `application/json` for request body. |
+
+### Optional headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
+| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.0-flash`). Can also be set in the request body for some providers. |
+
+### Auth format: `X-Shroud-Agent-Key`
+
+The value must be exactly:
+
+```text
+agent_id:api_key
+```
+
+- `agent_id`: the agent’s UUID from 1Claw (e.g. from the dashboard or `GET /v1/agents/me`).
+- `api_key`: the agent’s API key (e.g. `ocv_...`).
+
+Example: `X-Shroud-Agent-Key: 550e8400-e29b-41d4-a716-446655440000:ocv_abc123...`
+
+### Vault key resolution
+
+If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
+
+- **Default path:** `providers/{provider}/api-key` in a vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
+- **Override via header:** You can pass a vault reference so Shroud fetches the key from a specific path:
+  - `X-Shroud-Api-Key: vault://{vault_id}/{secret_path}`
+  - Example: `X-Shroud-Api-Key: vault://a1b2c3d4-e5f6-7890-abcd-ef1234567890/gemini/api-key`
+
+The agent must have read access to that vault path.
+
+### Supported providers
+
+`X-Shroud-Provider` must be one of the following. Provider names are case-sensitive; use lowercase.
+
+| Provider value | LLM / API |
+|----------------|-----------|
+| `openai`       | OpenAI (GPT-4o, o1, etc.) |
+| `anthropic`    | Anthropic (Claude) |
+| `google`       | Google Gemini (Generative Language API) |
+| `gemini`       | Alias for `google` — same as above |
+| `mistral`      | Mistral |
+| `cohere`       | Cohere |
+
+For **Gemini**, use `X-Shroud-Provider: google` or `X-Shroud-Provider: gemini`. Store the API key at `providers/google/api-key` or `providers/gemini/api-key` (or use `X-Shroud-Api-Key: vault://{vault_id}/your/path`).
+
+### Request and response format
+
+- **OpenAI-style (OpenAI, Mistral, etc.):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same.
+- **Google:** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
+- **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
+
+### Example: cURL
+
+```bash
+# Using agent key and vault-resolved provider key (no X-Shroud-Api-Key)
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: google" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-2.0-flash","messages":[{"role":"user","content":"Hello"}]}'
+
+# With explicit vault key path
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: anthropic" \
+  -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+### Example: TypeScript (fetch)
+
+```typescript
+const SHROUD_URL = "https://shroud.1claw.xyz";
+const agentId = process.env.ONECLAW_AGENT_ID!;
+const agentApiKey = process.env.ONECLAW_AGENT_API_KEY!;
+
+const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "google",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gemini-2.0-flash",
+    messages: [{ role: "user", content: "Hello" }],
+    max_tokens: 1024,
+  }),
+});
+
+const data = await res.json();
+// OpenAI-style response: data.choices[0].message.content
+```
+
+### Errors you may see
+
+| HTTP | Message | Meaning |
+|------|---------|--------|
+| 400 | `missing X-Shroud-Provider header` | Send `X-Shroud-Provider` with a supported provider name. |
+| 401 | `missing X-Shroud-Agent-Key header` | Send `X-Shroud-Agent-Key` with `agent_id:api_key`. |
+| 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
+| 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
+| 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
+
+---
+
 ## Why This Matters
 
 AI agents face unique security challenges that traditional security tools don't address:

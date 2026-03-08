@@ -48,11 +48,8 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c7
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.grantAgent({
-  vault_id: vaultId,
-  secret_path_pattern: "**",
-  principal_id: agentId,
-  permissions: ["read"],
+await client.access.grantAgent(vaultId, agentId, ["read"], {
+  secretPathPattern: "**",
 });
 ```
 

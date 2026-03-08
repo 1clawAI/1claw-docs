@@ -114,11 +114,8 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.grantAgent({
-  vault_id: vault.id,
-  secret_path_pattern: "**",
-  principal_id: agentId,
-  permissions: ["read"],
+await client.access.grantAgent(vault.id, agentId, ["read"], {
+  secretPathPattern: "**",
 });
 ```
 
