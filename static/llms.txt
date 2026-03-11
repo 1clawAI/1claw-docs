@@ -93,7 +93,7 @@ Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_c
 
 **Threat detection config options:** `unicode_normalization` (enabled, strip_zero_width, normalize_homoglyphs, normalization_form), `command_injection_detection` (action: block/sanitize/warn, strictness), `social_engineering_detection` (action, sensitivity), `encoding_detection` (action, detect_base64/hex/unicode), `network_detection` (action, blocked_domains, allowed_domains), `filesystem_detection` (action, blocked_paths), `sanitization_mode` (block/sanitize/warn), `threat_logging` (boolean).
 
-Configure via dashboard (Agent → Shroud LLM Proxy card → Threat Detection section), API (`PUT /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
+Configure via dashboard (Agent → Shroud LLM Proxy card → Threat Detection section), API (`PATCH /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
 ## API (OpenAPI 3.1)
 
