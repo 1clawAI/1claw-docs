@@ -1,19 +1,50 @@
 /**
- * 1claw Docs custom styles
+ * 1claw Docs — brand theme (matches dashboard)
+ * Light and dark mode: darker red #b80030 / #990029, deep blacks or light surfaces.
  */
 
-:root {
-  --ifm-color-primary: #6d5cff;
-  --ifm-color-primary-dark: #5339ff;
-  --ifm-color-primary-darker: #462bff;
-  --ifm-color-primary-darkest: #2d0fd9;
-  --ifm-color-primary-light: #877fff;
-  --ifm-color-primary-lighter: #948dff;
-  --ifm-color-primary-lightest: #bbbeff;
+/* Light mode */
+:root,
+[data-theme="light"] {
+  --ifm-color-primary: #990029;
+  --ifm-color-primary-dark: #880024;
+  --ifm-color-primary-darker: #7d0022;
+  --ifm-color-primary-darkest: #66001b;
+  --ifm-color-primary-light: #b80030;
+  --ifm-color-primary-lighter: #c4123a;
+  --ifm-color-primary-lightest: #d42d52;
+  --ifm-background-color: #fafafa;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #f5f0f2;
+  --ifm-heading-color: #0a0a0c;
+  --ifm-font-color-base: #0a0a0c;
+  --ifm-font-color-secondary: #4a1520;
+  --ifm-link-color: #990029;
+  --ifm-link-hover-color: #b80030;
+  --ifm-border-color: #e8d4d8;
+  --ifm-code-background: #f5f0f2;
+  --ifm-table-border-color: #e8d4d8;
 }
 
+/* Dark mode */
 [data-theme="dark"] {
-  --ifm-color-primary: #8b7cff;
-  --ifm-background-color: #09090b;
-  --ifm-background-surface-color: #0f0f12;
+  --ifm-color-primary: #c4123a;
+  --ifm-color-primary-dark: #b80030;
+  --ifm-color-primary-darker: #a3002b;
+  --ifm-color-primary-light: #d42d52;
+  --ifm-color-primary-lighter: #e04d6b;
+  --ifm-color-primary-lightest: #ec6d8a;
+  --ifm-background-color: #030304;
+  --ifm-background-surface-color: #0a090b;
+  --ifm-navbar-background-color: #060506;
+  --ifm-footer-background-color: #060506;
+  --ifm-heading-color: #ffffff;
+  --ifm-font-color-base: #ffffff;
+  --ifm-font-color-secondary: #e8e6e8;
+  --ifm-link-color: #c4123a;
+  --ifm-link-hover-color: #e04d6b;
+  --ifm-border-color: #1e1c1d;
+  --ifm-code-background: #0f0e10;
+  --ifm-table-border-color: #1e1c1d;
 }
