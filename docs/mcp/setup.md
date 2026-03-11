@@ -92,6 +92,10 @@ Add to `.cursor/mcp.json` in your project root:
 }
 ```
 
+### Claude Code
+
+Claude Code uses the same MCP configuration as Cursor. Use either the **hosted** or **local (stdio)** config above (Cursor section). Then optionally [install the 1claw skill](/docs/guides/claude-code#2-optional-install-the-1claw-skill) so Claude knows when and how to use 1claw.
+
 ### Any MCP client
 
 Any client that supports HTTP streaming can connect:

@@ -118,7 +118,9 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Integration",
                     items: [
+                        "guides/setup-by-client",
                         "guides/openclaw",
+                        "guides/claude-code",
                         "guides/mcp-integration",
                         "guides/cli",
                     ],
