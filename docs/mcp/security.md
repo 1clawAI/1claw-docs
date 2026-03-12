@@ -37,6 +37,62 @@ This means you control what the AI agent can access by configuring policies in t
 
 Every secret access through the MCP server is recorded in the vault's audit log. You can view audit events in the dashboard or query them via `GET /v1/audit/events`.
 
+## Inspection pipeline
+
+All tool calls pass through a security inspection pipeline. It runs **by default** (opt-out, not opt-in) and covers both inputs (before execution) and outputs (after execution).
+
+### Input inspection
+
+Before a tool runs, the server inspects the arguments for:
+
+| Check | What it catches | Severity |
+|-------|----------------|----------|
+| **Command injection** | Shell chaining, command substitution, reverse shells, path traversal | Critical/High |
+| **Encoding obfuscation** | Long base64, hex escapes, Unicode escapes | Medium |
+| **Social engineering** | Urgency, authority claims, secrecy, bypass requests, credential fishing | High/Critical |
+| **Network threats** | ngrok/pastebin URLs, IP-based URLs, `curl`/`wget` exfiltration | High/Critical |
+| **Unicode normalization** | Zero-width chars, Cyrillic/Greek homoglyphs | Medium |
+| **PII detection** | Email addresses, SSNs, credit card numbers, phone numbers, AWS keys, private key headers | Medium–Critical |
+| **Exfiltration protection** | Previously fetched secret values appearing in non-secret tool inputs | Critical |
+
+In the default `block` mode, critical or high-severity threats reject the tool call. In `surgical` mode, Unicode is normalized but the call proceeds. In `log_only` mode, threats are logged but never blocked.
+
+### Output inspection
+
+After a tool returns, the server inspects the result for:
+
+| Check | What it does |
+|-------|-------------|
+| **Threat detection** | Same patterns as input (logged, not blocked) |
+| **PII detection** | Same patterns as input (logged) |
+| **Secret redaction** | If a known secret value (fetched via `get_secret` or `get_env_bundle`) appears in the output of a **non-secret** tool, it is replaced with `[REDACTED:path]` before the result reaches the LLM context window |
+
+Secret redaction tracks every value retrieved during the session. This means if an agent fetches `api-keys/stripe` and later a tool accidentally includes that value in its output, the value is scrubbed.
+
+### Exfiltration protection
+
+When an agent fetches a secret, the server remembers the value. If that value later appears as input to a tool that shouldn't handle raw secrets (e.g., `share_secret`, `grant_access`), the server flags it as a potential exfiltration attempt.
+
+| Mode | Behavior |
+|------|----------|
+| `warn` (default) | Logs the threat, allows the call |
+| `block` | Rejects the call with a security error |
+| `off` | Disables exfiltration checks |
+
+Tools that legitimately handle secrets (`get_secret`, `get_env_bundle`, `put_secret`, `rotate_and_store`) are exempt from exfiltration checks.
+
+### Configuration
+
+All features are on by default and can be tuned via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ONECLAW_MCP_SECURITY_ENABLED` | `true` | Master switch — set to `false` to disable all inspection |
+| `ONECLAW_MCP_SANITIZATION_MODE` | `block` | `block`, `surgical`, or `log_only` |
+| `ONECLAW_MCP_REDACT_SECRETS` | `true` | Redact known secret values from non-secret tool outputs |
+| `ONECLAW_MCP_PII_DETECTION` | `true` | Detect PII patterns in inputs and outputs |
+| `ONECLAW_MCP_EXFIL_PROTECTION` | `warn` | `block`, `warn`, or `off` for secret exfiltration checks |
+
 ## Best practices
 
 ### Token scoping

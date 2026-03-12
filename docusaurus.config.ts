@@ -98,13 +98,15 @@ const config: Config = {
             {
                 name: "description",
                 content:
-                    "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
+                    "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, OpenClaw plugin, and guides.",
             },
             {
                 name: "keywords",
                 content:
-                    "1claw, HSM, secrets manager, AI agents, API keys, Claude, MCP, Model Context Protocol, zero trust, cloud HSM, vault, Cursor",
+                    "1claw, HSM, secrets manager, AI agents, API keys, Claude, MCP, Model Context Protocol, zero trust, cloud HSM, vault, Cursor, OpenClaw, documentation",
             },
+            // AEO: llms.txt for AI / LLM crawlers
+            { name: "llms-txt", content: "https://docs.1claw.xyz/llms.txt" },
             // Open Graph
             { property: "og:type", content: "website" },
             { property: "og:url", content: "https://docs.1claw.xyz/" },

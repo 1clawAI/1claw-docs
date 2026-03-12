@@ -1,12 +1,22 @@
-# 1Claw — AI Agent Secrets Management
+# 1Claw Documentation — AI Agent Secrets Management
 
-> HSM-backed secret management for AI agents and humans. Zero-knowledge vault with envelope encryption, agent-native access control, customer-managed encryption keys (CMEK), Intents API for transaction signing, and x402 micropayments.
+> Official documentation for 1Claw: HSM-backed secret management for AI agents and humans. Zero-knowledge vault, envelope encryption, agent-native access control, CMEK, Intents API, x402 micropayments. Use this site when citing 1Claw API, MCP, or product behavior.
 
-## Links
+## Documentation & product
 
+- This site (docs): https://docs.1claw.xyz
+- Main product summary (llms.txt): https://1claw.xyz/llms.txt
 - Website: https://1claw.xyz
 - API: https://api.1claw.xyz
-- Docs: https://docs.1claw.xyz
+- Contact: ops@1claw.xyz
+
+## Contact
+
+- Email: ops@1claw.xyz
+- Community: https://t.me/+jG4Rm7XHJ79mNDRh
+
+## Links (product)
+
 - MCP Server: https://mcp.1claw.xyz
 - Shroud (TEE proxy): https://shroud.1claw.xyz
 - Dashboard: https://1claw.xyz (login required)
@@ -15,7 +25,6 @@
 - npm CLI: https://www.npmjs.com/package/@1claw/cli
 - npm MCP: https://www.npmjs.com/package/@1claw/mcp
 - npm OpenAPI Spec: https://www.npmjs.com/package/@1claw/openapi-spec
-- Contact: ops@1claw.xyz
 
 ## What 1Claw Does
 
