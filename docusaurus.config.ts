@@ -116,10 +116,10 @@ const config: Config = {
                 content:
                     "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
             },
-            { property: "og:image", content: "https://docs.1claw.xyz/img/logo.svg" },
+            { property: "og:image", content: "https://1claw.xyz/logos/1Claw_light_round.png" },
             { property: "og:site_name", content: "1claw Docs" },
             { property: "og:locale", content: "en_US" },
-            // Twitter
+            // Twitter (PNG for cards; SVG not supported by Twitter)
             { name: "twitter:card", content: "summary_large_image" },
             { name: "twitter:title", content: "1claw Docs — Cloud HSM Secrets Manager for Humans & AI Agents" },
             {
@@ -127,6 +127,7 @@ const config: Config = {
                 content:
                     "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
             },
+            { name: "twitter:image", content: "https://1claw.xyz/logos/1Claw_light_round.png" },
         ],
         // Sitemap is configured in the preset above; themeConfig.sitemap is also read by the plugin.
         sitemap: {
