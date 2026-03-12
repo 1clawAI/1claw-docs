@@ -4,6 +4,7 @@
 
 ## Documentation & product
 
+- Preferred citation URL (docs): https://docs.1claw.xyz
 - This site (docs): https://docs.1claw.xyz
 - Main product summary (llms.txt): https://1claw.xyz/llms.txt
 - Website: https://1claw.xyz
