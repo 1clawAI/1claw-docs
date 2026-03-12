@@ -1,14 +1,34 @@
 ---
 title: Using 1claw with OpenClaw
-description: Add the 1claw skill to your OpenClaw gateway so your AI agent can store and retrieve secrets from the vault.
+description: Add the 1claw skill or the full OpenClaw plugin so your AI agent can store and retrieve secrets from the vault.
 sidebar_position: 7
 ---
 
 # Using 1claw with OpenClaw
 
-[OpenClaw](https://docs.openclaw.ai) is a self-hosted gateway that connects chat apps (WhatsApp, Telegram, Discord, iMessage, and more) to AI coding agents. The **1claw skill** lets your OpenClaw agent use the 1Claw vault to store, retrieve, rotate, and share secrets — so the agent can use API keys and credentials at runtime without them ever living in chat or context.
+[OpenClaw](https://docs.openclaw.ai) is a self-hosted gateway that connects chat apps (WhatsApp, Telegram, Discord, iMessage, and more) to AI coding agents. You can connect 1claw in two ways:
 
-## What you get
+---
+
+## Option 1: 1claw OpenClaw plugin (recommended)
+
+The **@1claw/openclaw-plugin** runs inside your OpenClaw gateway and adds native 1claw support: agent tools (list/get/put secrets, vaults, sharing, EVM transactions), automatic secret redaction in messages, optional Shroud TEE routing, slash commands (`/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`), and a bundled skill. No separate MCP process is required for these tools.
+
+**Install:**
+
+```bash
+openclaw plugins install @1claw/openclaw-plugin
+```
+
+Then set your agent API key in the plugin config or via `ONECLAW_AGENT_API_KEY`, restart the gateway, and allow the tools for your agent (e.g. `tools.allow: ["1claw"]`). Full details: [1claw OpenClaw Plugin](/docs/guides/openclaw-plugin).
+
+---
+
+## Option 2: Skill only (this page)
+
+Add only the **1claw skill** so your agent knows how to use 1claw; the agent calls the 1claw MCP server (you run it or use the hosted one). No gateway plugin — lighter setup, but no built-in redaction, Shroud routing, or slash commands.
+
+## What you get (skill path)
 
 With the 1claw skill installed, your OpenClaw agent can:
 
@@ -77,7 +97,8 @@ The 1claw skill teaches your agent how to call 1Claw's MCP tools (e.g. `list_sec
 
 ## Next steps
 
+- [1claw OpenClaw Plugin](/docs/guides/openclaw-plugin) — Full gateway plugin (native tools, redaction, Shroud, slash commands).
 - [OpenClaw documentation](https://docs.openclaw.ai) — Gateway setup, channels, and configuration.
 - [MCP Server](/docs/mcp/overview) — 1Claw MCP tools and setup in detail.
 - [Give an agent access](/docs/guides/give-agent-access) — Create policies so your agent can access the right vault and paths.
-- [Skill repository](https://github.com/1clawAI/1claw/tree/main/skill) — Skill source (SKILL.md, EXAMPLES.md, CONFIG.md) and validation script.
+- [Plugin repository](https://github.com/1clawAI/1claw-openclaw-plugin) — Plugin source (includes bundled skill).

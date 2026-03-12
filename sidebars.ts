@@ -120,6 +120,7 @@ const sidebars: SidebarsConfig = {
                     items: [
                         "guides/setup-by-client",
                         "guides/openclaw",
+                        "guides/openclaw-plugin",
                         "guides/claude-code",
                         "guides/mcp-integration",
                         "guides/cli",
