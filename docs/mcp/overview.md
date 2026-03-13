@@ -6,9 +6,9 @@ sidebar_position: 0
 
 # MCP Server
 
-The **1claw MCP server** (`@1claw/mcp`) implements the [Model Context Protocol](https://modelcontextprotocol.io) to give AI agents secure, just-in-time access to secrets stored in a 1claw vault.
+The **1claw MCP server** (`@1claw/mcp`) implements the [Model Context Protocol](https://modelcontextprotocol.io) to give AI agents secure, just-in-time access to secrets stored in a 1claw vault — and a standalone security scanner for detecting malicious LLM content.
 
-Secrets are fetched at runtime and never persisted in the LLM context window beyond the moment they are used.
+Secrets are fetched at runtime and never persisted in the LLM context window beyond the moment they are used. The `inspect_content` tool can run **without vault credentials**, making it available to anyone running local models.
 
 ## How it works
 
@@ -39,6 +39,25 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | -------------- | --------------------------------------------------- | ------------------- | --------------------------- |
 | **stdio**      | Local — Claude Desktop, Cursor, any MCP client      | Env vars            | N/A (runs locally)          |
 | **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.xyz/mcp` |
+| **local-only** | Security tools only — no vault credentials needed   | None                | N/A (runs locally)          |
+
+### Local-only mode
+
+Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content` tool. No 1claw account or API keys required. Useful for users running local models (Ollama, LM Studio, llama.cpp) who want threat detection without secret management.
+
+```json
+{
+    "mcpServers": {
+        "1claw": {
+            "command": "npx",
+            "args": ["-y", "@1claw/mcp"],
+            "env": {
+                "ONECLAW_LOCAL_ONLY": "true"
+            }
+        }
+    }
+}
+```
 
 ## Tools
 
@@ -55,6 +74,7 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | `list_vaults`      | List all accessible vaults                                          | Read       |
 | `grant_access`     | Grant a user or agent access to a vault                             | Write      |
 | `share_secret`     | Share a secret with someone by email                                | Write      |
+| `inspect_content`  | Analyze text for prompt injection, command injection, PII, and more | Read       |
 
 ## Resources
 

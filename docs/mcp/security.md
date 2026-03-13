@@ -93,6 +93,17 @@ All features are on by default and can be tuned via environment variables:
 | `ONECLAW_MCP_PII_DETECTION` | `true` | Detect PII patterns in inputs and outputs |
 | `ONECLAW_MCP_EXFIL_PROTECTION` | `warn` | `block`, `warn`, or `off` for secret exfiltration checks |
 
+## Standalone inspection via `inspect_content`
+
+In addition to the automatic pipeline, the `inspect_content` tool lets you proactively check any text on demand. This is useful for:
+
+- **Checking LLM outputs** before acting on them (e.g., before running generated code)
+- **Validating user inputs** before passing them to tools
+- **Auditing messages** between agents in multi-agent setups
+- **Local model safety** — run with `ONECLAW_LOCAL_ONLY=true` to use the scanner without a 1claw account
+
+The tool runs the same detection engine as the automatic pipeline and returns a structured verdict with threat details.
+
 ## Best practices
 
 ### Token scoping
