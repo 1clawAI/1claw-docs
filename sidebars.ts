@@ -112,6 +112,7 @@ const sidebars: SidebarsConfig = {
                     items: [
                         "guides/intents-api",
                         "guides/shroud",
+                        "guides/x402",
                     ],
                 },
                 {

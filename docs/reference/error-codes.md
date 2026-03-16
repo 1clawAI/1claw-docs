@@ -49,3 +49,18 @@ When creating vaults, secrets, or agents beyond your tier's quota, the API retur
 ```
 
 Check the `type` field to distinguish permission errors from quota errors. The `detail` includes the current count, limit, and tier name.
+
+## Intents API errors
+
+Transaction and simulation endpoints return these status codes and messages:
+
+| Code | When | `detail` (examples) |
+|------|------|---------------------|
+| 400 | Bad Request | Invalid `value`, `data` (hex), `to` address, or `signing_key_path`. `signing_key_path` must start with `keys/`, `wallets/`, or `agents/`. Unknown chain name. Invalid `max_fee_per_gas` / `max_priority_fee_per_gas` / `gas_price`. |
+| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value_eth`. Would exceed `tx_daily_limit_eth`. Cannot submit on behalf of another agent. |
+| 404 | Not Found | Agent or transaction not found. |
+| 409 | Conflict | Idempotency key reused (duplicate request); retry with a new key or wait. |
+| 422 | Unprocessable Entity | Simulation reverted. Response includes `status: "simulation_failed"` and simulation details. Transaction was **not** signed or broadcast. Fix the tx (e.g. insufficient balance, revert reason) and retry. |
+| 402 | Payment Required | Over quota; pay via x402 or prepaid credits. See [Billing & Usage](/docs/guides/billing-and-usage) and [x402 guide](/docs/guides/x402). |
+
+For **422**, the response body includes `simulation_id`, `simulation_status`, and optional `simulation_result` (e.g. `error`, `revert_reason`, `tenderly_dashboard_url`) to debug why the simulation failed.

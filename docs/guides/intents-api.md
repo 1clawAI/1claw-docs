@@ -11,6 +11,18 @@ import TabItem from '@theme/TabItem';
 
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
+## Quickstart: Your first transaction (~5 min)
+
+1. **Create an agent** with `intents_api_enabled: true` (Dashboard → Agents → Create, or API below). Note the agent ID and API key.
+2. **Store a signing key** in a vault the agent can read: put a secp256k1 private key at a path like `keys/ethereum-signer` or `wallets/hot-wallet` (see [Secrets](/docs/human-api/secrets/create)). Grant the agent read access to that path via a policy.
+3. **Get an agent JWT:** `POST /v1/auth/agent-token` with `agent_id` and `api_key`.
+4. **Submit a transaction:** `POST /v1/agents/:agent_id/transactions` with `chain`, `to`, `value`, and `signing_key_path`. Use testnets (e.g. `chain: "sepolia"`) first.
+5. **Optional:** Set `simulate_first: true` to run a Tenderly simulation before signing; if the simulation reverts, the API returns **422** and does not sign. See [Transaction simulation (Tenderly)](#simulation) and [Error codes](/docs/reference/error-codes#intents-api-errors).
+
+:::tip
+Default signing key path is `keys/{chain}-signer` (e.g. `keys/base-signer`). You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`.
+:::
+
 ## How it works
 
 ```
@@ -69,6 +81,25 @@ const { data } = await client.agents.create({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+import os
+import requests
+
+BASE = "https://api.1claw.xyz"
+headers = {"Authorization": f"Bearer {os.environ['ONECLAW_TOKEN']}"}
+r = requests.post(
+    f"{BASE}/v1/agents",
+    json={"name": "DeFi Bot", "intents_api_enabled": True},
+    headers=headers,
+)
+r.raise_for_status()
+agent = r.json()
+agent_id = agent["id"]
+```
+
+</TabItem>
 </Tabs>
 
 ### What changes when enabled
@@ -111,6 +142,26 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
   data: "0x",
   signing_key_path: "wallets/hot-wallet",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+r = requests.post(
+    f"{BASE}/v1/agents/{agent_id}/transactions",
+    json={
+        "chain": "ethereum",
+        "to": "0xRecipientAddress",
+        "value": "1.0",
+        "data": "0x",
+        "signing_key_path": "wallets/hot-wallet",
+    },
+    headers=headers,
+)
+r.raise_for_status()
+tx = r.json()
+print(tx["tx_hash"], tx["status"])
 ```
 
 </TabItem>
