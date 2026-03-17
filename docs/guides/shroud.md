@@ -1,11 +1,18 @@
 ---
-title: Shroud Security Features
-sidebar_label: Security Features
-sidebar_position: 3
+title: Shroud
+description: LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others. Blocks prompt injection and hides secrets.
+sidebar_label: Overview
+sidebar_position: 0
 tags: [shroud, security, threat-detection]
 ---
 
-# Shroud Security Features
+# Shroud
+
+Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, and centralize provider keys.
+
+---
+
+## Security Features
 
 Shroud includes comprehensive threat detection and input sanitization to protect AI agents from various attack vectors. All features are configurable on a per-agent basis via the Dashboard, SDK, or API.
 

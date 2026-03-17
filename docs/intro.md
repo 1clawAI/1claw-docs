@@ -8,9 +8,19 @@ sidebar_position: 0
 
 1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
 
-## The problem 1claw solves
+## Three products
 
-AI agents often need secrets (API keys, tokens, DB credentials) to call external services. If you paste a secret into a chat or put it in an agent's environment, it can be logged, leaked, or retained. 1claw keeps secrets in an HSM-backed vault and gives agents **scoped, audited, revocable** access: the agent authenticates to 1claw and requests a secret by path; 1claw returns the decrypted value only if the agent is allowed. The agent never stores the secret; you can revoke access or rotate the secret at any time.
+1claw is built around three products that work together:
+
+| Product | What it does | Docs |
+|--------|----------------|------|
+| **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
+| **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
+| **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
+
+- **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access.
+- **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
+- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
 
 ## Architecture
 
@@ -18,7 +28,7 @@ AI agents often need secrets (API keys, tokens, DB credentials) to call external
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Dashboard  │────▶│  Vault API  │◀────│  MCP Server │
 │  (Next.js)  │     │  (Rust)     │     │  (Node.js)  │
-│  1claw.xyz  │     │ api.1claw.xyz│    │mcp.1claw.xyz│
+│  1claw.xyz  │     │ api.1claw.xyz     │ mcp.1claw.xyz
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
                 ┌──────────┼──────────┐
@@ -29,9 +39,10 @@ AI agents often need secrets (API keys, tokens, DB credentials) to call external
           └──────────┘ └──────┘ └──────────┘
 ```
 
-- **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies. After you sign in, the left sidebar gives you: **Dashboard**, **Vaults**, **Agents**, **Sharing**, **Audit Log**, **Security**, **API Keys**, **Billing**, and **Team**.
+- **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies.
 - **Vault API** — The Rust backend that handles authentication, envelope encryption, policy enforcement, and all CRUD operations. Both the dashboard and MCP server talk to it.
-- **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets. Available hosted at `mcp.1claw.xyz` or as a local stdio process.
+- **Shroud** — Optional LLM proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz); agents can send LLM traffic through Shroud for inspection and redaction. Transaction signing can also run in Shroud’s TEE.
+- **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets and Intents. Hosted at `mcp.1claw.xyz` or run locally.
 
 ### How humans and agents interact
 
@@ -49,23 +60,22 @@ The same REST API serves both personas:
 
 Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
 
-## What you'll find in these docs
+## How to navigate these docs
 
-- **Concepts** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (API, Dashboard, MCP, CLI, SDK).
-- **Quickstart** — Get a token (human or agent) and read/write a secret.
-- **Human API** — Every endpoint for vaults, secrets, policies, agents, billing, audit.
-- **Agent API** — Auth and fetching secrets; same endpoints with agent JWT.
-- **MCP Server** — Give AI agents (Claude, Cursor, GPT) direct access to secrets via the Model Context Protocol. Hosted at `mcp.1claw.xyz` or run locally.
-- **SDKs** — TypeScript/JavaScript and curl examples.
-- **Guides** — Give an agent access, rotate secrets, revoke access, billing & usage, troubleshooting, and more.
-- **Security** — HSM, key hierarchy, zero-trust, compliance.
-- **Reference** — API reference, request pipeline, error codes, rate limits, [glossary](/docs/reference/glossary), changelog.
+- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK).
+- **[Vault](/docs/human-api/overview)** — Quickstart, Human API, Agent API, MCP Server, and all vault-related guides (access control, rotation, CMEK, sharing, CLI, billing, troubleshooting).
+- **[Shroud](/docs/guides/shroud)** — LLM proxy setup, supported providers (OpenAI, Anthropic, Google/Gemini, OpenRouter, etc.), threat detection, and vault-backed API keys.
+- **[Intents](/docs/guides/intents-api)** — Enabling the Intents API, submitting transactions, guardrails, simulation, and supported chains.
+- **[SDKs](/docs/sdks/overview)** — TypeScript/JavaScript, Python, and curl examples.
+- **[Security](/docs/security/hsm-overview)** — HSM, key hierarchy, zero-trust, compliance.
+- **[Reference](/docs/reference/api-reference)** — API reference, request pipeline, error codes, rate limits, [glossary](/docs/reference/glossary), changelog.
 
 ## Next steps
 
 - [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
-- [Parts of 1claw](/docs/concepts/parts-of-1claw) — API, Dashboard, MCP, CLI, SDK: what each is for and when to use it.
+- [Parts of 1claw](/docs/concepts/parts-of-1claw) — Three products (Vault, Shroud, Intents) and how to use them (Dashboard, API, MCP, CLI, SDK).
 - [Quickstart for humans](/docs/quickstart/humans) — Log in and store your first secret.
 - [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
-- [MCP Server](/docs/mcp/overview) — Connect AI agents to your vault via MCP.
+- [Shroud](/docs/guides/shroud) — Route LLM traffic through Shroud for inspection and redaction.
+- [Intents API](/docs/guides/intents-api) — Let agents sign transactions without seeing keys.
 - [Glossary](/docs/reference/glossary) — Definitions of vault, secret, policy, agent, and other terms.
