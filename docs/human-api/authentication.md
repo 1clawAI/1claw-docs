@@ -70,6 +70,9 @@ await client.auth.login({
 ## Google OAuth
 
 **Endpoint:** `POST /v1/auth/google`  
+
+The server verifies the Google ID token locally via [Google's JWKS](https://www.googleapis.com/oauth2/v3/certs) (RS256 signature, audience, issuer, expiry, email_verified). No external tokeninfo call.
+
 **Request body:**
 
 | Field     | Type   | Required | Description                    |

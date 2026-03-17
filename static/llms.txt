@@ -44,7 +44,7 @@ Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud a
 
 ## Authentication
 
-- **Human users**: Email/password, Google OAuth, or personal API keys (`1ck_` prefix)
+- **Human users**: Email/password, Google OAuth (ID token verified via JWKS), SSO (WorkOS SAML/OIDC), or personal API keys (`1ck_` prefix)
 - **AI agents**: Three auth methods — API key (`ocv_` prefix, default), mTLS (client certificate), or OIDC Client Credentials. API key agents exchange credentials for short-lived JWT via `POST /v1/auth/agent-token`. Supports key-only auth: agents can provide just `api_key` (without `agent_id`) and the server resolves the agent from a stored key prefix.
 - **MFA**: Optional TOTP 2FA for human logins (Pro tier and above)
 - **API keys**: `1ck_` keys work as Bearer tokens on all authenticated endpoints
@@ -133,13 +133,22 @@ Key endpoints:
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 
-**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org.
+**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org. MFA tokens are single-use (jti revoked after verification). Agent JWTs derive `vault_ids` from access policies when not explicitly set. Intents API `signing_key_path` restricted to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`. Shroud strips sensitive headers (authorization, cookies, IP headers) before forwarding to upstream LLM providers.
+
+### Live Demo
+Interactive demo at https://1claw.xyz/demo — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
+
+### .env Import
+Vault detail page supports bulk secret creation from pasted `.env` file content (parses KEY=VALUE pairs, handles comments and quotes, creates secrets with configurable path prefix).
 
 ## Agent Onboarding Flows
 
 ### Human registers agent (dashboard)
-1. Dashboard wizard at /agents/wizard — 3 steps: register agent, save credentials, connection snippets
+1. Dashboard wizard at /agents/wizard — 4 steps: register agent, save credentials, grant vault access (creates read policy), connection snippets
 2. Or full form at /agents/new with auth method, scopes, guardrails, vault binding
+
+### Human creates vault (dashboard)
+1. Dashboard wizard at /vaults/wizard — 4 steps: create vault, store first secret (optional), grant agent access (creates read policy), next steps
 
 ### Agent self-enrolls (API/CLI/SDK)
 1. `POST /v1/agents/enroll` with `{ name, human_email }` — no auth needed

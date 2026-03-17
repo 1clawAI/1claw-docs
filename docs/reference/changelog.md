@@ -14,6 +14,33 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-03 (latest)
 
+### Live demo
+
+- **New:** Interactive demo page at [1claw.xyz/demo](https://1claw.xyz/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
+
+### Onboarding wizard improvements
+
+- **Updated:** Agent wizard is now 4 steps: register → save credentials → **grant vault access** (creates read policy) → connection snippets. Ensures agents don't start with zero access.
+- **Updated:** Vault wizard is now 4 steps: create vault → store secret → **grant agent access** (creates read policy) → next steps.
+- **New:** `.env` import on vault detail page — paste a `.env` file to bulk-create secrets with configurable path prefix.
+
+### Google OAuth JWKS
+
+- **Updated:** `POST /v1/auth/google` now verifies the Google ID token locally via [Google's JWKS](https://www.googleapis.com/oauth2/v3/certs) (RS256 signature, audience, issuer, expiry). Replaces the previous tokeninfo endpoint call. More reliable (no URL length limits).
+
+### SSO (WorkOS)
+
+- **New:** WorkOS SAML/OIDC SSO — `GET /v1/auth/sso/authorize`, callback handler, "Sign in with SSO" button on login page.
+
+### Security fixes (2026-03-16 audit)
+
+- **Fixed (C-3):** Dashboard auth bypass — `PUBLIC_PAGES` prefix match for `"/"` matched all paths. Now uses exact match.
+- **Fixed (C-4):** MFA token replay — MFA challenge tokens are now single-use (jti revoked after verification).
+- **Fixed (C-5):** Cross-vault IDOR — agent JWTs with empty `vault_ids` no longer grant unrestricted access; vault IDs are derived from access policies.
+- **Fixed (H-19):** Ed25519 SPKI DER parsing uses proper ASN.1 validation instead of a heuristic.
+- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`.
+- **New:** Shroud strips sensitive headers (authorization, cookies, IP headers) before forwarding to upstream LLM providers.
+
 ### x402 marketplace compatibility
 
 - **Updated:** 402 Payment Required response body now aligns with [docs.g402.ai](https://docs.g402.ai/docs/api/response-format) and x402scan: `x402Version`, `accepts[]` with `maxAmountRequired` (atomic units), `resource` (full URL), `payTo`, `maxTimeoutSeconds`, `asset`, `description`, `mimeType`. Enables registration on x402 marketplaces.

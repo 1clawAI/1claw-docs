@@ -9,7 +9,7 @@
 
 ## Progress tracker
 
-> Updated: 2026-03-16
+> Updated: 2026-03-17
 
 ### ✅ Shipped (code deployed to production)
 
@@ -35,12 +35,13 @@
 | — | Calendly links | Earlier | Hero, navbar, billing, pricing |
 | — | Pricing light mode fix | Earlier | Theme-aware classes on pricing page |
 | — | RLS fixes | `d0be58a` + Supabase MCP | Migration 044: cmek_rotation_jobs, revoked_tokens, promo_codes, promo_redemptions |
+| §14 | SSO (WorkOS SAML/OIDC) | `4cd2e9c` | Vault: callback, find/create user, JWT redirect. Dashboard: "Sign in with SSO", ?token= callback. Set WORKOS_* env + redirect URI in WorkOS dashboard. |
+| — | Blog: scheduled publish + author + RSS | `c82bbb3`, `47edb06` | getPublishedPosts() by date; author (incl. image); RSS /blog/feed; ?preview=true for scheduled posts. Kevin Jones post (rogue AI agents) scheduled 2026-03-17. |
 
 ### 🔧 In progress (code)
 
 | # | Item | Status |
 |---|------|--------|
-| §14 | SSO (SAML/OIDC) | Starting — needs WorkOS account |
 | §22 | Live demo / playground | Starting |
 | §36 | SCIM provisioning | Blocked on WorkOS |
 
@@ -70,6 +71,39 @@
 | §37 | Enterprise prospecting | Track A: 5 fin/healthcare companies (LinkedIn). Track B: crypto funds (Telegram). Goal: 2-3 calls. | 1d |
 | §38 | Week 4 retrospective | Signups, activations, conversion, Intents adoption, acquisition sources. Set weeks 5-8 priorities. | 3h |
 | §39 | MCP event submission | Find 3-5 MCP meetups. Submit talk: "Production-grade MCP servers that don't leak credentials." | 4h |
+
+### ☑️ Manual / content checklist (your to-do list)
+
+Copy this list and tick as you go:
+
+- [ ] **§8** — Fill Crypto/DeFi ICP tab: GitHub, Twitter, Telegram, Farcaster search for DeFi bot builders with hardcoded keys
+- [ ] **§9** — Thread 1: "Your API key is in Claude's chat history" (schedule Tue 9am)
+- [ ] **§9** — Thread 2: DeFi private key thread (3 days after Thread 1)
+- [ ] **§10** — Time MCP flow (landing → docs → install → first secret fetch); document friction points
+- [ ] **§11** — Directory submissions: MCP.so, HN Show HN, There's An AI For That, Futurepedia, DeFi Llama, Base ecosystem, Electric Capital
+- [ ] **§13** — Add `intents.1claw.xyz` in Vercel + DNS, point to `/intents`
+- [ ] **§15** — Intents quickstart: "first transaction" guide, Tenderly docs, error codes, TS + Python examples
+- [ ] **§19** — DM crypto/DeFi prospects from ICP list; threat-framing template; track responses
+- [ ] **§20** — Product Hunt launch (Vault): 30 upvoters, 5 maker comments, PH50 code, thumbnail; launch Tue/Wed
+- [ ] **§21** — TEE proxy blog: 1,500 words (Shroud, Aho-Corasick, GKE); cross-post dev.to + HN
+- [ ] **§23** — Intents cold outreach: 3-email sequence to DeFi teams; target 3 demo calls (Base, a16z, CDP Discord)
+- [ ] **§25** — SOC 2 Type I: Vanta/Drata + AWS/GitHub/G Suite; document Intents controls
+- [ ] **§26** — CMEK docs polish: dashboard + docs for registration/rotation; add to `/security`
+- [ ] **§28** — x402 guide: `docs/docs/guides/x402.md`, end-to-end + code example
+- [ ] **§29** — Cold email 200 mid-market (Apollo/Clay, AI dev ICP); 3-email sequence; target 5 demo calls
+- [ ] **§30** — MCP tutorial creators: find 5, partner with 2–3 (free Business); referral tracking
+- [ ] **§31** — Case study #1: Intents if users exist else Vault; 500 words; homepage + `/customers`
+- [ ] **§32** — Intents pilot agreement: one-page draft, lawyer review (~$500), 60–90 day structure
+- [ ] **§33** — Intents Product Hunt launch (separate from Vault); Week 4–5
+- [ ] **§34** — Onboarding emails: Customer.io/Loops; Vault sequence (Day 0–14) + Intents sequence (Day 0–14)
+- [ ] **§37** — Enterprise prospecting: Track A 5 fin/healthcare (LinkedIn); Track B crypto funds (Telegram); goal 2–3 calls
+- [ ] **§38** — Week 4 retrospective: signups, activations, conversion, Intents adoption; set weeks 5–8 priorities
+- [ ] **§39** — MCP event: find 3–5 meetups; submit talk "Production-grade MCP servers that don't leak credentials"
+- [ ] **Post-ship: SEO** — Submit 5 SEO pages + `/security` + `/intents` + `/shroud` to Google Search Console
+- [ ] **Post-ship: PostHog** — Verify events; set up funnels (signup → first_secret → limit_hit → upgrade)
+- [ ] **Post-ship: npm** — Publish SDK 0.14.0, MCP 0.15.0, CLI 0.7.0 (MIT)
+- [ ] **Post-ship: Audit export** — Test CSV/JSON with real data
+- [ ] **Post-ship: Promo codes** — Create extra codes in Settings → Admin as needed
 
 ### 📝 Post-ship follow-ups
 
@@ -449,6 +483,7 @@ Track responses; expect ~15–25% for technical DeFi outreach (lower than AI dev
 
 - **Vault demo:** Sandbox: store fake API key, register demo agent, MCP fetch — no signup. Before (key in prompt) vs after (vault reference). CTA "Try it → Sign up."
 - **[REVISED] Intents demo tab:** Pre-populated demo agent with sandbox wallet (testnet only, e.g. Base Sepolia). Visitor: set value cap → submit "send 0.001 ETH" intent → watch simulation → see "signed" status. Private key never appears; show audit log entry. CTA: "Deploy this for your agent →" to `/intents` or docs. This is the strongest conversion tool for the DeFi ICP.
+- **Intents demo setup:** The demo agent needs a private key in a vault at `keys/base-sepolia-signer` (or `keys/{chain}-signer`) and that wallet must be funded with test ETH on Base Sepolia. See **`docs/DEMO-SETUP.md`** for full env vars and checklist.
 
 ---
 
@@ -687,4 +722,4 @@ Use answers to set weeks 5–8 priorities.
 
 ---
 
-*Last updated: 2026-03-16. 20 items shipped. Refines the Cursor-generated sprint plan with full Intents coverage, crypto ICP strategy, x402 positioning, and instrumentation gaps.*
+*Last updated: 2026-03-17. 22 items shipped (incl. §14 SSO, blog SEO/preview). Refines the Cursor-generated sprint plan with full Intents coverage, crypto ICP strategy, x402 positioning, and instrumentation gaps.*
