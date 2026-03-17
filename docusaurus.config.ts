@@ -105,9 +105,7 @@ const config: Config = {
                 content:
                     "1claw, HSM, secrets manager, AI agents, API keys, Claude, MCP, Model Context Protocol, zero trust, cloud HSM, vault, Cursor, OpenClaw, documentation",
             },
-            // AEO: llms.txt for AI / LLM crawlers
             { name: "llms-txt", content: "https://docs.1claw.xyz/llms.txt" },
-            // Open Graph
             { property: "og:type", content: "website" },
             { property: "og:url", content: "https://docs.1claw.xyz/" },
             { property: "og:title", content: "1claw Docs — Cloud HSM Secrets Manager for Humans & AI Agents" },
@@ -116,10 +114,11 @@ const config: Config = {
                 content:
                     "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
             },
-            { property: "og:image", content: "https://1claw.xyz/logos/1Claw_light_round.png" },
+            { property: "og:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
+            { property: "og:image:width", content: "1200" },
+            { property: "og:image:height", content: "630" },
             { property: "og:site_name", content: "1claw Docs" },
             { property: "og:locale", content: "en_US" },
-            // Twitter (PNG for cards; SVG not supported by Twitter)
             { name: "twitter:card", content: "summary_large_image" },
             { name: "twitter:title", content: "1claw Docs — Cloud HSM Secrets Manager for Humans & AI Agents" },
             {
@@ -127,7 +126,7 @@ const config: Config = {
                 content:
                     "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
             },
-            { name: "twitter:image", content: "https://1claw.xyz/logos/1Claw_light_round.png" },
+            { name: "twitter:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
         ],
         // Sitemap is configured in the preset above; themeConfig.sitemap is also read by the plugin.
         sitemap: {
