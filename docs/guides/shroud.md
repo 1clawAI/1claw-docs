@@ -62,7 +62,7 @@ The agent must have read access to that vault path.
 
 ### Supported providers
 
-`X-Shroud-Provider` must be one of the following. Provider names are case-sensitive; use lowercase.
+Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of the values below (lowercase).
 
 | Provider value | LLM / API |
 |----------------|-----------|
@@ -72,13 +72,15 @@ The agent must have read access to that vault path.
 | `gemini`       | Alias for `google` — same as above |
 | `mistral`      | Mistral |
 | `cohere`       | Cohere |
+| `openrouter`   | OpenRouter (aggregates many models; single API key) |
 
-For **Gemini**, use `X-Shroud-Provider: google` or `X-Shroud-Provider: gemini`. Store the API key at `providers/google/api-key` or `providers/gemini/api-key` (or use `X-Shroud-Api-Key: vault://{vault_id}/your/path`).
+- **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
+- **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
 
 ### Request and response format
 
-- **OpenAI-style (OpenAI, Mistral, etc.):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same.
-- **Google:** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
+- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
 ### Example: cURL
