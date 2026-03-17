@@ -1,7 +1,7 @@
 ---
 title: Shroud
 description: LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others. Blocks prompt injection and hides secrets.
-sidebar_label: Overview
+sidebar_label: Shroud
 sidebar_position: 0
 tags: [shroud, security, threat-detection]
 ---
