@@ -1,6 +1,6 @@
-# Shroud DNS setup via Vercel CLI
+# Shroud and Intents DNS setup via Vercel CLI
 
-`https://shroud.1claw.xyz` should point **directly at the Shroud service on Google Cloud (GKE)**, not at Vercel.
+`https://shroud.1claw.xyz` and `https://intents.1claw.xyz` should point **directly at the Shroud service on Google Cloud (GKE)** (same backend — TEE for LLM proxy and Intents API), not at Vercel.
 
 ## 1. Reserve the static IP in GCP (one-time)
 
@@ -35,10 +35,28 @@ dig @ns1.vercel-dns.com shroud.1claw.xyz A +short
 # Should print the GKE IP
 ```
 
-## 3. Do not use CNAME or Vercel alias for shroud
+## 2b. Point `intents.1claw.xyz` at the same IP (optional)
 
-- **Do not** add a CNAME `shroud` → Vercel; that would send traffic to the dashboard.
-- **Do not** run `vercel alias set ... shroud.1claw.xyz`; that would claim the hostname for a Vercel deployment.
+The same GKE Ingress serves both hosts. Use the **same static IP** as Shroud:
+
+```bash
+# Same IP as shroud (e.g. from step 1)
+vercel dns add 1claw.xyz intents A 34.107.187.243
+```
+
+Confirm:
+
+```bash
+dig @ns1.vercel-dns.com intents.1claw.xyz A +short
+# Should print the same GKE IP as shroud.1claw.xyz
+```
+
+Then `https://intents.1claw.xyz/v1/agents/:id/transactions` and other Intents API paths hit the TEE directly (same backend as `shroud.1claw.xyz`).
+
+## 3. Do not use CNAME or Vercel alias for shroud or intents
+
+- **Do not** add a CNAME `shroud` or `intents` → Vercel; that would send traffic to the dashboard.
+- **Do not** run `vercel alias set ... shroud.1claw.xyz` or `... intents.1claw.xyz`; that would claim the hostname for a Vercel deployment.
 
 If you previously added a CNAME or alias, remove them:
 
@@ -57,7 +75,7 @@ Then add the A record as in step 2.
 If `curl -ILk https://shroud.1claw.xyz` returns **empty reply from server** (exit 52), the connection reaches the GKE load balancer but TLS or the backend isn’t responding. Check:
 
 1. **ManagedCertificate**  
-   The Ingress uses `networking.gke.io/managed-certificates: "shroud-cert"`. A `ManagedCertificate` named `shroud-cert` must exist in namespace `shroud-system` with domain `shroud.1claw.xyz`. Apply `shroud/k8s/managed-certificate.yaml` if missing. Provisioning can take **up to 60 minutes**.
+   The Ingress uses `networking.gke.io/managed-certificates: "shroud-cert"`. A `ManagedCertificate` named `shroud-cert` must exist in namespace `shroud-system` with domains `shroud.1claw.xyz` and `intents.1claw.xyz`. Apply `shroud/k8s/managed-certificate.yaml` if missing. Provisioning can take **up to 60 minutes**.
    ```bash
    kubectl get managedcertificate -n shroud-system
    kubectl describe managedcertificate shroud-cert -n shroud-system
@@ -81,4 +99,5 @@ If `curl -ILk https://shroud.1claw.xyz` returns **empty reply from server** (exi
 | `vercel dns ls 1claw.xyz` | List DNS records |
 | `vercel dns rm <id>` | Remove a DNS record by id |
 | `vercel alias list` | List aliases (remove shroud if present) |
-| `dig @ns1.vercel-dns.com shroud.1claw.xyz A +short` | Verify A record |
+| `dig @ns1.vercel-dns.com shroud.1claw.xyz A +short` | Verify Shroud A record |
+| `dig @ns1.vercel-dns.com intents.1claw.xyz A +short` | Verify Intents A record (same IP) |

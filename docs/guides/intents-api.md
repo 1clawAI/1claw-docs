@@ -546,14 +546,15 @@ When a transaction violates any guardrail, the proxy returns **403 Forbidden** w
 
 When [Shroud](/docs/guides/shroud) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.xyz` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
 
-Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Choose based on your security requirements:
+Both `api.1claw.xyz` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
 
 | Surface | Submit | List/Get/Simulate | Key isolation |
 | --- | --- | --- | --- |
 | `api.1claw.xyz` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
 | `shroud.1claw.xyz` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
+| `intents.1claw.xyz` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
 
-Shroud also provides LLM proxy capabilities — see the [Shroud guide](/docs/guides/shroud).
+`intents.1claw.xyz` is an alias for the same GKE backend as `shroud.1claw.xyz` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/guides/shroud).
 
 ## Security model
 
