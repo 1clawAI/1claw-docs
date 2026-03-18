@@ -145,6 +145,22 @@ All endpoints are under **/v1**.
 | GET    | `/v1/chains`             | List supported blockchain chains |
 | GET    | `/v1/chains/:identifier` | Get chain by ID or chain_id      |
 
+## Treasury
+
+Multi-sig treasury wallets (Safe) and agent access requests. See [Treasury guide](/docs/guides/treasury).
+
+| Method | Path                                                                 | Description                    |
+| ------ | -------------------------------------------------------------------- | ------------------------------ |
+| POST   | `/v1/treasury`                                                      | Create a treasury (Safe multisig) |
+| GET    | `/v1/treasury`                                                      | List treasuries                |
+| GET    | `/v1/treasury/:treasury_id`                                         | Get treasury details           |
+| POST   | `/v1/treasury/:treasury_id/signers`                                 | Add a signer (user or agent)   |
+| DELETE | `/v1/treasury/:treasury_id/signers/:signer_id`                      | Remove a signer                |
+| POST   | `/v1/treasury/:treasury_id/access-requests`                         | Request access (agent-only)    |
+| GET    | `/v1/treasury/:treasury_id/access-requests`                         | List access requests           |
+| POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/approve`      | Approve an access request      |
+| POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/deny`         | Deny an access request        |
+
 ## Transactions (Intents API)
 
 Requires `intents_api_enabled: true` on the agent. When enabled, the agent is also **blocked** from reading `private_key` and `ssh_key` type secrets through the standard secrets endpoint — it must use the proxy to sign transactions.

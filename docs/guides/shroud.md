@@ -8,9 +8,35 @@ tags: [shroud, security, threat-detection]
 
 # Shroud
 
-Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, and centralize provider keys.
+Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
 
 ---
+
+## Per-Agent Configuration (shroud_config)
+
+Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
+
+### Basic settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
+| `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
+| `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
+| `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
+| `allowed_models` | string[] | Models the agent may use (empty = all) |
+| `denied_models` | string[] | Models explicitly blocked |
+| `max_tokens_per_request` | number | Token cap per LLM request |
+| `max_requests_per_minute` | number | Per-minute rate limit |
+| `max_requests_per_day` | number | Per-day rate limit |
+| `daily_budget_usd` | number | Daily LLM spend cap in USD |
+| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
+| `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
+
+### Operational limits
+
+- **Request body size:** 5MB maximum. Requests exceeding this return **413 Payload Too Large**.
+- **Header filtering:** Shroud strips sensitive headers (authorization, `X-Shroud-Agent-Key`, `X-Shroud-Api-Key`, cookies, IP headers) before forwarding to upstream LLM providers. This prevents credential leakage through proxied requests.
 
 ## Security Features
 
@@ -19,6 +45,8 @@ Shroud includes comprehensive threat detection and input sanitization to protect
 ## Using the LLM Proxy
 
 Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
+
+Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.xyz` and `shroud.1claw.xyz` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
 
 ### Endpoint
 

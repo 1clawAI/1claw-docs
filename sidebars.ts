@@ -126,6 +126,12 @@ const sidebars: SidebarsConfig = {
         },
         {
             type: "category",
+            label: "Treasury",
+            link: { type: "doc", id: "guides/treasury" },
+            items: [],
+        },
+        {
+            type: "category",
             label: "SDKs",
             link: { type: "doc", id: "sdks/overview" },
             items: ["sdks/javascript", "sdks/python", "sdks/curl-examples"],
