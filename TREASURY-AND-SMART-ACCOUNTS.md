@@ -121,3 +121,16 @@ This file can be moved under `internal-docs/` or `docs/` as you prefer and updat
 - **Backend:** New table `agent_smart_accounts` (id, agent_id, chain, chain_id, safe_address, nonce, init_data, created_at). Unique (agent_id, chain_id). Migrate existing single smart_account_* from `agents` into one row. Endpoints: `GET /v1/agents/:id` returns `smart_accounts: []` from this table; `POST /v1/agents/:id/smart-accounts` to add a Safe (chain, chain_id, safe_address, nonce?, init_data?). Legacy columns on `agents` can remain for backward compat (e.g. first entry duplicated) or be deprecated.
 - **Intents API / transactions:** When submitting in `smart_account` mode, the request should include `chain_id` (or chain name) so the backend picks the correct Safe from `agent_smart_accounts`. Default to first or a “primary” chain if omitted.
 - **Dashboard:** Agent detail page: **Smart accounts** card lists all chains/Safes; “Deploy on another chain” deploys a new Safe (same EOA), then calls `POST .../smart-accounts`. Show “Signer (EOA): 0x…” and “Reveal signer key” in this card. Remove EVM signer block from the **Agent Identity** card.
+
+---
+
+## 7. Signer rotation: one key vs per-chain keys
+
+**Current behavior:** “Rotate signer key” runs a single **swapOwner** UserOp on the Safe. The backend uses the **legacy** `smart_account_address` and `smart_account_chain_id` (one Safe). So if the agent has **multiple** Safes (in `agent_smart_accounts`), rotation today updates **only that one** Safe; the other chains still have the old EOA as owner.
+
+**So yes:** with one EOA for all chains, you effectively have to update every Safe when you rotate — either by:
+
+1. **Extending rotation** — When rotating, the backend loops over all rows in `agent_smart_accounts` for that agent and submits a swapOwner UserOp on each Safe (same old key → new key). One rotation updates every chain. Still one key to back up.
+2. **Per-chain signing keys** — Store a signing key (or reference) **per** smart account: e.g. `agent_signing_keys(agent_id, chain_id, evm_address, key_path)` and `agent_smart_accounts(..., signing_key_id?)`. Then rotation is per chain: you rotate the key for one Safe without touching the others. Better isolation, more keys to manage.
+
+**Recommendation:** For “one EOA, many Safes”, implement **(1) rotate-all**: on “Rotate signer key”, resolve all Safes from `agent_smart_accounts` (plus legacy), submit swapOwner on each, then update the single `evm_address` in the DB. That keeps one key and correct on-chain state. If you need different keys per chain (e.g. compliance or key isolation), add **(2)** as a later option (per-chain keys and per-Safe rotation in the UI).
