@@ -35,7 +35,7 @@ Agents receive an EOA when created or when identity keys are rotated. The `evm_a
 
 ## Smart Account Deployment
 
-Humans can deploy a **smart account** (Safe 1.4.1) for an agent via the Dashboard. This uses ERC-4337 account abstraction with Pimlico as the bundler. The deployment is chain-specific; configure `smart_account_chain` and `smart_account_chain_id` on the agent.
+Humans can deploy **smart accounts** (Safe 1.4.1) for an agent via the Dashboard. This uses ERC-4337 account abstraction with Pimlico as the bundler. **Multi-chain:** one Safe per chain; the agent has a single EOA signer used for all chains. After the first deploy, use **Deploy on another chain** to add Safes on other networks. The API returns `smart_accounts[]` on `GET /v1/agents/{id}`; add a Safe for a chain with `POST /v1/agents/{id}/smart-accounts` (body: `chain`, `chain_id`, `safe_address`, optional `nonce`, `init_data`). Legacy fields `smart_account_address`, `smart_account_chain`, and `smart_account_chain_id` remain for backward compatibility.
 
 ---
 
