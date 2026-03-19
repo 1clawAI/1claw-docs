@@ -56,10 +56,12 @@ Only agents can create access requests; only users can approve or deny them.
 | POST | `/v1/treasury` | User | Create a treasury (Safe multisig) |
 | GET | `/v1/treasury` | User | List treasuries |
 | GET | `/v1/treasury/{treasury_id}` | User | Get treasury details |
+| PATCH | `/v1/treasury/{treasury_id}` | User | Update name and/or threshold |
+| DELETE | `/v1/treasury/{treasury_id}` | User | Delete treasury and signers |
 | POST | `/v1/treasury/{treasury_id}/signers` | User | Add a signer (user or agent) |
 | DELETE | `/v1/treasury/{treasury_id}/signers/{signer_id}` | User | Remove a signer |
 | POST | `/v1/treasury/{treasury_id}/access-requests` | Agent | Request access (agent-only) |
-| GET | `/v1/treasury/{treasury_id}/access-requests` | User | List access requests |
+| GET | `/v1/treasury/{treasury_id}/access-requests` | User | List access requests (response: `requests[]`) |
 | POST | `/v1/treasury/{treasury_id}/access-requests/{request_id}/approve` | User | Approve an access request |
 | POST | `/v1/treasury/{treasury_id}/access-requests/{request_id}/deny` | User | Deny an access request |
 
@@ -84,7 +86,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury" \
 - `chain`: Chain name (e.g. `base`, `ethereum`, `sepolia`).
 - `chain_id`: Chain ID (e.g. 8453 for Base).
 - `threshold`: Number of signatures required for a transaction.
-- `safe_address`: Optional. Pre-deployed Safe address; omit to create a new Safe.
+- `safe_address`: **Required.** Deployed Safe contract address (`0x` + 40 hex). Register the treasury in 1Claw after deploying the Safe (dashboard or your own flow).
 
 ---
 
