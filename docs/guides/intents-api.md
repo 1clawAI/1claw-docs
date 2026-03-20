@@ -207,6 +207,83 @@ const { data: tx } = await client.agents.getTransaction(agentId, txId);
 </TabItem>
 </Tabs>
 
+## Sign-only mode (BYORPC) {#sign-only}
+
+Sometimes you want the server to sign the transaction inside the HSM (or Shroud TEE) but **not** broadcast it. This lets you:
+
+- Use your own RPC endpoint for broadcasting
+- Implement MEV protection (e.g. Flashbots, MEV Blocker)
+- Queue transactions for batch submission
+- Broadcast to multiple RPCs simultaneously
+
+Call `POST /v1/agents/:agent_id/transactions/sign` with the same request body as submit. The server signs the transaction and returns the raw `signed_tx` hex without broadcasting.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/sign" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "to": "0xRecipientAddress",
+    "value": "0.1",
+    "signing_key_path": "keys/ethereum-signer"
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: signedTx } = await client.agents.signTransaction(agentId, {
+  chain: "ethereum",
+  to: "0xRecipientAddress",
+  value: "0.1",
+  signing_key_path: "keys/ethereum-signer",
+});
+
+// Broadcast yourself using ethers, viem, or raw RPC
+console.log(signedTx.signed_tx); // 0x02f8...
+console.log(signedTx.tx_hash);   // 0xabc123...
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent tx sign $AGENT_ID \
+  --to 0xRecipientAddress \
+  --value 0.1 \
+  --chain ethereum
+```
+
+</TabItem>
+</Tabs>
+
+### Response
+
+```json
+{
+    "signed_tx": "0x02f870018203...signed hex...",
+    "tx_hash": "0xabc123...",
+    "from": "0xDerivedSenderAddress",
+    "to": "0xRecipientAddress",
+    "chain": "ethereum",
+    "chain_id": 1,
+    "nonce": 42,
+    "value_wei": "100000000000000000",
+    "status": "sign_only"
+}
+```
+
+All agent guardrails (allowlists, value caps, daily limits) are enforced exactly as for submit. The transaction is recorded for audit and daily-limit tracking.
+
+:::tip TEE signing
+When using Shroud (`shroud.1claw.xyz`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting.
+:::
+
 ## Transaction simulation (Tenderly) {#simulation}
 
 Every transaction can be simulated before signing. Simulation executes the full transaction against the current chain state in a sandboxed environment, returning decoded traces, balance changes, gas estimates, and human-readable error messages — without consuming real gas.
@@ -374,7 +451,7 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 
 ## MCP tools
 
-The MCP server provides two transaction tools:
+The MCP server provides transaction tools for the full lifecycle:
 
 **`simulate_transaction`** — simulate without signing:
 ```
@@ -395,6 +472,32 @@ Args:
   value: "0.5"
   signing_key_path: "wallets/hot-wallet"
   simulate_first: true
+```
+
+**`sign_transaction`** — sign only, no broadcast (for BYORPC):
+```
+Tool: sign_transaction
+Args:
+  chain: "base"
+  to: "0xRecipientAddress"
+  value: "0.5"
+  signing_key_path: "wallets/hot-wallet"
+  simulate_first: true
+```
+
+**`list_transactions`** — list recent transactions:
+```
+Tool: list_transactions
+Args:
+  include_signed_tx: false
+```
+
+**`get_transaction`** — get details of a specific transaction:
+```
+Tool: get_transaction
+Args:
+  transaction_id: "uuid-of-transaction"
+  include_signed_tx: false
 ```
 
 ---
