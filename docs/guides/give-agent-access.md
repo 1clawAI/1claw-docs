@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 This is the **golden path**: you create a secret, register an agent, grant it read access via a policy, then the agent fetches the secret at runtime.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (SDK vault + secret + policy) and **[LangChain Agent](https://github.com/1clawAI/1claw/tree/main/examples/langchain-agent)** (agent fetches secrets just-in-time).
+:::
+
 ## 1. Create a vault and secret (human)
 
 Log in (email/password or Google), then:

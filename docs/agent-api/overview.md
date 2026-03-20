@@ -26,6 +26,10 @@ Same as Human API: `https://api.1claw.xyz` (or your Cloud Run URL).
 
 Agents typically **do not** create vaults, register other agents, or manage policies; those operations are for humans. Access is determined entirely by policies created by humans.
 
+:::tip Try it out
+Try out the examples in this repo: **[LangChain Agent](https://github.com/1clawAI/1claw/tree/main/examples/langchain-agent)** and **[Next.js Agent Secret](https://github.com/1clawAI/1claw/tree/main/examples/nextjs-agent-secret)** (agent access to vault secrets).
+:::
+
 ## Next
 
 - [Agent authentication](/docs/agent-api/authentication) — Request/response for agent-token.

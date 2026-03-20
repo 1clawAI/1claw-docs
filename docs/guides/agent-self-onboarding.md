@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 This guide covers the full journey from an agent's perspective: self-enroll with zero credentials, receive access from your human, create and read secrets, and share them back.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (includes enrollment and sharing). The [examples README](https://github.com/1clawAI/1claw/tree/main/examples) lists all runnable demos.
+:::
+
 ## Overview
 
 ```

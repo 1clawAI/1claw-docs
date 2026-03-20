@@ -18,6 +18,10 @@ Before configuring the MCP server, you need:
 3. **An agent** — Register an agent and save the API key (`ocv_...`)
 4. **A policy** — Grant the agent read access to the secret paths it needs
 
+:::tip Try it out
+Try out the example in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw/tree/main/examples/fastmcp-tool-server)** (custom MCP server with domain tools; stdio or HTTP).
+:::
+
 ## Option 1: Hosted server (recommended)
 
 The simplest setup — no local installation needed. The hosted MCP server runs at `mcp.1claw.xyz` and authenticates per-connection with a **Bearer JWT**. You get the JWT by calling the 1claw API with your **agent ID** and **API key** (`ocv_...`):

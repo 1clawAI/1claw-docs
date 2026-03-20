@@ -8,6 +8,10 @@ sidebar_position: 5
 
 1claw tracks every API request and offers flexible billing through subscription tiers with optional prepaid credits or on-chain micropayments for overages.
 
+:::tip Try it out
+Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI/1claw/tree/main/examples/ampersend-x402)** (x402 with Ampersend + MCP/HTTP/hybrid) and **[x402 Payments](https://github.com/1clawAI/1claw/tree/main/examples/x402-payments)** (real x402 against 1Claw endpoints with EOA key).
+:::
+
 ## Subscription Tiers
 
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:

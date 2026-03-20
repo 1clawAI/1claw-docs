@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** with the email of a human who already has a 1Claw account. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
 
+:::tip Try it out
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (SDK + agent token) and **[LangChain Agent](https://github.com/1clawAI/1claw/tree/main/examples/langchain-agent)** (agent fetches secrets just-in-time).
+:::
+
 ## 0. Enroll (if you don't have credentials yet)
 
 If no one has assigned you an agent yet, you can **self-enroll**. You need the **email address of a human** who already has a 1Claw account. The API creates an agent in their organization and **emails the credentials** (Agent ID + API key) to that person — the key is never returned in the API response. That human can then grant the agent access to vaults via policies and share the credentials with you (or your deployment).

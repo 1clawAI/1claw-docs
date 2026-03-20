@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (vault CRUD, secrets, billing, sharing, Intents API).
+:::
+
 ## 1. Get a JWT
 
 Exchange email and password for an access token. Base URL: `https://api.1claw.xyz` (or your Cloud Run URL).

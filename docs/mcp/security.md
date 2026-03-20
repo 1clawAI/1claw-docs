@@ -10,6 +10,10 @@ sidebar_position: 3
 
 The 1claw MCP server is designed around the principle that **secrets should exist in an agent's context for the shortest possible time**.
 
+:::tip Try it out
+Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw/tree/main/examples/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw/tree/main/examples/shroud-security)** (MCP threat detection in local-only mode).
+:::
+
 ### Secret value handling
 
 - **Values are never logged.** When `get_secret` is called, only `"secret accessed: <path>"` appears in the MCP server logs. The actual value is never written to disk or stdout.

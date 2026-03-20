@@ -12,6 +12,10 @@ The official TypeScript SDK provides full API parity with the 1Claw REST API. It
 
 **API contract:** The SDK is built against the **OpenAPI 3.1** spec. Request/response types are generated from it. The spec is published as [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec) (npm) for codegen or custom clients. See [API reference](/docs/reference/api-reference) for the endpoint list.
 
+:::tip Try it out
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (vault, secrets, billing, sharing) and **[Next.js Agent Secret](https://github.com/1clawAI/1claw/tree/main/examples/nextjs-agent-secret)** (chat app with server-side vault access).
+:::
+
 ## Install
 
 ```bash
