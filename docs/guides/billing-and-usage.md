@@ -300,13 +300,7 @@ Organizations can opt into **LLM token billing** to automatically meter and bill
 1. **Enable in Dashboard**: Visit **Settings → Billing → LLM Token Billing** and click "Enable LLM Token Billing"
 2. **Stripe Checkout**: Complete the Stripe checkout for the LLM pricing plan
 3. **Automatic Metering**: When enabled, Shroud routes eligible LLM requests through Stripe AI Gateway
-4. **Billing**: Token costs are calculated at provider rates plus a 20% platform markup, billed at the end of each billing cycle
-
-### Pricing
-
-- **Provider rates**: Matches OpenAI, Anthropic, and Google model pricing
-- **Platform markup**: 20% added to provider rates
-- **Billing cycle**: Monthly, billed at period end
+4. **Billing**: Charges follow your Stripe pricing plan and billing cycle; see invoices and the Stripe customer portal for amounts and usage detail.
 
 ### Supported Providers
 
