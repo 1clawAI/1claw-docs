@@ -9,7 +9,7 @@ sidebar_position: 4
 The 1claw MCP server gives AI agents (Claude, Cursor, GPT, and others) secure, just-in-time access to secrets stored in your vault via the [Model Context Protocol](https://modelcontextprotocol.io).
 
 :::tip Try it out
-Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw/tree/main/examples/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw/tree/main/examples/langchain-agent)** (LangChain + 1Claw MCP tools).
+Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (LangChain + 1Claw MCP tools).
 :::
 
 ## Quick start (hosted)

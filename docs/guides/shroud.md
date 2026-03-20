@@ -11,7 +11,7 @@ tags: [shroud, security, threat-detection]
 Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
 
 :::tip Try it out
-Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw/tree/main/examples/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw/tree/main/examples/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw/tree/main/examples/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw/tree/main/examples/local-inspect)** (same detections offline, no account).
+Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
 :::
 
 ---

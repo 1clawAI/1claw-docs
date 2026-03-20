@@ -11,7 +11,7 @@ sidebar_position: 3
 The 1claw MCP server is designed around the principle that **secrets should exist in an agent's context for the shortest possible time**.
 
 :::tip Try it out
-Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw/tree/main/examples/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw/tree/main/examples/shroud-security)** (MCP threat detection in local-only mode).
+Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (MCP threat detection in local-only mode).
 :::
 
 ### Secret value handling

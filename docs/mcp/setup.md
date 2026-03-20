@@ -19,7 +19,7 @@ Before configuring the MCP server, you need:
 4. **A policy** — Grant the agent read access to the secret paths it needs
 
 :::tip Try it out
-Try out the example in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw/tree/main/examples/fastmcp-tool-server)** (custom MCP server with domain tools; stdio or HTTP).
+Try out the example in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools; stdio or HTTP).
 :::
 
 ## Option 1: Hosted server (recommended)

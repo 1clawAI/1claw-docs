@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
 :::tip Try it out
-Try out the example in this repo: **[Transaction Simulation](https://github.com/1clawAI/1claw/tree/main/examples/tx-simulation)** (guardrails + Tenderly simulation) and **[Shroud Demo](https://github.com/1clawAI/1claw/tree/main/examples/shroud-demo)** (Intents API via Shroud TEE).
+Try out the example in this repo: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation) and **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE).
 :::
 
 ## Quickstart: Your first transaction (~5 min)

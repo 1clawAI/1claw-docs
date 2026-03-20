@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 1Claw supports sharing individual secrets with other users, agents, or external collaborators via email. Shares are time-limited, access-counted, and can be revoked at any time.
 
 :::tip Try it out
-Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw/tree/main/examples/basic)** (includes sharing scripts).
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (includes sharing scripts).
 :::
 
 ## Share types
