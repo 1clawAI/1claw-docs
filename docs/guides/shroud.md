@@ -118,6 +118,96 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 - **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
+### Configuring the LLM Model
+
+You can specify which model to use in two ways:
+
+#### 1. Per-Request Model Selection
+
+**Option A: Header** (recommended for some providers)
+```bash
+X-Shroud-Model: gpt-4o-mini
+```
+
+**Option B: Request Body** (for OpenAI-style providers)
+```json
+{
+  "model": "gpt-4o-mini",
+  "messages": [...]
+}
+```
+
+**Example:**
+```typescript
+const res = await fetch("https://shroud.1claw.xyz/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "openai",
+    "X-Shroud-Model": "gpt-4o-mini",  // ← Model in header
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    messages: [{ role: "user", content: "Hello" }],
+  }),
+});
+```
+
+Or specify in the body:
+```typescript
+body: JSON.stringify({
+  model: "gpt-4o-mini",  // ← Model in body
+  messages: [{ role: "user", content: "Hello" }],
+})
+```
+
+#### 2. Per-Agent Model Restrictions
+
+Configure which models an agent is allowed (or denied) to use via the agent's `shroud_config`:
+
+**Via Dashboard:**
+- Navigate to **Agents → [Agent Name] → Shroud LLM Proxy** card
+- Set `allowed_models` (whitelist) or `denied_models` (blacklist)
+
+**Via API:**
+```bash
+PATCH /v1/agents/{id}
+{
+  "shroud_config": {
+    "allowed_models": ["gpt-4o-mini", "claude-sonnet-4"],
+    "denied_models": ["gpt-3.5-turbo"]
+  }
+}
+```
+
+**Via SDK:**
+```typescript
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "claude-sonnet-4"],
+    denied_models: ["gpt-3.5-turbo"],
+  },
+});
+```
+
+**How it works:**
+1. User specifies the model in the request (via header or body)
+2. Shroud checks the agent's `shroud_config`:
+   - If `allowed_models` is set and the model is **not** in the list → **403 Forbidden**
+   - If the model is in `denied_models` → **403 Forbidden**
+   - Otherwise → request proceeds
+
+**Example: Restrict agent to only use cost-effective models**
+```typescript
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "gemini-2.0-flash"],  // Only allow cheaper models
+  },
+});
+```
+
+**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](../billing-and-usage#llm-token-billing-optional-add-on) for details.
+
 ### Example: cURL
 
 ```bash
