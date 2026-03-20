@@ -291,6 +291,73 @@ Check `X-Quota-Warning` and `X-RateLimit-Requests-Percent` after each API call t
 
 Prepaid credits expire **12 months** after purchase. The system sends automated email reminders at 30 days and 7 days before expiry. A nightly job at 00:05 UTC processes expired top-ups. Credits are consumed in FIFO order (oldest first), so topping up regularly ensures you always have fresh credits.
 
+## LLM Token Billing (Optional Add-On)
+
+Organizations can opt into **LLM token billing** to automatically meter and bill agent LLM usage through Stripe AI Gateway. This is a separate subscription add-on that works alongside your main tier subscription.
+
+### How It Works
+
+1. **Enable in Dashboard**: Visit **Settings → Billing → LLM Token Billing** and click "Enable LLM Token Billing"
+2. **Stripe Checkout**: Complete the Stripe checkout for the LLM pricing plan
+3. **Automatic Metering**: When enabled, Shroud routes eligible LLM requests through Stripe AI Gateway
+4. **Billing**: Token costs are calculated at provider rates plus a 20% platform markup, billed at the end of each billing cycle
+
+### Pricing
+
+- **Provider rates**: Matches OpenAI, Anthropic, and Google model pricing
+- **Platform markup**: 20% added to provider rates
+- **Billing cycle**: Monthly, billed at period end
+
+### Supported Providers
+
+- OpenAI (GPT-4, GPT-3.5, etc.)
+- Anthropic (Claude models)
+- Google (Gemini models)
+
+### Enable/Disable
+
+- **Enable**: Click "Enable LLM Token Billing" → Complete Stripe checkout
+- **Disable**: Click "Disable" → Cancels the subscription immediately
+- **Re-enable**: You can toggle LLM billing on or off at any time via the dashboard
+
+Once enabled, LLM billing remains active until you disable it. Disabling cancels the subscription and stops metered billing for future requests.
+
+### Viewing Usage and Invoices
+
+- **Stripe Portal**: Click "View invoices in your Stripe portal" to see detailed usage, invoices, and payment history
+- **Usage tracking**: Stripe AI Gateway automatically tracks token usage per request
+- **Billing**: Charges appear on your Stripe invoice at the end of each billing period
+
+### Requirements
+
+- Active Stripe customer (created automatically when you enable)
+- Shroud proxy enabled for agents (LLM requests must go through `shroud.1claw.xyz`)
+- Agent JWT must include `llm_token_billing: true` and `stripe_customer_id` claims
+
+### API Endpoints
+
+```bash
+# Check LLM billing status
+curl -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing
+
+# Enable (returns Stripe checkout URL)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing/subscribe
+
+# Disable
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing/disable
+```
+
+Response format:
+```json
+{
+  "enabled": true,
+  "subscription_status": "active"
+}
+```
+
 ## MCP and Billing
 
 MCP tool calls go through the same vault API and count toward the same usage quota. When an agent calls `get_secret` via MCP, that's one API request.
