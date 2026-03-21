@@ -85,7 +85,7 @@ The proxy listens on `http://127.0.0.1:11434` and prints editor configuration in
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--agent-key <id:key>` or `ocv_...` | *(required)* | `agent_id:api_key`, or key-only `ocv_...` (resolved at startup) |
-| `--port <n>` | `11434` | Local port |
+| `--port <n>` | `11434` | Local port; if busy, tries up to 32 higher ports; `0` = OS-assigned |
 | `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
 | `--shroud-url <url>` | `https://shroud.1claw.xyz` | Override Shroud endpoint |
 | `--verbose` | off | Log each request with timestamp, method, provider, and status |
