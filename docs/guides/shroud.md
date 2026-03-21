@@ -270,42 +270,34 @@ const data = await res.json();
 
 ## IDE Integration (`1claw proxy`)
 
-Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts standard OpenAI-compatible requests and injects Shroud headers before forwarding.
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+
+**→ Step-by-step for Cursor, Claude Code, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/guides/ide-shroud-setup).
 
 ### Quick start
 
 ```bash
-npm install -g @1claw/cli    # or: npx @1claw/cli proxy ...
-1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
-# or key-only:
-1claw proxy --agent-key "ocv_YOUR_KEY"
+export ONECLAW_AGENT_API_KEY="ocv_..."   # same as MCP / examples
+npx @1claw/cli@latest proxy
+# or: 1claw proxy --agent-key "AGENT_ID:ocv_..." 
 ```
 
-Then in your editor, set the OpenAI base URL to `http://127.0.0.1:11434/v1` and any API key value (e.g. `1claw`). The proxy auto-detects the provider from the model name and streams responses back.
-
-### Supported editors
-
-| Editor | Configuration |
-|--------|--------------|
-| **Cursor** | Settings → Models → OpenAI: Base URL = `http://127.0.0.1:11434/v1` |
-| **VS Code + Continue** | `~/.continue/config.json` → `apiBase: "http://127.0.0.1:11434/v1"` |
-| **Zed** | `settings.json` → `language_models.openai.api_url: "http://127.0.0.1:11434/v1"` |
-| **Any OpenAI client** | Set base URL to `http://127.0.0.1:11434/v1` |
+The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and OpenAI-compatible extensions. It picks a **free port** if `11434` is busy (e.g. Ollama).
 
 ### What the proxy does
 
-1. Accepts `POST /v1/chat/completions` (or any path) from your editor
-2. Ignores the `Authorization` header your editor sends
-3. Injects `X-Shroud-Agent-Key` from `--agent-key`
-4. Auto-detects `X-Shroud-Provider` from the `model` field (`gpt-*` → openai, `claude-*` → anthropic, `gemini-*` → google, etc.)
-5. Forwards to `https://shroud.1claw.xyz` with full inspection, secret redaction, and policy enforcement
-6. Streams the response back to the editor
+1. Accepts `POST /v1/chat/completions` and **`/v1/messages`** (Claude Code)
+2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
+3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
+5. Forwards to `https://shroud.1claw.xyz` with inspection, redaction, and policy enforcement
+6. Streams the response back
 
 ### LLM Token Billing
 
-When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org. Your developers don't need individual OpenAI/Anthropic/Google keys.
+When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org.
 
-See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for full proxy options and editor configuration details.
+See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for all proxy flags.
 
 ---
 

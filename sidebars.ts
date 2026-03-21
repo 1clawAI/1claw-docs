@@ -116,7 +116,7 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Shroud",
             link: { type: "doc", id: "guides/shroud" },
-            items: [],
+            items: ["guides/ide-shroud-setup"],
         },
         {
             type: "category",
