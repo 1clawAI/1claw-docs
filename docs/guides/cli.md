@@ -74,15 +74,17 @@ Start a local OpenAI-compatible server that forwards all requests through Shroud
 
 ```bash
 1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
+# or key-only (same as SDK / MCP — Vault resolves agent by key prefix):
+1claw proxy --agent-key "ocv_YOUR_KEY"
 ```
 
-The proxy listens on `http://127.0.0.1:11434` and prints editor configuration instructions on startup.
+The proxy listens on `http://127.0.0.1:11434` and prints editor configuration instructions on startup. Key-only mode calls `POST /v1/auth/agent-token` once at startup (uses `ONECLAW_API_URL`, default `https://api.1claw.xyz`).
 
 ### Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--agent-key <id:key>` | *(required)* | Agent credentials as `agent_id:api_key` |
+| `--agent-key <id:key>` or `ocv_...` | *(required)* | `agent_id:api_key`, or key-only `ocv_...` (resolved at startup) |
 | `--port <n>` | `11434` | Local port |
 | `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
 | `--shroud-url <url>` | `https://shroud.1claw.xyz` | Override Shroud endpoint |

@@ -277,6 +277,8 @@ Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most
 ```bash
 npm install -g @1claw/cli    # or: npx @1claw/cli proxy ...
 1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
+# or key-only:
+1claw proxy --agent-key "ocv_YOUR_KEY"
 ```
 
 Then in your editor, set the OpenAI base URL to `http://127.0.0.1:11434/v1` and any API key value (e.g. `1claw`). The proxy auto-detects the provider from the model name and streams responses back.
