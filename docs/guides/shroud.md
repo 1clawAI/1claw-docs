@@ -268,6 +268,45 @@ const data = await res.json();
 
 ---
 
+## IDE Integration (`1claw proxy`)
+
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts standard OpenAI-compatible requests and injects Shroud headers before forwarding.
+
+### Quick start
+
+```bash
+npm install -g @1claw/cli    # or: npx @1claw/cli proxy ...
+1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
+```
+
+Then in your editor, set the OpenAI base URL to `http://127.0.0.1:11434/v1` and any API key value (e.g. `1claw`). The proxy auto-detects the provider from the model name and streams responses back.
+
+### Supported editors
+
+| Editor | Configuration |
+|--------|--------------|
+| **Cursor** | Settings → Models → OpenAI: Base URL = `http://127.0.0.1:11434/v1` |
+| **VS Code + Continue** | `~/.continue/config.json` → `apiBase: "http://127.0.0.1:11434/v1"` |
+| **Zed** | `settings.json` → `language_models.openai.api_url: "http://127.0.0.1:11434/v1"` |
+| **Any OpenAI client** | Set base URL to `http://127.0.0.1:11434/v1` |
+
+### What the proxy does
+
+1. Accepts `POST /v1/chat/completions` (or any path) from your editor
+2. Ignores the `Authorization` header your editor sends
+3. Injects `X-Shroud-Agent-Key` from `--agent-key`
+4. Auto-detects `X-Shroud-Provider` from the `model` field (`gpt-*` → openai, `claude-*` → anthropic, `gemini-*` → google, etc.)
+5. Forwards to `https://shroud.1claw.xyz` with full inspection, secret redaction, and policy enforcement
+6. Streams the response back to the editor
+
+### LLM Token Billing
+
+When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org. Your developers don't need individual OpenAI/Anthropic/Google keys.
+
+See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for full proxy options and editor configuration details.
+
+---
+
 ## Why This Matters
 
 AI agents face unique security challenges that traditional security tools don't address:

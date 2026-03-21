@@ -64,6 +64,104 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Audit**    | `audit list`                                                                                   |
 | **MFA**      | `mfa status`, `mfa enable`, `mfa disable`                                                      |
 | **Config**   | `config list`, `config set`, `config get`                                                      |
+| **Proxy**    | `proxy` — local OpenAI-compatible proxy that routes through [Shroud](/docs/guides/shroud)       |
+
+## LLM Proxy (`1claw proxy`)
+
+Start a local OpenAI-compatible server that forwards all requests through Shroud. Use this to route LLM traffic from **Cursor**, **VS Code + Continue**, **Zed**, or any tool that supports a custom OpenAI base URL — with full Shroud inspection, secret redaction, and optional [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+### Quick start
+
+```bash
+1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
+```
+
+The proxy listens on `http://127.0.0.1:11434` and prints editor configuration instructions on startup.
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--agent-key <id:key>` | *(required)* | Agent credentials as `agent_id:api_key` |
+| `--port <n>` | `11434` | Local port |
+| `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
+| `--shroud-url <url>` | `https://shroud.1claw.xyz` | Override Shroud endpoint |
+| `--verbose` | off | Log each request with timestamp, method, provider, and status |
+
+### Auto-detection
+
+The proxy detects the provider from the `model` field in the request body:
+
+| Model prefix | Provider |
+|-------------|----------|
+| `gpt-*`, `o1*`, `o3*`, `o4*`, `chatgpt-*` | `openai` |
+| `claude-*` | `anthropic` |
+| `gemini-*` | `google` |
+| `mistral-*` | `mistral` |
+| `command-*` | `cohere` |
+
+Override with `--provider` if needed.
+
+### Editor setup
+
+#### Cursor
+
+1. Run the proxy:
+   ```bash
+   1claw proxy --agent-key "AGENT_ID:ocv_..."
+   ```
+2. In Cursor **Settings → Models → OpenAI**:
+   - **Base URL**: `http://127.0.0.1:11434/v1`
+   - **API Key**: `1claw` (any value — the proxy ignores it)
+
+#### VS Code + Continue
+
+Add to `~/.continue/config.json`:
+
+```json
+{
+  "models": [{
+    "title": "1Claw Shroud",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "apiBase": "http://127.0.0.1:11434/v1",
+    "apiKey": "1claw"
+  }]
+}
+```
+
+#### Any OpenAI-compatible client
+
+Point the base URL to `http://127.0.0.1:11434/v1`. The proxy accepts any `Authorization` header (or none) and replaces it with the Shroud agent credentials.
+
+### How it works
+
+```
+Editor (Cursor, VS Code, etc.)
+  │  POST /v1/chat/completions
+  │  Authorization: Bearer <ignored>
+  ▼
+1claw proxy (localhost:11434)
+  │  Replaces auth with X-Shroud-Agent-Key
+  │  Auto-detects X-Shroud-Provider from model name
+  │  Forwards request, streams response back
+  ▼
+shroud.1claw.xyz (TEE)
+  │  Auth → Inspect → Redact → Route
+  ▼
+LLM provider (or Stripe AI Gateway if token billing enabled)
+```
+
+### LLM Token Billing
+
+When your org has **LLM Token Billing** enabled (Settings → Billing), the proxy works without any provider API keys. Shroud routes through Stripe AI Gateway and bills token usage to your org automatically. See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+### Built-in endpoints
+
+| Path | Description |
+|------|-------------|
+| `/health` | Health check (`{"status":"ok","proxy":"1claw"}`) |
+| `/v1/models` | Returns available models (editors probe this on startup) |
 
 ## CI/CD examples
 
