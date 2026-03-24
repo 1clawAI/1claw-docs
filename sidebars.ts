@@ -253,24 +253,6 @@ const sidebars: SidebarsConfig = {
         },
         {
             type: "category",
-            label: "Shroud",
-            link: { type: "doc", id: "guides/shroud" },
-            items: [],
-        },
-        {
-            type: "category",
-            label: "Intents",
-            link: { type: "doc", id: "guides/intents-api" },
-            items: [],
-        },
-        {
-            type: "category",
-            label: "Treasury",
-            link: { type: "doc", id: "guides/treasury" },
-            items: [],
-        },
-        {
-            type: "category",
             label: "SDKs",
             link: { type: "doc", id: "sdks/overview" },
             items: ["sdks/javascript", "sdks/python", "sdks/curl-examples"],

@@ -57,6 +57,7 @@ const config: Config = {
                 { to: "/docs/human-api/overview", label: "Vault", position: "left" },
                 { to: "/docs/guides/shroud", label: "Shroud", position: "left" },
                 { to: "/docs/guides/intents-api", label: "Intents", position: "left" },
+                { to: "/docs/guides/treasury", label: "Treasury", position: "left" },
                 { type: "search", position: "right" },
                 {
                     href: "https://github.com/1clawAI",
