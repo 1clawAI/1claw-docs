@@ -348,13 +348,34 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.xyz/v1/billing/llm-token-billing/disable
 ```
 
-Response format:
+Response shape (fields vary by org and Stripe data availability):
+
 ```json
 {
   "enabled": true,
-  "subscription_status": "active"
+  "subscription_status": "active",
+  "credit_balance": {
+    "available_cents": 0,
+    "ledger_cents": 0,
+    "used_cents": 0,
+    "currency": "usd"
+  },
+  "billing_cycle_usage": {
+    "accrued_usage_cents": 0,
+    "currency": "usd",
+    "metered_lines": [
+      {
+        "description": "Metered usage",
+        "amount_cents": 0,
+        "quantity": null,
+        "price_nickname": null
+      }
+    ]
+  }
 }
 ```
+
+`credit_balance` and `billing_cycle_usage` are omitted when Stripe does not return them. The dashboard (**Settings → Billing**) shows the same provider list and usage detail when present.
 
 ## MCP and Billing
 

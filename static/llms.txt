@@ -84,6 +84,8 @@ Secrets can be shared between users and agents via links (with optional passphra
 ### Shroud (TEE Proxy)
 Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits between AI agents and LLM providers, performing real-time security inspection of all traffic. Supports OpenAI, Anthropic, Google Gemini, Mistral, and Cohere. Also handles transaction signing with keys that never leave the TEE.
 
+**LLM routing:** Authenticated OpenAI-compatible LLM requests on Shroud require `X-Shroud-Provider` (e.g. `openai`, `anthropic`, `google`); a missing header returns **400**. With LLM token billing enabled, eligible traffic can use Stripe AI Gateway (see `GET /v1/billing/llm-token-billing`).
+
 **Security inspection pipeline** (in order):
 1. **Unicode normalization** — Strips zero-width characters, normalizes homoglyphs (Cyrillic а → Latin a)
 2. **Hidden content stripping** — Removes markdown comments, HTML tags
@@ -132,6 +134,8 @@ Key endpoints:
 - `POST /v1/secrets/{id}/share` — Share a secret (agents use recipient_type: "creator" to share with their human)
 - `GET /v1/audit/events` — Query audit log
 - `GET /v1/billing/subscription` — Billing status
+- `GET /v1/billing/llm-token-billing` — LLM add-on status; optional `credit_balance`, `billing_cycle_usage.metered_lines` from Stripe upcoming-invoice preview
+- `POST /v1/billing/llm-token-billing/subscribe` — Stripe Checkout for LLM add-on; `POST .../disable` to cancel
 - `GET /v1/chains` — Supported blockchains
 - `GET/POST /v1/treasury` — List/create treasuries
 - `GET /v1/treasury/{id}` — Get treasury (signers, access-request sub-routes)
