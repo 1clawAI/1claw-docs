@@ -210,7 +210,7 @@ await client.agents.update(agentId, {
 });
 ```
 
-**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](../billing-and-usage#llm-token-billing-optional-add-on) for details.
+**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) for details.
 
 ### Example: cURL
 

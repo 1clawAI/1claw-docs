@@ -12,19 +12,23 @@ sidebar_position: 0
 Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
 :::
 
-## Three products
+## Products
 
-1claw is built around three products that work together:
+1claw is built around these products (they work together):
 
 | Product | What it does | Docs |
 |--------|----------------|------|
 | **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
 | **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
 | **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
+| **Treasury** | Organization Safe multisigs—signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access.
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
 - **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
+- **Treasury** tracks onchain multisig treasuries and lets agents request access for human approval.
+
+**Task walkthroughs** (golden paths, CLI, MCP, Scaffold-Agent, billing, and more) live under **[Guides](/docs/category/guides)** in the sidebar.
 
 ## Architecture
 

@@ -1,125 +1,32 @@
 ---
-title: Treasury
-description: Multi-sig treasury wallets (Safe) for humans and agents. Create Safes, add signers, and manage agent access requests.
-sidebar_label: Treasury
-sidebar_position: 2
-tags: [treasury, safe, multisig, agents, evm]
+title: Treasury (Safe multisigs)
+description: Manage organization treasuries backed by Gnosis Safe–style multisigs—signers, thresholds, and agent access requests—via the API and dashboard.
+sidebar_label: Treasury (Safe multisigs)
+sidebar_position: 0
+tags: [treasury, safe, multisig]
 ---
 
-# Treasury
+# Treasury (Safe multisigs)
 
-Treasury lets you manage **Safe multisig wallets** for your organization. Humans use CDP embedded wallets; agents have EOA (externally-owned account) addresses. You can create treasuries, add signers (users or agents), and control which agents can request access to spend from a Safe.
+**Treasury** lets your org track **Safe multisig** treasuries: name, chain, Safe address, signer list, and threshold. Humans manage treasuries in the dashboard; **agents** can **request access**, and owners can **approve** or **deny** those requests.
 
----
+Use this when you need **shared onchain custody** metadata and **gated agent access** to treasury context—not raw private keys in agent prompts.
 
-## What is Treasury?
+## What you can do
 
-- **Treasuries** are Safe multisig wallets. Each treasury has a name, chain, threshold, and a list of signers.
-- **Signers** can be users (CDP embedded wallets) or agents (EOA addresses). Agents must have an `evm_address` before they can be added as signers or request access.
-- **Access requests**: Agents request access to a treasury; humans approve or deny. This workflow ensures humans retain control over which agents can transact from shared funds.
+- **Create** a treasury with **`POST /v1/treasury`** (name, `safe_address`, optional chain / `chain_id`, threshold, signers).  
+- **List** treasuries: **`GET /v1/treasury`**.  
+- **Get / update / delete** a treasury: **`GET`**, **`PATCH`**, **`DELETE /v1/treasury/{id}`**.  
+- **Add or remove signers** on a treasury.  
+- **Access requests:** agent **`POST .../access-requests`**, human **`GET .../access-requests`**, **`.../approve`**, **`.../deny`**.
 
----
-
-## Agent EVM Addresses
-
-Agents have two address types:
-
-| Type | Description |
-|------|-------------|
-| **EOA** (`evm_address`) | Externally-owned account. Required for treasury signer and access requests. |
-| **Smart Account** | ERC-4337 Safe 1.4.1 deployed via permissionless.js + Pimlico. Optional; used for human-like smart account flows. |
-
-Agents receive an EOA when created or when identity keys are rotated. The `evm_address` is derived from the agent's secp256k1 key and is required before an agent can request treasury access.
-
----
-
-## Smart Account Deployment
-
-Humans can deploy **smart accounts** (Safe 1.4.1) for an agent via the Dashboard. This uses ERC-4337 account abstraction with Pimlico as the bundler. **Multi-chain:** one Safe per chain; the agent has a single EOA signer used for all chains. After the first deploy, use **Deploy on another chain** to add Safes on other networks. The API returns `smart_accounts[]` on `GET /v1/agents/{id}`; add a Safe for a chain with `POST /v1/agents/{id}/smart-accounts` (body: `chain`, `chain_id`, `safe_address`, optional `nonce`, `init_data`). Legacy fields `smart_account_address`, `smart_account_chain`, and `smart_account_chain_id` remain for backward compatibility.
-
----
-
-## Access Request Workflow
-
-1. **Agent requests access**: `POST /v1/treasury/{treasury_id}/access-requests` (agent auth only). The agent must have an `evm_address`.
-2. **Human lists requests**: `GET /v1/treasury/{treasury_id}/access-requests` (user auth).
-3. **Human approves or denies**: `POST /v1/treasury/{treasury_id}/access-requests/{request_id}/approve` or `.../deny` (user auth).
-
-Only agents can create access requests; only users can approve or deny them.
-
----
-
-## API Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/v1/treasury` | User | Create a treasury (Safe multisig) |
-| GET | `/v1/treasury` | User | List treasuries |
-| GET | `/v1/treasury/{treasury_id}` | User | Get treasury details |
-| PATCH | `/v1/treasury/{treasury_id}` | User | Update name and/or threshold |
-| DELETE | `/v1/treasury/{treasury_id}` | User | Delete treasury and signers |
-| POST | `/v1/treasury/{treasury_id}/signers` | User | Add a signer (user or agent) |
-| DELETE | `/v1/treasury/{treasury_id}/signers/{signer_id}` | User | Remove a signer |
-| POST | `/v1/treasury/{treasury_id}/access-requests` | Agent | Request access (agent-only) |
-| GET | `/v1/treasury/{treasury_id}/access-requests` | User | List access requests (response: `requests[]`) |
-| POST | `/v1/treasury/{treasury_id}/access-requests/{request_id}/approve` | User | Approve an access request |
-| POST | `/v1/treasury/{treasury_id}/access-requests/{request_id}/deny` | User | Deny an access request |
-
----
-
-## Create a Treasury
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Team Safe",
-    "chain": "base",
-    "chain_id": 8453,
-    "threshold": 2,
-    "safe_address": "0x..."
-  }'
-```
-
-- `name`: Display name for the treasury.
-- `chain`: Chain name (e.g. `base`, `ethereum`, `sepolia`).
-- `chain_id`: Chain ID (e.g. 8453 for Base).
-- `threshold`: Number of signatures required for a transaction.
-- `safe_address`: **Required.** Deployed Safe contract address (`0x` + 40 hex). Register the treasury in 1Claw after deploying the Safe (dashboard or your own flow).
-
----
-
-## Add a Signer
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/{treasury_id}/signers" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "signer_type": "agent",
-    "signer_id": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-- `signer_type`: `user` or `agent`.
-- `signer_id`: User UUID or agent UUID. For agents, the agent must have an `evm_address`.
-
----
+Full REST details live in the **[API reference](/docs/reference/api-reference)** (search for `treasury`).
 
 ## Dashboard
 
-Navigate to **Treasury** (`/treasury`) in the Dashboard to:
+In the app, open **Treasury** (`/treasury`) to create treasuries, edit signers and threshold, and handle access requests. See also **[Intents API](/docs/guides/intents-api)** for agent transaction signing and smart accounts, which complement treasury workflows.
 
-- View your CDP embedded wallet
-- Create and list Safe treasuries
-- Deploy smart accounts for agents
-- Add or remove signers
-- View and approve/deny agent access requests
+## Related
 
----
-
-## See Also
-
-- [Intents API](/docs/guides/intents-api) — How agents sign transactions
-- [API Reference](/docs/reference/api-reference#treasury) — Full endpoint list
+- [Intents API](/docs/guides/intents-api) — signing and guardrails  
+- [Human API overview](/docs/human-api/overview) — authentication for treasury endpoints  

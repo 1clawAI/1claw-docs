@@ -1,8 +1,7 @@
 import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 /**
- * Docs are organized by product: Vault (secrets + APIs + MCP), Shroud (LLM proxy), Intents (transaction signing).
- * This makes it easier to find what you need by product.
+ * Docs: Concepts, Guides (how-tos), product areas (Vault, Shroud, Intents, Treasury), SDKs, Security, Reference.
  */
 const sidebars: SidebarsConfig = {
     docs: [
@@ -17,6 +16,170 @@ const sidebars: SidebarsConfig = {
                 "concepts/secrets-model",
                 "concepts/human-vs-agent-api",
                 "concepts/trust-model",
+            ],
+        },
+        {
+            type: "category",
+            label: "Guides",
+            link: {
+                type: "generated-index",
+                title: "Guides",
+                description:
+                    "Task-focused walkthroughs: when to use each guide is spelled out in the sidebar title.",
+                slug: "/category/guides",
+            },
+            items: [
+                {
+                    type: "category",
+                    label: "Access & policies",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/give-agent-access",
+                            label: "Golden path — vault, secret, policy, agent fetch",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/securing-agent-access",
+                            label: "Reduce blast radius — vault binding, scopes, TTL",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/scoped-permissions",
+                            label: "Fine-grained access — policies and API key scopes",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/revoking-access",
+                            label: "Offboard — revoke policies and tighten access",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Secrets & encryption",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/rotating-secrets",
+                            label: "Rotate credentials safely in the vault",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/sharing-secrets",
+                            label: "Share with people or agents (inbound / outbound)",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/customer-managed-keys",
+                            label: "CMEK — extra client-side encryption layer",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Agents & scale",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/agent-self-onboarding",
+                            label: "Self-enrollment — agents request access via email flow",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/agent-fleet-management",
+                            label: "Many agents — environments, keys, and operations",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Tools, CLI & integrations",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/mcp-integration",
+                            label: "MCP — Claude Desktop and compatible clients",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/cli",
+                            label: "CLI — CI/CD, env pull/push, full API",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/openclaw",
+                            label: "OpenClaw — Cursor / editor plugin",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/scaffold-agent",
+                            label: "Scaffold-Agent — monorepo for onchain AI agents",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "LLM, transactions & treasury",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/shroud",
+                            label: "Shroud — LLM proxy, redaction, threat detection",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/ide-shroud-setup",
+                            label: "IDEs — local proxy for Cursor, Copilot, Claude Code",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/intents-api",
+                            label: "Intents API — sign txs without raw private keys",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/crypto-proxy",
+                            label: "Note: Crypto proxy renamed → Intents API",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/treasury",
+                            label: "Treasury — Safe multisigs & access requests",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Billing, ops & compliance",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/billing-and-usage",
+                            label: "Billing — tiers, credits, x402, LLM token add-on",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/deploying-updates",
+                            label: "Ship changes — agents, policies, rotation",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/audit-and-compliance",
+                            label: "Audit log — evidence for reviews and compliance",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/email-notifications",
+                            label: "Email — enroll, shares, billing alerts",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/troubleshooting",
+                            label: "Troubleshooting — common API and auth issues",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -86,37 +249,13 @@ const sidebars: SidebarsConfig = {
                     link: { type: "doc", id: "mcp/overview" },
                     items: ["mcp/setup", "mcp/tools", "mcp/security", "mcp/deployment"],
                 },
-                {
-                    type: "category",
-                    label: "Vault guides",
-                    items: [
-                        "guides/give-agent-access",
-                        "guides/securing-agent-access",
-                        "guides/scoped-permissions",
-                        "guides/revoking-access",
-                        "guides/rotating-secrets",
-                        "guides/customer-managed-keys",
-                        "guides/sharing-secrets",
-                        "guides/agent-self-onboarding",
-                        "guides/agent-fleet-management",
-                        "guides/crypto-proxy",
-                        "guides/mcp-integration",
-                        "guides/cli",
-                        "guides/openclaw",
-                        "guides/email-notifications",
-                        "guides/billing-and-usage",
-                        "guides/deploying-updates",
-                        "guides/audit-and-compliance",
-                        "guides/troubleshooting",
-                    ],
-                },
             ],
         },
         {
             type: "category",
             label: "Shroud",
             link: { type: "doc", id: "guides/shroud" },
-            items: ["guides/ide-shroud-setup"],
+            items: [],
         },
         {
             type: "category",

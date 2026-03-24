@@ -340,6 +340,10 @@ Same as Human API: `https://api.1claw.xyz` (or your Cloud Run URL).
 
 Agents typically **do not** create vaults, register other agents, or manage policies; those operations are for humans. Access is determined entirely by policies created by humans.
 
+:::tip Try it out
+Try out the examples in this repo: **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** and **[Next.js Agent Secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret)** (agent access to vault secrets).
+:::
+
 ## Next
 
 - [Agent authentication](/docs/agent-api/authentication) — Request/response for agent-token.
@@ -1012,6 +1016,10 @@ import TabItem from '@theme/TabItem';
 
 This guide covers the full journey from an agent's perspective: self-enroll with zero credentials, receive access from your human, create and read secrets, and share them back.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (includes enrollment and sharing). The [examples README](https://github.com/1clawAI/1claw-examples) lists all runnable demos.
+:::
+
 ## Overview
 
 ```
@@ -1348,6 +1356,10 @@ sidebar_position: 5
 
 1claw tracks every API request and offers flexible billing through subscription tiers with optional prepaid credits or on-chain micropayments for overages.
 
+:::tip Try it out
+Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI/1claw-examples/tree/main/ampersend-x402)** (x402 with Ampersend + MCP/HTTP/hybrid) and **[x402 Payments](https://github.com/1clawAI/1claw-examples/tree/main/x402-payments)** (real x402 against 1Claw endpoints with EOA key).
+:::
+
 ## Subscription Tiers
 
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:
@@ -1631,6 +1643,67 @@ Check `X-Quota-Warning` and `X-RateLimit-Requests-Percent` after each API call t
 
 Prepaid credits expire **12 months** after purchase. The system sends automated email reminders at 30 days and 7 days before expiry. A nightly job at 00:05 UTC processes expired top-ups. Credits are consumed in FIFO order (oldest first), so topping up regularly ensures you always have fresh credits.
 
+## LLM Token Billing (Optional Add-On)
+
+Organizations can opt into **LLM token billing** to automatically meter and bill agent LLM usage through Stripe AI Gateway. This is a separate subscription add-on that works alongside your main tier subscription.
+
+### How It Works
+
+1. **Enable in Dashboard**: Visit **Settings → Billing → LLM Token Billing** and click "Enable LLM Token Billing"
+2. **Stripe Checkout**: Complete the Stripe checkout for the LLM pricing plan
+3. **Automatic Metering**: When enabled, Shroud routes eligible LLM requests through Stripe AI Gateway
+4. **Billing**: Charges follow your Stripe pricing plan and billing cycle; see invoices and the Stripe customer portal for amounts and usage detail.
+
+### Supported Providers
+
+- OpenAI (GPT-4, GPT-3.5, etc.)
+- Anthropic (Claude models)
+- Google (Gemini models)
+
+### Enable/Disable
+
+- **Enable**: Click "Enable LLM Token Billing" → Complete Stripe checkout
+- **Disable**: Click "Disable" → Cancels the subscription immediately
+- **Re-enable**: You can toggle LLM billing on or off at any time via the dashboard
+
+Once enabled, LLM billing remains active until you disable it. Disabling cancels the subscription and stops metered billing for future requests.
+
+### Viewing Usage and Invoices
+
+- **Stripe Portal**: Click "View invoices in your Stripe portal" to see detailed usage, invoices, and payment history
+- **Usage tracking**: Stripe AI Gateway automatically tracks token usage per request
+- **Billing**: Charges appear on your Stripe invoice at the end of each billing period
+
+### Requirements
+
+- Active Stripe customer (created automatically when you enable)
+- Shroud proxy enabled for agents (LLM requests must go through `shroud.1claw.xyz`)
+- Agent JWT must include `llm_token_billing: true` and `stripe_customer_id` claims
+
+### API Endpoints
+
+```bash
+# Check LLM billing status
+curl -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing
+
+# Enable (returns Stripe checkout URL)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing/subscribe
+
+# Disable
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/billing/llm-token-billing/disable
+```
+
+Response format:
+```json
+{
+  "enabled": true,
+  "subscription_status": "active"
+}
+```
+
 ## MCP and Billing
 
 MCP tool calls go through the same vault API and count toward the same usage quota. When an agent calls `get_secret` via MCP, that's one API request.
@@ -1789,6 +1862,115 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Audit**    | `audit list`                                                                                   |
 | **MFA**      | `mfa status`, `mfa enable`, `mfa disable`                                                      |
 | **Config**   | `config list`, `config set`, `config get`                                                      |
+| **Proxy**    | `proxy` — local OpenAI-compatible proxy that routes through [Shroud](/docs/guides/shroud)       |
+
+## LLM Proxy (`1claw proxy`)
+
+Start a local OpenAI-compatible server that forwards all requests through Shroud. Use this to route LLM traffic from **Cursor**, **VS Code + Continue**, **Zed**, or any tool that supports a custom OpenAI base URL — with full Shroud inspection, secret redaction, and optional [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+### Quick start
+
+```bash
+export ONECLAW_AGENT_API_KEY="ocv_..."   # same env as MCP — no flag needed
+1claw proxy
+```
+
+Or pass the key explicitly:
+
+```bash
+1claw proxy --agent-key "AGENT_ID:ocv_YOUR_KEY"
+# or key-only (Vault resolves agent by prefix):
+1claw proxy --agent-key "ocv_YOUR_KEY"
+```
+
+The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints **Cursor, Claude Code, Copilot, and extension** snippets on startup. Key-only / env mode calls `POST /v1/auth/agent-token` once at startup (uses `ONECLAW_API_URL`, default `https://api.1claw.xyz`).
+
+**Full IDE walkthrough:** [IDE & tool setup (Shroud proxy)](/docs/guides/ide-shroud-setup).
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--agent-key <id:key>` or `ocv_...` | env fallback | If omitted, uses `ONECLAW_AGENT_API_KEY` (+ optional `ONECLAW_AGENT_ID`) |
+| `--port <n>` | `11434` | Local port; if busy, tries up to 32 higher ports; `0` = OS-assigned |
+| `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
+| `--shroud-url <url>` | `https://shroud.1claw.xyz` | Override Shroud endpoint |
+| `--verbose` | off | Log each request with timestamp, method, provider, and status |
+
+### Auto-detection
+
+The proxy detects the provider from the `model` field in the request body:
+
+| Model prefix | Provider |
+|-------------|----------|
+| `gpt-*`, `o1*`, `o3*`, `o4*`, `chatgpt-*` | `openai` |
+| `claude-*` | `anthropic` |
+| `gemini-*` | `google` |
+| `mistral-*` | `mistral` |
+| `command-*` | `cohere` |
+
+Override with `--provider` if needed.
+
+### Editor setup
+
+#### Cursor
+
+1. Run the proxy:
+   ```bash
+   1claw proxy --agent-key "AGENT_ID:ocv_..."
+   ```
+2. In Cursor **Settings → Models → OpenAI**:
+   - **Base URL**: `http://127.0.0.1:11434/v1`
+   - **API Key**: `1claw` (any value — the proxy ignores it)
+
+#### VS Code + Continue
+
+Add to `~/.continue/config.json`:
+
+```json
+{
+  "models": [{
+    "title": "1Claw Shroud",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "apiBase": "http://127.0.0.1:11434/v1",
+    "apiKey": "1claw"
+  }]
+}
+```
+
+#### Any OpenAI-compatible client
+
+Point the base URL to `http://127.0.0.1:11434/v1`. The proxy accepts any `Authorization` header (or none) and replaces it with the Shroud agent credentials.
+
+### How it works
+
+```
+Editor (Cursor, VS Code, etc.)
+  │  POST /v1/chat/completions
+  │  Authorization: Bearer <ignored>
+  ▼
+1claw proxy (localhost:11434)
+  │  Replaces auth with X-Shroud-Agent-Key
+  │  Auto-detects X-Shroud-Provider from model name
+  │  Forwards request, streams response back
+  ▼
+shroud.1claw.xyz (TEE)
+  │  Auth → Inspect → Redact → Route
+  ▼
+LLM provider (or Stripe AI Gateway if token billing enabled)
+```
+
+### LLM Token Billing
+
+When your org has **LLM Token Billing** enabled (Settings → Billing), the proxy works without any provider API keys. Shroud routes through Stripe AI Gateway and bills token usage to your org automatically. See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+### Built-in endpoints
+
+| Path | Description |
+|------|-------------|
+| `/health` | Health check (`{"status":"ok","proxy":"1claw"}`) |
+| `/v1/models` | Returns available models (editors probe this on startup) |
 
 ## CI/CD examples
 
@@ -2251,6 +2433,10 @@ import TabItem from '@theme/TabItem';
 
 This is the **golden path**: you create a secret, register an agent, grant it read access via a policy, then the agent fetches the secret at runtime.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (SDK vault + secret + policy) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent fetches secrets just-in-time).
+:::
+
 ## 1. Create a vault and secret (human)
 
 Log in (email/password or Google), then:
@@ -2443,6 +2629,57 @@ For managing large numbers of agents, see [Managing Agent Fleets](/docs/guides/a
 
 ---
 
+## IDE & tool setup (Shroud proxy)
+
+---
+title: IDE & tool setup (Shroud proxy)
+description: Point Cursor, Claude Code, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+sidebar_label: IDEs & Shroud (1claw proxy)
+sidebar_position: 1
+tags: [shroud, cli, cursor, ide]
+---
+
+# IDE & tool setup (Shroud proxy)
+
+Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.xyz`** with the correct Shroud headers.
+
+**Parent doc:** [Shroud → IDE Integration](/docs/guides/shroud#ide-integration-1claw-proxy)
+
+## Prerequisites
+
+- An **agent** with **`shroud_enabled: true`** (Dashboard or API) and its **`ocv_` API key**  
+- **`@1claw/cli`** (via `npx` or global install)
+
+## 1. Start the proxy
+
+```bash
+export ONECLAW_AGENT_API_KEY="ocv_..."   # optional if you pass --agent-key
+npx @1claw/cli@latest proxy
+# or: 1claw proxy --agent-key "AGENT_UUID:ocv_..."
+```
+
+The CLI prints a **local base URL** (default port **11434**, or another free port if that one is busy) and **copy-paste snippets** for common tools.
+
+## 2. Point your IDE at the proxy
+
+- **Base URL:** use the URL the proxy printed (e.g. `http://127.0.0.1:11434/v1`).  
+- **API key field:** many UIs want *some* key; the proxy **does not** use your provider key for Shroud auth—it injects **`X-Shroud-Agent-Key`**. You can often put a placeholder in the UI if required; the proxy strips or ignores editor `Authorization` / `x-api-key` for upstream Shroud auth as described in [Shroud](/docs/guides/shroud#what-the-proxy-does).
+
+Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
+
+## 3. Provider and billing
+
+- Set **`X-Shroud-Provider`** implicitly via model/path (see [Shroud](/docs/guides/shroud)) or follow your generated snippet.  
+- With **[LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on)** enabled on your org, Shroud can bill tokens without a provider API key in the client.
+
+## Reference
+
+- [CLI → LLM proxy (`1claw proxy`)](/docs/guides/cli#llm-proxy-1claw-proxy) for all flags  
+- [Shroud](/docs/guides/shroud) for headers, providers, and troubleshooting  
+
+
+---
+
 ## Intents API
 
 ---
@@ -2457,6 +2694,10 @@ import TabItem from '@theme/TabItem';
 # Intents API
 
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
+
+:::tip Try it out
+Try out the example in this repo: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation) and **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE).
+:::
 
 ## Quickstart: Your first transaction (~5 min)
 
@@ -2654,6 +2895,83 @@ const { data: tx } = await client.agents.getTransaction(agentId, txId);
 </TabItem>
 </Tabs>
 
+## Sign-only mode (BYORPC) {#sign-only}
+
+Sometimes you want the server to sign the transaction inside the HSM (or Shroud TEE) but **not** broadcast it. This lets you:
+
+- Use your own RPC endpoint for broadcasting
+- Implement MEV protection (e.g. Flashbots, MEV Blocker)
+- Queue transactions for batch submission
+- Broadcast to multiple RPCs simultaneously
+
+Call `POST /v1/agents/:agent_id/transactions/sign` with the same request body as submit. The server signs the transaction and returns the raw `signed_tx` hex without broadcasting.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/sign" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "to": "0xRecipientAddress",
+    "value": "0.1",
+    "signing_key_path": "keys/ethereum-signer"
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: signedTx } = await client.agents.signTransaction(agentId, {
+  chain: "ethereum",
+  to: "0xRecipientAddress",
+  value: "0.1",
+  signing_key_path: "keys/ethereum-signer",
+});
+
+// Broadcast yourself using ethers, viem, or raw RPC
+console.log(signedTx.signed_tx); // 0x02f8...
+console.log(signedTx.tx_hash);   // 0xabc123...
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent tx sign $AGENT_ID \
+  --to 0xRecipientAddress \
+  --value 0.1 \
+  --chain ethereum
+```
+
+</TabItem>
+</Tabs>
+
+### Response
+
+```json
+{
+    "signed_tx": "0x02f870018203...signed hex...",
+    "tx_hash": "0xabc123...",
+    "from": "0xDerivedSenderAddress",
+    "to": "0xRecipientAddress",
+    "chain": "ethereum",
+    "chain_id": 1,
+    "nonce": 42,
+    "value_wei": "100000000000000000",
+    "status": "sign_only"
+}
+```
+
+All agent guardrails (allowlists, value caps, daily limits) are enforced exactly as for submit. The transaction is recorded for audit and daily-limit tracking.
+
+:::tip TEE signing
+When using Shroud (`shroud.1claw.xyz`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting.
+:::
+
 ## Transaction simulation (Tenderly) {#simulation}
 
 Every transaction can be simulated before signing. Simulation executes the full transaction against the current chain state in a sandboxed environment, returning decoded traces, balance changes, gas estimates, and human-readable error messages — without consuming real gas.
@@ -2821,7 +3139,7 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 
 ## MCP tools
 
-The MCP server provides two transaction tools:
+The MCP server provides transaction tools for the full lifecycle:
 
 **`simulate_transaction`** — simulate without signing:
 ```
@@ -2842,6 +3160,32 @@ Args:
   value: "0.5"
   signing_key_path: "wallets/hot-wallet"
   simulate_first: true
+```
+
+**`sign_transaction`** — sign only, no broadcast (for BYORPC):
+```
+Tool: sign_transaction
+Args:
+  chain: "base"
+  to: "0xRecipientAddress"
+  value: "0.5"
+  signing_key_path: "wallets/hot-wallet"
+  simulate_first: true
+```
+
+**`list_transactions`** — list recent transactions:
+```
+Tool: list_transactions
+Args:
+  include_signed_tx: false
+```
+
+**`get_transaction`** — get details of a specific transaction:
+```
+Tool: get_transaction
+Args:
+  transaction_id: "uuid-of-transaction"
+  include_signed_tx: false
 ```
 
 ---
@@ -2993,14 +3337,15 @@ When a transaction violates any guardrail, the proxy returns **403 Forbidden** w
 
 When [Shroud](/docs/guides/shroud) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.xyz` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
 
-Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Choose based on your security requirements:
+Both `api.1claw.xyz` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
 
 | Surface | Submit | List/Get/Simulate | Key isolation |
 | --- | --- | --- | --- |
 | `api.1claw.xyz` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
 | `shroud.1claw.xyz` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
+| `intents.1claw.xyz` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
 
-Shroud also provides LLM proxy capabilities — see the [Shroud guide](/docs/guides/shroud).
+`intents.1claw.xyz` is an alias for the same GKE backend as `shroud.1claw.xyz` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/guides/shroud).
 
 ## Security model
 
@@ -3062,6 +3407,10 @@ sidebar_position: 4
 # MCP Integration
 
 The 1claw MCP server gives AI agents (Claude, Cursor, GPT, and others) secure, just-in-time access to secrets stored in your vault via the [Model Context Protocol](https://modelcontextprotocol.io).
+
+:::tip Try it out
+Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (LangChain + 1Claw MCP tools).
+:::
 
 ## Quick start (hosted)
 
@@ -3585,6 +3934,60 @@ console.log(data.api_key); // New key — store securely
 
 ---
 
+## Building an Onchain AI Agent with Scaffold-Agent
+
+---
+title: Building an Onchain AI Agent with Scaffold-Agent
+description: Scaffold a full-stack monorepo (contracts, frontend, agent) with optional 1Claw vault, Shroud LLM proxy, and Intents-ready setup using the open-source scaffold-agent CLI.
+sidebar_label: Onchain agent monorepo (Scaffold-Agent)
+sidebar_position: 50
+tags: [agents, scaffold, foundry, hardhat, nextjs]
+---
+
+# Building an Onchain AI Agent with Scaffold-Agent
+
+Use **[scaffold-agent](https://github.com/1clawAI/scaffold-agent)** when you want a **batteries-included monorepo** for onchain AI agents: smart contracts (Foundry or Hardhat), a frontend (Next.js, Vite, or Python A2A), wallet connectivity, and optional **1Claw** integration for secrets, Shroud, and agent identity—without wiring everything by hand.
+
+**Official site:** [scaffoldagent.xyz](https://scaffoldagent.xyz/)  
+**Source & full README:** [github.com/1clawAI/scaffold-agent](https://github.com/1clawAI/scaffold-agent#readme)
+
+## When to use this
+
+- You are starting a **new** agent + dApp project and want **one command** to lay out folders, scripts, and env patterns.
+- You want **1Claw** as the secrets backend (HSM-backed vault, optional Shroud LLM proxy, deployer/agent keys in the vault) alongside chain tooling.
+- You prefer **`just`**-driven workflows (`just chain`, `just deploy`, `just start`) and generated ABI typing similar to Scaffold-ETH 2.
+
+## Quick start
+
+From the [project README](https://github.com/1clawAI/scaffold-agent#readme):
+
+```bash
+npx scaffold-agent@latest
+# or create a directory directly:
+npx scaffold-agent@latest my-agent
+cd my-agent
+```
+
+Typical local flow (when you included a chain): start the node in one terminal (`just chain`), then fund, deploy, and run the app as described in the generated **`README.md`**.
+
+## How 1Claw fits in
+
+The wizard can configure **secrets management** as **1Claw** (vault), an encrypted secrets file, or plain `.env`. With **1Claw**, the CLI can create a project vault, store deployer (and optional agent) private keys **in the vault** instead of on disk, register an agent, and wire env vars for the app and Shroud. See the README section **“1Claw integration”** for `ONECLAW_VAULT_ID`, `ONECLAW_AGENT_ID`, Shroud billing modes, and LLM key paths.
+
+For day-to-day 1Claw concepts after scaffolding, continue with:
+
+- [Give an agent access](/docs/guides/give-agent-access) — policies and fetching secrets  
+- [Shroud](/docs/guides/shroud) — LLM proxy and threat detection  
+- [Intents API](/docs/guides/intents-api) — signing transactions without exposing keys  
+
+## Learn more
+
+- [scaffoldagent.xyz](https://scaffoldagent.xyz/) — overview and positioning  
+- [github.com/1clawAI/scaffold-agent](https://github.com/1clawAI/scaffold-agent#readme) — prerequisites (`just`, Node), CLI flags, directory layout, and `just` commands  
+
+
+---
+
 ## Scoped permissions
 
 ---
@@ -3831,6 +4234,10 @@ import TabItem from '@theme/TabItem';
 
 1Claw supports sharing individual secrets with other users, agents, or external collaborators via email. Shares are time-limited, access-counted, and can be revoked at any time.
 
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (includes sharing scripts).
+:::
+
 ## Share types
 
 | `recipient_type`   | Description                                                                     |
@@ -4029,16 +4436,46 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/guides
 ---
 title: Shroud
 description: LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others. Blocks prompt injection and hides secrets.
-sidebar_label: Overview
+sidebar_label: Shroud
 sidebar_position: 0
 tags: [shroud, security, threat-detection]
 ---
 
 # Shroud
 
-Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, and centralize provider keys.
+Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
+
+:::tip Try it out
+Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
+:::
 
 ---
+
+## Per-Agent Configuration (shroud_config)
+
+Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
+
+### Basic settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
+| `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
+| `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
+| `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
+| `allowed_models` | string[] | Models the agent may use (empty = all) |
+| `denied_models` | string[] | Models explicitly blocked |
+| `max_tokens_per_request` | number | Token cap per LLM request |
+| `max_requests_per_minute` | number | Per-minute rate limit |
+| `max_requests_per_day` | number | Per-day rate limit |
+| `daily_budget_usd` | number | Daily LLM spend cap in USD |
+| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
+| `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
+
+### Operational limits
+
+- **Request body size:** 5MB maximum. Requests exceeding this return **413 Payload Too Large**.
+- **Header filtering:** Shroud strips sensitive headers (authorization, `X-Shroud-Agent-Key`, `X-Shroud-Api-Key`, cookies, IP headers) before forwarding to upstream LLM providers. This prevents credential leakage through proxied requests.
 
 ## Security Features
 
@@ -4047,6 +4484,8 @@ Shroud includes comprehensive threat detection and input sanitization to protect
 ## Using the LLM Proxy
 
 Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
+
+Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.xyz` and `shroud.1claw.xyz` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
 
 ### Endpoint
 
@@ -4118,6 +4557,96 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 - **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
+### Configuring the LLM Model
+
+You can specify which model to use in two ways:
+
+#### 1. Per-Request Model Selection
+
+**Option A: Header** (recommended for some providers)
+```bash
+X-Shroud-Model: gpt-4o-mini
+```
+
+**Option B: Request Body** (for OpenAI-style providers)
+```json
+{
+  "model": "gpt-4o-mini",
+  "messages": [...]
+}
+```
+
+**Example:**
+```typescript
+const res = await fetch("https://shroud.1claw.xyz/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "openai",
+    "X-Shroud-Model": "gpt-4o-mini",  // ← Model in header
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    messages: [{ role: "user", content: "Hello" }],
+  }),
+});
+```
+
+Or specify in the body:
+```typescript
+body: JSON.stringify({
+  model: "gpt-4o-mini",  // ← Model in body
+  messages: [{ role: "user", content: "Hello" }],
+})
+```
+
+#### 2. Per-Agent Model Restrictions
+
+Configure which models an agent is allowed (or denied) to use via the agent's `shroud_config`:
+
+**Via Dashboard:**
+- Navigate to **Agents → [Agent Name] → Shroud LLM Proxy** card
+- Set `allowed_models` (whitelist) or `denied_models` (blacklist)
+
+**Via API:**
+```bash
+PATCH /v1/agents/{id}
+{
+  "shroud_config": {
+    "allowed_models": ["gpt-4o-mini", "claude-sonnet-4"],
+    "denied_models": ["gpt-3.5-turbo"]
+  }
+}
+```
+
+**Via SDK:**
+```typescript
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "claude-sonnet-4"],
+    denied_models: ["gpt-3.5-turbo"],
+  },
+});
+```
+
+**How it works:**
+1. User specifies the model in the request (via header or body)
+2. Shroud checks the agent's `shroud_config`:
+   - If `allowed_models` is set and the model is **not** in the list → **403 Forbidden**
+   - If the model is in `denied_models` → **403 Forbidden**
+   - Otherwise → request proceeds
+
+**Example: Restrict agent to only use cost-effective models**
+```typescript
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "gemini-2.0-flash"],  // Only allow cheaper models
+  },
+});
+```
+
+**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) for details.
+
 ### Example: cURL
 
 ```bash
@@ -4171,6 +4700,39 @@ const data = await res.json();
 | 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
 | 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
 | 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
+
+---
+
+## IDE Integration (`1claw proxy`)
+
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+
+**→ Step-by-step for Cursor, Claude Code, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/guides/ide-shroud-setup).
+
+### Quick start
+
+```bash
+export ONECLAW_AGENT_API_KEY="ocv_..."   # same as MCP / examples
+npx @1claw/cli@latest proxy
+# or: 1claw proxy --agent-key "AGENT_ID:ocv_..." 
+```
+
+The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and OpenAI-compatible extensions. It picks a **free port** if `11434` is busy (e.g. Ollama).
+
+### What the proxy does
+
+1. Accepts `POST /v1/chat/completions` and **`/v1/messages`** (Claude Code)
+2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
+3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
+5. Forwards to `https://shroud.1claw.xyz` with inspection, redaction, and policy enforcement
+6. Streams the response back
+
+### LLM Token Billing
+
+When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org.
+
+See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for all proxy flags.
 
 ---
 
@@ -4648,6 +5210,44 @@ Set up alerts for:
 - Spike in blocked requests (possible attack in progress)
 - New threat patterns from specific agents (compromised agent?)
 - High false positive rates (tuning needed)
+
+
+---
+
+## Treasury (Safe multisigs)
+
+---
+title: Treasury (Safe multisigs)
+description: Manage organization treasuries backed by Gnosis Safe–style multisigs—signers, thresholds, and agent access requests—via the API and dashboard.
+sidebar_label: Treasury (Safe multisigs)
+sidebar_position: 0
+tags: [treasury, safe, multisig]
+---
+
+# Treasury (Safe multisigs)
+
+**Treasury** lets your org track **Safe multisig** treasuries: name, chain, Safe address, signer list, and threshold. Humans manage treasuries in the dashboard; **agents** can **request access**, and owners can **approve** or **deny** those requests.
+
+Use this when you need **shared onchain custody** metadata and **gated agent access** to treasury context—not raw private keys in agent prompts.
+
+## What you can do
+
+- **Create** a treasury with **`POST /v1/treasury`** (name, `safe_address`, optional chain / `chain_id`, threshold, signers).  
+- **List** treasuries: **`GET /v1/treasury`**.  
+- **Get / update / delete** a treasury: **`GET`**, **`PATCH`**, **`DELETE /v1/treasury/{id}`**.  
+- **Add or remove signers** on a treasury.  
+- **Access requests:** agent **`POST .../access-requests`**, human **`GET .../access-requests`**, **`.../approve`**, **`.../deny`**.
+
+Full REST details live in the **[API reference](/docs/reference/api-reference)** (search for `treasury`).
+
+## Dashboard
+
+In the app, open **Treasury** (`/treasury`) to create treasuries, edit signers and threshold, and handle access requests. See also **[Intents API](/docs/guides/intents-api)** for agent transaction signing and smart accounts, which complement treasury workflows.
+
+## Related
+
+- [Intents API](/docs/guides/intents-api) — signing and guardrails  
+- [Human API overview](/docs/human-api/overview) — authentication for treasury endpoints  
 
 
 ---
@@ -6045,19 +6645,27 @@ sidebar_position: 0
 
 1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
 
-## Three products
+:::tip Try it out
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
+:::
 
-1claw is built around three products that work together:
+## Products
+
+1claw is built around these products (they work together):
 
 | Product | What it does | Docs |
 |--------|----------------|------|
 | **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
 | **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
 | **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
+| **Treasury** | Organization Safe multisigs—signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access.
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
 - **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
+- **Treasury** tracks onchain multisig treasuries and lets agents request access for human approval.
+
+**Task walkthroughs** (golden paths, CLI, MCP, Scaffold-Agent, billing, and more) live under **[Guides](/docs/category/guides)** in the sidebar.
 
 ## Architecture
 
@@ -6305,6 +6913,10 @@ sidebar_position: 3
 
 The 1claw MCP server is designed around the principle that **secrets should exist in an agent's context for the shortest possible time**.
 
+:::tip Try it out
+Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (MCP threat detection in local-only mode).
+:::
+
 ### Secret value handling
 
 - **Values are never logged.** When `get_secret` is called, only `"secret accessed: <path>"` appears in the MCP server logs. The actual value is never written to disk or stdout.
@@ -6481,6 +7093,10 @@ Before configuring the MCP server, you need:
 2. **A vault** — Create one from the dashboard
 3. **An agent** — Register an agent and save the API key (`ocv_...`)
 4. **A policy** — Grant the agent read access to the secret paths it needs
+
+:::tip Try it out
+Try out the example in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools; stdio or HTTP).
+:::
 
 ## Option 1: Hosted server (recommended)
 
@@ -7016,6 +7632,10 @@ import TabItem from '@theme/TabItem';
 
 An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** with the email of a human who already has a 1Claw account. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
 
+:::tip Try it out
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (SDK + agent token) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent fetches secrets just-in-time).
+:::
+
 ## 0. Enroll (if you don't have credentials yet)
 
 If no one has assigned you an agent yet, you can **self-enroll**. You need the **email address of a human** who already has a 1Claw account. The API creates an agent in their organization and **emails the credentials** (Agent ID + API key) to that person — the key is never returned in the API response. That human can then grant the agent access to vaults via policies and share the credentials with you (or your deployment).
@@ -7223,6 +7843,10 @@ import TabItem from '@theme/TabItem';
 # Quickstart for humans
 
 This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
+
+:::tip Try it out
+Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault CRUD, secrets, billing, sharing, Intents API).
+:::
 
 ## 1. Get a JWT
 
@@ -8395,6 +9019,22 @@ All endpoints are under **/v1**.
 | GET    | `/v1/chains`             | List supported blockchain chains |
 | GET    | `/v1/chains/:identifier` | Get chain by ID or chain_id      |
 
+## Treasury
+
+Multi-sig treasury wallets (Safe) and agent access requests. See [Treasury guide](/docs/guides/treasury).
+
+| Method | Path                                                                 | Description                    |
+| ------ | -------------------------------------------------------------------- | ------------------------------ |
+| POST   | `/v1/treasury`                                                      | Create a treasury (Safe multisig) |
+| GET    | `/v1/treasury`                                                      | List treasuries                |
+| GET    | `/v1/treasury/:treasury_id`                                         | Get treasury details           |
+| POST   | `/v1/treasury/:treasury_id/signers`                                 | Add a signer (user or agent)   |
+| DELETE | `/v1/treasury/:treasury_id/signers/:signer_id`                      | Remove a signer                |
+| POST   | `/v1/treasury/:treasury_id/access-requests`                         | Request access (agent-only)    |
+| GET    | `/v1/treasury/:treasury_id/access-requests`                         | List access requests           |
+| POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/approve`      | Approve an access request      |
+| POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/deny`         | Deny an access request        |
+
 ## Transactions (Intents API)
 
 Requires `intents_api_enabled: true` on the agent. When enabled, the agent is also **blocked** from reading `private_key` and `ssh_key` type secrets through the standard secrets endpoint — it must use the proxy to sign transactions.
@@ -8990,6 +9630,10 @@ The official TypeScript SDK provides full API parity with the 1Claw REST API. It
 **Repository:** [github.com/1clawAI/1claw-sdk](https://github.com/1clawAI/1claw-sdk)
 
 **API contract:** The SDK is built against the **OpenAPI 3.1** spec. Request/response types are generated from it. The spec is published as [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec) (npm) for codegen or custom clients. See [API reference](/docs/reference/api-reference) for the endpoint list.
+
+:::tip Try it out
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing) and **[Next.js Agent Secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret)** (chat app with server-side vault access).
+:::
 
 ## Install
 

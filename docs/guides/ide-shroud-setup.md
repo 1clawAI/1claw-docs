@@ -1,118 +1,45 @@
 ---
 title: IDE & tool setup (Shroud proxy)
-description: One flow for Cursor, Claude Code, VS Code Copilot, and OpenAI-compatible extensions using 1claw proxy.
-sidebar_label: IDE setup (proxy)
+description: Point Cursor, Claude Code, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+sidebar_label: IDEs & Shroud (1claw proxy)
 sidebar_position: 1
+tags: [shroud, cli, cursor, ide]
 ---
 
-# IDE & tool setup with `1claw proxy`
+# IDE & tool setup (Shroud proxy)
 
-Shroud expects **`X-Shroud-Agent-Key`** and **`X-Shroud-Provider`**. Most editors only speak **OpenAI** or **Anthropic** URLs and simple API keys. The **`1claw proxy`** CLI binds on `127.0.0.1`, adds those headers, and forwards to **`https://shroud.1claw.xyz`**.
+Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.xyz`** with the correct Shroud headers.
 
-## Easiest path (recommended)
+**Parent doc:** [Shroud → IDE Integration](/docs/guides/shroud#ide-integration-1claw-proxy)
 
-1. **Create a Shroud-enabled agent** in the dashboard (or `1claw agent create my-ide --shroud`).
-2. **Put credentials in your shell** (same variables as our MCP / examples):
+## Prerequisites
 
-```bash
-export ONECLAW_AGENT_API_KEY="ocv_..."   # or set ONECLAW_AGENT_ID + key
-# optional: export ONECLAW_API_URL="https://api.1claw.xyz"
-```
+- An **agent** with **`shroud_enabled: true`** (Dashboard or API) and its **`ocv_` API key**  
+- **`@1claw/cli`** (via `npx` or global install)
 
-3. **Start the proxy** (no flags needed if the env var is set):
+## 1. Start the proxy
 
 ```bash
+export ONECLAW_AGENT_API_KEY="ocv_..."   # optional if you pass --agent-key
 npx @1claw/cli@latest proxy
-# or: 1claw proxy
+# or: 1claw proxy --agent-key "AGENT_UUID:ocv_..."
 ```
 
-4. Use the **printed port** (defaults to `11434`, or the next free port if something like Ollama is using it).
+The CLI prints a **local base URL** (default port **11434**, or another free port if that one is busy) and **copy-paste snippets** for common tools.
 
-5. **Paste the snippet** for your tool below (the proxy also prints Cursor + Claude Code + Copilot hints on startup).
+## 2. Point your IDE at the proxy
 
----
+- **Base URL:** use the URL the proxy printed (e.g. `http://127.0.0.1:11434/v1`).  
+- **API key field:** many UIs want *some* key; the proxy **does not** use your provider key for Shroud auth—it injects **`X-Shroud-Agent-Key`**. You can often put a placeholder in the UI if required; the proxy strips or ignores editor `Authorization` / `x-api-key` for upstream Shroud auth as described in [Shroud](/docs/guides/shroud#what-the-proxy-does).
 
-## Cursor
+Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
 
-1. **Cursor** → **Settings** → **Models** → **OpenAI API** (or “Override OpenAI Base URL”, depending on build).
-2. **Base URL:** `http://127.0.0.1:<port>/v1` (include `/v1`).
-3. **API key:** any placeholder, e.g. `1claw` (the proxy ignores it and uses your agent key).
+## 3. Provider and billing
 
-Choose a model id that matches what you request (e.g. `gpt-4o-mini`); Shroud infers the provider from the model name when using OpenAI-style chat.
+- Set **`X-Shroud-Provider`** implicitly via model/path (see [Shroud](/docs/guides/shroud)) or follow your generated snippet.  
+- With **[LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on)** enabled on your org, Shroud can bill tokens without a provider API key in the client.
 
----
+## Reference
 
-## Claude Code
-
-[Claude Code](https://code.claude.com/) uses the Anthropic HTTP API. Shroud supports **`/v1/messages`**; the proxy forwards that path and sets **`X-Shroud-Provider: anthropic`** automatically.
-
-```bash
-export ANTHROPIC_BASE_URL="http://127.0.0.1:<port>"
-export ANTHROPIC_API_KEY="1claw"
-# Optional: Claude Code disables MCP tool search for non-Anthropic hosts unless:
-# export ENABLE_TOOL_SEARCH=true
-claude
-```
-
-Use **`ANTHROPIC_BASE_URL` without `/v1`** — the client appends `/v1/messages`. See [Claude Code environment variables](https://code.claude.com/docs/en/env-vars).
-
----
-
-## VS Code + GitHub Copilot
-
-Copilot does **not** use a single global “OpenAI URL” for all features. For **chat** with a **custom OpenAI-compatible** endpoint:
-
-1. Open **Chat** → **model picker** → **Manage models** (or run **Chat: Manage language models**).
-2. **Add** an **OpenAI-compatible** provider.
-3. **Base URL:** `http://127.0.0.1:<port>/v1`
-4. **API key:** `1claw` (or any value).
-
-:::note Platform & plan limits
-
-Microsoft documents that **OpenAI-compatible BYOK** rolled out on **VS Code Insiders** first; **stable** may lag. **Copilot Business / Enterprise** may restrict bring-your-own-key — check current [AI language models in VS Code](https://code.visualstudio.com/docs/copilot/customization/language-models) and [Copilot settings](https://code.visualstudio.com/docs/copilot/copilot-settings) (`github.copilot.chat.customOAIModels`).
-
-:::
-
-Inline **completions** (ghost text) use a **separate** model configuration; this proxy is aimed at **chat**-style OpenAI/Anthropic traffic.
-
----
-
-## Continue, Cline, Roo, etc.
-
-Any extension that supports an **OpenAI-compatible** base URL:
-
-```json
-{
-  "apiBase": "http://127.0.0.1:<port>/v1",
-  "apiKey": "1claw"
-}
-```
-
----
-
-## CLI flags reference
-
-| Input | Behavior |
-|--------|----------|
-| `--agent-key 'uuid:ocv_...'` | Explicit pair |
-| `--agent-key 'ocv_...'` | Key-only; Vault resolves agent via prefix |
-| *(omit flag)* | Uses `ONECLAW_AGENT_API_KEY` and optional `ONECLAW_AGENT_ID` |
-| `--port 0` | Let the OS choose a free port |
-
----
-
-## Troubleshooting
-
-| Issue | What to check |
-|--------|----------------|
-| **Port in use** | Proxy scans **32 ports** upward from the default; read the printed URL. |
-| **401 from Shroud** | Agent missing / wrong key; agent must have **Shroud enabled** and policies as needed. |
-| **Claude Code errors** | Confirm `ANTHROPIC_BASE_URL` has **no** trailing `/v1`. |
-| **Copilot: no custom provider** | Try **VS Code Insiders**; confirm plan allows BYOK. |
-
----
-
-## Related
-
-- [Shroud guide](/docs/guides/shroud) — headers, providers, token billing  
-- [CLI](/docs/guides/cli#llm-proxy-1claw-proxy) — all `proxy` options  
+- [CLI → LLM proxy (`1claw proxy`)](/docs/guides/cli#llm-proxy-1claw-proxy) for all flags  
+- [Shroud](/docs/guides/shroud) for headers, providers, and troubleshooting  
