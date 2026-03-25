@@ -86,27 +86,37 @@ Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits be
 
 **LLM routing:** Authenticated OpenAI-compatible LLM requests on Shroud require `X-Shroud-Provider` (e.g. `openai`, `anthropic`, `google`); a missing header returns **400**. With LLM token billing enabled, eligible traffic can use Stripe AI Gateway (see `GET /v1/billing/llm-token-billing`).
 
-**Security inspection pipeline** (in order):
-1. **Unicode normalization** — Strips zero-width characters, normalizes homoglyphs (Cyrillic а → Latin a)
-2. **Hidden content stripping** — Removes markdown comments, HTML tags
-3. **Secret redaction** — Aho-Corasick matching against vault manifest
+**Request inspection pipeline** (in order):
+1. **Hidden content stripping** — Removes markdown comments, HTML tags
+2. **Secret redaction** — Aho-Corasick matching against vault manifest
+3. **Secret injection detection** — Catches non-vault credentials injected into prompts
 4. **PII detection** — Emails, SSNs, phone numbers, credit cards
-5. **Command injection detection** — Shell metacharacters, path traversal, reverse shells
-6. **Social engineering detection** — Urgency, authority claims, secrecy requests, bypass attempts
-7. **Encoding detection** — Base64, hex escapes, Unicode escapes that may hide payloads
-8. **Network detection** — Blocked domains (pastebin, ngrok), IP URLs, data exfiltration patterns
-9. **Filesystem detection** — Sensitive paths (/etc/passwd, .ssh/, .env)
-10. **Context injection defense** — Detects injected system prompts
-11. **Prompt injection detection** — ML-based scoring
-12. **Token counting** — Enforces per-request and daily limits
-13. **Policy enforcement** — Provider/model allowlists, rate limits
-14. **Response filtering** — Scans LLM responses for leaked credentials
+5. **Context injection defense** — Detects injected system prompts
+6. **Prompt injection detection** — ML-based scoring
+7. **Token counting** — Enforces per-request and daily limits
+8. **Unicode normalization** — Strips zero-width characters, normalizes homoglyphs (Cyrillic а → Latin a)
+9. **Command injection detection** — Shell metacharacters, path traversal, reverse shells
+10. **Encoding detection** — Base64, hex escapes, Unicode escapes that may hide payloads
+11. **Social engineering detection** — Urgency, authority claims, secrecy requests, bypass attempts
+12. **Network detection** — Blocked domains (pastebin, ngrok), IP URLs, data exfiltration patterns
+13. **Filesystem detection** — Sensitive paths (/etc/passwd, .ssh/, .env)
+14. **Tool call inspection** — Inspects tool/function call arguments for data exfiltration, unauthorized invocations, embedded credentials
+15. **Semantic policy** — Topic/task allow/deny lists for business-logic guardrails
+16. **Policy enforcement** — Provider/model allowlists, rate limits
+
+**Response inspection pipeline** (in order):
+1. **Token counting** — Tracks response token usage
+2. **Tool call inspection** — Scans tool call results in responses
+3. **Output policy** — Blocks harmful or banned content patterns, entity types, and harmful categories (violence, self_harm, illegal, hate, sexual, malware)
+4. **Response filtering** — Detects hallucinated credentials in LLM output
+5. **Secret redaction** — Masks any leaked vault secrets in responses
+6. **Semantic policy** — Enforces topic constraints on response content
 
 Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_config` (JSON) fields.
 
 **Basic config options:** `pii_policy` (block/redact/warn/allow), `injection_threshold` (0.0–1.0), `context_injection_threshold`, `allowed_providers`, `allowed_models`, `denied_models`, `max_tokens_per_request`, `max_requests_per_minute`, `max_requests_per_day`, `daily_budget_usd`, `enable_secret_redaction`, `enable_response_filtering`.
 
-**Threat detection config options:** `unicode_normalization` (enabled, strip_zero_width, normalize_homoglyphs, normalization_form), `command_injection_detection` (action: block/sanitize/warn, strictness), `social_engineering_detection` (action, sensitivity), `encoding_detection` (action, detect_base64/hex/unicode), `network_detection` (action, blocked_domains, allowed_domains), `filesystem_detection` (action, blocked_paths), `sanitization_mode` (block/sanitize/warn), `threat_logging` (boolean).
+**Threat detection config options:** `unicode_normalization` (enabled, strip_zero_width, normalize_homoglyphs, normalization_form), `command_injection_detection` (action: block/sanitize/warn, strictness), `social_engineering_detection` (action, sensitivity), `encoding_detection` (action, detect_base64/hex/unicode), `network_detection` (action, blocked_domains, allowed_domains), `filesystem_detection` (action, blocked_paths), `tool_call_inspection` (enabled, allowed_tool_names, denied_tool_names, scan_arguments, block_credential_exfil, action), `output_policy` (enabled, blocked_patterns, blocked_entities, block_harmful_content, harmful_categories, action), `secret_injection_detection` (enabled, action, sensitivity — catches non-vault credentials in prompts), `advanced_redaction` (enabled, detect_base64_encoded, detect_split_secrets, detect_prefix_leak, min_secret_length), `semantic_policy` (enabled, allowed_topics, denied_topics, allowed_tasks, denied_tasks, action), `flagged_request_retention_days` (number), `sanitization_mode` (block/sanitize/warn), `threat_logging` (boolean).
 
 Configure via dashboard (Agent → Shroud LLM Proxy card → Threat Detection section), API (`PATCH /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
