@@ -37,6 +37,18 @@ Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. C
 | `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
 | `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
 
+### Threat detection (per detector)
+
+Nested objects (e.g. `social_engineering_detection`, `network_detection`, `encoding_detection`, `command_injection_detection`, `filesystem_detection`, `unicode_normalization`) include `enabled` and an **`action`** where applicable: **`block`** (HTTP 403 when the pipeline detected a match), **`warn`** / **`log`** (allow through but log), or encoder-specific values like **`decode`** for `encoding_detection`.
+
+### How settings are enforced (pipeline + JWT)
+
+1. **Inspection pipeline** — Shroud applies server-wide filters (secret redaction, PII, injection scoring, threat pattern matching). Many filters default to **record + warn** so the request body can still be analyzed.
+2. **PolicyEngine** — Runs **after** the pipeline on each LLM request. It reads per-agent rules from the **agent JWT**: when the agent has Shroud enabled, Vault includes a **`shroud_config`** claim (same JSON as `GET /v1/agents/{id}`). That drives injection/context thresholds, provider/model allowlists, rate limits, budget caps, and **block** vs **warn** for threat categories.
+3. **Refresh JWT** — After you change `shroud_config` in the dashboard or API, have the client **re-exchange** the agent API key for a new JWT (or restart Shroud Bridge) so Shroud sees the update.
+
+User (human) JWTs do not carry `shroud_config`.
+
 ### Operational limits
 
 - **Request body size:** 5MB maximum. Requests exceeding this return **413 Payload Too Large**.

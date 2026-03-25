@@ -110,6 +110,8 @@ Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_c
 
 Configure via dashboard (Agent → Shroud LLM Proxy card → Threat Detection section), API (`PATCH /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
+**Enforcement:** When `shroud_enabled` is true, Vault includes **`shroud_config`** on the agent JWT from `POST /v1/auth/agent-token`. Shroud applies it in **PolicyEngine** after the inspection pipeline so **block** actions return **403**. Re-exchange the agent token after policy changes.
+
 ## API (OpenAPI 3.1)
 
 Base URL: `https://api.1claw.xyz`
