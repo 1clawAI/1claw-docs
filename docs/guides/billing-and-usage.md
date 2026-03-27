@@ -16,12 +16,15 @@ Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI
 
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:
 
-| Tier           | Monthly Price | Annual Price | Requests/mo | Vaults    | Secrets   | Agents    |
-| -------------- | ------------- | ------------ | ----------- | --------- | --------- | --------- |
-| **Free**       | $0            | —            | 1,000       | 3         | 50        | 2         |
-| **Pro**        | $29           | $290         | 25,000      | 25        | 500       | 10        |
-| **Business**   | $149          | $1,490       | 100,000     | 100       | 5,000     | 50        |
-| **Enterprise** | Custom        | Custom       | Unlimited   | Unlimited | Unlimited | Unlimited |
+| Tier           | Monthly Price | Annual (billed yearly) | Requests/mo | Vaults    | Secrets   | Agents    | Team seats |
+| -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
+| **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 3          |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 25,000      | 25        | 500       | 10        | 5          |
+| **Team**       | $299          | $2,990 (~$249.17/mo)   | 100,000     | 100       | 5,000     | 50        | 20         |
+| **Business**   | $999          | $9,990 (~$832.50/mo)   | 500,000     | Unlimited | Unlimited | 200       | 50         |
+| **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
+
+Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
 
 ### Resource Limits
 
@@ -74,14 +77,7 @@ Usage is unified across all access methods. Whether a secret is read from the da
 
 ### Overage Rates (After Tier Limit)
 
-When you exceed your tier's monthly request limit, overage charges apply. **Pro** and **Business** tiers get discounted overage rates:
-
-| Tier       | Overage Rate per Request |
-| ---------- | ------------------------ |
-| Free       | $0.001 (standard rate)   |
-| Pro        | $0.0008 (20% discount)   |
-| Business   | $0.0006 (40% discount)   |
-| Enterprise | Custom                   |
+When you exceed your tier's monthly request limit, overage charges apply. Each operation has a list price; **Pro**, **Team**, and **Business** pay lower per-operation rates than **Free** (see `overage_cost_cents` in `vault/src/domain/billing.rs`). Exact per-endpoint prices are shown in the dashboard billing UI and x402 `402` responses.
 
 ## Overage Methods
 
@@ -94,7 +90,7 @@ Top up your account with credits ($5–$1,000) via Stripe. Credits are deducted 
 **Benefits:**
 
 - Automatic deduction — no per-request payment flow
-- Tier discounts apply (Pro/Business save 20–40%)
+- Tier discounts apply (paid tiers vs Free)
 - Simple billing — one-time top-up, credits last 12 months
 - No blockchain interaction required
 
