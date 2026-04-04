@@ -275,6 +275,7 @@ const sidebars: SidebarsConfig = {
             items: [
                 "reference/api-reference",
                 "reference/request-pipeline",
+                "reference/shroud-supported-models",
                 "reference/api-mcp-testing",
                 "reference/error-codes",
                 "reference/rate-limits",

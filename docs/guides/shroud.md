@@ -85,7 +85,7 @@ Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes 
 | Header | Description |
 |--------|-------------|
 | `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
-| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.0-flash`). Can also be set in the request body for some providers. |
+| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.5-flash`). Can also be set in the request body for some providers. See [Shroud supported models](/docs/reference/shroud-supported-models). |
 
 ### Auth format: `X-Shroud-Agent-Key`
 
@@ -117,21 +117,22 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 
 | Provider value | LLM / API |
 |----------------|-----------|
-| `openai`       | OpenAI (GPT-4o, o1, etc.) |
-| `anthropic`    | Anthropic (Claude) |
-| `google`       | Google Gemini (Generative Language API) |
+| `openai`       | OpenAI (GPT-4o, o-series, etc.) — [allowed model IDs](/docs/reference/shroud-supported-models#openai-models) |
+| `anthropic`    | Anthropic (Claude) — [allowed model IDs](/docs/reference/shroud-supported-models#anthropic-models) |
+| `google`       | Google Gemini (Generative Language API) — [allowed model IDs](/docs/reference/shroud-supported-models#google-gemini-models) |
 | `gemini`       | Alias for `google` — same as above |
-| `mistral`      | Mistral |
-| `cohere`       | Cohere |
-| `openrouter`   | OpenRouter (aggregates many models; single API key) |
+| `mistral`      | Mistral — [allowed model IDs](/docs/reference/shroud-supported-models#mistral-models) |
+| `cohere`       | Cohere — [allowed model IDs](/docs/reference/shroud-supported-models#cohere-models) |
+| `openrouter`   | OpenRouter (aggregates many models; single API key) — [notes](/docs/reference/shroud-supported-models#openrouter-models) |
 
 - **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
 - **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+- **Full allowlist:** [Shroud supported models](/docs/reference/shroud-supported-models) (kept in sync with `shroud/config/providers/*.toml`).
 
 ### Request and response format
 
 - **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
-- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.0-flash`, `gemini-2.5-pro` (see provider config for the full allowlist).
+- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
 ### Configuring the LLM Model
@@ -190,8 +191,8 @@ Configure which models an agent is allowed (or denied) to use via the agent's `s
 PATCH /v1/agents/{id}
 {
   "shroud_config": {
-    "allowed_models": ["gpt-4o-mini", "claude-sonnet-4"],
-    "denied_models": ["gpt-3.5-turbo"]
+    "allowed_models": ["gpt-4o-mini", "claude-sonnet-4-5-20250929"],
+    "denied_models": ["gpt-4.1-nano"]
   }
 }
 ```
@@ -200,8 +201,8 @@ PATCH /v1/agents/{id}
 ```typescript
 await client.agents.update(agentId, {
   shroud_config: {
-    allowed_models: ["gpt-4o-mini", "claude-sonnet-4"],
-    denied_models: ["gpt-3.5-turbo"],
+    allowed_models: ["gpt-4o-mini", "claude-sonnet-4-5-20250929"],
+    denied_models: ["gpt-4.1-nano"],
   },
 });
 ```
@@ -217,7 +218,7 @@ await client.agents.update(agentId, {
 ```typescript
 await client.agents.update(agentId, {
   shroud_config: {
-    allowed_models: ["gpt-4o-mini", "gemini-2.0-flash"],  // Only allow cheaper models
+    allowed_models: ["gpt-4o-mini", "gemini-2.5-flash"],  // Only allow cheaper models
   },
 });
 ```
@@ -232,7 +233,7 @@ curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
   -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
   -H "X-Shroud-Provider: google" \
   -H "Content-Type: application/json" \
-  -d '{"model":"gemini-2.0-flash","messages":[{"role":"user","content":"Hello"}]}'
+  -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}'
 
 # With explicit vault key path
 curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
@@ -258,7 +259,7 @@ const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     messages: [{ role: "user", content: "Hello" }],
     max_tokens: 1024,
   }),
