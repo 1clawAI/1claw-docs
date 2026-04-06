@@ -84,7 +84,7 @@ If you add or rename models in production, update those TOML files first, then r
 
 ## OpenRouter (`X-Shroud-Provider: openrouter`) {#openrouter-models}
 
-Shroud’s config uses an **empty** allowlist for OpenRouter, which means **no static list**: use any model ID OpenRouter supports (for example `openai/gpt-4o`, `anthropic/claude-sonnet-4`, `google/gemini-2.5-pro`). See [OpenRouter models](https://openrouter.ai/models).
+OpenRouter is itself a model routing gateway — it maintains its own catalog of available models and handles model resolution and validation on its backend. Because of this, Shroud’s config uses an **empty** allowlist for OpenRouter: there is no static list to maintain on the Shroud side. Any model slug that OpenRouter supports is accepted (for example `openai/gpt-4o`, `anthropic/claude-sonnet-4`, `google/gemini-2.5-pro`). See [OpenRouter models](https://openrouter.ai/models) for the full catalog.
 
 ---
 
