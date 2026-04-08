@@ -1220,6 +1220,55 @@ The "Threat Detection" section shows:
 
 ---
 
+## Shroud Activity & Live Inspector
+
+Shroud logs every inspection event — both clean requests and flagged threats. The dashboard provides three views for monitoring agent LLM traffic:
+
+### Shroud Activity (Overview)
+
+**Dashboard:** Navigate to **Shroud Activity** in the sidebar (or `/shroud-activity`).
+
+Shows recent Shroud inspection events across all agents:
+- Request timestamp, agent name, provider, model
+- Inspection result (clean, warned, blocked)
+- Threat detectors that fired and their severity
+- Quick filters by agent, provider, and result
+
+### Threats
+
+**Dashboard:** **Shroud Activity → Threats** (or `/shroud-activity/threats`).
+
+Filtered view showing only threat detections — blocked and warned requests:
+- Severity breakdown (critical, high, medium, low)
+- Detector breakdown (which filters caught what)
+- Drill-down into individual flagged requests
+- Useful for security reviews and tuning detection thresholds
+
+### Live Inspector (SSE)
+
+**Dashboard:** **Shroud Activity → Live** (or `/shroud-activity/live`).
+
+Real-time Server-Sent Events (SSE) stream of inspection events as they happen:
+- Events appear instantly as agents send LLM requests through Shroud
+- Each event shows the agent, provider, model, inspection result, and any threat detections
+- Useful for debugging agent behavior, testing new `shroud_config` settings, and monitoring during deployments
+
+**API:** `GET /v1/shroud/activity` returns recent inspection events. `POST /v1/shroud/activity` accepts filters for querying historical activity.
+
+### LLM Token Billing (Stripe AI Gateway)
+
+When your organization has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route LLM requests through the **Stripe AI Gateway**. This bills token usage directly to your org's Stripe subscription — no provider API keys needed.
+
+How it works:
+1. Enable LLM Token Billing via `POST /v1/billing/llm-token-billing/subscribe`
+2. Agent JWTs automatically include `llm_token_billing: true` and `stripe_customer_id`
+3. Shroud routes eligible requests to the Stripe AI Gateway provider, rewrites the model ID for the gateway, and sets `X-Stripe-Customer-ID` from the JWT
+4. Token usage appears on your Stripe invoice
+
+The `1claw proxy` CLI command works seamlessly with LLM Token Billing — agents can use any supported model without managing provider API keys.
+
+---
+
 ## Best Practices
 
 1. **Start with `action: "warn"`** — Understand your traffic patterns before enabling blocking

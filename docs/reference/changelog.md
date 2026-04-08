@@ -12,7 +12,20 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-03 (latest)
+## 2026-04 (latest)
+
+### MPC Secret Storage
+
+- **New:** Multi-Party Computation (MPC) secret storage — split secret DEKs across multiple HSM providers so no single provider holds the complete key. Three custody modes: `2of2_client_custody` (XOR split, client holds one share), `2of3_multi_hsm` (Shamir 2-of-3 across GCP KMS + AWS KMS + Azure Key Vault, fully server-side), `2of3_client_custody` (Shamir 2-of-3 with client share).
+- **New:** `POST /v1/vaults/{id}/mpc` — enable MPC on a vault (user-only, Business/Enterprise tiers).
+- **New:** `client_share` returned in `SecretCreatedResponse` for client custody modes. Must be stored securely — only returned once. Required via `X-Client-Share` header on read.
+- **New:** Crypto modules — `mpc_provider.rs` (orchestrates split/reconstruct), `shamir.rs` (Shamir secret sharing over GF(256)), `xor_split.rs` (XOR 2-of-2), `hsm_aws.rs` (AWS KMS CryptoProvider), `hsm_azure.rs` (Azure Key Vault CryptoProvider).
+- **New:** Database tables `vault_mpc_keks` and `secret_dek_shares` (migration 063).
+- **New:** [MPC guide](/docs/guides/mpc) in documentation.
+
+---
+
+## 2026-03
 
 ### Live demo
 

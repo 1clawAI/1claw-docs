@@ -74,6 +74,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/customer-managed-keys",
                             label: "CMEK — extra client-side encryption layer",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/mpc",
+                            label: "MPC — split keys across HSM providers",
+                        },
                     ],
                 },
                 {
