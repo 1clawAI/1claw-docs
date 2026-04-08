@@ -1224,6 +1224,17 @@ The "Threat Detection" section shows:
 
 Shroud logs every inspection event — both clean requests and flagged threats. The dashboard provides three views for monitoring agent LLM traffic:
 
+### Shroud Activity API (REST)
+
+Programmatic access uses the **Vault API** (e.g. `https://api.1claw.xyz`), authenticated with a human JWT or user API key — not the Shroud agent headers.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/shroud/activity` | Recent Shroud inspection events across your org’s agents (feeds the dashboard overview). |
+| POST | `/v1/shroud/activity` | Filtered or paginated activity queries (body parameters align with dashboard filtering). |
+
+The **Live** dashboard view adds a real-time **SSE** stream for events as they arrive; list/query traffic uses the REST endpoints above.
+
 ### Shroud Activity (Overview)
 
 **Dashboard:** Navigate to **Shroud Activity** in the sidebar (or `/shroud-activity`).
@@ -1253,7 +1264,7 @@ Real-time Server-Sent Events (SSE) stream of inspection events as they happen:
 - Each event shows the agent, provider, model, inspection result, and any threat detections
 - Useful for debugging agent behavior, testing new `shroud_config` settings, and monitoring during deployments
 
-**API:** `GET /v1/shroud/activity` returns recent inspection events. `POST /v1/shroud/activity` accepts filters for querying historical activity.
+For REST shapes and authentication, see [Shroud Activity API (REST)](#shroud-activity-api-rest) above.
 
 ### LLM Token Billing (Stripe AI Gateway)
 
