@@ -79,7 +79,9 @@ Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits be
 
 **LLM routing:** Authenticated `POST /v1/chat/completions` (and related LLM routes) require the `X-Shroud-Provider` header (e.g. `openai`, `anthropic`, `google`); omitting it returns **400**. When the org has LLM token billing enabled, eligible traffic can be routed through Stripe AI Gateway (see Vault billing endpoints below).
 
-**Request inspection pipeline** (in order): hidden content stripping → secret redaction (Aho-Corasick against vault manifest) → secret injection detection (catches non-vault credentials in prompts) → PII detection → context injection defense → prompt injection scoring → token counting → Unicode normalization → command injection detection → encoding detection → social engineering detection → network detection → filesystem detection → tool call inspection → semantic policy → policy enforcement.
+**Per-org secret redaction:** Shroud maintains per-org Aho-Corasick automata for secret redaction. A background task calls `GET /v1/admin/secrets/manifest` (platform admin key) to fetch all secrets across all orgs, partitioned by `org_id`. Each request's `org_id` (from the agent JWT) selects the correct automaton — org A's secrets never leak into org B's `[REDACTED:path]` labels. `__agent-keys` vaults and MPC vaults are excluded from the manifest.
+
+**Request inspection pipeline** (in order): hidden content stripping → per-org secret redaction (Aho-Corasick) → secret injection detection (catches non-vault credentials in prompts) → PII detection → context injection defense → prompt injection scoring → token counting → Unicode normalization → command injection detection → encoding detection → social engineering detection → network detection → filesystem detection → tool call inspection → semantic policy → policy enforcement.
 
 **Response inspection pipeline** (in order): token counting → tool call inspection → output policy (blocked patterns, harmful content categories) → response filtering (hallucinated credentials) → secret redaction → semantic policy.
 
