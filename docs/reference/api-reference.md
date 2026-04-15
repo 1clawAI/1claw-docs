@@ -27,23 +27,26 @@ All endpoints are under **/v1**.
 
 ## Authentication
 
-| Method | Path                       | Description                                  |
-| ------ | -------------------------- | -------------------------------------------- |
-| POST   | `/v1/auth/signup`          | Self-service signup (email + password) → JWT |
-| POST   | `/v1/auth/token`           | Email/password → JWT                         |
-| POST   | `/v1/auth/agent-token`     | Agent ID + API key → JWT                     |
-| POST   | `/v1/auth/api-key-token`   | Personal API key → JWT                       |
-| POST   | `/v1/auth/google`          | Google id_token → JWT                        |
-| DELETE | `/v1/auth/token`           | Revoke token                                 |
-| POST   | `/v1/auth/change-password` | Change password                              |
+| Method | Path                        | Description                                         |
+| ------ | --------------------------- | --------------------------------------------------- |
+| POST   | `/v1/auth/signup`           | Self-service signup (email + password) → JWT        |
+| POST   | `/v1/auth/token`            | Email/password → JWT                                |
+| POST   | `/v1/auth/agent-token`      | Agent ID + API key → JWT                            |
+| POST   | `/v1/auth/api-key-token`    | Personal API key → JWT                              |
+| POST   | `/v1/auth/google`           | Google id_token → JWT                               |
+| DELETE | `/v1/auth/token`            | Revoke token                                        |
+| POST   | `/v1/auth/change-password`  | Change password                                     |
+| POST   | `/v1/auth/forgot-password`  | Request password reset email (uniform 200 response) |
+| POST   | `/v1/auth/reset-password`   | Complete password reset with email token             |
 
 ## Account Management
 
-| Method | Path           | Description                                  |
-| ------ | -------------- | -------------------------------------------- |
-| GET    | `/v1/auth/me`  | Get current user profile                     |
-| PATCH  | `/v1/auth/me`  | Update profile (display name, marketing opt-in) |
-| DELETE | `/v1/auth/me`  | Delete account and all associated data       |
+| Method | Path                    | Description                                  |
+| ------ | ----------------------- | -------------------------------------------- |
+| GET    | `/v1/auth/me`           | Get current user profile                     |
+| PATCH  | `/v1/auth/me`           | Update profile (display name, marketing opt-in) |
+| DELETE | `/v1/auth/me`           | Delete account and all associated data       |
+| POST   | `/v1/auth/export-data`  | GDPR data export (JSON archive of user data) |
 
 ## MFA (Two-Factor Authentication)
 

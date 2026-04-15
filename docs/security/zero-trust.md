@@ -18,11 +18,13 @@ sidebar_position: 2
 
 ## Revocation is immediate
 
-- Deleting a policy removes access on the next request. Deactivating an agent prevents new tokens; existing short-lived JWTs expire. Rotating an agent key invalidates the old key. There is no long-lived cache of secrets in the API.
+- Deleting a policy removes access on the next request. When an agent's access policy is created, updated, or deleted, all of that agent's active JWTs are **automatically revoked** — the agent must re-exchange credentials to obtain a fresh token with updated scopes. This eliminates the window where an agent retains stale permissions from a prior token.
+- Deactivating an agent prevents new tokens. Rotating an agent key invalidates the old key. There is no long-lived cache of secrets in the API.
 
 ## Audit
 
 - Access (and relevant failures) are logged. Secret values are never written to the audit log. You can use the log for compliance and incident response.
+- The audit log uses a tamper-evident hash chain (SHA-256). The application database role is restricted from inserting directly into audit tables — all writes go through a `SECURITY DEFINER` function, preventing log fabrication.
 
 ## In transit
 

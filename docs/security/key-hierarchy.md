@@ -20,3 +20,11 @@ sidebar_position: 1
 - **Read:** Load ciphertext + wrapped DEK → Unwrap DEK with KEK (KMS) → Decrypt ciphertext with DEK → Return plaintext.
 
 This is standard **envelope encryption**. Compromise of the database or application does not reveal secrets without KMS access.
+
+## Automatic rotation
+
+KEKs in GCP KMS are created with a 90-day rotation schedule. When a key rotates, KMS creates a new version and uses it for future wraps. Existing wrapped DEKs remain decryptable — KMS retains all prior versions and selects the correct one automatically based on ciphertext metadata. No re-encryption migration is required.
+
+## Integrity verification
+
+All KMS requests include CRC32C checksums. The API verifies response checksums after every encrypt, decrypt, and sign call. A mismatch (indicating corruption or tampering in transit) causes an immediate failure.

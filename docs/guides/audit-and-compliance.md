@@ -67,6 +67,16 @@ Every audit event includes a cryptographic hash chain that links it to the previ
 
 This makes the audit log **append-only and tamper-evident**: modifying or deleting any event breaks the hash chain for all subsequent entries. You can verify integrity by walking the chain from the latest event back to the first (`prev_event_id = NULL`).
 
+## Audit insert hardening
+
+The audit log is protected at the database level against fabrication or bypass:
+
+- The application connects as a restricted **`vault_app`** database role that does not have `BYPASSRLS` or `SUPERUSER` privileges.
+- Direct `INSERT` on the `audit_events` table is **revoked** from `vault_app`. All audit writes go through a **`SECURITY DEFINER`** function (`insert_audit_event`) owned by a privileged role.
+- This means even if the application connection is compromised, the attacker cannot insert arbitrary audit events or bypass the hash chain — all writes are funneled through the trusted function that enforces the integrity chain.
+
+Combined with the hash chain above, this provides defense in depth: the chain detects tampering after the fact, and the restricted insert path prevents fabrication at write time.
+
 ## Best practices
 
 Use the audit log for compliance reviews, incident response, and access analysis. Export or forward events to your SIEM or logging pipeline as needed.

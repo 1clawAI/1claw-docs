@@ -23,6 +23,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** Database tables `vault_mpc_keks` and `secret_dek_shares` (migration 063).
 - **New:** [MPC guide](/docs/guides/mpc) in documentation.
 
+### GDPR Data Export
+
+- **New:** `POST /v1/auth/export-data` — authenticated endpoint that returns a JSON archive of the calling user's personal data (profile, org membership, vaults, agents, policies, audit events, shares, billing). For GDPR data portability compliance.
+- **Updated:** `DELETE /v1/auth/me` already handles account deletion with cascade cleanup (right-to-erasure).
+- **Updated:** [Compliance](/docs/security/compliance) documentation now covers GDPR support.
+
+### Security hardening (2026-04-15)
+
+- **New:** Agent token auto-revocation on policy changes — when an access policy targeting an agent is created, updated, or deleted, all of that agent's active JWTs are automatically revoked via the `agent_active_tokens` table (migration 066). The agent must re-exchange credentials to get a fresh token with updated scopes. Eliminates stale-scope window.
+- **New:** KMS key rotation — GCP KMS vault KEKs are now created with a 90-day automatic rotation schedule and `next_rotation_time`. Existing ciphertext remains decryptable (KMS retains all versions).
+- **New:** KMS CRC32C verification — all `wrap_dek`, `unwrap_dek`, and `sign` KMS operations now send CRC32C of input data and verify response CRC32C. Detects in-transit corruption or tampering. Added `crc32c` and `prost-types` crates.
+- **New:** Audit insert hardening — migration 067 creates a restricted `vault_app` database role (no `BYPASSRLS`) and a `SECURITY DEFINER` function `insert_audit_event`. Direct `INSERT` on `audit_events` is revoked from `vault_app`, preventing log fabrication from compromised connections.
+- **Fixed:** Shroud user-supplied `blocked_patterns` compiled via `RegexBuilder` with 256KiB size limit (ReDoS protection).
+- **Fixed:** x402 facilitator verify now passes actual atomic USDC amounts. Settlement moved before broadcast in `submit_transaction`.
+
 ---
 
 ## 2026-03

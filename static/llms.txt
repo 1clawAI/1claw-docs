@@ -57,7 +57,7 @@ Agents can register themselves with zero credentials via `POST /v1/agents/enroll
 Agents can share secrets back with the human who created them using `recipient_type: "creator"`. No email or user ID needed — the API resolves it from the agent's `created_by` field. The human sees the share in their Inbound tab and accepts it. This enables a pattern where agents autonomously discover/generate credentials and report them to their human.
 
 ### Policies
-Access control rules that bind a principal (agent or user) to a set of secret paths in a vault. Policies specify path patterns (glob), permissions (read/write), optional conditions (IP ranges, time windows), and expiry.
+Access control rules that bind a principal (agent or user) to a set of secret paths in a vault. Policies specify path patterns (glob), permissions (read/write), optional conditions (IP ranges, time windows), and expiry. **Agent token auto-revocation:** When an access policy targeting an agent is created, updated, or deleted, all of that agent's active JWTs are automatically revoked (via the `agent_active_tokens` table). The agent must re-exchange credentials to obtain a fresh token with updated scopes.
 
 ### Customer-Managed Encryption Keys (CMEK)
 Enterprise opt-in feature. The human generates a 256-bit AES key in the dashboard (WebCrypto). The key never leaves their device — only its SHA-256 fingerprint is stored on the server. Secrets are encrypted client-side before upload. Server-assisted rotation re-encrypts all secrets in batches of 100 with progress tracking.
@@ -99,6 +99,8 @@ Key endpoints:
 - `POST /v1/auth/reset-password` — Complete reset with token from email
 - `DELETE /v1/auth/token` — Revoke current Bearer token (returns 200; reused token then returns 401)
 - `POST /v1/auth/agent-token` — Agent token exchange (accepts `api_key` alone or `agent_id` + `api_key`; returns `agent_id` and `vault_ids` for auto-discovery)
+- `GET/PATCH/DELETE /v1/auth/me` — Get/update/delete own account (user-only; delete requires `{ confirmation: "DELETE MY ACCOUNT" }`)
+- `POST /v1/auth/export-data` — GDPR data export: returns JSON archive of user's profile, vaults, agents, secret metadata, and policies (user-only)
 - `GET/POST /v1/vaults` — List/create vaults
 - `GET/DELETE /v1/vaults/{id}` — Get/delete vault
 - `POST/DELETE /v1/vaults/{id}/cmek` — Enable/disable CMEK
@@ -129,7 +131,7 @@ Key endpoints:
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 
-**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org. MFA tokens are single-use (jti revoked after verification). Agent JWTs derive `vault_ids` from access policies when not explicitly set. Intents API `signing_key_path` restricted to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`.
+**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org. MFA tokens are single-use (jti revoked after verification). TOTP codes are replay-protected — each `(user_id, time_step)` is recorded and rejected on reuse within the ±1 step window. Agent JWTs derive `vault_ids` from access policies when not explicitly set. Agent JWTs are tracked in `agent_active_tokens`; policy changes auto-revoke them (see Policies above). Intents API `signing_key_path` restricted to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`. Audit log inserts use a `SECURITY DEFINER` function — the application role (`vault_app`) cannot insert directly into `audit_events`, preventing log tampering from compromised connections.
 
 ### Live Demo
 Interactive demo at https://1claw.xyz/demo — three panels (Vault, Shroud, Intents) with preset buttons, no signup required.

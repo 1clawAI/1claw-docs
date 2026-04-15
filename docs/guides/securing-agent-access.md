@@ -70,6 +70,12 @@ Agent JWTs contain a `scopes` field — a list of secret path glob patterns (e.g
 
 Scopes act as a **ceiling** on the token. Even if a policy later changes to grant broader access, the existing token can only access paths that match its scopes. The policy engine is still the source of truth for fine-grained checks, but scopes prevent a token from ever exceeding the access it was issued with.
 
+:::info Automatic token revocation on policy changes
+When an agent's access policy is created, updated, or deleted, **all of that agent's active JWTs are automatically revoked**. The agent must re-exchange credentials (`POST /v1/auth/agent-token`) to obtain a fresh token with updated scopes. The SDK and MCP server handle this automatically via token auto-refresh.
+
+This eliminates the window where an agent retains stale permissions from a prior token — a narrowed scope takes effect immediately, not at token expiry.
+:::
+
 ### Scope + policy two-layer model
 
 ```
