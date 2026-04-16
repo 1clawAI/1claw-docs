@@ -21,7 +21,8 @@ Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-exa
 Agent (no credentials)
   │
   ├── 1. POST /v1/agents/enroll  (public, no auth)
-  │      └── Credentials emailed to the human
+  │      └── Pending enrollment; human approves via email link or approval_url
+  │      └── Credentials emailed to the human after approval
   │
   ├── 2. Human creates access policies in the dashboard
   │
@@ -37,7 +38,10 @@ Agent (no credentials)
 
 ## 1. Self-enroll
 
-The enrollment endpoint is **public** — no authentication required. The agent provides its name and the email of a human who already has a 1Claw account.
+The enrollment endpoint is **public** — no authentication required. Provide **`name`** and optionally **`human_email`**:
+
+- **With email:** A pending enrollment is created for that account; Allow/Deny links are emailed, and the response may include **`approval_url`** as a fallback.
+- **Name only:** A link-only pending enrollment is created; the response includes **`approval_url`** for the human to open while signed in (no email required to start).
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -79,14 +83,24 @@ npx @1claw/cli agent enroll my-agent --email alice@example.com
 </TabItem>
 </Tabs>
 
+**Link-only (no email):**
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent"}'
+
+npx @1claw/cli agent enroll my-agent
+```
+
 **What happens:**
 
-1. The API looks up the human by email.
-2. An agent is created in the human's organization with `created_by` pointing to that user.
-3. An API key is generated, hashed, and stored — the plaintext key is **emailed to the human**, never returned in the API response.
-4. The response always returns `201` with the same shape (to prevent email enumeration).
+1. The API creates a **pending** enrollment (email-bound or link-only).
+2. The human **approves** via the emailed link or by opening **`approval_url`** while signed in.
+3. After approval, an agent is created in the approver's organization; an API key is generated and **emailed** — the plaintext key is never returned from `POST /v1/agents/enroll`.
+4. Responses use a uniform `201` shape where needed to limit email enumeration (some branches omit `approval_url`).
 
-**Rate limits:** One enrollment per email per 10 minutes, plus IP-based rate limiting.
+**Rate limits:** One enrollment per email per 10 minutes (when email is used), caps on pending enrollments, plus IP-based rate limiting.
 
 ## 2. Human grants access
 
@@ -215,8 +229,8 @@ const enrollment = await AgentsResource.enroll("https://api.1claw.xyz", {
   name: "deploy-bot",
   human_email: "ops@mycompany.com",
 });
-console.log("Enrolled:", enrollment.agent_id);
-// Wait for human to email you the API key and create policies...
+console.log("Pending:", enrollment.message, enrollment.approval_url);
+// Wait for human to approve, then email you the API key and create policies...
 
 // Steps 3-5: Normal operation (after receiving credentials)
 const client = createClient({
@@ -244,9 +258,9 @@ await client.sharing.create(secretMeta.id, {
 ## Security notes
 
 - **Zero access by default** — A freshly enrolled agent cannot read any secrets until the human creates policies.
-- **API key is never in the response** — It is emailed to the human only. The agent never sees its own key via the enrollment API.
-- **Rate limiting** — Enrollment is rate-limited per email (10 min cooldown) and per IP to prevent abuse.
-- **Uniform responses** — The API returns the same 201 shape whether the email matches a user or not, preventing email enumeration.
+- **API key is never in the enroll response** — It is emailed to the human after they approve. The agent never sees its own key via `POST /v1/agents/enroll`.
+- **Rate limiting** — Enrollment is rate-limited per email (10 min cooldown when email is used), with caps on pending rows and per IP.
+- **Uniform responses** — Some branches use the same 201 shape to limit email enumeration; `approval_url` may be omitted in those cases.
 
 ## Next steps
 

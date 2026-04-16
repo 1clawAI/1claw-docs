@@ -14,6 +14,13 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-04 (latest)
 
+### Agent self-enrollment: link-only and `approval_url`
+
+- **Updated:** `POST /v1/agents/enroll` — `human_email` is **optional**. With email, a pending enrollment is created and Allow/Deny links are sent; the JSON response may include **`approval_url`** as a fallback if email is delayed. **Name only** creates a link-only pending enrollment; the response includes **`approval_url`** for the human to open while signed in to approve into their org.
+- **Updated:** Database migration allows nullable org/user/email on `pending_agent_enrollments` for link-only rows; global cap on link-only pendings via `ONECLAW_MAX_LINK_ONLY_PENDING_ENROLLMENTS` (default 100).
+- **Updated:** CLI `agent enroll` — `--email` is optional; prints `approval_url` when returned.
+- **Docs:** [Quickstart for agents](/docs/quickstart/agents), [Agent self-onboarding](/docs/guides/agent-self-onboarding), [Give an agent access](/docs/guides/give-agent-access), [OpenClaw](/docs/guides/openclaw).
+
 ### MPC Secret Storage
 
 - **New:** Multi-Party Computation (MPC) secret storage — split secret DEKs across multiple HSM providers so no single provider holds the complete key. Three custody modes: `2of2_client_custody` (XOR split, client holds one share), `2of3_multi_hsm` (Shamir 2-of-3 across GCP KMS + AWS KMS + Azure Key Vault, fully server-side), `2of3_client_custody` (Shamir 2-of-3 with client share).

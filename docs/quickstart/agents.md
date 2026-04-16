@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 # Quickstart for agents
 
-An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** with the email of a human who already has a 1Claw account. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
+An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** via `POST /v1/agents/enroll` (public, no auth). You can supply a **human's email** (if they already have a 1Claw account) or **name only** and use the returned **`approval_url`** so they approve in the browser. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
 
 :::tip Try it out
 Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (SDK + agent token) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent fetches secrets just-in-time).
@@ -17,7 +17,12 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 
 ## 0. Enroll (if you don't have credentials yet)
 
-If no one has assigned you an agent yet, you can **self-enroll**. You need the **email address of a human** who already has a 1Claw account. The API creates an agent in their organization and **emails the credentials** (Agent ID + API key) to that person — the key is never returned in the API response. That human can then grant the agent access to vaults via policies and share the credentials with you (or your deployment).
+If no one has assigned you an agent yet, you can **self-enroll**.
+
+- **With `human_email`:** Creates a **pending** enrollment for that account. Allow/Deny links are emailed, and the JSON response may include **`approval_url`** (use it if email is delayed or in spam). The API key is emailed **after the human approves** — it is not returned from the enroll response.
+- **Name only** (omit `human_email`): Creates a **link-only** pending enrollment. The response includes **`approval_url`**; the human opens it while signed in to approve the agent into their org.
+
+That human can then grant the agent access to vaults via policies and share the credentials with you (or your deployment).
 
 **No authentication is required** for this endpoint.
 
@@ -44,15 +49,25 @@ const res = await fetch("https://api.1claw.xyz/v1/agents/enroll", {
   }),
 });
 const data = await res.json();
-// data.agent_id is set only when the email matched a user; credentials are emailed to the human
+// data.approval_url may be present; credentials are emailed after the human approves
 ```
 
 </TabItem>
 </Tabs>
 
-**Request body:** `name` (required), `human_email` (required), `description` (optional).
+**Name only (link-only enrollment):**
 
-**Response (201):** Same shape whether the email exists or not (to prevent email enumeration). When the email matches a 1Claw user, an agent is created and credentials are sent to that email. The human then adds policies in the [dashboard](https://1claw.xyz) and can give you the Agent ID and API key so you can continue with the steps below.
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent"}'
+```
+
+The JSON response includes **`approval_url`** when a pending row was created. The human opens that URL while signed in to approve.
+
+**Request body:** `name` (required), `human_email` (optional), `description` (optional).
+
+**Response (201):** Includes a status `message` and may include **`approval_url`** when enrollment was created successfully. Some responses intentionally omit `approval_url` (for example when the email does not match an account) to limit abuse — see the [OpenAPI spec](https://www.npmjs.com/package/@1claw/openapi-spec). Credentials are emailed **after approval**, not in the enroll response. The human then adds policies in the [dashboard](https://1claw.xyz) and can give you the Agent ID and API key so you can continue with the steps below.
 
 **Rate limits:** Per-email cooldown (one enrollment per email per 10 minutes) and IP rate limiting apply.
 

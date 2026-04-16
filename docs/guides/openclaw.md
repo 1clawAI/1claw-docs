@@ -54,9 +54,9 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
   -d '{"name":"my-openclaw-agent","human_email":"you@example.com"}'
 ```
 
-1Claw looks up your account by email, creates the agent, and **emails the credentials** (Agent ID + API key) to you. The API key is not returned in the response — only the human receives it.
+You can omit `human_email` and use the returned **`approval_url`** to approve while signed in. After approval, 1Claw **emails the credentials** (Agent ID + API key). The enroll response does not include the API key.
 
-Once you get the email, configure the credentials in your OpenClaw environment (see [Configure credentials](#configure-credentials) below), then grant the agent access to a vault from the [dashboard](https://1claw.xyz/agents).
+Once you get the email (or finish the approval flow), configure the credentials in your OpenClaw environment (see [Configure credentials](#configure-credentials) below), then grant the agent access to a vault from the [dashboard](https://1claw.xyz/agents).
 
 ### Option B: Manual registration
 

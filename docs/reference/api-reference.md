@@ -116,7 +116,7 @@ All endpoints are under **/v1**.
 
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
-| POST   | `/v1/agents/enroll`| Self-enroll an agent; credentials emailed to human (no auth required)      |
+| POST   | `/v1/agents/enroll`| Self-enroll (optional `human_email`, or link-only with `approval_url`); credentials after approval (no auth) |
 
 ## Agents
 

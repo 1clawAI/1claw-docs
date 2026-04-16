@@ -12,7 +12,7 @@ When you have many AI agents — from CI bots to coding assistants to autonomous
 
 ### Self-enrollment pattern
 
-Agents self-enroll via `POST /v1/agents/enroll`. This is the recommended approach when agents are deployed independently and discover their human counterpart by email:
+Agents self-enroll via `POST /v1/agents/enroll`. Use **`human_email`** when the ops contact already has a 1Claw account, or **name only** to get an **`approval_url`** for the human to open while signed in:
 
 ```typescript
 import { AgentsResource } from "@1claw/sdk";
@@ -24,7 +24,8 @@ await AgentsResource.enroll("https://api.1claw.xyz", {
 ```
 
 **Rate limits to be aware of:**
-- One enrollment per email per 10 minutes (per-email cooldown).
+- One enrollment per email per 10 minutes (per-email cooldown, when email is used).
+- Global cap on non-expired link-only pending enrollments.
 - IP rate limiting: 5-burst, 1/sec.
 
 For bulk provisioning (e.g. deploying 50 agents simultaneously), stagger enrollment requests or use the authenticated `POST /v1/agents` endpoint with a human API key.

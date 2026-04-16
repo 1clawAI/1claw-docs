@@ -179,7 +179,7 @@ To revoke: delete the policy or deactivate the agent. To rotate: create a new se
 
 ## Alternative: Agent self-enrollment
 
-Instead of steps 1-2 above, the agent can **self-enroll** by calling a public endpoint with no credentials:
+Instead of steps 1-2 above, the agent can **self-enroll** by calling a public endpoint with no credentials. With **`human_email`**, Allow/Deny links are emailed (and the response may include **`approval_url`** as a backup). With **name only**, the response includes **`approval_url`** for you to open while signed in:
 
 ```bash
 curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
@@ -187,13 +187,22 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
   -d '{"name":"my-agent","human_email":"you@example.com"}'
 ```
 
+Or name only:
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent"}'
+```
+
 Or via the CLI:
 
 ```bash
 npx @1claw/cli agent enroll my-agent --email you@example.com
+npx @1claw/cli agent enroll my-agent
 ```
 
-The human receives the agent's credentials by email and still needs to create a policy (step 3). After that, the agent proceeds with step 4 as normal.
+After you **approve** the pending enrollment, you receive the agent's credentials by email and still need to create a policy (step 3). After that, the agent proceeds with step 4 as normal.
 
 This is particularly useful when:
 - The agent is deployed independently and doesn't have access to the human's dashboard.

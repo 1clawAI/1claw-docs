@@ -57,10 +57,16 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
 ## Agent: self-enroll
 
 ```bash
+# With human email (pending enrollment; Allow/Deny emailed; response may include approval_url)
 curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","human_email":"you@example.com"}'
-# Credentials are emailed to the human — not returned here
+
+# Name only (response includes approval_url; human approves while signed in)
+curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent"}'
+# API key is emailed after approval — not returned from enroll
 ```
 
 ## List secrets (metadata only)
