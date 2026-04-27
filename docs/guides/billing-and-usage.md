@@ -324,8 +324,8 @@ Once enabled, LLM billing remains active until you disable it. Disabling cancels
 
 ### Requirements
 
-- **`STRIPE_LLM_RATE_CARD_ID`** set on Vault — Stripe Checkout now uses **`rate_card_subscription_item`** (with `Stripe-Version: 2026-02-25.preview;checkout_product_catalog_preview=v1`). Use the rate card ID from your LLM pricing plan in the Stripe Dashboard.
-- **`STRIPE_LLM_PRICING_PLAN_ID`** (`bpp_...`) — recommended so usage, disable, and webhooks can match subscriptions by plan as well as by `metadata.purpose=llm_token_billing`.
+- **`STRIPE_LLM_PRICING_PLAN_ID`** (`bpp_...`) set on Vault — **required** for LLM Checkout subscribe. Stripe Checkout uses **`pricing_plan_subscription_item`** (with `Stripe-Version: 2025-09-30.preview;checkout_product_catalog_preview=v1`). Copy the pricing plan ID from the Stripe Dashboard (Billing for LLM tokens). Also used for subscription matching, disable, and webhooks.
+- **`STRIPE_LLM_RATE_CARD_ID`** (`rcd_...`) — optional; used for `GET /v1/billing/llm-pricing` display.
 - Active Stripe customer (created automatically when you enable)
 - Shroud proxy enabled for agents (LLM requests must go through `shroud.1claw.xyz`)
 - Agent JWT must include `llm_token_billing: true` and `stripe_customer_id` claims
