@@ -142,6 +142,7 @@ const config: Config = {
         ],
     ],
     plugins: [
+        "docusaurus-plugin-copy-page-button",
         function excludeNodeModulesMdx() {
             return {
                 name: "exclude-node-modules-mdx",
