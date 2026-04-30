@@ -48,3 +48,20 @@
   --ifm-code-background: #0f0e10;
   --ifm-table-border-color: #1e1c1d;
 }
+
+/* Copy-page-button: prevent TOC overflow from clipping the button/dropdown */
+.theme-doc-toc-desktop,
+.table-of-contents {
+  overflow: visible !important;
+}
+
+#copy-page-button-container {
+  z-index: 200;
+  position: relative;
+}
+
+/* Keep TOC list scrollable while the wrapper stays unclipped */
+.table-of-contents__left-border {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
