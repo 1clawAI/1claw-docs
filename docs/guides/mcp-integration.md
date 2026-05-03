@@ -18,13 +18,37 @@ The fastest way to connect an AI agent to your vault:
 
 1. **Register an agent** in the [1claw dashboard](https://1claw.xyz/agents/new) — save the API key (`ocv_...`).
 2. **Create a policy** granting the agent `read` access to the paths it needs.
-3. **Get a JWT** by calling the agent-token endpoint with your agent ID and API key:
-   ```bash
-   curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
-     -H "Content-Type: application/json" \
-     -d '{"agent_id":"<uuid>","api_key":"ocv_..."}' | jq -r '.access_token'
-   ```
-4. **Configure your MCP client** with the hosted server (use the JWT from step 3 as the Bearer token; it expires in ~1 hour):
+3. **Configure your MCP client** with the hosted server using the agent API key directly:
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "url": "https://mcp.1claw.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer ocv_your_agent_api_key"
+      }
+    }
+  }
+}
+```
+
+That's it. The server automatically exchanges the API key for a short-lived JWT, refreshes it before expiry, and auto-discovers the vault when the agent is bound to exactly one. No manual token rotation needed.
+
+:::tip Vault override
+If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"` to the headers to pick one explicitly.
+:::
+
+<details>
+<summary>Legacy: using a pre-minted JWT</summary>
+
+If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~1 hour) and you'll need to refresh them manually.
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"<uuid>","api_key":"ocv_..."}' | jq -r '.access_token'
+```
 
 ```json
 {
@@ -40,7 +64,7 @@ The fastest way to connect an AI agent to your vault:
 }
 ```
 
-That's it. The agent can now call `list_secrets`, `get_secret`, and other tools.
+</details>
 
 ## Quick start (local)
 
