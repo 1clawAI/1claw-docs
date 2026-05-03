@@ -92,15 +92,45 @@ cd packages/mcp && pnpm install && pnpm run build
 
 ## Available tools
 
+### Secrets
+
 | Tool | What it does |
 |------|-------------|
 | `list_secrets` | List all secrets (metadata only, never values) |
 | `get_secret` | Fetch decrypted value by path |
-| `put_secret` | Create or update a secret |
+| `put_secret` | Create or update a secret (creates a new version) |
 | `delete_secret` | Soft-delete a secret |
 | `describe_secret` | Get metadata without the value |
-| `rotate_and_store` | Store a new version of an existing secret |
-| `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle |
+| `rotate_and_store` | Store a new value for an existing secret (new version) |
+| `rotate_generate` | Server-side rotation — generates a random value that never leaves the server |
+| `list_versions` | List all versions of a secret with creation dates and disabled status |
+| `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle into JSON |
+
+### Vaults & access
+
+| Tool | What it does |
+|------|-------------|
+| `create_vault` | Create a new vault for organising secrets |
+| `list_vaults` | List all vaults accessible to you |
+| `grant_access` | Grant a user or agent access to a vault you own |
+| `share_secret` | Share a specific secret with a user, agent, or your creator |
+
+### Transactions (Intents API)
+
+| Tool | What it does |
+|------|-------------|
+| `submit_transaction` | Sign and optionally broadcast an EVM transaction |
+| `sign_transaction` | Sign without broadcasting — returns raw signed tx hex |
+| `simulate_transaction` | Simulate a transaction via Tenderly (no signing) |
+| `simulate_bundle` | Simulate a sequence of transactions in order |
+| `list_transactions` | List recent transactions for the current agent |
+| `get_transaction` | Get details of a specific transaction by ID |
+
+### Security
+
+| Tool | What it does |
+|------|-------------|
+| `inspect_content` | Scan text for injection, obfuscation, social engineering, and PII |
 
 ## Typical agent workflow
 
