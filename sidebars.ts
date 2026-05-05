@@ -95,6 +95,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/agent-fleet-management",
                             label: "Many agents — environments, keys, and operations",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/oidc-federation",
+                            label: "OIDC federation — Anthropic WIF, no static keys",
+                        },
                     ],
                 },
                 {
