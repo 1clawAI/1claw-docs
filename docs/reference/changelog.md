@@ -12,7 +12,46 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-04 (latest)
+## 2026-05 (latest)
+
+### Multi-chain signing keys (v0.18)
+
+- **New:** Per-agent, per-chain signing keys for 6 blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1).
+- **New:** `POST /v1/agents/{id}/signing-keys` — provision an HSM-backed key for a chain. Returns public key and derived address. Private key stored in `__agent-keys` vault.
+- **New:** `POST /v1/agents/{id}/signing-keys/{chain}/rotate` — rotate a chain's key (deactivates old version, creates new).
+- **New:** `DELETE /v1/agents/{id}/signing-keys/{chain}` — deactivate a chain's key.
+- **New:** Crypto modules — `bitcoin.rs` (secp256k1, P2WPKH bech32), `solana.rs` (Ed25519, Base58), `xrp.rs` (Ed25519, Base58Check), `cardano.rs` (Ed25519, bech32 enterprise), `tron.rs` (secp256k1, Base58Check).
+- **New:** Dashboard — "Signing Keys" card on agent detail page with public keys, addresses, key version, and "Add Key" dialog.
+- **New:** SDK — `client.signingKeys.create()`, `.list()`, `.rotate()`, `.deactivate()`.
+- **New:** CLI — `1claw agent signing-keys list`, `create --chain`, `rotate`, `delete`.
+- **New:** MCP tools — `provision_signing_key`, `list_signing_keys`.
+
+### Extended signing intents (v0.18)
+
+- **New:** Unified `POST /v1/agents/{id}/sign` endpoint supporting three intent types:
+  - **`personal_sign`** (EIP-191): Sign arbitrary messages. Requires `message_signing_enabled` on agent.
+  - **`typed_data`** (EIP-712): Sign structured typed data (e.g. ERC-20 Permit). Enforces domain allowlist and deny-by-default for dangerous types (Permit, Permit2, etc.).
+  - **`transaction`**: All EIP-2718 types — legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), EIP-7702 (type 4).
+- **New:** Agent guardrail fields — `message_signing_enabled` (boolean), `eip712_default_policy` ("deny"/"allow"), `eip712_domain_allowlist` (JSON array), `signing_chains` (text array).
+- **New:** SDK — `client.agents.sign(agentId, { intent_type, chain, ... })`.
+- **New:** CLI — `1claw agent sign`.
+- **New:** MCP tools — `sign_message` (EIP-191), `sign_typed_data` (EIP-712).
+- **New:** [Multi-chain keys example](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys), [EVM signing example](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing), [Agentic TX example](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx), [Non-EVM keys example](https://github.com/1clawAI/1claw-examples/tree/main/non-evm-keys).
+
+### Scaling & performance (v0.17)
+
+- **New:** DEK cache — 60s TTL, 1000-entry DashMap, cuts KMS unwrap calls ~80%.
+- **New:** Usage metering batching — in-memory buffer, batch INSERT every 5s/100 events.
+- **New:** Distributed rate limiting — two-layer: in-memory L1 + optional Redis L2.
+- **New:** Shroud nonce manager — DB-backed via Vault's `POST /v1/admin/nonces/reserve`.
+- **New:** Cron job leader election via `pg_try_advisory_lock`.
+- **New:** Quota header caching — DashMap 30s TTL per org.
+- **New:** Manifest endpoint ETag/304 + `?since=` incremental query.
+- **New:** Daily spend partial composite index on `transactions` table.
+
+---
+
+## 2026-04
 
 ### Agent self-enrollment: link-only and `approval_url`
 

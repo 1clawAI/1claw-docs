@@ -46,4 +46,12 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **x402** — A protocol for per-request payment. When your tier’s request quota is exceeded and you’ve chosen x402 as your overage method, the API can return 402 Payment Required with payment details; after payment, you retry the request. See [Billing & Usage](/docs/guides/billing-and-usage).
 
-**Intents API** — A feature that lets agents sign and broadcast on-chain transactions without ever reading the private key. When enabled for an agent, the agent is blocked from reading `private_key` and `ssh_key` secrets; it must use the transaction endpoints. See [Intents API](/docs/guides/intents-api).
+**Intents API** — A feature that lets agents sign and broadcast on-chain transactions without ever reading the private key. When enabled for an agent, the agent is blocked from reading `private_key` and `ssh_key` secrets; it must use the transaction endpoints. Supports EIP-191 message signing, EIP-712 typed data signing, and all EIP-2718 transaction types (0–4). See [Intents API](/docs/guides/intents-api).
+
+**Signing key (multi-chain)** — A per-agent, per-chain cryptographic keypair provisioned via `POST /v1/agents/{id}/signing-keys`. The private key is stored in the HSM-backed `__agent-keys` vault; the public key and derived address are returned to the caller. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron. See [Agent keys](/docs/security/agent-keys) and [Intents API — Signing Keys](/docs/guides/intents-api#signing-keys).
+
+**EIP-191 (personal_sign)** — A standard for signing human-readable messages on Ethereum. Used for identity verification, login challenges, and off-chain attestations. Requires `message_signing_enabled: true` on the agent. See [Intents API — EIP-191](/docs/guides/intents-api#eip191).
+
+**EIP-712 (typed data)** — A standard for signing structured typed data on Ethereum (e.g. ERC-20 Permit, gasless approvals). Subject to the agent's `eip712_domain_allowlist` and `eip712_default_policy` guardrails. See [Intents API — EIP-712](/docs/guides/intents-api#eip712).
+
+**EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/guides/intents-api#tx-types).

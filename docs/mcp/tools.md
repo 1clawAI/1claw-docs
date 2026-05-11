@@ -335,3 +335,231 @@ Agent: "Share this with agent abc123"
 
 Secret shared with agent abc123. Share ID: ef814...
 ```
+
+---
+
+## provision_signing_key
+
+Provision an HSM-backed signing key for a blockchain. The private key is generated and stored in the `__agent-keys` vault — only the public key and derived address are returned.
+
+### Parameters
+
+| Name    | Type   | Required | Description                                                                  |
+| ------- | ------ | -------- | ---------------------------------------------------------------------------- |
+| `chain` | string | Yes      | Blockchain name: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`   |
+
+### Example
+
+```
+Agent: "Create an Ethereum signing key for me"
+→ provision_signing_key(chain: "ethereum")
+
+Signing key created for ethereum:
+  Public key: 0x04abc123...
+  Address: 0x1234abcd...
+  Curve: secp256k1
+  Key version: 1
+```
+
+---
+
+## list_signing_keys
+
+List all active signing keys for the current agent.
+
+### Parameters
+
+None.
+
+### Example
+
+```
+Agent: "What signing keys do I have?"
+→ list_signing_keys()
+
+Found 3 signing key(s):
+- ethereum: 0x1234... (secp256k1, v1)
+- solana: 7xKq3... (ed25519, v1)
+- bitcoin: bc1q8... (secp256k1, v2)
+```
+
+---
+
+## sign_message
+
+Sign an EIP-191 personal message. Requires `message_signing_enabled: true` on the agent.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                             |
+| --------- | ------ | -------- | ------------------------------------------------------- |
+| `message` | string | Yes      | The message to sign (UTF-8 string or hex-encoded bytes) |
+| `chain`   | string | Yes      | Chain name (e.g. `ethereum`)                            |
+
+### Example
+
+```
+Agent: "Sign this message to prove my identity"
+→ sign_message(message: "Hello from my agent", chain: "ethereum")
+
+{
+  "signature": "0x3045...",
+  "message_hash": "0xabcd...",
+  "from": "0x1234..."
+}
+```
+
+---
+
+## sign_typed_data
+
+Sign EIP-712 typed structured data (e.g. ERC-20 Permit, gasless approvals). The agent's `eip712_domain_allowlist` must include the `verifyingContract`.
+
+### Parameters
+
+| Name         | Type   | Required | Description                                      |
+| ------------ | ------ | -------- | ------------------------------------------------ |
+| `chain`      | string | Yes      | Chain name (e.g. `ethereum`)                     |
+| `typed_data` | object | Yes      | Full EIP-712 JSON (types, primaryType, domain, message) |
+
+### Example
+
+```
+Agent: "Sign this Permit for USDC approval"
+→ sign_typed_data(chain: "ethereum", typed_data: { types: {...}, primaryType: "Permit", domain: {...}, message: {...} })
+
+{
+  "signature": "0x3046...",
+  "typed_data_hash": "0xef01...",
+  "from": "0x1234..."
+}
+```
+
+---
+
+## submit_transaction
+
+Sign and broadcast a transaction. Optionally simulate first via Tenderly.
+
+### Parameters
+
+| Name               | Type    | Required | Description                                                      |
+| ------------------ | ------- | -------- | ---------------------------------------------------------------- |
+| `chain`            | string  | Yes      | Chain name (e.g. `base`, `ethereum`, `sepolia`)                  |
+| `to`               | string  | Yes      | Recipient address                                                |
+| `value`            | string  | No       | Value in ETH (e.g. `"0.1"`)                                     |
+| `data`             | string  | No       | Calldata hex (e.g. `"0x"`)                                      |
+| `signing_key_path` | string  | No       | Vault path to signing key (default: `keys/{chain}-signer`)       |
+| `simulate_first`   | boolean | No       | Run Tenderly simulation before signing (default: false)          |
+
+### Example
+
+```
+Agent: "Send 0.01 ETH on Base"
+→ submit_transaction(chain: "base", to: "0xRecipient...", value: "0.01", simulate_first: true)
+
+Transaction broadcast:
+  tx_hash: 0xabc123...
+  status: broadcast
+  chain: base
+```
+
+---
+
+## sign_transaction
+
+Sign a transaction without broadcasting (BYORPC). Same parameters as `submit_transaction`.
+
+### Example
+
+```
+Agent: "Sign this transaction but don't broadcast it"
+→ sign_transaction(chain: "ethereum", to: "0xRecipient...", value: "0.5")
+
+Transaction signed (not broadcast):
+  signed_tx: 0x02f870...
+  tx_hash: 0xdef456...
+  from: 0x1234...
+```
+
+---
+
+## simulate_transaction
+
+Simulate a transaction via Tenderly without signing or broadcasting.
+
+### Parameters
+
+Same as `submit_transaction` (minus `simulate_first`).
+
+### Example
+
+```
+Agent: "Simulate sending 1 ETH on Ethereum"
+→ simulate_transaction(chain: "ethereum", to: "0xRecipient...", value: "1.0")
+
+Simulation result:
+  status: success
+  gas_used: 21000
+  balance_changes: [...]
+```
+
+---
+
+## simulate_bundle
+
+Simulate multiple transactions sequentially (e.g. approve + swap).
+
+### Parameters
+
+| Name           | Type    | Required | Description                         |
+| -------------- | ------- | -------- | ----------------------------------- |
+| `transactions` | array   | Yes      | Array of transaction objects         |
+
+### Example
+
+```
+Agent: "Simulate approve then swap on Base"
+→ simulate_bundle(transactions: [{ chain: "base", to: "0xToken", data: "0xapprove..." }, { chain: "base", to: "0xRouter", data: "0xswap..." }])
+
+Bundle simulation:
+  Transaction 1: success (gas: 46000)
+  Transaction 2: success (gas: 150000)
+```
+
+---
+
+## list_transactions
+
+List recent transactions for the current agent.
+
+### Parameters
+
+| Name                | Type    | Required | Description                                    |
+| ------------------- | ------- | -------- | ---------------------------------------------- |
+| `include_signed_tx` | boolean | No       | Include raw signed_tx hex (default: false)     |
+
+### Example
+
+```
+Agent: "Show me my recent transactions"
+→ list_transactions()
+
+Found 3 transaction(s):
+- 0xabc... (base, 0.1 ETH, broadcast)
+- 0xdef... (ethereum, 0.5 ETH, sign_only)
+- 0x123... (sepolia, 0.01 ETH, broadcast)
+```
+
+---
+
+## get_transaction
+
+Get details of a specific transaction.
+
+### Parameters
+
+| Name                | Type    | Required | Description                                    |
+| ------------------- | ------- | -------- | ---------------------------------------------- |
+| `transaction_id`    | string  | Yes      | UUID of the transaction                        |
+| `include_signed_tx` | boolean | No       | Include raw signed_tx hex (default: false)     |

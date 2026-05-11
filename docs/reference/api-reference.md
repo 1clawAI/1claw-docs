@@ -164,17 +164,30 @@ Multi-sig treasury wallets (Safe) and agent access requests. See [Treasury guide
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/approve`      | Approve an access request      |
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/deny`         | Deny an access request        |
 
-## Transactions (Intents API)
+## Agent Signing Keys
+
+Per-agent, per-chain signing keys provisioned by humans. Keys are stored in the HSM-backed `__agent-keys` vault. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron.
+
+| Method | Path                                                      | Description                              |
+| ------ | --------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/signing-keys`                       | Provision a signing key for a chain      |
+| GET    | `/v1/agents/:agent_id/signing-keys`                       | List all signing keys for the agent      |
+| POST   | `/v1/agents/:agent_id/signing-keys/:chain/rotate`         | Rotate a chain's signing key             |
+| DELETE | `/v1/agents/:agent_id/signing-keys/:chain`                | Deactivate a chain's signing key         |
+
+## Transactions & Signing (Intents API)
 
 Requires `intents_api_enabled: true` on the agent. When enabled, the agent is also **blocked** from reading `private_key` and `ssh_key` type secrets through the standard secrets endpoint — it must use the proxy to sign transactions.
 
 | Method | Path                                                | Description                                                    |
 | ------ | --------------------------------------------------- | -------------------------------------------------------------- |
 | POST   | `/v1/agents/:agent_id/transactions`                 | Submit a transaction (supports `simulate_first` flag)          |
+| POST   | `/v1/agents/:agent_id/transactions/sign`            | Sign a transaction without broadcasting (BYORPC)               |
 | GET    | `/v1/agents/:agent_id/transactions`                 | List agent transactions                                        |
 | GET    | `/v1/agents/:agent_id/transactions/:tx_id`          | Get transaction details                                        |
 | POST   | `/v1/agents/:agent_id/transactions/simulate`        | Simulate a transaction via Tenderly (no signing)               |
 | POST   | `/v1/agents/:agent_id/transactions/simulate-bundle` | Simulate a bundle of sequential transactions (approve + swap)  |
+| POST   | `/v1/agents/:agent_id/sign`                         | Unified sign: EIP-191, EIP-712, or transaction (types 0–4)    |
 
 ## Billing & Usage
 
