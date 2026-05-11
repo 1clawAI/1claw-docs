@@ -34,10 +34,11 @@ Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud a
 
 ## Authentication
 
-- **Human users**: Email/password (with **forgot password** flow: `POST /v1/auth/forgot-password` + `reset-password`, dashboard `/forgot-password` & `/reset-password`, CLI `1claw forgot-password` / `1claw reset-password`), Google OAuth (ID token verified via JWKS), SSO (WorkOS SAML/OIDC), or personal API keys (`1ck_` prefix)
+- **Human users**: Email/password (with **forgot password** flow: `POST /v1/auth/forgot-password` + `reset-password`, dashboard `/forgot-password` & `/reset-password`, CLI `1claw forgot-password` / `1claw reset-password`; **account lockout** after 10 failed attempts for 15 minutes), Google OAuth (ID token verified via JWKS), SSO (WorkOS SAML/OIDC), or personal API keys (`1ck_` prefix). Password changes and resets invalidate all existing sessions.
 - **AI agents**: Three auth methods — API key (`ocv_` prefix, default), mTLS (client certificate), or OIDC Client Credentials. API key agents exchange credentials for short-lived JWT via `POST /v1/auth/agent-token`. Supports key-only auth: agents can provide just `api_key` (without `agent_id`) and the server resolves the agent from a stored key prefix.
 - **MFA**: Optional TOTP 2FA for human logins (Pro tier and above)
 - **API keys**: `1ck_` keys work as Bearer tokens on all authenticated endpoints
+- **OIDC federation (1claw as IdP)**: 1claw publishes a standard OpenID Connect issuer at `https://api.1claw.xyz` so external relying parties (Anthropic Workload Identity Federation, GCP STS, AWS STS, etc.) can validate 1claw-issued JWTs without static API keys. Public endpoints: `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`. RFC 8693 token exchange: `POST /v1/auth/federated-token` (accepts JSON or form-encoded; takes `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`, `subject_token` (agent JWT or `ocv_` key), `subject_token_type`, `audience`; returns RS256 JWT signed by an HSM-backed RSA-2048 KMS key). Two KMS signing keys: existing `EC_SIGN_ED25519` for agent JWTs and new `RSA_SIGN_PKCS1_2048_SHA256` for federation tokens. Both publish every active version under a deterministic `kid` (`eddsa-vN`, `rs256-vN`). Agent fields: `federation_enabled` (default false — zero-trust), `federation_audiences` (TEXT[] allowlist; empty = deny all), `federated_token_ttl_seconds` (default 900s, hard cap 3600s).
 
 ## Core Concepts
 
@@ -83,7 +84,7 @@ Rust service running inside Google Cloud Confidential GKE (AMD SEV-SNP). Sits be
 
 **Request inspection pipeline** (in order): hidden content stripping → per-org secret redaction (Aho-Corasick) → secret injection detection (catches non-vault credentials in prompts) → PII detection → context injection defense → prompt injection scoring → token counting → Unicode normalization → command injection detection → encoding detection → social engineering detection → network detection → filesystem detection → tool call inspection → semantic policy → policy enforcement.
 
-**Response inspection pipeline** (in order): token counting → tool call inspection → output policy (blocked patterns, harmful content categories) → response filtering (hallucinated credentials) → secret redaction → semantic policy.
+**Response inspection pipeline** (Shroud v0.5.0+, in order): token counting → tool call inspection → output policy (blocked patterns, harmful content categories) → **response injection** (echoed/indirect injection, markdown-image exfil, data-URI blobs, unexpected code fences) → **prompt injection (response-side)** → **context injection (response-side)** → **network detection (response-side)** (exfil URLs in model output) → response filtering (hallucinated credentials) → secret redaction → semantic policy. Bi-directional inspection adds audit fields `response_injection_score`, `response_context_injection_score`, `response_injection_categories`, `external_urls_flagged`, `unexpected_code_blocks`. Server-side toggles: `enable_response_injection_detection`, `enable_response_network_detection`, `enable_response_code_block_detection` (all default true).
 
 Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_config` (JSON) fields. Config options: `pii_policy` (block/redact/warn/allow), `injection_threshold` (0.0–1.0), `context_injection_threshold`, `allowed_providers`, `allowed_models`, `denied_models`, `max_tokens_per_request`, `max_requests_per_minute`, `max_requests_per_day`, `daily_budget_usd`, `enable_secret_redaction`, `enable_response_filtering`, plus threat detectors (social engineering, network, encoding, command injection, filesystem, tool call inspection, output policy, secret injection detection, advanced redaction, semantic policy) with actions **block** / **warn** / **log** where applicable. Additional config: `tool_call_inspection` (allowed_tool_names, denied_tool_names, scan_arguments, block_credential_exfil), `output_policy` (blocked_patterns, blocked_entities, block_harmful_content, harmful_categories: violence/self_harm/illegal/hate/sexual/malware), `secret_injection_detection` (sensitivity: low/medium/high), `advanced_redaction` (detect_base64_encoded, detect_split_secrets, detect_prefix_leak, min_secret_length), `semantic_policy` (allowed_topics, denied_topics, allowed_tasks, denied_tasks), `flagged_request_retention_days`. Configure via dashboard (Agent → Shroud LLM Proxy card), API (`PATCH /v1/agents/{id}`), SDK, or CLI (`1claw agent update <id> --shroud true`).
 
@@ -99,6 +100,9 @@ Key endpoints:
 - `POST /v1/auth/reset-password` — Complete reset with token from email
 - `DELETE /v1/auth/token` — Revoke current Bearer token (returns 200; reused token then returns 401)
 - `POST /v1/auth/agent-token` — Agent token exchange (accepts `api_key` alone or `agent_id` + `api_key`; returns `agent_id` and `vault_ids` for auto-discovery)
+- `POST /v1/auth/federated-token` — RFC 8693 OIDC token exchange. Subject token (agent JWT or `ocv_` key) → short-lived RS256 JWT. Requires `agent.federation_enabled=true` and audience on `agent.federation_audiences`. Default TTL 15 min, hard cap 60 min.
+- `GET /.well-known/openid-configuration` — Public OIDC discovery (issuer, jwks_uri, supported algs `["EdDSA","RS256"]`, supported grant types incl. token-exchange)
+- `GET /.well-known/jwks.json` — Public JWKS (every active EdDSA + RS256 key version, keyed by `kid`, 5-min cache, CORS `*`)
 - `GET/PATCH/DELETE /v1/auth/me` — Get/update/delete own account (user-only; delete requires `{ confirmation: "DELETE MY ACCOUNT" }`)
 - `POST /v1/auth/export-data` — GDPR data export: returns JSON archive of user's profile, vaults, agents, secret metadata, and policies (user-only)
 - `GET/POST /v1/vaults` — List/create vaults
@@ -131,7 +135,7 @@ Key endpoints:
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 
-**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org. MFA tokens are single-use (jti revoked after verification). TOTP codes are replay-protected — each `(user_id, time_step)` is recorded and rejected on reuse within the ±1 step window. Agent JWTs derive `vault_ids` from access policies when not explicitly set. Agent JWTs are tracked in `agent_active_tokens`; policy changes auto-revoke them (see Policies above). Intents API `signing_key_path` restricted to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`. Audit log inserts use a `SECURITY DEFINER` function — the application role (`vault_app`) cannot insert directly into `audit_events`, preventing log tampering from compromised connections.
+**API limits and security:** Request body size is limited to 5MB (413 if exceeded). Public auth routes (e.g. login, signup) are rate-limited (5 req burst, 1/sec); 429 when exceeded. Revoked tokens (via `DELETE /v1/auth/token`) are rejected with 401. Share creation: 10/min/org. MFA tokens are single-use (jti revoked after verification). TOTP codes are replay-protected — each `(user_id, time_step)` is recorded and rejected on reuse within the ±1 step window. Agent JWTs derive `vault_ids` from access policies when not explicitly set. Agent JWTs are tracked in `agent_active_tokens`; policy changes auto-revoke them (see Policies above). Intents API `signing_key_path` restricted to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`. Audit log inserts use a `SECURITY DEFINER` function — the application role (`vault_app`) cannot insert directly into `audit_events`, preventing log tampering from compromised connections. **Account lockout:** After 10 failed login attempts, accounts are locked for 15 minutes; lockout is automatic and resets on successful login. **Session revocation on password change/reset:** When a user changes or resets their password, all existing sessions (JWTs) are automatically invalidated — the user must re-login. **Agent self-update guard:** Agents cannot `PATCH /v1/agents/{id}` their own record; only human users can update agent configuration (agents receive 403). **MCP exfil protection:** The MCP server defaults to "block" mode for exfiltration protection (prevents secrets from being sent to non-secret tools); configurable via `ONECLAW_MCP_EXFIL_PROTECTION` env var. **x402 payment verification:** All x402 payment paths (authenticated and unauthenticated) verify the actual required payment amount before settling.
 
 ### Live Demo
 Interactive demo at https://1claw.xyz/demo — three panels (Vault, Shroud, Intents) with preset buttons, no signup required.
@@ -193,6 +197,17 @@ For operating dozens or hundreds of agents:
 - Enterprise: Custom, unlimited, KMS delegation, BAA
 
 Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Intents API submit when over quota: 0.25% of transaction value (USD), no cap; config ONECLAW_ETH_USD_PRICE (default 2500). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
+
+## Scaling & Performance (v0.17)
+
+- **Database**: Configurable pool (default 5 connections/instance). Set `ONECLAW_POOL_DISABLE_STMT_CACHE=1` for Supavisor transaction-mode pooling. Pool stats logged every 30s.
+- **Rate limiting**: Two-layer — in-memory L1 + optional Redis L2 sliding window. Set `ONECLAW_REDIS_URL` to enable distributed rate limiting.
+- **DEK cache**: 60s TTL DashMap cache for unwrapped DEKs reduces KMS calls ~80%.
+- **Usage batching**: Events buffered and batch-inserted every 5s, reducing INSERT/s from thousands to ~1/instance.
+- **Manifest endpoint**: ETag/304 support + `?since=` incremental parameter on `/v1/admin/secrets/manifest` for efficient Shroud secret refresh.
+- **Nonce serialization**: DB-backed via `POST /v1/admin/nonces/reserve` — Shroud pods no longer use in-memory nonce tracking.
+- **Leader election**: Nightly cron jobs use `pg_try_advisory_lock` to avoid duplicate work across instances.
+- **Connection pooling**: Shared `reqwest::Client` in AppState for RPC/Stripe/Tenderly reuse.
 
 ## MCP Tools (for AI agents)
 
