@@ -1,6 +1,6 @@
 ---
 title: Agent keys
-description: Every agent gets three types of keys at creation — API key, Ed25519 signing key, and P-256 ECDH key. Learn how they're created, stored, and accessed.
+description: Every agent gets identity keys at creation, plus optional multi-chain blockchain signing keys. Learn how they're created, stored, and accessed.
 sidebar_position: 2
 ---
 
@@ -13,6 +13,8 @@ When you [register an agent](/docs/human-api/agents/register-agent) via `POST /v
 | **API key** | `ocv_...` (random, argon2-hashed) | Authentication — token exchange via `POST /v1/auth/agent-token` | Hash in DB; plaintext returned once at creation |
 | **Signing key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
+
+Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/guides/intents-api#signing-keys).
 
 ## How keys are created
 
@@ -98,3 +100,25 @@ The `ecdh:setup-agents` script in the [Google A2A example](/docs/guides/give-age
 - **Ed25519 for signing** — Deterministic nonces (no catastrophic nonce-reuse bugs), fast, compact signatures. Widely used in SSH, TLS, and JWT.
 - **P-256 ECDH for key agreement** — Standard curve for Diffie-Hellman key exchange (TLS, ECIES, A2A messaging). Distinct from the signing key because signing and key agreement are separate cryptographic operations.
 - **Separate keys for separate purposes** — Signing keys prove identity; ECDH keys establish shared secrets. Using the same key for both is a known anti-pattern that can leak information about the private key.
+
+## Multi-chain blockchain signing keys
+
+Beyond the identity keys above, agents can be provisioned with per-chain signing keys for blockchain transactions. These are stored in the same `__agent-keys` vault and follow the same HSM envelope encryption.
+
+| Chain | Curve | Address format |
+|-------|-------|----------------|
+| Ethereum | secp256k1 | 0x EIP-55 checksum |
+| Bitcoin | secp256k1 | P2WPKH native SegWit (bc1q…) |
+| Solana | Ed25519 | Base58 |
+| XRP | Ed25519 | Base58Check (r…) |
+| Cardano | Ed25519 | Bech32 enterprise (addr1…) |
+| Tron | secp256k1 | Base58Check (T…) |
+
+Multi-chain signing keys are:
+
+- **Provisioned by humans only** — `POST /v1/agents/{id}/signing-keys` requires a human user token. Agents get 403.
+- **Rotatable** — `POST /v1/agents/{id}/signing-keys/{chain}/rotate` creates a new key version and deactivates the old one.
+- **Displayed in the dashboard** — The agent detail page shows a "Signing Keys" card with public keys, addresses, and key version.
+- **Used by the unified sign endpoint** — `POST /v1/agents/{id}/sign` signs EIP-191 messages, EIP-712 typed data, and EIP-2718 transactions using the agent's provisioned key for the specified chain.
+
+See the [Intents API guide](/docs/guides/intents-api#signing-keys) for full provisioning and signing documentation.

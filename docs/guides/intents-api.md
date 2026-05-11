@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
 :::tip Try it out
-Try out the example in this repo: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation) and **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE).
+Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
 :::
 
 ## Quickstart: Your first transaction (~5 min)
@@ -453,6 +453,183 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 </TabItem>
 </Tabs>
 
+## Multi-chain signing keys {#signing-keys}
+
+Instead of manually storing a raw private key in a vault, you can provision HSM-backed signing keys directly on the agent. 1claw generates the keypair inside the HSM and stores the private key in the org's `__agent-keys` vault — the key never leaves hardware.
+
+### Supported chains
+
+| Chain | Curve | Address format |
+| --- | --- | --- |
+| Ethereum | secp256k1 | 0x (EIP-55 checksum) |
+| Bitcoin | secp256k1 | P2WPKH (bech32, bc1q…) |
+| Solana | Ed25519 | Base58 |
+| XRP | Ed25519 | Base58Check (r…) |
+| Cardano | Ed25519 | Bech32 enterprise (addr1…) |
+| Tron | secp256k1 | Base58Check (T…) |
+
+### Provisioning a key
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "ethereum" }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: key } = await client.signingKeys.create(agentId, {
+  chain: "ethereum",
+});
+console.log(key.public_key, key.address); // 0x04abc...  0x1234...
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent signing-keys create $AGENT_ID --chain ethereum
+```
+
+</TabItem>
+</Tabs>
+
+The response includes the `public_key`, derived `address`, `curve`, and `key_version`. The private key is stored in the HSM-backed `__agent-keys` vault.
+
+### Key lifecycle
+
+| Operation | Endpoint | SDK |
+| --- | --- | --- |
+| Provision | `POST /v1/agents/{id}/signing-keys` | `client.signingKeys.create(agentId, { chain })` |
+| List | `GET /v1/agents/{id}/signing-keys` | `client.signingKeys.list(agentId)` |
+| Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
+| Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
+
+Only human users can provision and rotate keys — agents get 403. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support address derivation; on-chain signing for those chains is on the roadmap.
+
+---
+
+## Unified sign endpoint {#unified-sign}
+
+The unified `POST /v1/agents/{id}/sign` endpoint supports three intent types: EIP-191 message signing, EIP-712 typed data signing, and transaction signing across all EIP-2718 types.
+
+### EIP-191 personal_sign {#eip191}
+
+Sign an arbitrary human-readable message. Requires `message_signing_enabled: true` on the agent.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent_type": "personal_sign",
+    "chain": "ethereum",
+    "message": "Hello from my agent!"
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data } = await client.agents.sign(agentId, {
+  intent_type: "personal_sign",
+  chain: "ethereum",
+  message: "Hello from my agent!",
+});
+console.log(data.signature, data.message_hash, data.from);
+```
+
+</TabItem>
+</Tabs>
+
+### EIP-712 typed data {#eip712}
+
+Sign structured typed data (e.g. ERC-20 Permit, gasless approvals). The agent's `eip712_domain_allowlist` must include the `verifyingContract`, or `eip712_default_policy` must be `"allow"`.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent_type": "typed_data",
+    "chain": "ethereum",
+    "typed_data": {
+      "types": { "Permit": [{"name":"owner","type":"address"},{"name":"spender","type":"address"},{"name":"value","type":"uint256"},{"name":"nonce","type":"uint256"},{"name":"deadline","type":"uint256"}] },
+      "primaryType": "Permit",
+      "domain": { "name": "USD Coin", "version": "2", "chainId": 1, "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+      "message": { "owner": "0x...", "spender": "0x...", "value": "1000000", "nonce": "0", "deadline": "1735689600" }
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data } = await client.agents.sign(agentId, {
+  intent_type: "typed_data",
+  chain: "ethereum",
+  typed_data: {
+    types: { Permit: [/* ... */] },
+    primaryType: "Permit",
+    domain: { name: "USD Coin", version: "2", chainId: 1, verifyingContract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+    message: { owner: "0x...", spender: "0x...", value: "1000000", nonce: "0", deadline: "1735689600" },
+  },
+});
+console.log(data.signature, data.typed_data_hash, data.from);
+```
+
+</TabItem>
+</Tabs>
+
+### Transaction types (EIP-2718) {#tx-types}
+
+The unified sign endpoint supports all EIP-2718 envelope types via the `tx_type` field:
+
+| tx_type | Name | Key fields |
+| --- | --- | --- |
+| 0 | Legacy (EIP-155) | `gas_price` |
+| 1 | EIP-2930 (access list) | `gas_price`, `access_list` |
+| 2 | EIP-1559 | `max_fee_per_gas`, `max_priority_fee_per_gas` |
+| 3 | EIP-4844 (blob) | `max_fee_per_blob_gas`, `blob_versioned_hashes` |
+| 4 | EIP-7702 | `authorization_list` |
+
+```typescript
+const { data } = await client.agents.sign(agentId, {
+  intent_type: "transaction",
+  chain: "sepolia",
+  tx_type: 2,
+  to: "0xRecipient",
+  value: "0",
+  max_fee_per_gas: "30000000000",
+  max_priority_fee_per_gas: "2000000000",
+  gas_limit: 21000,
+});
+```
+
+### Message signing guardrails {#message-guardrails}
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `message_signing_enabled` | `boolean` | Must be `true` for EIP-191 personal_sign (default: `false`). |
+| `eip712_default_policy` | `"deny"` \| `"allow"` | Default policy for EIP-712 domains not in the allowlist (default: `"deny"`). |
+| `eip712_domain_allowlist` | `JSON[]` | List of allowed domains, e.g. `[{"verifying_contract": "0xA0b..."}]`. Known dangerous types (Permit, Permit2) always require explicit allowlisting. |
+
+---
+
 ## MCP tools
 
 The MCP server provides transaction tools for the full lifecycle:
@@ -502,6 +679,34 @@ Tool: get_transaction
 Args:
   transaction_id: "uuid-of-transaction"
   include_signed_tx: false
+```
+
+**`provision_signing_key`** — provision an HSM-backed signing key for a chain:
+```
+Tool: provision_signing_key
+Args:
+  chain: "ethereum"
+```
+
+**`list_signing_keys`** — list all signing keys for the current agent:
+```
+Tool: list_signing_keys
+```
+
+**`sign_message`** — sign an EIP-191 personal message:
+```
+Tool: sign_message
+Args:
+  message: "Hello from my agent"
+  chain: "ethereum"
+```
+
+**`sign_typed_data`** — sign EIP-712 typed structured data:
+```
+Tool: sign_typed_data
+Args:
+  chain: "ethereum"
+  typed_data: { types: {...}, primaryType: "Permit", domain: {...}, message: {...} }
 ```
 
 ---
