@@ -6666,23 +6666,40 @@ Set up alerts for:
 
 ---
 
-## Treasury (Safe multisigs)
+## Treasury (Safe multisigs & wallets)
 
 ---
-title: Treasury (Safe multisigs)
-description: Manage organization treasuries backed by Gnosis Safe–style multisigs—signers, thresholds, and agent access requests—via the API and dashboard.
-sidebar_label: Treasury (Safe multisigs)
+title: Treasury (Safe multisigs & wallets)
+description: Multi-chain treasury wallets and Safe multisig management for organizations — generate wallets across 6 chains, manage signers, and control agent access.
+sidebar_label: Treasury (Safe multisigs & wallets)
 sidebar_position: 0
-tags: [treasury, safe, multisig]
+tags: [treasury, safe, multisig, wallets, multi-chain]
 ---
 
-# Treasury (Safe multisigs)
+# Treasury (Safe multisigs & wallets)
 
-**Treasury** lets your org track **Safe multisig** treasuries: name, chain, Safe address, signer list, and threshold. Humans manage treasuries in the dashboard; **agents** can **request access**, and owners can **approve** or **deny** those requests.
+**Treasury** lets your org track **Safe multisig** treasuries and **generate native multi-chain wallets**. Humans manage treasuries and wallets in the dashboard; **agents** can **request access** to treasuries, and owners can **approve** or **deny** those requests.
 
-Use this when you need **shared onchain custody** metadata and **gated agent access** to treasury context—not raw private keys in agent prompts.
+Use this when you need **shared onchain custody** metadata, **native wallet generation**, and **gated agent access** to treasury context—not raw private keys in agent prompts.
 
-## What you can do
+## Native multi-chain wallets
+
+HSM-backed wallet generation for human users across 6 chains: **Ethereum** (secp256k1), **Bitcoin** (secp256k1), **Solana** (Ed25519), **XRP** (Ed25519), **Cardano** (Ed25519), **Tron** (secp256k1). Requires **Pro+ subscription**. Agents receive 403.
+
+Private keys are stored in a per-org `__treasury-keys` vault with **MPC custody auto-configured** per billing tier:
+- **Pro / Team** → XOR 2-of-2 client custody
+- **Business / Enterprise** → Shamir 2-of-3 multi-HSM
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/treasury/wallets/generate` | Generate wallets for specified or all chains |
+| `GET` | `/v1/treasury/wallets` | List active wallets |
+| `GET` | `/v1/treasury/wallets/{chain}` | Get wallet by chain |
+| `POST` | `/v1/treasury/wallets/{chain}/export` | Export wallet with private key (audit-logged) |
+| `POST` | `/v1/treasury/wallets/{chain}/rotate` | Rotate wallet keypair |
+| `DELETE` | `/v1/treasury/wallets/{chain}` | Deactivate wallet |
+
+## Safe multisig management
 
 - **Create** a treasury with **`POST /v1/treasury`** (name, `safe_address`, optional chain / `chain_id`, threshold, signers).  
 - **List** treasuries: **`GET /v1/treasury`**.  
@@ -6694,7 +6711,7 @@ Full REST details live in the **[API reference](/docs/reference/api-reference)**
 
 ## Dashboard
 
-In the app, open **Treasury** (`/treasury`) to create treasuries, edit signers and threshold, and handle access requests. See also **[Intents API](/docs/guides/intents-api)** for agent transaction signing and smart accounts, which complement treasury workflows.
+In the app, open **Treasury** (`/treasury`, requires Pro+ subscription) to generate multi-chain wallets, create treasuries, edit signers and threshold, and handle access requests. The Wallets tab includes a wizard UI with QR codes and key export. See also **[Intents API](/docs/guides/intents-api)** for agent transaction signing and smart accounts, which complement treasury workflows.
 
 ## Related
 
@@ -8110,12 +8127,12 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 | **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
 | **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
 | **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
-| **Treasury** | Organization Safe multisigs—signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
+| **Treasury** | Native multi-chain wallets and Safe multisigs—wallet generation, signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/guides/customer-managed-keys) (client-side encryption layer) and [MPC](/docs/guides/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
 - **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
-- **Treasury** tracks onchain multisig treasuries and lets agents request access for human approval.
+- **Treasury** provides native multi-chain wallet generation (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) for human users and tracks onchain multisig treasuries with agent access requests.
 
 **Task walkthroughs** (golden paths, CLI, MCP, Scaffold-Agent, billing, and more) live under **[Guides](/docs/category/guides)** in the sidebar.
 

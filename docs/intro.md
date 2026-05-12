@@ -21,12 +21,12 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 | **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
 | **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
 | **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
-| **Treasury** | Organization Safe multisigs—signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
+| **Treasury** | Native multi-chain wallets and Safe multisigs—wallet generation, signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/guides/customer-managed-keys) (client-side encryption layer) and [MPC](/docs/guides/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
 - **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
-- **Treasury** tracks onchain multisig treasuries and lets agents request access for human approval.
+- **Treasury** provides native multi-chain wallet generation (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) for human users and tracks onchain multisig treasuries with agent access requests.
 
 **Task walkthroughs** (golden paths, CLI, MCP, Scaffold-Agent, billing, and more) live under **[Guides](/docs/category/guides)** in the sidebar.
 

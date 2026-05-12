@@ -4,15 +4,18 @@ This doc clarifies the three concepts and where keys live. The address you deplo
 
 ---
 
-## 1. Treasury Wallet (CDP embedded wallet)
+## 1. Treasury Wallets (native multi-chain)
 
 **What it is**
-- The human’s wallet on 1claw.xyz: CDP (Coinbase) embedded wallet.
-- Same address on all EVM chains. Shown on the Treasury page (Wallet tab): address, QR, balances (ETH + stablecoins per chain).
+- HSM-backed wallets generated server-side for human users across 6 chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1).
+- Private keys stored in per-org `__treasury-keys` vault with MPC custody auto-configured per billing tier.
+- Shown on the Treasury page (Wallets tab): address, QR codes, balances, key export.
 
 **Flow**
-- User signs in → CDP creates/restores wallet in the browser.
-- No Safe, no server-held key. Keys are in the browser/CDP.
+- User opens Treasury → Wallets tab → generates wallets via `POST /v1/treasury/wallets/generate`.
+- Keys generated server-side using `crypto/multichain.rs`, stored in `__treasury-keys` vault.
+
+> **Note:** This replaced the previous Coinbase CDP embedded wallet approach.
 
 **Used for**
 - Receiving funds, viewing balances, “Receive” QR.
@@ -36,7 +39,7 @@ This doc clarifies the three concepts and where keys live. The address you deplo
 ### 2b. Deploy Safe (not implemented)
 
 **What it would be**
-- “Deploy Safe” from the dashboard: human chooses chain, deploys a **new** Safe from 1claw (e.g. with their CDP wallet as first owner), then adds **agents as signers** (and optionally other humans).
+- “Deploy Safe” from the dashboard: human chooses chain, deploys a **new** Safe from 1claw (e.g. with their treasury wallet as first owner), then adds **agents as signers** (and optionally other humans).
 - Would require: deployment flow (e.g. permissionless.js + Pimlico from dashboard, or a backend/TEE deployment service), UI to add signers (agents + addresses), and storing the Safe in Treasury.
 
 **Recommendation**
@@ -47,7 +50,7 @@ This doc clarifies the three concepts and where keys live. The address you deplo
 ## 3. Agent Smart Account (current flow)
 
 **What it is**
-- A **Safe 1.4.1 smart account** (ERC-4337) owned by **two owners with threshold 1**: the human (CDP wallet) and the agent (its EOA `evm_address`). So it’s a Safe smart account, not a “2-of-2 multisig”; either party can sign.
+- A **Safe 1.4.1 smart account** (ERC-4337) owned by **two owners with threshold 1**: the human (treasury wallet) and the agent (its EOA `evm_address`). So it’s a Safe smart account, not a “2-of-2 multisig”; either party can sign.
 
 **Where is the agent signer key?**
 - The agent’s **EVM signer** is an EOA (secp256k1). That key is **not** created at agent creation.
@@ -62,7 +65,7 @@ So today the **agent’s Safe signer key is generated in the Vault process** (Ru
 1. Human creates agent (dashboard or API) → agent gets API key, Ed25519, ECDH. **No** `evm_address` yet.
 2. Human opens Agent detail → Smart Account card.
 3. If no `evm_address`: on “Deploy Smart Account”, dashboard calls `POST /v1/agents/:id/eoa` → vault generates secp256k1 key, stores in `__agent-keys` at `agents/{id}/evm/private_key`, returns `evm_address`.
-4. Dashboard runs **in the browser**: permissionless.js creates ephemeral EOA, deploys Safe with that owner, then one UserOp adds human (CDP) + agent (`evm_address`) as owners and removes ephemeral. Safe address is deterministic (e.g. CREATE2).
+4. Dashboard runs **in the browser**: permissionless.js creates ephemeral EOA, deploys Safe with that owner, then one UserOp adds human (treasury wallet) + agent (`evm_address`) as owners and removes ephemeral. Safe address is deterministic (e.g. CREATE2).
 5. Dashboard calls `PATCH /v1/agents/:id` with `smart_account_address`, chain, nonce, init data.
 6. Human can “Add to Treasury” → same Safe is registered in Treasury (by address) so it appears under Safes.
 

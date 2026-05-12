@@ -14,6 +14,22 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Native multi-chain treasury wallets (v0.19)
+
+- **New:** HSM-backed treasury wallet generation for human users across 6 chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1).
+- **New:** `POST /v1/treasury/wallets/generate` — generate wallets for specified chains (or all supported chains). Private keys stored in per-org `__treasury-keys` vault with auto-configured MPC custody.
+- **New:** `GET /v1/treasury/wallets` — list all active wallets for the calling user.
+- **New:** `GET /v1/treasury/wallets/{chain}` — get wallet for a specific chain.
+- **New:** `POST /v1/treasury/wallets/{chain}/export` — export private key (audit-logged).
+- **New:** `POST /v1/treasury/wallets/{chain}/rotate` — rotate wallet keypair.
+- **New:** `DELETE /v1/treasury/wallets/{chain}` — deactivate wallet.
+- **New:** MPC custody auto-configured per billing tier: XOR 2-of-2 for Pro/Team, Shamir 2-of-3 multi-HSM for Business/Enterprise.
+- **New:** Dashboard wizard UI with QR codes for public addresses and key export.
+- **New:** SDK — `client.treasury.generateWallets()`, `.listWallets()`, `.getWallet()`, `.exportWallet()`, `.rotateWallet()`, `.deactivateWallet()`.
+- **New:** CLI — `1claw treasury generate`, `list`, `get`, `export`, `rotate`, `deactivate`.
+- **Changed:** Treasury page no longer requires beta access — requires Pro+ subscription.
+- **Removed:** Coinbase CDP embedded wallets replaced by native wallet generation.
+
 ### Multi-chain signing keys (v0.18)
 
 - **New:** Per-agent, per-chain signing keys for 6 blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1).

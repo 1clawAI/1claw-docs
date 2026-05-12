@@ -80,7 +80,10 @@ Unified `POST /v1/agents/{id}/sign` endpoint with `intent_type` dispatch:
 MCP tools: `sign_message` (EIP-191), `sign_typed_data` (EIP-712). SDK: `client.agents.signIntent(agentId, { intent_type, chain, ... })`.
 
 ### Treasury
-Treasury wallets using Safe multisigs. Agent EVM addresses: CDP embedded wallets for humans, EOA for agents. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` and per-treasury detail (`/treasury/[id]`) with wallet card (CDP), safe list, deploy smart account, access requests.
+Treasury Safe multisigs and native multi-chain wallets for human users. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` (requires Pro+ subscription) and per-treasury detail (`/treasury/[id]`) with native wallet card, safe list, deploy smart account, access requests.
+
+### Treasury Wallets (Native Multi-Chain)
+HSM-backed wallet generation for human users. Supported chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1). Requires Pro+ subscription. Human-only access (agents get 403). Private keys stored in a per-org `__treasury-keys` vault with MPC custody auto-configured per billing tier (XOR 2-of-2 for Pro/Team, Shamir 2-of-3 multi-HSM for Business/Enterprise). Endpoints: `POST /v1/treasury/wallets/generate`, `GET /v1/treasury/wallets`, `GET /v1/treasury/wallets/{chain}`, `POST /v1/treasury/wallets/{chain}/export`, `POST /v1/treasury/wallets/{chain}/rotate`, `DELETE /v1/treasury/wallets/{chain}`. Dashboard wizard UI with QR codes and key export.
 
 ### Sharing
 Secrets can be shared between users and agents via links (with optional passphrase and IP restrictions), direct user/agent shares, email invites (humans only), or "share back to creator" for agents. Inbound shares require explicit accept/decline.
@@ -146,6 +149,9 @@ Key endpoints:
 - `GET /v1/chains` — Supported blockchains
 - `GET/POST /v1/treasury` — List/create treasuries
 - `GET /v1/treasury/{id}` — Get treasury (signers, access-request sub-routes)
+- `POST /v1/treasury/wallets/generate` — Generate multi-chain treasury wallets (human-only, Pro+)
+- `GET /v1/treasury/wallets` — List user's treasury wallets
+- `POST /v1/treasury/wallets/{chain}/export` — Export wallet with private key
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 

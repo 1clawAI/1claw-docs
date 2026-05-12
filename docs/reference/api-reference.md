@@ -150,7 +150,20 @@ All endpoints are under **/v1**.
 
 ## Treasury
 
-Multi-sig treasury wallets (Safe) and agent access requests. See [Treasury guide](/docs/guides/treasury).
+Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](/docs/guides/treasury).
+
+### Treasury wallets (multi-chain, human-only, Pro+)
+
+| Method | Path                                      | Description                                    |
+| ------ | ----------------------------------------- | ---------------------------------------------- |
+| POST   | `/v1/treasury/wallets/generate`           | Generate wallets for specified or all chains   |
+| GET    | `/v1/treasury/wallets`                    | List all active treasury wallets               |
+| GET    | `/v1/treasury/wallets/:chain`             | Get wallet for a specific chain                |
+| POST   | `/v1/treasury/wallets/:chain/export`      | Export wallet with private key (audit-logged)   |
+| POST   | `/v1/treasury/wallets/:chain/rotate`      | Rotate wallet keypair                          |
+| DELETE | `/v1/treasury/wallets/:chain`             | Deactivate wallet                              |
+
+### Safe multisig management
 
 | Method | Path                                                                 | Description                    |
 | ------ | -------------------------------------------------------------------- | ------------------------------ |
