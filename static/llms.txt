@@ -109,7 +109,7 @@ Base URL: `https://api.1claw.xyz`
 
 Key endpoints:
 - `POST /v1/auth/token` — Login
-- `POST /v1/auth/forgot-password` — Request reset email (uniform response; no enumeration)
+- `POST /v1/auth/forgot-password` — Request reset email (returns `status`: `email_sent`, `no_account`, or `social_account`; rate-limited to prevent enumeration)
 - `POST /v1/auth/reset-password` — Complete reset with token from email
 - `DELETE /v1/auth/token` — Revoke current Bearer token (returns 200; reused token then returns 401)
 - `POST /v1/auth/agent-token` — Agent token exchange (accepts `api_key` alone or `agent_id` + `api_key`; returns `agent_id` and `vault_ids` for auto-discovery)

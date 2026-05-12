@@ -36,7 +36,7 @@ All endpoints are under **/v1**.
 | POST   | `/v1/auth/google`           | Google id_token → JWT                               |
 | DELETE | `/v1/auth/token`            | Revoke token                                        |
 | POST   | `/v1/auth/change-password`  | Change password                                     |
-| POST   | `/v1/auth/forgot-password`  | Request password reset email (uniform 200 response) |
+| POST   | `/v1/auth/forgot-password`  | Request password reset email (returns `status`: `email_sent`, `no_account`, or `social_account`) |
 | POST   | `/v1/auth/reset-password`   | Complete password reset with email token             |
 
 ## Account Management
