@@ -14,6 +14,13 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Signing key auto-resolution and chain mapping (v0.19.2)
+
+- **Improved:** Default `signing_key_path` now auto-resolves: if the agent has a per-chain signing key provisioned (via `POST /v1/agents/:id/signing-keys`), the handler uses `agents/{id}/chains/{chain}/private_key`; otherwise falls back to `keys/{chain}-signer`.
+- **Improved:** Network names (e.g. `sepolia`, `base`, `arbitrum`) now map to canonical signing key chains (e.g. `ethereum`) via `signing_key_chain_for()`, so agents only need one Ethereum signing key regardless of which EVM network they transact on.
+- **Improved:** `validate_signing_key_path` now also allows `agents/{id}/chains/*` paths (previously restricted to `keys/*`, `wallets/*`, `agents/{id}/keys/*`).
+- **Improved:** Shroud default signing key path is now chain-aware (dynamically resolved to `keys/{chain}-signer` instead of hardcoded `keys/default-signer`).
+
 ### Native multi-chain treasury wallets (v0.19)
 
 - **New:** HSM-backed treasury wallet generation for human users across 6 chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1).
@@ -128,7 +135,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **Fixed (C-4):** MFA token replay — MFA challenge tokens are now single-use (jti revoked after verification).
 - **Fixed (C-5):** Cross-vault IDOR — agent JWTs with empty `vault_ids` no longer grant unrestricted access; vault IDs are derived from access policies.
 - **Fixed (H-19):** Ed25519 SPKI DER parsing uses proper ASN.1 validation instead of a heuristic.
-- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`.
+- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, `agents/{id}/keys/*`, or `agents/{id}/chains/*`.
 - **New:** Shroud strips sensitive headers (authorization, cookies, IP headers) before forwarding to upstream LLM providers.
 
 ### x402 marketplace compatibility

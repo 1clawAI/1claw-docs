@@ -2811,7 +2811,7 @@ Try out the example in this repo: **[Transaction Simulation](https://github.com/
 5. **Optional:** Set `simulate_first: true` to run a Tenderly simulation before signing; if the simulation reverts, the API returns **422** and does not sign. See [Transaction simulation (Tenderly)](#simulation) and [Error codes](/docs/reference/error-codes#intents-api-errors).
 
 :::tip
-Default signing key path is `keys/{chain}-signer` (e.g. `keys/base-signer`). You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`.
+Default signing key path auto-resolves: if the agent has a per-chain signing key provisioned, uses that key; otherwise falls back to `keys/{chain}-signer` (e.g. `keys/base-signer`). Network names (e.g. `sepolia`, `base`) map to canonical signing key chains (e.g. `ethereum`). You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`, `agents/{id}/chains/`.
 :::
 
 ## How it works
@@ -10702,7 +10702,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **Fixed (C-4):** MFA token replay — MFA challenge tokens are now single-use (jti revoked after verification).
 - **Fixed (C-5):** Cross-vault IDOR — agent JWTs with empty `vault_ids` no longer grant unrestricted access; vault IDs are derived from access policies.
 - **Fixed (H-19):** Ed25519 SPKI DER parsing uses proper ASN.1 validation instead of a heuristic.
-- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, or `agents/{id}/keys/*`.
+- **New:** `signing_key_path` validation restricts Intents API key paths to `keys/*`, `wallets/*`, `agents/{id}/keys/*`, or `agents/{id}/chains/*`.
 - **New:** Shroud strips sensitive headers (authorization, cookies, IP headers) before forwarding to upstream LLM providers.
 
 ### x402 marketplace compatibility

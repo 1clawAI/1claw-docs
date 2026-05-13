@@ -18,13 +18,13 @@ Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1cla
 ## Quickstart: Your first transaction (~5 min)
 
 1. **Create an agent** with `intents_api_enabled: true` (Dashboard → Agents → Create, or API below). Note the agent ID and API key.
-2. **Store a signing key** in a vault the agent can read: put a secp256k1 private key at a path like `keys/ethereum-signer` or `wallets/hot-wallet` (see [Secrets](/docs/human-api/secrets/create)). Grant the agent read access to that path via a policy.
+2. **Store a signing key** in a vault the agent can read: either provision a per-chain signing key via `POST /v1/agents/:id/signing-keys` (recommended), or put a secp256k1 private key at a path like `keys/ethereum-signer` or `wallets/hot-wallet` (see [Secrets](/docs/human-api/secrets/create)). Grant the agent read access to that path via a policy.
 3. **Get an agent JWT:** `POST /v1/auth/agent-token` with `agent_id` and `api_key`.
-4. **Submit a transaction:** `POST /v1/agents/:agent_id/transactions` with `chain`, `to`, `value`, and `signing_key_path`. Use testnets (e.g. `chain: "sepolia"`) first.
+4. **Submit a transaction:** `POST /v1/agents/:agent_id/transactions` with `chain`, `to`, `value`, and optionally `signing_key_path`. Use testnets (e.g. `chain: "sepolia"`) first.
 5. **Optional:** Set `simulate_first: true` to run a Tenderly simulation before signing; if the simulation reverts, the API returns **422** and does not sign. See [Transaction simulation (Tenderly)](#simulation) and [Error codes](/docs/reference/error-codes#intents-api-errors).
 
 :::tip
-Default signing key path is `keys/{chain}-signer` (e.g. `keys/base-signer`). You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`.
+Default signing key path auto-resolves: if the agent has a per-chain signing key provisioned (via `POST /v1/agents/:id/signing-keys`), the key at `agents/{id}/chains/{chain}/private_key` is used; otherwise falls back to `keys/{chain}-signer` (e.g. `keys/base-signer`). Network names like `sepolia` and `base` automatically map to canonical signing key chains like `ethereum`. You can override with `signing_key_path` in the request. Allowed path prefixes: `keys/`, `wallets/`, `agents/{id}/keys/`, `agents/{id}/chains/`.
 :::
 
 ## How it works
