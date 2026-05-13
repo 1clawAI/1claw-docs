@@ -8,6 +8,10 @@ description: Build on top of 1Claw — provision users, bootstrap vaults and age
 
 The Platform API lets developers build products on top of 1Claw. Register your app, create bootstrap templates, provision end-users, and scaffold secrets infrastructure — all without touching your users' secrets.
 
+:::info Pro plan required
+The Platform API is available on **Pro, Team, Business, and Enterprise** plans. [Upgrade your plan](/settings/billing) to get started.
+:::
+
 ## Concepts
 
 | Term | Description |

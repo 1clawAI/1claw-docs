@@ -26,7 +26,7 @@ Generate wallets for **Ethereum**, **Bitcoin**, **Solana**, **XRP**, **Cardano**
 | Pro / Team | XOR 2-of-2 (client custody) |
 | Business / Enterprise | Shamir 2-of-3 (multi-HSM) |
 
-Private keys are stored in a per-org `__treasury-keys` vault that is auto-created on first wallet generation.
+Private keys are stored in a per-org `__treasury-keys` vault that is auto-created on first wallet generation. Direct API reads from this vault are blocked (403) — keys are only accessible through the export endpoint.
 
 ### Endpoints
 
@@ -35,7 +35,7 @@ Private keys are stored in a per-org `__treasury-keys` vault that is auto-create
 | `POST` | `/v1/treasury/wallets/generate` | Generate wallets for specified chains (or all 6) |
 | `GET` | `/v1/treasury/wallets` | List all active wallets |
 | `GET` | `/v1/treasury/wallets/{chain}` | Get wallet for a specific chain |
-| `POST` | `/v1/treasury/wallets/{chain}/export` | Export wallet with private key (audit-logged) |
+| `POST` | `/v1/treasury/wallets/{chain}/export` | Export wallet with private key (requires `X-Auth-Confirm` password header; audit-logged) |
 | `POST` | `/v1/treasury/wallets/{chain}/rotate` | Rotate wallet keypair |
 | `DELETE` | `/v1/treasury/wallets/{chain}` | Deactivate wallet |
 
@@ -79,8 +79,8 @@ const { wallets } = await client.treasury.generateWallets();
 // List existing wallets
 const { wallets: all } = await client.treasury.listWallets();
 
-// Export a private key (audit-logged)
-const { private_key_hex } = await client.treasury.exportWallet("ethereum");
+// Export a private key (requires password re-authentication, audit-logged)
+const { private_key_hex } = await client.treasury.exportWallet("ethereum", { password: "your-account-password" });
 ```
 
 ### CLI
@@ -92,7 +92,7 @@ const { private_key_hex } = await client.treasury.exportWallet("ethereum");
 # List wallets
 1claw treasury list
 
-# Export private key
+# Export private key (prompts for account password)
 1claw treasury export ethereum
 
 # Rotate a wallet
