@@ -14,6 +14,22 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Platform API (v0.20.0)
+
+- **New:** Platform API for developers building applications on top of 1Claw. Platform apps can provision users, vaults, agents, and policies on behalf of their end-users.
+- **New:** `plt_` prefixed API keys for platform app authentication. Resolved by auth middleware to `CallerIdentity` with `principal_type: "platform"`.
+- **New:** Bootstrap templates — declarative JSON specs that scaffold vault + agent + policies in a single API call (`POST /v1/platform/connections/{id}/bootstrap`).
+- **New:** OIDC user provisioning — `POST /v1/platform/users/upsert` accepts a `subject_token` (JWT verified against the platform app's JWKS) or email to create-or-find end-users.
+- **New:** Connected apps management — end-users can view and disconnect platform apps via `GET/DELETE /v1/platform/connected-apps`.
+- **New:** Claim tokens (`ct_` prefix) — one-time 10-minute tokens for end-users to claim bootstrapped resources.
+- **New:** `platform_locked` flag on vaults and agents — prevents platform operators from accessing end-user secret values (custody guarantee).
+- **New:** Three billing models: `platform_pays` (default), `user_pays`, `hybrid`. Per-resource payer override via `vaults.billed_to_type` and `billed_to_id`.
+- **New:** Three auth modes: `silent` (no user interaction), `user_signin` (user must sign in), `configurable` (per-connection).
+- **New:** Database tables: `platform_apps`, `platform_templates`, `platform_user_connections`, `platform_user_grants`, `platform_claim_tokens` (migrations 081–085). New columns on `vaults`, `agents`, `access_policies`, `users`, `usage_events` (migration 086).
+- **New:** Dashboard pages at `/platform` — app management, template editor, connected users, bootstrap flow.
+- **New:** SDK — `client.platform.createApp()`, `.upsertUser()`, `.bootstrapUser()`, `.listConnectedApps()`.
+- **New:** Platform audit events (`platform.*` actions) with dedicated query endpoint.
+
 ### Signing key auto-resolution and chain mapping (v0.19.2)
 
 - **Improved:** Default `signing_key_path` now auto-resolves: if the agent has a per-chain signing key provisioned (via `POST /v1/agents/:id/signing-keys`), the handler uses `agents/{id}/chains/{chain}/private_key`; otherwise falls back to `keys/{chain}-signer`.

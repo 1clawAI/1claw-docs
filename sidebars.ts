@@ -157,6 +157,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/treasury",
                             label: "Treasury — Safe multisigs & access requests",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/platform-api",
+                            label: "Platform API — build products on 1Claw",
+                        },
                     ],
                 },
                 {

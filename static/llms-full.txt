@@ -10535,6 +10535,30 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/approve`      | Approve an access request      |
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/deny`         | Deny an access request        |
 
+## Platform API (v0.20)
+
+For developers building applications on top of 1Claw. Platform apps authenticate with `plt_` prefixed API keys and can provision users, vaults, agents, and policies on behalf of their end-users via declarative bootstrap templates.
+
+| Method | Path                                              | Description                                            |
+| ------ | ------------------------------------------------- | ------------------------------------------------------ |
+| POST   | `/v1/platform/apps`                               | Register a platform app (user-only, returns plt_ key)  |
+| GET    | `/v1/platform/apps`                               | List platform apps for org                             |
+| GET    | `/v1/platform/apps/:id`                           | Get platform app details                               |
+| PATCH  | `/v1/platform/apps/:id`                           | Update platform app                                    |
+| DELETE | `/v1/platform/apps/:id`                           | Delete platform app                                    |
+| POST   | `/v1/platform/apps/:id/templates`                 | Create bootstrap template                              |
+| GET    | `/v1/platform/apps/:id/templates`                 | List templates                                         |
+| PATCH  | `/v1/platform/apps/:id/templates/:tid`            | Update template                                        |
+| DELETE | `/v1/platform/apps/:id/templates/:tid`            | Delete template                                        |
+| POST   | `/v1/platform/users/upsert`                       | Provision or find user (platform-only, OIDC or email)  |
+| POST   | `/v1/platform/connections/:id/bootstrap`           | Bootstrap resources from template                      |
+| GET    | `/v1/platform/apps/:id/users`                     | List connected users                                   |
+| GET    | `/v1/platform/apps/:id/audit`                     | Platform audit events                                  |
+| GET    | `/v1/platform/connected-apps`                     | List apps connected to calling user                    |
+| DELETE | `/v1/platform/connected-apps/:connection_id`      | Disconnect from a platform app                         |
+
+Key concepts: **Billing models** — `platform_pays` (default), `user_pays`, `hybrid`. **Auth modes** — `silent`, `user_signin`, `configurable`. **`platform_locked`** — prevents operator access to end-user secret values. **Claim tokens** (`ct_` prefix) — one-time 10-min tokens for end-users to claim bootstrapped resources.
+
 ## Transactions (Intents API)
 
 Requires `intents_api_enabled: true` on the agent. When enabled, the agent is also **blocked** from reading `private_key` and `ssh_key` type secrets through the standard secrets endpoint — it must use the proxy to sign transactions.

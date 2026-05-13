@@ -85,6 +85,9 @@ Treasury Safe multisigs and native multi-chain wallets for human users. Smart ac
 ### Treasury Wallets (Native Multi-Chain)
 HSM-backed wallet generation for human users. Supported chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1). Requires Pro+ subscription. Human-only access (agents get 403). Private keys stored in a per-org `__treasury-keys` vault with MPC custody auto-configured per billing tier (XOR 2-of-2 for Pro/Team, Shamir 2-of-3 multi-HSM for Business/Enterprise). Endpoints: `POST /v1/treasury/wallets/generate`, `GET /v1/treasury/wallets`, `GET /v1/treasury/wallets/{chain}`, `POST /v1/treasury/wallets/{chain}/export`, `POST /v1/treasury/wallets/{chain}/rotate`, `DELETE /v1/treasury/wallets/{chain}`. Dashboard wizard UI with QR codes and key export.
 
+### Platform API (v0.20)
+For developers building applications on top of 1Claw. Platform apps (`plt_` API keys, `principal_type: "platform"`) provision users, vaults, agents, and policies on behalf of end-users via declarative bootstrap templates. OIDC user provisioning via `POST /v1/platform/users/upsert` (accepts `subject_token` JWT verified against platform JWKS, or email). Bootstrap: `POST /v1/platform/connections/{id}/bootstrap` creates resources from a template spec and returns a claim URL. Three billing models: `platform_pays` (default), `user_pays`, `hybrid`. Three auth modes: `silent`, `user_signin`, `configurable`. `platform_locked` flag on vaults/agents prevents operator access to secret values. Dashboard at `/platform`. SDK: `client.platform.*`.
+
 ### Sharing
 Secrets can be shared between users and agents via links (with optional passphrase and IP restrictions), direct user/agent shares, email invites (humans only), or "share back to creator" for agents. Inbound shares require explicit accept/decline.
 
@@ -152,6 +155,11 @@ Key endpoints:
 - `POST /v1/treasury/wallets/generate` — Generate multi-chain treasury wallets (human-only, Pro+)
 - `GET /v1/treasury/wallets` — List user's treasury wallets
 - `POST /v1/treasury/wallets/{chain}/export` — Export wallet with private key
+- `POST /v1/platform/apps` — Register platform app (user-only, returns plt_ key)
+- `GET /v1/platform/apps` — List platform apps
+- `POST /v1/platform/users/upsert` — Provision or find user (platform-only)
+- `POST /v1/platform/connections/{id}/bootstrap` — Bootstrap resources from template
+- `GET /v1/platform/connected-apps` — List connected apps (user-only)
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 
@@ -213,7 +221,7 @@ For operating dozens or hundreds of agents:
 - Free: 1,000 req/mo, 3 vaults, 50 secrets, 2 agents
 - Pro ($29/mo): 25,000 req/mo, 25 vaults, 500 secrets, 10 agents
 - Team ($299/mo): 100,000 req/mo, 100 vaults, 5,000 secrets, 50 agents, SSO
-- Business ($999/mo): 500,000 req/mo, unlimited vaults/secrets, 200 agents, CMEK, Intents API, Shroud Enterprise
+- Business ($999/mo): 500,000 req/mo, unlimited vaults/secrets, 200 agents, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
 - Enterprise: Custom, unlimited, KMS delegation, BAA
 
 Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Intents API submit when over quota: 0.25% of transaction value (USD), no cap; config ONECLAW_ETH_USD_PRICE (default 2500). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
@@ -238,5 +246,6 @@ The MCP server at mcp.1claw.xyz provides these tools:
 - simulate_transaction, simulate_bundle, submit_transaction, sign_transaction
 - list_transactions, get_transaction, inspect_content
 - list_signing_keys, provision_signing_key, sign_message, sign_typed_data
+- platform_list_apps, platform_create_app, platform_bootstrap_user
 
 Configure in Claude Desktop, Cursor, or any MCP-compatible client. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
