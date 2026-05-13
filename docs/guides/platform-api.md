@@ -18,6 +18,150 @@ The Platform API lets developers build products on top of 1Claw. Register your a
 | **Claim Token** | One-time URL for the end-user to claim their bootstrapped resources. |
 | **platform_locked** | Resources created via templates are locked — operators can't read secrets. |
 
+## How it Works
+
+The Platform API connects three parties: **you** (the operator), **1Claw** (secrets infrastructure), and **your end-user** (the secret owner). The flow ensures your users always own their secrets — you scaffold the infrastructure, they hold the keys.
+
+### End-to-end flow
+
+```
+ ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+ │  Your App    │         │    1Claw      │         │   End-User   │
+ │  (Operator)  │         │   Platform    │         │              │
+ └──────┬───────┘         └──────┬────────┘         └──────┬───────┘
+        │                        │                         │
+   1. Register app (plt_ key)    │                         │
+        │───────────────────────>│                         │
+        │                        │                         │
+   2. Create template            │                         │
+        │───────────────────────>│                         │
+        │                        │                         │
+   3. Provision user             │                         │
+        │───────────────────────>│                         │
+        │     connection_id      │                         │
+        │<───────────────────────│                         │
+        │                        │                         │
+   4. Bootstrap resources        │                         │
+        │───────────────────────>│                         │
+        │     claim_url          │  Creates vault, agent,  │
+        │<───────────────────────│  policies (locked)      │
+        │                        │                         │
+   5. Redirect user to claim_url │                         │
+        │─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>│
+        │                        │                         │
+        │                        │  6. User claims resources│
+        │                        │<────────────────────────│
+        │                        │     (downloads API key, │
+        │                        │      generates MPC share)│
+        │                        │                         │
+   7. User has secrets infra     │                         │
+      you can't peek at ✓        │                         │
+```
+
+**Steps 1–2** happen once when you integrate. **Steps 3–6** repeat for every new user.
+
+### Choose your onboarding flow
+
+How your users get into 1Claw depends on two choices: **auth mode** and **billing model**.
+
+#### Option A: Silent provisioning (recommended for embedded products)
+
+Best when your users shouldn't know or care about 1Claw. Your backend provisions them silently — they never see a 1Claw login screen.
+
+```
+Your user signs in to YOUR app
+        │
+        ▼
+Your backend calls POST /v1/platform/users/upsert
+with the user's email (or OIDC subject_token)
+        │
+        ▼
+1Claw creates a 1Claw account linked to your app
+        │
+        ▼
+Your backend calls POST /v1/platform/connections/{id}/bootstrap
+        │
+        ▼
+Vault + Agent + Policies created (platform_locked)
+        │
+        ▼
+Claim URL returned → redirect user to download credentials
+```
+
+Set `auth_mode: "silent"` on your app. If you have your own IdP, configure `oidc_jwks_url` and `oidc_issuer` to skip email-based provisioning entirely — just pass a signed JWT as `subject_token`.
+
+#### Option B: User picks sign-in method
+
+Best when you want users to have their own 1Claw identity from the start — they sign in with Google or email/password during the claim step.
+
+```
+Your user clicks "Connect to 1Claw" in your app
+        │
+        ▼
+Your backend calls POST /v1/platform/users/upsert
+        │
+        ▼
+Bootstrap → claim_url returned
+        │
+        ▼
+User visits claim_url → 1Claw sign-in screen
+(Google, email/password, or SSO)
+        │
+        ▼
+User claims vault + agent credentials
+```
+
+Set `auth_mode: "user_signin"` on your app.
+
+#### Option C: Configurable per user
+
+Mix and match — provision power users silently, let others sign in manually. Set `auth_mode: "configurable"` and decide at bootstrap time.
+
+### Choose your billing model
+
+| Model | Who pays | Best for |
+|-------|----------|----------|
+| `platform_pays` | You (the operator) | SaaS products where secrets infra is bundled into your pricing |
+| `user_pays` | The end-user | Marketplaces or tools where users manage their own 1Claw subscription |
+| `hybrid` | Base usage: you. Overages: user | Freemium products with power-user tiers |
+
+All three are set on the platform app and can be changed later. Start with `platform_pays` if you're unsure.
+
+### What gets created during bootstrap
+
+When you call the bootstrap endpoint with a template, 1Claw creates all resources **as the end-user** (not as your platform app). This means:
+
+| Resource | Owned by | Your `plt_` key can... |
+|----------|----------|------------------------|
+| **Vault** | End-user | See metadata (name, ID). **Cannot** read secrets. |
+| **Agent** | End-user | See metadata. **Cannot** mint tokens or read API keys. |
+| **Policies** | End-user | See metadata. **Cannot** modify permissions. |
+| **Secrets** | End-user | **Cannot** read, write, or delete. |
+
+All bootstrapped resources are marked `platform_locked: true`. The operator can view audit logs and connection status, but the cryptographic boundary is absolute — especially when CMEK + MPC custody is enabled.
+
+### Delegated access (when your agent needs to read user secrets)
+
+Sometimes your backend agent needs to act on behalf of a user — for example, fetching an API key the user stored. Use delegated token exchange:
+
+```
+Your agent (ocv_ key)                    1Claw
+        │                                  │
+        │  POST /v1/auth/delegated-token   │
+        │  subject_token: user_grant_jwt   │
+        │  actor_token: ocv_YOUR_KEY       │
+        │  scope: "secrets:read            │
+        │          paths:api-keys/*"        │
+        │─────────────────────────────────>│
+        │                                  │
+        │  Short-lived JWT                 │
+        │  (audit: actor=plt_ on behalf    │
+        │   of usr_...)                    │
+        │<─────────────────────────────────│
+```
+
+The user must explicitly grant this access — either during the claim flow or later in their 1Claw dashboard under **Settings > Connected Apps**. Grants are scoped to specific paths and can be revoked with one click.
+
 ## Quick Start
 
 ### 1. Register your platform app
