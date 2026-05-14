@@ -95,7 +95,7 @@ All features are on by default and can be tuned via environment variables:
 | `ONECLAW_MCP_SANITIZATION_MODE` | `block` | `block`, `surgical`, or `log_only` |
 | `ONECLAW_MCP_REDACT_SECRETS` | `true` | Redact known secret values from non-secret tool outputs |
 | `ONECLAW_MCP_PII_DETECTION` | `true` | Detect PII patterns in inputs and outputs |
-| `ONECLAW_MCP_EXFIL_PROTECTION` | `warn` | `block`, `warn`, or `off` for secret exfiltration checks |
+| `ONECLAW_MCP_EXFIL_PROTECTION` | `block` | `block`, `warn`, or `off` for secret exfiltration checks |
 
 ## Standalone inspection via `inspect_content`
 

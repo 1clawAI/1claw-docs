@@ -22,6 +22,6 @@ sidebar_position: 3
 
 - **Tamper-resistant audit log** — Audit events are chained via SHA-256 hashes (`prev_event_id` + `integrity_hash`). The application database role (`vault_app`) cannot insert directly into the audit table — all writes go through a `SECURITY DEFINER` function that enforces the hash chain, preventing log fabrication from compromised connections.
 
-- **KMS key rotation** — GCP KMS vault KEKs are created with a 90-day automatic rotation schedule. CRC32C checksums are verified on all KMS encrypt, decrypt, and sign operations to detect in-transit corruption or tampering.
+- **KMS key rotation** — GCP KMS vault KEKs are created with a 365-day rotation period (NIST SP 800-57). A nightly cleanup job schedules destruction of old key versions (keeping the two most recent). CRC32C checksums are verified on all KMS encrypt, decrypt, and sign operations to detect in-transit corruption or tampering.
 
 Use the [Audit API](/docs/guides/audit-and-compliance) and policy model to document who had access to what and when. For specific standards (e.g. SOC 2, HIPAA), work with your compliance team to map controls to 1claw's capabilities and your deployment (e.g. GCP and Supabase compliance offerings).

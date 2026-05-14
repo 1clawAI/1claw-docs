@@ -30,6 +30,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** SDK — `client.platform.createApp()`, `.upsertUser()`, `.bootstrapUser()`, `.listConnectedApps()`.
 - **New:** Platform audit events (`platform.*` actions) with dedicated query endpoint.
 
+### Security hardening round 2 (2026-05)
+
+- **New:** Nonce-based Content Security Policy (CSP) — dashboard uses per-request nonces instead of `'unsafe-inline'` for script tags.
+- **New:** DEK re-wrap nightly job — automatically re-wraps data encryption keys using the latest KEK version, ensuring old key versions can be safely destroyed.
+- **Improved:** OIDC federation audience URL validation now blocks cloud metadata endpoints (169.254.x.x, link-local) and private CIDR ranges.
+- **Improved:** CORS explicit header allowlist — only documented request headers are accepted; unknown custom headers are rejected.
+- **Improved:** MCP secret cache TTL and rate limiting — secrets fetched via the MCP server are no longer persisted beyond the session; rate limits added to prevent abuse.
+- **Improved:** x402 payment proof cleanup — expired proofs are purged during the nightly credit expiry job.
+- **Improved:** HTTP timeouts on all outbound RPC clients (KMS, Tenderly, chain RPC) to prevent hung connections.
+- **Improved:** Demo Shroud endpoint rate limiting — prevents abuse of the public demo page.
+- **Improved:** Platform handler audit events now include `request_id` for full request tracing.
+- **Fixed:** Platform `upsert_user` now enforces org match — prevents cross-org user binding.
+- **Changed:** KEK rotation period updated from 90 days to 365 days (NIST SP 800-57). Nightly KMS cleanup job destroys old key versions (keeps 2 most recent).
+- **Changed:** MCP exfiltration protection default changed from `warn` to `block`.
+
 ### Signing key auto-resolution and chain mapping (v0.19.2)
 
 - **Improved:** Default `signing_key_path` now auto-resolves: if the agent has a per-chain signing key provisioned (via `POST /v1/agents/:id/signing-keys`), the handler uses `agents/{id}/chains/{chain}/private_key`; otherwise falls back to `keys/{chain}-signer`.

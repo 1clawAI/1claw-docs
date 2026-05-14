@@ -23,7 +23,9 @@ This is standard **envelope encryption**. Compromise of the database or applicat
 
 ## Automatic rotation
 
-KEKs in GCP KMS are created with a 90-day rotation schedule. When a key rotates, KMS creates a new version and uses it for future wraps. Existing wrapped DEKs remain decryptable — KMS retains all prior versions and selects the correct one automatically based on ciphertext metadata. No re-encryption migration is required.
+KEKs in GCP KMS are created with a **365-day** rotation period (NIST SP 800-57 maximum for symmetric KEKs). When a key rotates, KMS creates a new version and uses it for future wraps. Existing wrapped DEKs remain decryptable — KMS retains all prior versions and selects the correct one automatically based on ciphertext metadata. No re-encryption migration is required.
+
+A nightly cleanup job (`kms_cleanup`) schedules destruction of old key versions, keeping the two most recent versions active. Scheduled-for-destruction versions can be restored within the 7-day destroy window.
 
 ## Integrity verification
 

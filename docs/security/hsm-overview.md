@@ -15,7 +15,7 @@ sidebar_position: 0
 
 ## Key rotation
 
-GCP KMS KEKs are created with a **90-day automatic rotation schedule**. When KMS rotates a key, it creates a new key version and marks it as the primary. New encrypt operations use the latest version; existing ciphertext remains decryptable because KMS retains all prior versions and selects the correct one based on the ciphertext metadata.
+GCP KMS KEKs are created with a **365-day rotation period** (NIST SP 800-57 maximum for symmetric KEKs). When KMS rotates a key, it creates a new key version and marks it as the primary. New encrypt operations use the latest version; existing ciphertext remains decryptable because KMS retains all prior versions and selects the correct one based on the ciphertext metadata. A nightly cleanup job schedules destruction of old versions, keeping the two most recent active.
 
 No application-side re-encryption is needed on rotation — GCP KMS handles version selection transparently.
 
