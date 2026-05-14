@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Security hardening round 3 (v0.20.2, 2026-05-14)
+
+- **Fixed (H-NEW-OIDC-SSRF):** SSRF via Platform App `oidc_jwks_url` — `validate_audience_url()` wired into platform app create/update and inside `resolve_oidc_subject()` defense-in-depth. Prevents attacker-controlled JWKS URLs from reaching internal services.
+- **Fixed (H-NEW-DEK-REWRAP-RACE):** Nightly DEK re-wrap race condition — added optimistic concurrency guard `WHERE wrapped_dek = $old` to UPDATE; skips on `rows_affected == 0` to prevent races between concurrent re-wrap and secret-write operations.
+- **Fixed (M-NEW-IPV6-MAPPED):** IPv4-mapped IPv6 bypass — `is_private_or_reserved()` now checks `to_ipv4_mapped()`, ULA `fc00::/7`, and link-local `fe80::/10` to prevent IPv6 representation bypasses of private CIDR blocklists in audience/URL validation.
+- **Fixed (M-NEW-BUNDLER-OPEN):** Bundler proxy unauthenticated — `/api/bundler` route now requires session cookie + per-IP rate limiting (20/min).
+- **Fixed (M-NEW-DEMO-UNAUTH):** Demo vault/intents routes unauthenticated — `/api/demo/vault` and `/api/demo/intents` now require session cookie + per-IP rate limiting (10/min).
+- **Fixed (M-NEW-EXPORT-NO-LOCKOUT):** Treasury wallet export no lockout — failed re-auth password now increments `failed_login_attempts`, triggers account lockout at 10 failures; successful re-auth resets the counter.
+- **Fixed (M-NEW-SIGNKEY-AGENT-UUID):** Signing key path UUID binding — `validate_signing_key_path` now takes `caller_agent_id` and enforces UUID match on `agents/{uuid}/` paths, preventing cross-agent key path traversal.
+- **Fixed (M-NEW-PLT-AUD-DISABLED):** Platform audience not enforced — `oidc_audience` column added to `platform_apps` (migration 089). When set, enforced during JWT validation in `resolve_oidc_subject()`.
+- **Fixed (L-NEW-FORWARDED-FOR):** All demo/bundler routes now use `x-vercel-forwarded-for` instead of `x-forwarded-for` for reliable IP extraction on Vercel.
+- **Fixed (L-NEW-DEMO-AUTH-WEAK):** Accepted risk — any non-empty session cookie passes auth check on demo routes, but combined with rate limiting this is acceptable for demo functionality.
+- **Changed:** Vault version bumped from 0.20.1 to 0.20.2.
+
 ### Platform API (v0.20.0)
 
 - **New:** Platform API for developers building applications on top of 1Claw. Platform apps can provision users, vaults, agents, and policies on behalf of their end-users.
