@@ -189,7 +189,7 @@ Array of access policies linking agents to vault paths.
 
 ## Full Template Example
 
-A complete template for a DeFi trading platform with Shroud inspection and Intents API:
+A complete template for a DeFi trading platform with Shroud inspection, Intents API, and multi-chain signing keys:
 
 ```json
 {
@@ -214,6 +214,10 @@ A complete template for a DeFi trading platform with Shroud inspection and Inten
           "daily_budget_usd": 50
         }
       }
+    ],
+    "signing_keys": [
+      { "chain": "ethereum" },
+      { "chain": "solana" }
     ],
     "policies": [
       {
@@ -255,9 +259,31 @@ Set `auth_mode` when creating your platform app:
 
 ---
 
+### `signing_keys`
+
+Array of blockchain signing keys to auto-provision for the first agent at bootstrap time. Each entry generates a keypair, stores the private key in the `__agent-keys` vault, and records the public key on the agent. Requires at least one agent with `intents.enabled: true`.
+
+| Field | Type | Description |
+|---|---|---|
+| `chain` | string | Blockchain name: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron` |
+
+```json
+{
+  "signing_keys": [
+    { "chain": "ethereum" },
+    { "chain": "solana" }
+  ]
+}
+```
+
+:::tip
+Signing keys are provisioned server-side during bootstrap — the platform operator never sees the private keys, and no user interaction is required. The `plt_` key cannot read signing keys across the org boundary, maintaining custody separation.
+:::
+
+---
+
 ## Current Limitations
 
-- **Signing keys** cannot be declared in templates yet. After bootstrap, provision signing keys separately via `POST /v1/agents/{agent_id}/signing-keys` with `{ "chain": "ethereum" }`.
 - **Delegated token exchange** (RFC 8693 `DelegatedTokenRequest`) is defined but not yet wired. Platform operators cannot issue delegated JWTs on behalf of connected users.
 - **Silent mode** always returns a `claim_url`. For fully headless (no-browser) flows, the claim token can be used programmatically in a future release.
 - **`plt_` keys** can see user metadata but cannot directly access user signing keys (`GET /v1/agents/{id}/signing-keys`). The org boundary prevents cross-org reads. Use the user's agent token or wait for delegated tokens.
