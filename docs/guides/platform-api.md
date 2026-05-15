@@ -282,11 +282,30 @@ Signing keys are provisioned server-side during bootstrap — the platform opera
 
 ---
 
+## Platform Audit
+
+Track all platform-related events for your app:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/audit" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+Returns `platform.*` audit events (app creation, user provisioning, bootstrap, template changes).
+
+---
+
 ## Current Limitations
 
 - **Delegated token exchange** (RFC 8693 `DelegatedTokenRequest`) is defined but not yet wired. Platform operators cannot issue delegated JWTs on behalf of connected users.
 - **Silent mode** always returns a `claim_url`. For fully headless (no-browser) flows, the claim token can be used programmatically in a future release.
 - **`plt_` keys** can see user metadata but cannot directly access user signing keys (`GET /v1/agents/{id}/signing-keys`). The org boundary prevents cross-org reads. Use the user's agent token or wait for delegated tokens.
+
+## Security
+
+- **OIDC audience enforcement**: Platform apps can set `oidc_audience` to restrict which JWT audiences are accepted during OIDC user provisioning. When set, JWTs with a mismatched `aud` claim are rejected.
+- **JWKS SSRF prevention**: The `oidc_jwks_url` field is validated against private CIDRs, cloud metadata endpoints, and localhost to prevent SSRF attacks.
+- **Cross-org binding protection**: `upsert_user` enforces that the user belongs to the same org as the platform app.
 
 ---
 
