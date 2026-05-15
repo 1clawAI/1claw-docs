@@ -513,6 +513,10 @@ The response includes the `public_key`, derived `address`, `curve`, and `key_ver
 
 Only human users can provision and rotate keys — agents get 403. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support address derivation; on-chain signing for those chains is on the roadmap.
 
+:::tip Platform API auto-provisioning
+If you're using the [Platform API](/docs/guides/platform-api), signing keys can be auto-provisioned during bootstrap by including a `signing_keys` array in your template spec — no separate API call needed.
+:::
+
 ---
 
 ## Unified sign endpoint {#unified-sign}
