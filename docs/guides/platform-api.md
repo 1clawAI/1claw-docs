@@ -92,6 +92,31 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/bootst
 
 The response includes `claim_url`, `claim_token`, and `summary` (with `vault_id`, `agent_id`, `policy_ids`).
 
+### 5. Share the Claim URL
+
+Send the `claim_url` to your end user (e.g. via your app's UI, email, or bot message). When they visit it, they'll see what was provisioned and can claim the resources with one click.
+
+The claim URL format is `https://1claw.xyz/connect/{slug}/claim/{token}`. It expires after 10 minutes.
+
+**Programmatic claim** (for headless flows):
+
+```bash
+# Preview what was provisioned
+curl "https://api.1claw.xyz/v1/platform/claim/ct_TOKEN"
+
+# Redeem the claim
+curl -X POST "https://api.1claw.xyz/v1/platform/claim/ct_TOKEN"
+```
+
+### 6. Agent Access is Automatic
+
+After bootstrap, the agent already has access to the vault paths defined in your template's `policies` array. No additional delegation step is needed — the bootstrap template creates both the agent and its access policies in one atomic operation.
+
+If the user needs to grant the agent access to *additional* paths later, they can:
+1. Visit the vault's **Policies** tab in the dashboard
+2. Create a new access policy for the agent
+3. Or use the API: `POST /v1/vaults/{vault_id}/policies`
+
 ---
 
 ## Template Spec Reference
@@ -298,7 +323,6 @@ Returns `platform.*` audit events (app creation, user provisioning, bootstrap, t
 ## Current Limitations
 
 - **Delegated token exchange** (RFC 8693 `DelegatedTokenRequest`) is defined but not yet wired. Platform operators cannot issue delegated JWTs on behalf of connected users.
-- **Silent mode** always returns a `claim_url`. For fully headless (no-browser) flows, the claim token can be used programmatically in a future release.
 - **`plt_` keys** can see user metadata but cannot directly access user signing keys (`GET /v1/agents/{id}/signing-keys`). The org boundary prevents cross-org reads. Use the user's agent token or wait for delegated tokens.
 
 ## Security
