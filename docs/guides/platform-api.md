@@ -117,6 +117,73 @@ If the user needs to grant the agent access to *additional* paths later, they ca
 2. Create a new access policy for the agent
 3. Or use the API: `POST /v1/vaults/{vault_id}/policies`
 
+### 7. Operate the Bootstrapped Agent
+
+The bootstrap response includes `summary.agent_api_key` (one-time, like regular agent creation) and `summary.signing_keys` (chain, address, public key). Store the API key securely — it won't be shown again.
+
+**Get an agent JWT:**
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/auth/agent-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "AGENT_UUID",
+    "api_key": "ocv_AGENT_API_KEY"
+  }'
+# → { "access_token": "eyJ...", "vault_ids": ["..."] }
+```
+
+**Get the agent's wallet address:**
+
+The wallet addresses are returned in the bootstrap response under `summary.signing_keys`. You can also retrieve them later:
+
+```bash
+curl "https://api.1claw.xyz/v1/agents/AGENT_UUID/signing-keys" \
+  -H "Authorization: Bearer YOUR_USER_OR_PLATFORM_JWT"
+# → { "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "is_active": true }] }
+```
+
+**Submit a transaction (Intents API):**
+
+```bash
+AGENT_JWT="eyJ..."  # from token exchange above
+
+curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions" \
+  -H "Authorization: Bearer $AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "chain_id": 1,
+    "to": "0xRecipientAddress",
+    "value": "0.01",
+    "data": "0x"
+  }'
+# → { "tx_hash": "0x...", "signed_tx": "0x...", "status": "broadcast" }
+```
+
+**Sign without broadcasting (sign-only mode):**
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions/sign" \
+  -H "Authorization: Bearer $AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "chain_id": 1,
+    "to": "0xRecipientAddress",
+    "value": "0.01",
+    "data": "0x"
+  }'
+# → { "signed_tx": "0x...", "tx_hash": "0x...", "from": "0x...", "status": "sign_only" }
+```
+
+:::tip Platform Flow Summary
+1. **Bootstrap** → save `agent_api_key` and `signing_keys[].address` from the response
+2. **Token exchange** → `POST /v1/auth/agent-token` with the agent's `ocv_` key → get a JWT
+3. **Operate** → use the JWT to submit transactions, sign messages, or read secrets
+4. The platform never needs a "delegation token" — the agent authenticates directly with its own key
+:::
+
 ---
 
 ## Template Spec Reference
