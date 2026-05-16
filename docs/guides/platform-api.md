@@ -90,7 +90,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/bootst
   }'
 ```
 
-The response includes `claim_url`, `claim_token`, and `summary` (with `vault_id`, `agent_id`, `policy_ids`).
+The response includes `claim_url`, `claim_token`, and `summary` (with `vault_id`, `agent_id`, `policy_ids`, `agent_api_key` — one-time, and `signing_keys[]` when signing keys are defined in the template). See [Step 7](#7-operate-the-bootstrapped-agent) for how to use the agent API key and signing keys.
 
 ### 5. Share the Claim URL
 
@@ -430,4 +430,5 @@ const result = await client.platform.bootstrapUser(user.data.connection_id, {
 });
 console.log("Claim URL:", result.data.claim_url);
 console.log("Agent ID:", result.data.summary.agent_id);
+console.log("Agent API Key:", result.data.summary.agent_api_key); // one-time — store securely
 ```

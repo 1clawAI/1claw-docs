@@ -563,3 +563,128 @@ Get details of a specific transaction.
 | ------------------- | ------- | -------- | ---------------------------------------------- |
 | `transaction_id`    | string  | Yes      | UUID of the transaction                        |
 | `include_signed_tx` | boolean | No       | Include raw signed_tx hex (default: false)     |
+
+---
+
+## rotate_generate
+
+Server-side secret rotation. Generates a cryptographically random value as the next version of an existing secret — no client-side value needed.
+
+### Parameters
+
+| Name       | Type   | Required | Description                                                             |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------- |
+| `vault_id` | string | Yes      | UUID of the vault containing the secret                                 |
+| `path`     | string | Yes      | Secret path to rotate (e.g. `api-keys/stripe`)                         |
+| `length`   | number | No       | Length of generated value (8–1024, default 32)                          |
+| `charset`  | string | No       | Character set: `hex`, `base64`, `alphanumeric`, `ascii` (default: hex)  |
+| `type`     | string | No       | Secret type for the new version (e.g. `api_key`, `password`)            |
+
+### Example
+
+```
+Agent: "Rotate the Stripe key with a new random value"
+→ rotate_generate(vault_id: "ae370174-...", path: "api-keys/stripe", length: 64, charset: "alphanumeric")
+
+Rotated secret at 'api-keys/stripe'. New version: 4 (server-generated, 64 chars, alphanumeric).
+```
+
+---
+
+## list_versions
+
+List all versions of a secret (newest first). Returns version numbers, timestamps, and status — **never secret values**.
+
+### Parameters
+
+| Name       | Type   | Required | Description                                    |
+| ---------- | ------ | -------- | ---------------------------------------------- |
+| `vault_id` | string | Yes      | UUID of the vault containing the secret        |
+| `path`     | string | Yes      | Secret path (e.g. `api-keys/stripe`)           |
+
+### Example
+
+```
+Agent: "Show me the version history of the Stripe key"
+→ list_versions(vault_id: "ae370174-...", path: "api-keys/stripe")
+
+Found 3 version(s) for 'api-keys/stripe':
+- v3 (current, created: 2026-05-10T14:22:00Z)
+- v2 (created: 2026-03-01T09:15:00Z)
+- v1 (disabled, created: 2026-01-15T10:30:00Z)
+```
+
+---
+
+## platform_list_apps
+
+List platform apps registered in the organization.
+
+### Parameters
+
+None.
+
+### Example
+
+```
+Agent: "What platform apps does our org have?"
+→ platform_list_apps()
+
+Found 2 platform app(s):
+- My DeFi Platform (slug: my-defi, billing: platform_pays, active)
+- Analytics Service (slug: analytics, billing: user_pays, active)
+```
+
+---
+
+## platform_create_app
+
+Register a new platform app. Returns a `plt_` API key (one-time — it won't be shown again).
+
+### Parameters
+
+| Name            | Type   | Required | Description                                                                                 |
+| --------------- | ------ | -------- | ------------------------------------------------------------------------------------------- |
+| `name`          | string | Yes      | Display name for the platform app                                                           |
+| `slug`          | string | Yes      | Unique URL-safe identifier (3–64 chars)                                                     |
+| `description`   | string | No       | Description of the platform app                                                             |
+| `billing_model` | string | No       | `platform_pays` (default), `user_pays`, or `hybrid`                                         |
+| `auth_mode`     | string | No       | `silent` (default), `user_signin`, or `configurable`                                        |
+
+### Example
+
+```
+Agent: "Create a new platform app for our Telegram bot"
+→ platform_create_app(name: "TG Trading Bot", slug: "tg-trading", description: "Telegram DeFi bot", billing_model: "platform_pays", auth_mode: "silent")
+
+Platform app created:
+  App ID: f8a3b1c2-...
+  Slug: tg-trading
+  API Key: plt_abc123... (save this — shown once only)
+```
+
+---
+
+## platform_bootstrap_user
+
+Bootstrap resources for a connected user from a template. Creates a vault, agent(s), policies, and optionally signing keys as defined in the template spec. Returns a claim URL for the user.
+
+### Parameters
+
+| Name            | Type   | Required | Description                                           |
+| --------------- | ------ | -------- | ----------------------------------------------------- |
+| `connection_id` | string | Yes      | UUID of the platform user connection (from `upsert`)  |
+| `template_id`   | string | Yes      | UUID of the bootstrap template to apply               |
+
+### Example
+
+```
+Agent: "Bootstrap the new user with the DeFi template"
+→ platform_bootstrap_user(connection_id: "d4e5f6a7-...", template_id: "b1c2d3e4-...")
+
+User bootstrapped:
+  Claim URL: https://1claw.xyz/connect/tg-trading/claim/ct_...
+  Vault ID: ae370174-...
+  Agent ID: bf481285-...
+  Policies: 2 created
+```

@@ -1,299 +1,182 @@
 ---
-title: MPC Secret Storage
-description: Split secret encryption keys across multiple HSM providers so no single provider holds the complete key. Supports client custody and multi-HSM modes.
-sidebar_position: 6
-tags: [mpc, security, encryption, hsm]
+title: Multi-Party Computation (MPC)
+description: Split secret DEKs across multiple HSM providers so no single provider holds the complete key — XOR 2-of-2, Shamir 2-of-3, and client-custody modes.
+sidebar_position: 17
 ---
 
-# MPC Secret Storage
+# Multi-Party Computation (MPC)
 
-MPC (Multi-Party Computation) secret storage splits the **data encryption key (DEK)** for each secret across multiple HSM providers. No single provider — including 1claw — holds the complete key needed to decrypt a secret. This eliminates single points of compromise at the cryptographic layer.
-
-## Who this is for
-
-MPC is designed for organizations that need **key-splitting guarantees**: even if one HSM provider is fully compromised, the attacker cannot reconstruct the DEK without shares from the other providers (or the client).
-
-If you don't have this requirement, the default HSM envelope encryption is already strong — every vault gets its own KEK, every secret version gets a fresh DEK, and plaintext keys exist only in memory during crypto operations. For an additional client-side layer without key splitting, see [CMEK](./customer-managed-keys).
-
-MPC is available on **Business** and **Enterprise** plans.
+MPC splits each secret's data-encryption key (DEK) across multiple HSM providers. Even if one provider is fully compromised, the attacker cannot reconstruct the DEK — they hold only one share. This is an opt-in, vault-level feature that layers on top of 1claw's standard HSM envelope encryption.
 
 ## Custody modes
 
-MPC supports three modes, each with different trust assumptions and operational requirements:
+1claw supports three custody modes, each with different trust and operational trade-offs:
 
-### 2-of-2 Client Custody
+### `2of2_client_custody` — XOR split
 
-```
-┌─────────────┐     ┌─────────────┐
-│  GCP KMS    │     │  Client     │
-│  (Share 1)  │     │  (Share 2)  │
-└──────┬──────┘     └──────┬──────┘
-       │                   │
-       └───────┬───────────┘
-               ▼
-         DEK reconstructed
-         (in memory only)
-```
+The DEK is XOR-split into two shares: one stored on the server (encrypted by GCP KMS), one returned to **you** as a `client_share`. Both shares are required to reconstruct the DEK.
 
-- **Split method:** XOR — the DEK is split into two shares via bitwise XOR.
-- **Share 1:** Stored on the server, encrypted by GCP KMS.
-- **Share 2:** Returned to the client as `client_share` in the API response. **You must store this securely — it is only returned once.**
-- **On read:** You send the client share via the `X-Client-Share` header. The server reconstructs the DEK in memory, decrypts, and discards.
-- **Trust model:** Neither 1claw nor GCP alone can decrypt. The client must be online and provide their share for every read.
+- **Write:** `PUT` response includes `client_share` (base64). You must store this.
+- **Read:** `GET` requires the `X-Client-Share` header with your share.
+- **Trust model:** 1claw cannot decrypt without your share; you cannot decrypt without theirs.
 
-### 2-of-3 Multi-HSM
+Best for: maximum sovereignty when you can securely store the client share.
 
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  GCP KMS    │  │  AWS KMS    │  │ Azure Key   │
-│  (Share 1)  │  │  (Share 2)  │  │ Vault (3)   │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-       │                │                │
-       └────────┬───────┘                │
-                ▼                        │
-          DEK reconstructed              │
-          (any 2 of 3 shares)    (redundant)
-```
+### `2of3_multi_hsm` — Shamir 2-of-3
 
-- **Split method:** Shamir secret sharing over GF(256) with threshold 2, total shares 3.
-- **Providers:** GCP KMS (primary), AWS KMS, Azure Key Vault. Each provider encrypts its share with its own KEK.
-- **No client share needed.** The server reconstructs the DEK from any 2 of 3 provider shares.
-- **Trust model:** Any single cloud provider compromise is insufficient. Two providers must be simultaneously compromised to reconstruct a DEK. The client does not need to store or present any material.
+The DEK is split into three Shamir shares distributed across GCP KMS, AWS KMS, and Azure Key Vault. Any two of three are sufficient to reconstruct.
 
-### 2-of-3 Client Custody
+- **Write:** No client share returned — all shares are server-managed.
+- **Read:** No `X-Client-Share` header needed. Reconstruction is transparent.
+- **Trust model:** No single cloud provider can decrypt. Two providers must cooperate (or be simultaneously compromised).
 
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  GCP KMS    │  │  AWS KMS    │  │  Client     │
-│  (Share 1)  │  │  (Share 2)  │  │  (Share 3)  │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-       │                │                │
-       └────────┬───────┴────────────────┘
-                ▼
-          DEK reconstructed
-          (any 2 of 3 shares)
-```
+Best for: high availability with multi-cloud resilience — no client share to manage.
 
-- **Split method:** Shamir 2-of-3 — same as multi-HSM, but the third share goes to the client instead of Azure.
-- **Share 3:** Returned to the client as `client_share`. Required via `X-Client-Share` header on read.
-- **Trust model:** Any single party (including 1claw with both server shares) can be compromised without exposing the DEK — but two of the three parties must collude or be compromised simultaneously.
+### `2of3_client_custody` — Shamir 2-of-3 with client share
+
+The DEK is split into three Shamir shares: two stored on separate HSMs (GCP + AWS), one returned to **you** as a `client_share`. Any two of three are sufficient to reconstruct, but the server alone holds only two — it can reconstruct without you, yet you gain an additional recovery path.
+
+- **Write:** `PUT` response includes `client_share` (base64).
+- **Read:** `GET` requires the `X-Client-Share` header.
+- **Trust model:** Hybrid — multi-HSM resilience plus client custody. If one HSM is compromised, the attacker still needs either the other HSM share or your client share.
+
+Best for: defense-in-depth with a client-held recovery share.
 
 ## Enabling MPC on a vault
 
-MPC is enabled at the vault level. All secrets in an MPC vault use key splitting.
-
-### API
+MPC is enabled per-vault via a single API call. The custody mode is **immutable once set** — you cannot change modes after enablement.
 
 ```bash
-POST /v1/vaults/{vault_id}/mpc
-Content-Type: application/json
-Authorization: Bearer <jwt>
-
-{
-  "custody_mode": "2of2_client_custody"
-}
+curl -X POST "https://api.1claw.xyz/v1/vaults/VAULT_ID/mpc" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "custody_mode": "2of3_multi_hsm"
+  }'
 ```
 
-For multi-HSM modes, you can optionally specify providers:
+For modes that use specific providers, you can optionally specify them:
 
 ```bash
-{
-  "custody_mode": "2of3_multi_hsm",
-  "providers": ["gcp", "aws", "azure"]
-}
+curl -X POST "https://api.1claw.xyz/v1/vaults/VAULT_ID/mpc" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "custody_mode": "2of3_multi_hsm",
+    "providers": ["gcp", "aws", "azure"]
+  }'
 ```
 
-### SDK
+:::caution
+The custody mode cannot be changed after it is set on a vault. Choose carefully based on your security requirements and operational capabilities.
+:::
 
-```typescript
-import { createClient } from "@1claw/sdk";
+## Writing secrets to an MPC vault
 
-const client = createClient({
-  apiKey: "1ck_...",
-  baseUrl: "https://api.1claw.xyz",
-});
-
-// Create a vault with MPC enabled
-const { data: vault } = await client.vault.create({
-  name: "mpc-vault",
-  description: "Vault with 2-of-2 client custody",
-});
-
-// Enable MPC on the vault
-await client.vault.enableMpc(vault!.id, {
-  custody_mode: "2of2_client_custody",
-});
-```
-
-### Dashboard
-
-1. Navigate to your vault → **Settings** tab
-2. Find the **MPC Secret Storage** card
-3. Select a custody mode from the dropdown
-4. Click **Enable MPC**
-
-For client custody modes, the dashboard will show a reminder that you must securely store the `client_share` returned with each secret.
-
-## Storing secrets (client custody modes)
-
-When you write a secret to an MPC vault with a client custody mode, the response includes a `client_share` field. **This share is returned exactly once — store it securely.**
-
-### SDK
-
-```typescript
-// Write a secret — response includes client_share for client custody modes
-const { data: created } = await client.secrets.put(vault.id, "api-keys/stripe", {
-  type: "api_key",
-  value: "sk_live_abc123...",
-});
-
-if (created?.client_share) {
-  // CRITICAL: Store this securely. It is only returned once.
-  console.log("Client share (store this):", created.client_share);
-  // Example: save to a hardware security key, password manager, or secure env
-}
-```
-
-### API
+Use the standard `PUT /v1/vaults/{id}/secrets/{path}` endpoint. For custody modes that include a client share (`2of2_client_custody` and `2of3_client_custody`), the response includes a `client_share` field:
 
 ```bash
-PUT /v1/vaults/{vault_id}/secrets/api-keys/stripe
-Content-Type: application/json
-Authorization: Bearer <jwt>
-
-{
-  "type": "api_key",
-  "value": "sk_live_abc123..."
-}
+curl -X PUT "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "value": "sk_live_abc123...",
+    "type": "api_key"
+  }'
 ```
 
-Response (client custody modes):
+Response (for client-custody modes):
 
 ```json
 {
   "path": "api-keys/stripe",
   "version": 1,
-  "client_share": "base64-encoded-share..."
+  "client_share": "dGhpcyBpcyBhIGJhc2U2NCBlbmNvZGVkIHNoYXJl..."
 }
 ```
 
-## Reading secrets (client custody modes)
-
-For 2-of-2 and 2-of-3 client custody modes, you must present the `client_share` via the `X-Client-Share` header when reading a secret.
-
-### SDK
-
-```typescript
-// Read a secret — provide client_share for client custody modes
-const { data: secret } = await client.secrets.get(vault.id, "api-keys/stripe", {
-  headers: {
-    "X-Client-Share": clientShare, // The base64 share from secret creation
-  },
-});
-
-console.log(secret?.value); // "sk_live_abc123..."
-```
-
-### API
-
-```bash
-GET /v1/vaults/{vault_id}/secrets/api-keys/stripe
-Authorization: Bearer <jwt>
-X-Client-Share: base64-encoded-share...
-```
-
-### Multi-HSM (no client share needed)
-
-For 2-of-3 multi-HSM mode, no client share is required. The server reconstructs the DEK from any 2 of the 3 provider shares:
-
-```typescript
-// Multi-HSM: no client share needed
-const { data: secret } = await client.secrets.get(vault.id, "api-keys/stripe");
-console.log(secret?.value);
-```
-
-## Choosing a custody mode
-
-| | 2-of-2 Client | 2-of-3 Multi-HSM | 2-of-3 Client |
-|---|---|---|---|
-| **Client share required** | Yes | No | Yes |
-| **Providers** | GCP KMS | GCP + AWS + Azure | GCP + AWS + Client |
-| **Single-provider compromise safe** | Yes | Yes | Yes |
-| **1claw compromise safe** | Yes | Yes (needs 2 providers) | Yes (needs provider + client) |
-| **Operational overhead** | Medium — store 1 share per secret | Low — fully server-side | Medium — store 1 share per secret |
-| **Offline read** | No (server + client needed) | No (server needed) | No (server + client needed) |
-| **Best for** | Maximum human control | Hands-off multi-cloud security | Balanced: multi-cloud + human custody |
-
-## Security model
-
-### What MPC protects against
-
-| Threat | 2-of-2 Client | 2-of-3 Multi-HSM | 2-of-3 Client |
-|--------|--------------|-------------------|----------------|
-| Single cloud provider compromise | **Protected** | **Protected** | **Protected** |
-| 1claw server compromise | **Protected** | **Protected** (needs 2nd provider) | **Protected** |
-| Two cloud providers compromised | N/A (only 1 provider) | **Exposed** | **Protected** (client share needed) |
-| Client share leaked | **Exposed** (with server share) | N/A | Partial (still need 1 server share) |
-| Database backup theft | **Protected** | **Protected** | **Protected** |
-
-### How it integrates with existing encryption
-
-MPC operates at the **DEK layer** of 1claw's envelope encryption:
-
-```
-Secret value
-  → Encrypted with DEK (AES-256-GCM)
-    → DEK split into shares (XOR or Shamir)
-      → Each share encrypted by its provider's KEK
-        → Shares stored separately in the database
-```
-
-MPC is compatible with [CMEK](./customer-managed-keys) — you can use both for triple-layered protection (client-side CMEK + MPC key splitting + per-provider KEK wrapping), though this is rarely necessary.
-
-## Agent considerations
-
-For agents accessing secrets in an MPC vault:
-
-- **Multi-HSM mode:** No changes needed. Agents read secrets normally; the server handles share reconstruction transparently.
-- **Client custody modes:** The agent must have the `client_share` and include it in every read request via `X-Client-Share`. Store the share in the agent's secure environment (e.g., `ONECLAW_CLIENT_SHARE` env var).
-
-```typescript
-// Agent code for client custody MPC vault
-import { createClient } from "@1claw/sdk";
-
-const client = createClient({
-  agentId: process.env.ONECLAW_AGENT_ID,
-  apiKey: process.env.ONECLAW_AGENT_API_KEY,
-});
-
-const { data: secret } = await client.secrets.get(vaultId, "api-keys/stripe", {
-  headers: {
-    "X-Client-Share": process.env.ONECLAW_CLIENT_SHARE!,
-  },
-});
-```
-
-:::warning Client share management
-The `client_share` is returned **once** when a secret is created. If you lose it, the secret **cannot be decrypted** — 1claw cannot recover it. Treat client shares with the same care as private keys.
+:::danger
+Store the `client_share` securely — in a password manager, hardware security module, or offline backup. If you lose the client share for a `2of2_client_custody` vault, the secret **cannot be recovered**. For `2of3_client_custody`, the server can still reconstruct with its two HSM shares, but you lose the additional recovery path.
 :::
 
-## Database schema
+## Reading secrets from an MPC vault
 
-MPC adds these tables (migration `063_add_mpc_support.sql`):
+For modes with client custody, include the `X-Client-Share` header:
 
-| Table | Purpose |
-|-------|---------|
-| `vault_mpc_keks` | Per-provider KEK references for each MPC vault |
-| `secret_dek_shares` | Per-secret DEK shares keyed by vault + provider |
+```bash
+curl "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Client-Share: dGhpcyBpcyBhIGJhc2U2NCBlbmNvZGVkIHNoYXJl..."
+```
 
-Vault-level columns: `mpc_custody` (TEXT), `mpc_threshold` (INTEGER), `mpc_providers` (TEXT[]).
+For `2of3_multi_hsm`, no header is needed — reads work like any other vault:
 
-## Comparison with CMEK
+```bash
+curl "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+  -H "Authorization: Bearer $TOKEN"
+```
 
-| Feature | CMEK | MPC |
-|---------|------|-----|
-| **Encryption layer** | Client-side (on top of HSM) | DEK splitting (within HSM layer) |
-| **Key location** | Client holds entire key | Key split across providers |
-| **Single point of failure** | Client key loss = data loss | Provider compromise = safe (threshold) |
-| **Operational model** | Encrypt/decrypt every read/write | Transparent (multi-HSM) or share per read (client custody) |
-| **Use together?** | Yes — CMEK wraps the value before MPC splits the DEK | |
+## How it works under the hood
+
+```
+             PUT /vaults/{id}/secrets/{path}
+                         │
+              ┌──────────┴──────────┐
+              │  Generate DEK       │
+              │  Encrypt secret     │
+              └──────────┬──────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+   ┌──────────┐   ┌──────────┐   ┌──────────┐
+   │ GCP KMS  │   │ AWS KMS  │   │ Azure KV │
+   │ Share 1  │   │ Share 2  │   │ Share 3  │
+   └──────────┘   └──────────┘   └──────────┘
+         │               │               │
+         └───────┬───────┘               │
+                 ▼                       │
+          Any 2 of 3 → reconstruct DEK  │
+                                (client share
+                                 if applicable)
+```
+
+1. A fresh DEK is generated for each secret version.
+2. The DEK encrypts the secret value (AES-256-GCM).
+3. The DEK itself is split according to the custody mode.
+4. Each share is encrypted by its respective HSM provider's KEK and stored in the `secret_dek_shares` table.
+5. On read, the required number of shares are retrieved, decrypted by each provider, and the DEK is reconstructed.
+
+The Shamir implementation uses **GF(256)** arithmetic with a configurable threshold. The XOR split is a simple two-party split — computationally equivalent to a one-time pad.
+
+## Comparison of modes
+
+| Aspect                  | `2of2_client_custody`         | `2of3_multi_hsm`              | `2of3_client_custody`         |
+|-------------------------|-------------------------------|-------------------------------|-------------------------------|
+| Client share required   | Yes                           | No                            | Yes                           |
+| HSM providers           | GCP only                      | GCP + AWS + Azure             | GCP + AWS (+ client)          |
+| Can server decrypt alone| No                            | Yes (any 2 of 3)              | Yes (GCP + AWS shares)        |
+| Risk if share lost      | Secret unrecoverable          | N/A                           | Lose recovery path            |
+| Operational overhead    | Must manage client share      | None                          | Must manage client share      |
+| Best for                | Maximum sovereignty           | Multi-cloud resilience        | Defense-in-depth              |
+
+## MPC in treasury wallets
+
+[Treasury wallets](./treasury.md) automatically use MPC custody for their `__treasury-keys` vault. The custody mode is determined by your billing tier:
+
+- **Pro / Team** → `2of2_client_custody` (XOR split)
+- **Business / Enterprise** → `2of3_multi_hsm` (Shamir across GCP, AWS, Azure)
+
+You don't need to enable MPC manually for treasury wallets — it's configured automatically at vault creation time.
+
+## Use cases
+
+- **Regulatory compliance** — demonstrate that no single entity (including 1claw) can access secrets unilaterally
+- **High-security vaults** — signing keys, root credentials, and other crown-jewel secrets
+- **Multi-cloud strategy** — eliminate single-provider risk for your most sensitive data
+- **Key escrow** — client share acts as an independent recovery mechanism
+
+## See also
+
+- [Customer-Managed Keys (CMEK)](./customer-managed-keys.md) — client-side encryption layer
+- [Treasury Wallets](./treasury.md) — HSM-backed multi-chain wallets with auto-MPC
+- [Audit and compliance](./audit-and-compliance.md) — tamper-evident audit log

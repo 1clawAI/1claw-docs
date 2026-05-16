@@ -10,6 +10,7 @@ import TabItem from '@theme/TabItem';
 # SDKs overview
 
 - **JavaScript/TypeScript** — Official `@1claw/sdk`. Built from the same OpenAPI 3.1 spec as the API; supports agent auth, secrets, billing, and optional x402. See [JavaScript SDK](/docs/sdks/javascript).
+- **Go** — Official `1claw-go-sdk`. Typed client with agent auth, secrets, billing, Intents API, and more. See [Go SDK](/docs/sdks/go).
 - **Python** — No official SDK yet; use [curl examples](/docs/sdks/curl-examples) or implement a thin client with `requests`/`httpx`. See [Python](/docs/sdks/python).
 - **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
 

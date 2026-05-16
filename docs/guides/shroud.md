@@ -1020,7 +1020,7 @@ Response credential filtering is **additive**. It runs alongside output policy, 
 
 **What it does:**
 - Builds an [Aho–Corasick](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm) automaton from **every secret value** stored in your vault
-- Scans the full request body in a single pass and replaces any matching secret with `[REDACTED:<path>]` (where `<path>` is the vault secret path)
+- Scans the full request body in a single pass and replaces any matching secret with an opaque token like `[REDACTED:#a1b2c3d4]` (a SHA-256 hash prefix, so vault paths are never exposed)
 - Runs on **both** the request pipeline (step 2) and response pipeline (step 5), catching secrets leaked in either direction
 - Manifest is refreshed automatically every **60 seconds** from the Vault API
 
@@ -1033,7 +1033,7 @@ Agents frequently need secrets (API keys, database passwords, signing keys) to d
 "Connect to the database using password: s3cret-pr0d-db-pw-2026!"
 
 # After Shroud secret redaction (Aho–Corasick match)
-"Connect to the database using password: [REDACTED:databases/prod/password]"
+"Connect to the database using password: [REDACTED:#7f3a9c2e]"
 ```
 
 Because Aho–Corasick matches all patterns simultaneously in **O(n)** time (where n is the input length, not the number of secrets), this scales to thousands of secrets without adding meaningful latency.
@@ -1042,7 +1042,7 @@ Because Aho–Corasick matches all patterns simultaneously in **O(n)** time (whe
 
 1. **Manifest loading** — A background task fetches all secret values the agent can access from the Vault API using a service key. The manifest refreshes every 60 seconds (configurable via `secret_manifest_refresh_interval_secs`).
 2. **Automaton build** — Secret values become patterns in an Aho–Corasick automaton. Each pattern is associated with its vault path for labeling.
-3. **Scan + replace** — On every request and response, `find_iter` walks the text. Each match span is replaced with `[REDACTED:{path}]`. The original text never reaches the LLM provider.
+3. **Scan + replace** — On every request and response, `find_iter` walks the text. Each match span is replaced with an opaque token like `[REDACTED:#a1b2c3d4]` (SHA-256 prefix of the secret path). The original text never reaches the LLM provider, and the redaction label does not reveal the vault path.
 4. **Response-side** — The same automaton scans LLM responses before they reach the agent, catching cases where a model hallucinates or reconstructs a secret value.
 
 **Configuration:**

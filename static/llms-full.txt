@@ -8441,7 +8441,7 @@ After a tool returns, the server inspects the result for:
 |-------|-------------|
 | **Threat detection** | Same patterns as input (logged, not blocked) |
 | **PII detection** | Same patterns as input (logged) |
-| **Secret redaction** | If a known secret value (fetched via `get_secret` or `get_env_bundle`) appears in the output of a **non-secret** tool, it is replaced with `[REDACTED:path]` before the result reaches the LLM context window |
+| **Secret redaction** | If a known secret value (fetched via `get_secret` or `get_env_bundle`) appears in the output of a **non-secret** tool, it is replaced with `[REDACTED:#hashprefix]` before the result reaches the LLM context window |
 
 Secret redaction tracks every value retrieved during the session. This means if an agent fetches `api-keys/stripe` and later a tool accidentally includes that value in its output, the value is scrubbed.
 
