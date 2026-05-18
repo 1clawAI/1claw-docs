@@ -14,6 +14,18 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Mobile companion app & approval queue (v0.21.0)
+
+- **New:** Mobile companion app for iOS and Android (Expo/React Native, beta). Passkey authentication, biometric unlock, and push notifications.
+- **New:** Device registration API — `POST/GET/DELETE /v1/auth/devices` for mobile device lifecycle, step-up challenge (`POST .../challenge`), WebAuthn attestation (`POST .../attest`), and push token registration (`POST .../push-token`).
+- **New:** Approval queue — `GET /v1/approvals` (list with status filter), `GET /v1/approvals/:id` (details), `POST /v1/approvals/:id/decide` (approve/reject). Risk-tiered step-up authentication: routine actions require biometrics, critical/irreversible actions require passkey attestation.
+- **New:** CLI commands — `1claw device list`, `1claw device revoke`, `1claw approval list`, `1claw approval get`, `1claw approval decide`.
+- **New:** MCP tools — `list_approvals`, `get_approval` for agent visibility into pending approvals.
+- **New:** SDK resources — `client.devices` (list, revoke), `client.approvals` (list, get, decide), `client.passkeys`.
+- **New:** OpenAPI spec v2.14.0 — 6 device endpoints, 3 approval endpoints, 11 new schemas, Approvals tag.
+- **New:** Database migrations (092–096): `user_devices`, `device_challenges`, `step_up_tokens`, `user_passkeys`, `approvals` tables.
+- **Changed:** Vault version bumped from 0.20.2 to 0.21.0. CLI 0.23.0. MCP 0.24.0. SDK types regenerated.
+
 ### Security hardening round 3 (v0.20.2, 2026-05-14)
 
 - **Fixed (H-NEW-OIDC-SSRF):** SSRF via Platform App `oidc_jwks_url` — `validate_audience_url()` wired into platform app create/update and inside `resolve_oidc_subject()` defense-in-depth. Prevents attacker-controlled JWKS URLs from reaching internal services.

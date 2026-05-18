@@ -22,6 +22,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 | **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
 | **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
 | **Treasury** | Native multi-chain wallets and Safe multisigs—wallet generation, signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
+| **Mobile App** | iOS + Android companion for human-in-the-loop approvals — passkey auth, biometric unlock, push notifications, risk-tiered step-up (beta) | [Parts of 1claw →](/docs/concepts/parts-of-1claw) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/guides/customer-managed-keys) (client-side encryption layer) and [MPC](/docs/guides/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
@@ -39,12 +40,19 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 │  1claw.xyz  │     │ api.1claw.xyz     │ mcp.1claw.xyz
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
-                ┌──────────┼──────────┐
-                ▼          ▼          ▼
-          ┌──────────┐ ┌──────┐ ┌──────────┐
-          │ Supabase │ │ KMS  │ │  Audit   │
-          │ Postgres │ │(keys)│ │  (log)   │
-          └──────────┘ └──────┘ └──────────┘
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+        ┌──────────┐ ┌──────┐ ┌──────────┐
+        │ Supabase │ │ KMS  │ │  Audit   │
+        │ Postgres │ │(keys)│ │  (log)   │
+        └──────────┘ └──────┘ └──────────┘
+              ▲
+              │
+     ┌────────┴────────┐
+     │  Mobile App     │
+     │  (Expo/RN)      │
+     │  iOS + Android  │
+     └─────────────────┘
 ```
 
 - **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies.

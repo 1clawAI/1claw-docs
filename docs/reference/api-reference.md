@@ -76,6 +76,29 @@ All endpoints are under **/v1**.
 | GET    | `/v1/auth/api-keys`         | List API keys  |
 | DELETE | `/v1/auth/api-keys/:key_id` | Revoke API key |
 
+## Mobile Devices
+
+Device registration and step-up authentication for the 1Claw mobile companion app. WebAuthn passkey-based attestation for high-risk approvals.
+
+| Method | Path                                           | Description                              |
+| ------ | ---------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/auth/devices`                             | Register a mobile device                 |
+| GET    | `/v1/auth/devices`                             | List registered devices                  |
+| DELETE | `/v1/auth/devices/:device_id`                  | Revoke a device                          |
+| POST   | `/v1/auth/devices/:device_id/challenge`        | Create a step-up authentication challenge |
+| POST   | `/v1/auth/devices/:device_id/attest`           | Attest a step-up challenge (WebAuthn)    |
+| POST   | `/v1/auth/devices/:device_id/push-token`       | Register push notification token         |
+
+## Approvals
+
+Human-in-the-loop approval queue for irreversible agent actions. Agents submit approval requests; humans review and decide via mobile app, dashboard, or CLI.
+
+| Method | Path                                    | Description                                          |
+| ------ | --------------------------------------- | ---------------------------------------------------- |
+| GET    | `/v1/approvals`                         | List approval requests (filterable by status)        |
+| GET    | `/v1/approvals/:approval_id`            | Get approval details                                 |
+| POST   | `/v1/approvals/:approval_id/decide`     | Approve or reject (requires step-up for critical)    |
+
 ## Vaults
 
 | Method | Path                   | Description  |

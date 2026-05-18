@@ -92,12 +92,23 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 ---
 
+### Mobile App (beta)
+
+**What it is:** A companion app for iOS and Android (Expo/React Native) that gives humans a secure, always-available channel for approving irreversible agent actions. Supports passkey authentication, biometric unlock, and push notifications for real-time approval requests.
+
+**When to use it:** When your agents perform high-risk or irreversible operations (e.g. large transactions, policy changes, secret deletion) and you want human-in-the-loop approval before they proceed. The app provides a queue of pending approval requests with risk-tier badges, and requires step-up authentication (biometric or passkey attestation) for critical decisions.
+
+**You need:** The mobile app (available via TestFlight for iOS, beta). Log in with your 1claw credentials, register a passkey on the device, and your pending approvals will appear in real time via push notifications.
+
+---
+
 ## How they fit together
 
 | You are…                    | Best starting point        |
 | --------------------------- | -------------------------- |
 | A human setting things up   | **Dashboard**              |
 | A human in a script/CI      | **CLI** or **SDK**         |
+| A human approving agent ops | **Mobile App** (iOS/Android) |
 | An AI agent (MCP client)    | **MCP Server** (hosted or local) |
 | An agent calling LLMs       | **Shroud** (optional) + Vault |
 | An agent signing txs        | **Intents API** + Vault   |
