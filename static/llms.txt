@@ -29,6 +29,7 @@
 - **MCP Server** (TypeScript) at mcp.1claw.xyz — Model Context Protocol for AI agents
 - **SDK** (@1claw/sdk) — TypeScript client library
 - **CLI** (@1claw/cli) — Command-line tool for CI/CD and DevOps
+- **Mobile App** (Expo/React Native) — Human-in-the-loop companion for iOS + Android: approval inbox with risk tiers, agent management, passkey/biometric auth, treasury wallets, activity feed. Beta.
 
 Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud adds TEE-grade key isolation, LLM traffic inspection (secret redaction, PII scrubbing, prompt injection defense), and intent validation for transactions.
 
@@ -88,6 +89,9 @@ HSM-backed wallet generation for human users. Supported chains: Ethereum (secp25
 ### Platform API (v0.20)
 For developers building applications on top of 1Claw. Platform apps (`plt_` API keys, `principal_type: "platform"`) provision users, vaults, agents, and policies on behalf of end-users via declarative bootstrap templates. OIDC user provisioning via `POST /v1/platform/users/upsert` (accepts `subject_token` JWT verified against platform JWKS, or email). Bootstrap: `POST /v1/platform/connections/{id}/bootstrap` creates resources from a template spec and returns a claim URL. **Claim flow**: `GET /v1/platform/claim/{token}` previews provisioned resources (public, no auth); `POST /v1/platform/claim/{token}` redeems the one-time claim (409 if reused, 410 if expired). Dashboard claim page at `/connect/{slug}/claim/{token}`. Bootstrap templates now support `signing_keys` arrays on agent entries — auto-provisions per-chain signing keys at bootstrap time (supported chains: ethereum, bitcoin, solana, xrp, cardano, tron). Bootstrap response includes `summary.agent_api_key` (one-time `ocv_` key) and `summary.signing_keys[]` (each with `chain`, `curve`, `public_key`, `address`). Three billing models: `platform_pays` (default), `user_pays`, `hybrid`. Three auth modes: `silent`, `user_signin`, `configurable`. `platform_locked` flag on vaults/agents prevents operator access to secret values. DB tables: `platform_apps`, `platform_templates`, `platform_user_connections`, `platform_user_grants`, `platform_claim_tokens`. New columns on `vaults` (platform_app_id, platform_locked, billed_to_type, billed_to_id), `agents` (platform_app_id, platform_locked). Dashboard at `/platform` with visual **Template Spec Builder** UI for building bootstrap templates without raw JSON editing. SDK: `client.platform.*`. List endpoints return wrapped JSON objects: `GET /v1/platform/apps` → `{ apps: [...] }`, `GET .../templates` → `{ templates: [...] }`, `GET .../users` → `{ users: [...] }`.
 
+### Mobile Companion App (v0.21, beta)
+Human-in-the-loop approval app for iOS + Android, built with Expo SDK 54, expo-router, TanStack Query, and Zustand. Features: passkey + biometric + PIN authentication, approval inbox with risk tiers (Tier 1 info-only, Tier 2 biometric, Tier 3 TOTP) and countdown timers, agent management with quarantine, policy editor, treasury wallets, audit log, Shroud activity feed, and push notifications. Backend API: `POST/GET /v1/auth/devices` (register/list mobile devices), `POST /v1/auth/devices/{id}/challenge` + `attest` (step-up auth), `GET /v1/approvals` + `POST /v1/approvals/{id}/decide` (approval queue). SDK: `client.devices.*`, `client.passkeys.*`, `client.approvals.*`. TestFlight deployment via EAS Build. DB: migrations 092–096 (user_devices, device_challenges, step_up_tokens, user_passkeys, approvals).
+
 ### Sharing
 Secrets can be shared between users and agents via links (with optional passphrase and IP restrictions), direct user/agent shares, email invites (humans only), or "share back to creator" for agents. Inbound shares require explicit accept/decline.
 
@@ -121,6 +125,14 @@ Key endpoints:
 - `GET /.well-known/jwks.json` — Public JWKS (every active EdDSA + RS256 key version, keyed by `kid`, 5-min cache, CORS `*`)
 - `GET/PATCH/DELETE /v1/auth/me` — Get/update/delete own account (user-only; delete requires `{ confirmation: "DELETE MY ACCOUNT" }`)
 - `POST /v1/auth/export-data` — GDPR data export: returns JSON archive of user's profile, vaults, agents, secret metadata, and policies (user-only)
+- `POST/GET /v1/auth/devices` — Register/list mobile devices (user-only)
+- `DELETE /v1/auth/devices/{id}` — Revoke a mobile device
+- `POST /v1/auth/devices/{id}/challenge` — Create step-up auth challenge
+- `POST /v1/auth/devices/{id}/attest` — Attest device challenge with device key signature
+- `POST /v1/auth/devices/{id}/push-token` — Register push notification token
+- `GET /v1/approvals` — List pending approval requests (user-only)
+- `GET /v1/approvals/{id}` — Get approval details
+- `POST /v1/approvals/{id}/decide` — Approve or reject a pending action
 - `GET/POST /v1/vaults` — List/create vaults
 - `GET/DELETE /v1/vaults/{id}` — Get/delete vault
 - `POST/DELETE /v1/vaults/{id}/cmek` — Enable/disable CMEK
