@@ -98,6 +98,18 @@ Send the `claim_url` to your end user (e.g. via your app's UI, email, or bot mes
 
 The claim URL format is `https://1claw.xyz/connect/{slug}/claim/{token}`. It expires after 10 minutes.
 
+**Reissue an expired claim URL:**
+
+If the token expires before your user claims, mint a fresh one without re-provisioning:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/reissue-claim" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+# → { "claim_url": "...", "claim_token": "ct_...", "expires_in": 600, "connection_id": "..." }
+```
+
 **Programmatic claim** (for headless flows):
 
 ```bash

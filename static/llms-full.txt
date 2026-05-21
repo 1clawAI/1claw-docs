@@ -10552,6 +10552,7 @@ For developers building applications on top of 1Claw. Platform apps authenticate
 | DELETE | `/v1/platform/apps/:id/templates/:tid`            | Delete template                                        |
 | POST   | `/v1/platform/users/upsert`                       | Provision or find user (platform-only, OIDC or email)  |
 | POST   | `/v1/platform/connections/:id/bootstrap`           | Bootstrap resources from template                      |
+| POST   | `/v1/platform/connections/:id/reissue-claim`      | Mint fresh claim URL (no re-provisioning)              |
 | GET    | `/v1/platform/apps/:id/users`                     | List connected users                                   |
 | GET    | `/v1/platform/apps/:id/audit`                     | Platform audit events                                  |
 | GET    | `/v1/platform/connected-apps`                     | List apps connected to calling user                    |
