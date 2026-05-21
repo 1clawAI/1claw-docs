@@ -419,8 +419,7 @@ sidebar_position: 3
 - **Email + password** — `POST /v1/auth/token` with `{ "email": "...", "password": "..." }` → JWT.
 - **Google OAuth** — `POST /v1/auth/google` with `{ "id_token": "..." }` → JWT.
 - **Personal API key** — `POST /v1/auth/api-key-token` with `{ "api_key": "1ck_..." }` → JWT.
-
-**Typical operations:**
+- **API key expiration** — All key types (`1ck_`, `ocv_`, `plt_`) support optional `api_key_expires_at`. Expired keys are rejected. Platform apps can rotate keys via `POST /v1/platform/apps/{id}/rotate-key`.
 
 - Create/list/get/delete **vaults**.
 - Create/read/update/delete **secrets** (PUT/GET/DELETE by path).

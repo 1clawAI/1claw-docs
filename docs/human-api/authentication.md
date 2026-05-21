@@ -210,6 +210,48 @@ await client.auth.changePassword({
 
 ---
 
+## Passkey authentication (WebAuthn)
+
+Passwordless login using WebAuthn/FIDO2 passkeys. Uses P-256 ECDSA signatures verified server-side.
+
+### Register a passkey (authenticated)
+
+1. `POST /v1/auth/passkeys/register/begin` — returns challenge, RP info, and public key credential parameters.
+2. Call `navigator.credentials.create()` with the returned options.
+3. `POST /v1/auth/passkeys/register/complete` — send `credential_id`, `attestation_object`, `client_data_json`, optional `name` and `transports`.
+
+### Sign in with passkey (public)
+
+1. `POST /v1/auth/passkeys/assert/begin` — `{ "email": "user@example.com" }` → returns challenge and `allow_credentials`.
+2. Call `navigator.credentials.get()` with the returned options.
+3. `POST /v1/auth/passkeys/assert/complete` — send `credential_id`, `authenticator_data`, `client_data_json`, `signature` → returns JWT.
+
+### Manage passkeys
+
+- `GET /v1/auth/passkeys` — list registered passkeys (name, credential ID, created_at, last_used_at).
+- `DELETE /v1/auth/passkeys/{id}` — delete a passkey.
+
+---
+
+## Set password (platform users)
+
+Platform-provisioned users who signed up via OIDC or Google (and have no password) can set their first password:
+
+`POST /v1/auth/set-password` with `{ "password": "..." }` (min 8 characters). Returns 400 if user already has a password set. After setting, email/password login is enabled alongside existing auth methods.
+
+---
+
+## Change email
+
+Two-step verified email change:
+
+1. `POST /v1/auth/change-email` — `{ "new_email": "new@example.com" }`. Sends a 6-digit verification code to the new address (15-minute expiry).
+2. `POST /v1/auth/verify-email-change` — `{ "code": "123456" }`. Verifies the code and updates the account email.
+
+Only one pending email change request per user at a time.
+
+---
+
 ## Error responses
 
 | Status | Meaning                    |

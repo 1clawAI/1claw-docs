@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### WebAuthn passkeys, email change, and agent approvals (v0.21.1)
+
+- **New:** WebAuthn/FIDO2 passkey authentication — passwordless login and passkey management. Server-side P-256 ECDSA verification (`p256` crate) with CBOR attestation parsing (`ciborium` crate).
+- **New:** Passkey endpoints (public): `POST /v1/auth/passkeys/assert/begin` (start login), `POST /v1/auth/passkeys/assert/complete` (complete login → JWT).
+- **New:** Passkey endpoints (authenticated): `POST /v1/auth/passkeys/register/begin`, `POST /v1/auth/passkeys/register/complete`, `GET /v1/auth/passkeys` (list), `DELETE /v1/auth/passkeys/{id}` (delete).
+- **New:** Dashboard login page "Sign in with passkey" button. Settings → Security page has passkey management (register, list, delete).
+- **New:** `POST /v1/auth/set-password` — allows platform-provisioned users (OIDC/Google, no existing password) to set their first password. Enables email/password login alongside existing auth methods.
+- **New:** Email change flow — `POST /v1/auth/change-email` (sends 6-digit verification code to new email), `POST /v1/auth/verify-email-change` (completes change). One pending request per user, 15-minute expiry. Dashboard: Account settings email change dialog.
+- **New:** `POST /v1/approvals/request` — agent-initiated approval requests for policy changes. Directed to the agent's creator (human). Dashboard approval inbox at `/approvals` and detail at `/approvals/[id]`.
+- **New:** Auto-execution of approved policy changes — when `POST /v1/approvals/{id}/decide` approves a `policy_change` action, the policy described in the approval `summary` is automatically created/updated.
+- **New:** Database migration 097 (`email_change_requests` table).
+- **New:** Dashboard hooks: `use-approvals.ts` (useApprovals, useApproval, useDecideApproval), `use-passkeys.ts` (usePasskeys, usePasskeySignIn, useRegisterPasskey, useDeletePasskey).
+- **New:** `lib/passkeys.ts` — WebAuthn browser helpers (base64url encode/decode, credential creation/request options builders, attestation/assertion serialization).
+
 ### Mobile companion app & approval queue (v0.21.0)
 
 - **New:** Mobile companion app for iOS and Android (Expo/React Native, beta). Passkey authentication, biometric unlock, and push notifications.
