@@ -143,6 +143,10 @@ const client = createClient({
 
 **Response (200):** Same shape as above.
 
+:::tip API key expiration
+All three key types (`1ck_` human, `ocv_` agent, `plt_` platform) support optional expiration. Set `api_key_expires_at` (ISO 8601) when creating or updating an agent/platform app, or `expires_at` when creating a personal API key. Expired keys return **401 Unauthorized**.
+:::
+
 ---
 
 ## Revoke token

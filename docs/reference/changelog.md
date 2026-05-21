@@ -14,6 +14,19 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### API key expiration and platform key rotation (v0.21.2)
+
+- **New:** All three API key types (`1ck_` human, `ocv_` agent, `plt_` platform) now support optional expiration via `api_key_expires_at`. Expired keys are rejected at authentication time with 401.
+- **New:** `POST /v1/platform/apps/{id}/rotate-key` — rotate a platform app's API key with an optional new expiration date. Returns the new `plt_` key (one-time).
+- **New:** Agent create/update accepts `api_key_expires_at` (ISO 8601 datetime). Enforced during `POST /v1/auth/agent-token` exchange.
+- **New:** Platform app create/update accepts `api_key_expires_at`. Enforced in auth middleware for `plt_` Bearer tokens.
+- **New:** Dashboard UI — `KeyExpiryPicker` component on agent create, platform app create, and API keys settings. Agent cards show expiry badges. Platform detail shows key expiration.
+- **New:** CLI flags — `--api-key-expires-at` on `agent create`, `agent update`, `platform create`, `platform update`. New `platform rotate-key <appId>` command.
+- **New:** MCP tool — `platform_rotate_key` with optional `api_key_expires_at`.
+- **New:** Database migration 098 (`agents.api_key_expires_at`, `platform_apps.api_key_expires_at`, `platform_apps.api_key_rotated_at`).
+- **New:** `POST /v1/platform/connections/{id}/reissue-claim` — reissue an expired claim URL for an existing connection without re-provisioning resources.
+- **Changed:** OpenAPI spec v2.15.0. SDK/CLI/MCP all bumped to 0.27.0.
+
 ### WebAuthn passkeys, email change, and agent approvals (v0.21.1)
 
 - **New:** WebAuthn/FIDO2 passkey authentication — passwordless login and passkey management. Server-side P-256 ECDSA verification (`p256` crate) with CBOR attestation parsing (`ciborium` crate).

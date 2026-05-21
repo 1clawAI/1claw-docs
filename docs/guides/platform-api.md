@@ -31,6 +31,10 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps" \
 
 Save the returned `api_key` (prefixed `plt_`) — it won't be shown again. This key authenticates all subsequent Platform API calls.
 
+:::tip Key expiration and rotation
+Set `api_key_expires_at` (ISO 8601) when creating the app to auto-expire the key. Rotate at any time with `POST /v1/platform/apps/{id}/rotate-key`, optionally setting a new expiry. Expired keys return 401.
+:::
+
 ### 2. Create a Bootstrap Template
 
 Templates define what gets created for each user: a vault, agents, and access policies.

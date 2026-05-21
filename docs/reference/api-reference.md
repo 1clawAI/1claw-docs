@@ -289,6 +289,31 @@ Admin endpoints are for platform operators only. They are not documented in deta
 | PUT    | `/v1/admin/orgs/:org_id/limits` | Update org limits            |
 | PUT    | `/v1/admin/orgs/:org_id/billing-tier` | Set org billing tier (free/pro/business) |
 
+## Platform API
+
+Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate with `plt_` prefixed API keys.
+
+| Method | Path                                          | Description                                                      |
+| ------ | --------------------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/v1/platform/apps`                           | Register a platform app (returns `plt_` key one-time)            |
+| GET    | `/v1/platform/apps`                           | List platform apps for org                                       |
+| GET    | `/v1/platform/apps/:id`                       | Get platform app details                                         |
+| PATCH  | `/v1/platform/apps/:id`                       | Update platform app                                              |
+| DELETE | `/v1/platform/apps/:id`                       | Delete platform app                                              |
+| POST   | `/v1/platform/apps/:id/rotate-key`            | Rotate platform API key (optional `api_key_expires_at`)          |
+| POST   | `/v1/platform/apps/:id/templates`             | Create bootstrap template                                        |
+| GET    | `/v1/platform/apps/:id/templates`             | List templates                                                   |
+| PATCH  | `/v1/platform/apps/:id/templates/:tid`        | Update template                                                  |
+| DELETE | `/v1/platform/apps/:id/templates/:tid`        | Delete template                                                  |
+| POST   | `/v1/platform/users/upsert`                   | Provision or find user (platform-only)                           |
+| POST   | `/v1/platform/connections/:id/bootstrap`      | Bootstrap resources from template                                |
+| POST   | `/v1/platform/connections/:id/reissue-claim`  | Reissue expired claim URL (no re-provisioning)                   |
+| GET    | `/v1/platform/claim/:token`                   | Preview claim token (public)                                     |
+| POST   | `/v1/platform/claim/:token`                   | Redeem claim token (public)                                      |
+| GET    | `/v1/platform/apps/:id/users`                 | List connected users                                             |
+| GET    | `/v1/platform/connected-apps`                 | List apps connected to calling user                              |
+| DELETE | `/v1/platform/connected-apps/:connection_id`  | Disconnect from platform app                                     |
+
 ---
 
 ## Notes

@@ -76,6 +76,10 @@ The issued JWT includes a `scopes` claim. If the agent record has scopes set (e.
 
 | Code | Meaning                                                       |
 | ---- | ------------------------------------------------------------- |
-| 401  | Invalid agent_id or api_key, agent inactive, or agent expired |
+| 401  | Invalid agent_id or api_key, agent inactive, agent expired, or **API key expired** (`api_key_expires_at` passed) |
 
 Never log or expose the API key; treat it like a password.
+
+:::info API key expiration
+Agents support an optional `api_key_expires_at` field (ISO 8601). When set, the token exchange returns 401 after that date even if the agent itself hasn't expired. Set it on agent creation or update via `api_key_expires_at`.
+:::
