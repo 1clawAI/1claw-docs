@@ -59,35 +59,36 @@ The wizard asks for your 1Claw API key and optional guardrails:
 - **Network** (`base` for mainnet, `base-sepolia` for testnet)
 
 It automatically creates:
-- A vault named `base-mcp-keys`
+- A vault named `agentkit-keys`
 - An agent with Intents API and Shroud enabled
 - A Base signing key for the agent
-- An access policy granting read on `base-mcp/*` secrets
+- An access policy granting read on `agentkit/*` secrets
 
 At the end it prints the agent API key and a ready-to-paste MCP config.
 
-### Step 2: Store your secrets
-
-Use the CLI or SDK to put your existing keys into the vault:
+### Step 2: Install the CLI and store your secrets
 
 ```bash
-npx @1claw/cli secret put base-mcp/seed-phrase \
+npm install -g @1claw/cli
+1claw login
+
+1claw secret put agentkit/seed-phrase \
   --vault YOUR_VAULT_ID \
   --value "your twelve word seed phrase goes here"
 
-npx @1claw/cli secret put base-mcp/alchemy-api-key \
+1claw secret put agentkit/alchemy-api-key \
   --vault YOUR_VAULT_ID \
   --value "alchemy_key_here"
 
-npx @1claw/cli secret put base-mcp/coinbase-api-private-key \
+1claw secret put agentkit/coinbase-api-private-key \
   --vault YOUR_VAULT_ID \
   --value "coinbase_private_key_here"
 
-npx @1claw/cli secret put base-mcp/openrouter-api-key \
+1claw secret put agentkit/openrouter-api-key \
   --vault YOUR_VAULT_ID \
   --value "openrouter_key_here"
 
-npx @1claw/cli secret put base-mcp/neynar-api-key \
+1claw secret put agentkit/neynar-api-key \
   --vault YOUR_VAULT_ID \
   --value "neynar_key_here"
 ```
