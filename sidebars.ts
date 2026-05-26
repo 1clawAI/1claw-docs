@@ -106,11 +106,16 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Tools, CLI & integrations",
                     items: [
-                        {
-                            type: "doc",
-                            id: "guides/mcp-integration",
-                            label: "MCP — Claude Desktop and compatible clients",
-                        },
+                    {
+                        type: "doc",
+                        id: "guides/mcp-integration",
+                        label: "MCP — Claude Desktop and compatible clients",
+                    },
+                    {
+                        type: "doc",
+                        id: "guides/base-mcp-secure",
+                        label: "Base MCP — secure Base MCP with 1Claw",
+                    },
                         {
                             type: "doc",
                             id: "guides/cli",
