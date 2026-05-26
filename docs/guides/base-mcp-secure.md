@@ -47,8 +47,8 @@ Without guardrails, one prompt injection through a poisoned input can trigger un
 ### Step 1: Clone and run the setup wizard
 
 ```bash
-git clone https://github.com/1clawAI/base-mcp-secure.git
-cd base-mcp-secure
+git clone https://github.com/1clawAI/1claw-agentkit.git
+cd 1claw-agentkit
 npm install
 npm run setup
 ```
@@ -272,9 +272,9 @@ await client.agents.update("agent-uuid", {
 
 ## Resources
 
-- **Repository**: [github.com/1clawAI/base-mcp-secure](https://github.com/1clawAI/base-mcp-secure)
-- **Migration guide**: [Moving from plaintext secrets to 1Claw](https://github.com/1clawAI/base-mcp-secure/blob/main/docs/migration-from-base-mcp.md)
-- **Policy recipes**: [Pre-built guardrails for common agents](https://github.com/1clawAI/base-mcp-secure/blob/main/docs/policy-recipes.md)
+- **Repository**: [github.com/1clawAI/1claw-agentkit](https://github.com/1clawAI/1claw-agentkit)
+- **Migration guide**: [Moving from plaintext secrets to 1Claw](https://github.com/1clawAI/1claw-agentkit/blob/main/docs/migration-from-base-mcp.md)
+- **Policy recipes**: [Pre-built guardrails for common agents](https://github.com/1clawAI/1claw-agentkit/blob/main/docs/policy-recipes.md)
 - **New Base MCP quickstart**: [docs.base.org/ai-agents/quickstart](https://docs.base.org/ai-agents/quickstart)
 - **Intents API docs**: [Intents API guide](/docs/guides/intents-api)
 - **Shroud docs**: [Shroud guide](/docs/guides/shroud)
