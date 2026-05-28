@@ -88,6 +88,18 @@ OpenRouter is itself a model routing gateway — it maintains its own catalog of
 
 ---
 
+## Darkbloom (`X-Shroud-Provider: darkbloom`) {#darkbloom-models}
+
+[Darkbloom](https://darkbloom.dev) (an Eigen Labs project) routes inference to hardware-attested Apple Silicon providers with end-to-end encryption. It exposes an OpenAI-compatible API. Shroud's config uses an **empty** allowlist — any model available on Darkbloom is accepted. Check their `/v1/models` endpoint for real-time availability.
+
+---
+
+## Venice (`X-Shroud-Provider: venice`) {#venice-models}
+
+[Venice AI](https://venice.ai) provides privacy-focused inference with no data retention. It exposes an OpenAI-compatible API. Shroud's config uses an **empty** allowlist — any model slug Venice supports is accepted (e.g. `claude-opus-4-8`, `grok-4-3`, `kimi-k2-6`). Check their `/api/v1/models` endpoint for available models.
+
+---
+
 ## LLM Token Billing (Stripe AI Gateway)
 
 When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route traffic through the Stripe AI Gateway instead of your provider API key. You still send the same **`X-Shroud-Provider`** (`openai`, `anthropic`, `google`, `mistral`, `cohere`, etc.).
