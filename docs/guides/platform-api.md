@@ -9,7 +9,7 @@ sidebar_position: 14
 The Platform API lets you build products on top of 1Claw. Register your app, create bootstrap templates, provision end-users, and manage their secrets infrastructure — all with custody guarantees that prevent your platform from accessing end-user secrets.
 
 :::info Requirements
-The Platform API requires a **Pro or higher** subscription. [Upgrade your plan →](/settings/billing)
+The Platform API requires a **Pro or higher** subscription. [Upgrade your plan →](https://1claw.xyz/settings/billing)
 :::
 
 ## Quickstart (~10 min)

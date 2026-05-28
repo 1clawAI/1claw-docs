@@ -44,6 +44,43 @@ const config: Config = {
             } satisfies Preset.Options,
         ],
     ],
+    headTags: [
+        {
+            tagName: "script",
+            attributes: { type: "application/ld+json" },
+            innerHTML: JSON.stringify({
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "Organization",
+                        "@id": "https://1claw.xyz/#organization",
+                        name: "1Claw",
+                        url: "https://1claw.xyz",
+                        logo: {
+                            "@type": "ImageObject",
+                            url: "https://1claw.xyz/logos/png/1claw-round-black.png",
+                        },
+                        sameAs: ["https://github.com/1clawAI", "https://x.com/1clawAI"],
+                    },
+                    {
+                        "@type": "WebSite",
+                        "@id": "https://docs.1claw.xyz/#website",
+                        url: "https://docs.1claw.xyz",
+                        name: "1claw Docs",
+                        publisher: { "@id": "https://1claw.xyz/#organization" },
+                        potentialAction: {
+                            "@type": "SearchAction",
+                            target: {
+                                "@type": "EntryPoint",
+                                urlTemplate: "https://docs.1claw.xyz/docs/?q={search_term_string}",
+                            },
+                            "query-input": "required name=search_term_string",
+                        },
+                    },
+                ],
+            }),
+        },
+    ],
     themeConfig: {
         image: "img/logo.svg",
         navbar: {
@@ -100,25 +137,12 @@ const config: Config = {
             },
             { name: "llms-txt", content: "https://docs.1claw.xyz/llms.txt" },
             { property: "og:type", content: "website" },
-            { property: "og:url", content: "https://docs.1claw.xyz/" },
-            { property: "og:title", content: "1claw Docs — Cloud HSM Secrets Manager for Humans & AI Agents" },
-            {
-                property: "og:description",
-                content:
-                    "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
-            },
             { property: "og:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
             { property: "og:image:width", content: "1200" },
             { property: "og:image:height", content: "630" },
             { property: "og:site_name", content: "1claw Docs" },
             { property: "og:locale", content: "en_US" },
             { name: "twitter:card", content: "summary_large_image" },
-            { name: "twitter:title", content: "1claw Docs — Cloud HSM Secrets Manager for Humans & AI Agents" },
-            {
-                name: "twitter:description",
-                content:
-                    "1claw documentation: cloud HSM secrets manager for humans and AI agents. Human API, Agent API, MCP server, SDKs, and guides.",
-            },
             { name: "twitter:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
         ],
         // Sitemap is configured in the preset above; themeConfig.sitemap is also read by the plugin.
