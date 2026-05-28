@@ -41,6 +41,10 @@ const config: Config = {
                     ignorePatterns: ["/tags/**"],
                     lastmod: "date",
                 },
+                gtag: {
+                    trackingID: "G-333VRQ54M7",
+                    anonymizeIP: true,
+                },
             } satisfies Preset.Options,
         ],
     ],
