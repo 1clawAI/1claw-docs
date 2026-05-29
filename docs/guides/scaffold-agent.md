@@ -1,48 +1,77 @@
 ---
-title: Building an Onchain AI Agent with Scaffold-Agent
-description: Scaffold a full-stack monorepo (contracts, frontend, agent) with optional 1Claw vault, Shroud LLM proxy, and Intents-ready setup using the open-source scaffold-agent CLI.
-sidebar_label: Onchain agent monorepo (Scaffold-Agent)
-sidebar_position: 50
-tags: [agents, scaffold, foundry, hardhat, nextjs]
+title: Scaffold-Agent
+description: Build onchain AI agents with Scaffold-ETH 2 and 1Claw — HSM-backed secrets, Intents API signing, and a full-stack dApp scaffold.
+sidebar_position: 8
 ---
 
-# Building an Onchain AI Agent with Scaffold-Agent
+# Scaffold-Agent
 
-Use **[scaffold-agent](https://github.com/1clawAI/scaffold-agent)** when you want a **batteries-included monorepo** for onchain AI agents: smart contracts (Foundry or Hardhat), a frontend (Next.js, Vite, or Python A2A), wallet connectivity, and optional **1Claw** integration for secrets, Shroud, and agent identity—without wiring everything by hand.
+[Scaffold-Agent](https://scaffoldagent.xyz) is a starter kit that combines [Scaffold-ETH 2](https://scaffoldeth.io/) with 1Claw so you can build onchain AI agents with HSM-backed secrets and Intents API signing from day one.
 
-**Official site:** [scaffoldagent.xyz](https://scaffoldagent.xyz/)  
-**Source & full README:** [github.com/1clawAI/scaffold-agent](https://github.com/1clawAI/scaffold-agent#readme)
+---
 
-## When to use this
+## What you get
 
-- You are starting a **new** agent + dApp project and want **one command** to lay out folders, scripts, and env patterns.
-- You want **1Claw** as the secrets backend (HSM-backed vault, optional Shroud LLM proxy, deployer/agent keys in the vault) alongside chain tooling.
-- You prefer **`just`**-driven workflows (`just chain`, `just deploy`, `just start`) and generated ABI typing similar to Scaffold-ETH 2.
+- Full-stack Next.js dApp wired to Hardhat / Foundry
+- Agent identity provisioned with a 1Claw vault and scoped policies
+- Intents API signing — agents sign transactions without raw private keys
+- Shroud LLM routing — optional TEE proxy for all agent-to-LLM traffic
+- Scaffold-ETH 2 hooks (`useScaffoldReadContract`, `useScaffoldWriteContract`) for frontend contract interaction
 
 ## Quick start
 
-From the [project README](https://github.com/1clawAI/scaffold-agent#readme):
-
 ```bash
-npx scaffold-agent@latest
-# or create a directory directly:
-npx scaffold-agent@latest my-agent
-cd my-agent
+git clone https://github.com/1clawAI/scaffoldagent_xyz
+cd scaffoldagent_xyz
+yarn install
+yarn chain       # Local Hardhat network
+yarn deploy      # Deploy contracts
+yarn start       # Start the frontend
 ```
 
-Typical local flow (when you included a chain): start the node in one terminal (`just chain`), then fund, deploy, and run the app as described in the generated **`README.md`**.
+Configure your agent credentials in `.env.local`:
 
-## How 1Claw fits in
+```env
+ONECLAW_AGENT_ID=your-agent-uuid
+ONECLAW_AGENT_API_KEY=ocv_...
+ONECLAW_VAULT_ID=your-vault-uuid
+```
 
-The wizard can configure **secrets management** as **1Claw** (vault), an encrypted secrets file, or plain `.env`. With **1Claw**, the CLI can create a project vault, store deployer (and optional agent) private keys **in the vault** instead of on disk, register an agent, and wire env vars for the app and Shroud. See the README section **“1Claw integration”** for `ONECLAW_VAULT_ID`, `ONECLAW_AGENT_ID`, Shroud billing modes, and LLM key paths.
+## Architecture
 
-For day-to-day 1Claw concepts after scaffolding, continue with:
+```
+┌──────────────────────────────────────────────┐
+│  Next.js Frontend (Scaffold-ETH 2)           │
+│  - RainbowKit wallet connection              │
+│  - useScaffoldReadContract / WriteContract    │
+│  - Agent status dashboard                    │
+└────────────────┬─────────────────────────────┘
+                 │
+┌────────────────▼─────────────────────────────┐
+│  Agent Backend                                │
+│  - 1Claw SDK for vault secret fetch          │
+│  - Intents API for tx signing                │
+│  - Shroud proxy for LLM calls (optional)     │
+└────────────────┬─────────────────────────────┘
+                 │
+┌────────────────▼─────────────────────────────┐
+│  Smart Contracts (Hardhat / Foundry)          │
+│  - Your custom contracts                     │
+│  - Deployed via yarn deploy                  │
+└──────────────────────────────────────────────┘
+```
 
-- [Give an agent access](/docs/guides/give-agent-access) — policies and fetching secrets  
-- [Shroud](/docs/guides/shroud) — LLM proxy and threat detection  
-- [Intents API](/docs/guides/intents-api) — signing transactions without exposing keys  
+## Resources
 
-## Learn more
+| | |
+|---|---|
+| **Website** | [scaffoldagent.xyz](https://scaffoldagent.xyz) |
+| **GitHub** | [1clawAI/scaffoldagent_xyz](https://github.com/1clawAI/scaffoldagent_xyz) |
+| **Video walkthrough** | [YouTube](https://www.youtube.com/watch?v=DVzCg-om3p8) |
+| **Scaffold-ETH 2 docs** | [docs.scaffoldeth.io](https://docs.scaffoldeth.io/) |
 
-- [scaffoldagent.xyz](https://scaffoldagent.xyz/) — overview and positioning  
-- [github.com/1clawAI/scaffold-agent](https://github.com/1clawAI/scaffold-agent#readme) — prerequisites (`just`, Node), CLI flags, directory layout, and `just` commands  
+## Related
+
+- [Intents API](/docs/guides/intents-api) — how agents sign transactions
+- [Shroud](/docs/guides/shroud) — TEE LLM proxy
+- [Ecosystem](/docs/guides/ecosystem) — all integrations

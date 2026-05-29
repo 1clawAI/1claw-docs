@@ -131,6 +131,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/scaffold-agent",
                             label: "Scaffold-Agent — monorepo for onchain AI agents",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/ecosystem",
+                            label: "Ecosystem — all integrations directory",
+                        },
                     ],
                 },
                 {
