@@ -178,6 +178,154 @@ Treasury wallets complement the **Safe multisig** features. You can create a tre
 
 Agents can request access to treasuries; humans approve or deny via the dashboard or API. See the Treasury section of the [API reference](/docs/reference/api-reference) for the full endpoint list.
 
+## Treasury agent delegation
+
+Treasury delegation allows humans to grant agents signing access to their treasury wallets or Safe multisigs. Two signing modes are available, configurable per-agent:
+
+| Mode      | How it works                                                                                     |
+|-----------|--------------------------------------------------------------------------------------------------|
+| Owner     | Agent's EOA is added as an on-chain Safe signer. Agent signs with its own key; Safe threshold enforced. |
+| Delegated | Agent signs using the treasury wallet key through the Intents API. The private key never leaves `__treasury-keys`. |
+
+### Granting delegation
+
+When approving an agent's access request, you can optionally:
+
+1. **Auto-add signer** — adds the agent's EOA as a Safe signer (owner mode)
+2. **Set delegation mode** — creates a `treasury_delegations` entry authorizing the agent
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/access-requests/{rid}/approve" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "auto_add_signer": true,
+    "delegation_mode": "delegated",
+    "guardrails": {
+      "max_value_eth": "1.0",
+      "to_allowlist": ["0xrecipient..."]
+    }
+  }'
+```
+
+### Intents API treasury mode
+
+Agents with delegation can submit transactions through the Intents API using treasury keys:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/{id}/transactions" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "to": "0xrecipient...",
+    "value": "0.5",
+    "treasury_id": "uuid-of-treasury",
+    "mode": "treasury"
+  }'
+```
+
+When `treasury_id` is present, the handler verifies the agent has an active delegation, resolves the signing key from `__treasury-keys`, and applies the strictest guardrails (agent-level + delegation-level).
+
+## Multisig proposals
+
+For Safe multisigs with threshold > 1, agents or users can create proposals that collect signatures and auto-execute when threshold is met.
+
+### Endpoint reference
+
+| Method | Path                                        | Who           | Description                              |
+|--------|---------------------------------------------|---------------|------------------------------------------|
+| POST   | `/v1/treasury/{id}/proposals`               | Agent or User | Create a new proposal                    |
+| GET    | `/v1/treasury/{id}/proposals`               | Org member    | List proposals (filter by `?status=`)    |
+| GET    | `/v1/treasury/{id}/proposals/{pid}`         | Org member    | Get proposal + collected signatures      |
+| POST   | `/v1/treasury/{id}/proposals/{pid}/sign`    | Agent or User | Submit EIP-712 signature                 |
+| POST   | `/v1/treasury/{id}/proposals/{pid}/execute` | User          | Force-execute if threshold met           |
+| DELETE | `/v1/treasury/{id}/proposals/{pid}`         | Proposer      | Cancel pending proposal                  |
+
+### Creating a proposal
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/proposals" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "0xrecipient...",
+    "value_wei": "1000000000000000000",
+    "data": "0x",
+    "operation": 0,
+    "safe_tx_hash": "0x...",
+    "nonce": 5
+  }'
+```
+
+### Signing a proposal
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/proposals/{pid}/sign" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "signature": "0x...",
+    "signer_address": "0xYourAddress",
+    "decision": "approve"
+  }'
+```
+
+When the number of `approve` signatures reaches the Safe threshold, the proposal auto-executes: signatures are sorted by address (Safe requirement), `execTransaction` calldata is built, and the transaction is broadcast via the chain's RPC.
+
+### Auto-approve rules
+
+Treasury delegations can include auto-approve rules that automatically sign proposals when they match predefined criteria:
+
+```json
+{
+  "auto_approve_rules": [
+    {
+      "max_value_eth": "0.1",
+      "to_allowlist": ["0xKnownContract..."],
+      "auto": true
+    }
+  ]
+}
+```
+
+When a proposal created by an agent matches a rule, the agent's signature is automatically inserted. If this brings the count to threshold, execution fires immediately — no human in the loop for pre-approved patterns.
+
+### SDK usage
+
+```typescript
+// Create a proposal
+await client.treasury.propose(treasuryId, {
+  to: "0xrecipient...",
+  value_wei: "1000000000000000000",
+  safe_tx_hash: "0x...",
+  nonce: 5,
+});
+
+// Sign a proposal
+await client.treasury.signProposal(treasuryId, proposalId, {
+  signature: "0x...",
+  signer_address: "0x...",
+  decision: "approve",
+});
+
+// List proposals
+const { data } = await client.treasury.listProposals(treasuryId, {
+  status: "pending",
+});
+
+// Force-execute
+await client.treasury.executeProposal(treasuryId, proposalId);
+```
+
+### MCP tools
+
+| Tool                      | Description                                    |
+|---------------------------|------------------------------------------------|
+| `treasury_propose`        | Submit a new multisig proposal                 |
+| `treasury_sign_proposal`  | Approve or reject with an EIP-712 signature    |
+| `treasury_list_proposals` | List proposals with optional status filter     |
+
 ## See also
 
 - [Intents API](./intents-api.md) — agent transaction signing
