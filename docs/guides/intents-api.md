@@ -759,10 +759,11 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 
 ### Testnet chains
 
-| Chain        | Chain ID | Native token |
-| ------------ | -------- | ------------ |
-| Sepolia      | 11155111 | ETH          |
-| Base Sepolia | 84532    | ETH          |
+| Chain        | Chain ID | Native token | Explorer |
+| ------------ | -------- | ------------ | -------- |
+| Sepolia      | 11155111 | ETH          | [sepolia.etherscan.io](https://sepolia.etherscan.io) |
+| Base Sepolia | 84532    | ETH          | [sepolia.basescan.org](https://sepolia.basescan.org) |
+| Arc Testnet  | 5042002  | USDC         | [testnet.arcscan.app](https://testnet.arcscan.app) |
 
 ### Adding a chain
 

@@ -101,6 +101,19 @@ The control layer for the agent economy — policies, approvals, and audit trail
 
 ---
 
+### Arc (Circle)
+
+Stablecoin-native EVM L2 where USDC is the native gas token. Sign and broadcast USDC transfers on Arc using the Intents API — same flow as Ethereum/Base, but fees are paid in USDC (~$0.01/tx).
+
+| | |
+|---|---|
+| **Website** | [docs.arc.io](https://docs.arc.io) |
+| **Example** | [1clawAI/1claw-examples/arc-stablecoin](https://github.com/1clawAI/1claw-examples/tree/main/arc-stablecoin) |
+| **Chain ID** | `5042002` (testnet) |
+| **What it shows** | Intents API transaction signing on Arc, vault-stored keys, USDC guardrails |
+
+---
+
 ## Developer Tools & Platforms
 
 ### OpenClaw (OpenAI)
