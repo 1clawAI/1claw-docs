@@ -52,6 +52,9 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 | POST   | `/v1/treasury/wallets/generate`         | Generate wallets for specified chains |
 | GET    | `/v1/treasury/wallets`                  | List all active wallets              |
 | GET    | `/v1/treasury/wallets/{chain}`          | Get wallet for a specific chain      |
+| GET    | `/v1/treasury/wallets/{chain}/balance`  | Query native + ERC-20 balances       |
+| POST   | `/v1/treasury/wallets/{chain}/send`     | Send tokens (password re-auth)       |
+| POST   | `/v1/treasury/wallets/{chain}/swap`     | Swap tokens via DEX (password re-auth)|
 | POST   | `/v1/treasury/wallets/{chain}/export`   | Export wallet (password re-auth)     |
 | POST   | `/v1/treasury/wallets/{chain}/rotate`   | Rotate keypair                       |
 | DELETE | `/v1/treasury/wallets/{chain}`          | Deactivate wallet                    |
@@ -108,6 +111,70 @@ curl "https://api.1claw.xyz/v1/treasury/wallets" \
 ```bash
 curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum" \
   -H "Authorization: Bearer $TOKEN"
+```
+
+### Query wallet balance
+
+Get the native currency and ERC-20 token balances for a treasury wallet address. Balances are fetched in real time via the chain's RPC.
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response:
+
+```json
+{
+  "chain": "ethereum",
+  "address": "0x4e83...",
+  "native_balance": "1.234567890000000000",
+  "tokens": [
+    {
+      "contract": "0xA0b8...",
+      "symbol": "USDC",
+      "decimals": 6,
+      "balance": "500.000000"
+    }
+  ]
+}
+```
+
+### Send from treasury wallet
+
+Send native currency or ERC-20 tokens from your treasury wallet. Signs an EIP-1559 transaction and broadcasts via RPC. Requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.send`.
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/send" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "0xRecipient...",
+    "value": "0.5"
+  }'
+```
+
+:::danger
+Failed password attempts increment your account's lockout counter (locked after 10 failures for 15 minutes).
+:::
+
+### Swap tokens
+
+Swap tokens via the 0x DEX aggregator. Fetches a quote from the 0x API, signs the swap transaction, and broadcasts. Requires password re-authentication. Audit-logged as `treasury_wallet.swap`.
+
+The server requires a `ZERO_X_API_KEY` environment variable to be configured.
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/swap" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sell_token": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+    "buy_token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "sell_amount": "1000000000000000000"
+  }'
 ```
 
 ### Export wallet (with password re-authentication)
@@ -325,6 +392,52 @@ await client.treasury.executeProposal(treasuryId, proposalId);
 | `treasury_propose`        | Submit a new multisig proposal                 |
 | `treasury_sign_proposal`  | Approve or reject with an EIP-712 signature    |
 | `treasury_list_proposals` | List proposals with optional status filter     |
+
+## Webhooks
+
+You can register webhooks to receive real-time notifications for treasury and transaction events. Webhooks deliver events via HTTP POST with an HMAC-SHA256 signature for verification.
+
+### Supported events
+
+| Event                         | Description                                          |
+|-------------------------------|------------------------------------------------------|
+| `wallet.transfer.sent`        | Outgoing transfer from a treasury wallet             |
+| `wallet.transfer.received`    | Incoming transfer to a treasury wallet               |
+| `proposal.created`            | New multisig proposal created                        |
+| `proposal.signed`             | Proposal received a signature                        |
+| `proposal.executed`           | Proposal was executed on-chain                       |
+| `proposal.cancelled`          | Proposal was cancelled                               |
+| `agent.transaction.broadcast` | Agent transaction was broadcast                      |
+| `agent.transaction.signed`    | Agent transaction was signed (sign-only mode)        |
+| `signing_key.rotated`         | Agent signing key was rotated                        |
+| `policy.created`              | Access policy was created                            |
+| `policy.updated`              | Access policy was updated                            |
+| `policy.deleted`              | Access policy was deleted                            |
+
+### Registering a webhook
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/webhooks" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-app.com/webhook",
+    "events": ["wallet.transfer.sent", "proposal.executed"],
+    "secret": "your-hmac-secret"
+  }'
+```
+
+Failed deliveries are retried up to 5 times with exponential backoff.
+
+### Endpoints
+
+| Method | Path                  | Description                  |
+|--------|-----------------------|------------------------------|
+| POST   | `/v1/webhooks`        | Register a webhook           |
+| GET    | `/v1/webhooks`        | List webhooks for the org    |
+| GET    | `/v1/webhooks/{id}`   | Get webhook details          |
+| PATCH  | `/v1/webhooks/{id}`   | Update webhook               |
+| DELETE | `/v1/webhooks/{id}`   | Delete webhook               |
 
 ## See also
 

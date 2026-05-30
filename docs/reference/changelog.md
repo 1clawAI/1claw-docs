@@ -14,6 +14,17 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Security audit fixes (v0.22.1, 2026-05-30)
+
+- **Fixed (CRITICAL):** Treasury signing authorization bypass — agents signing via Intents API in `mode: "treasury"` now require an active `treasury_delegations` entry with `mode` set to `delegated` or `both`. Previously, any agent with Intents API enabled could sign using treasury wallet keys without delegation verification.
+- **Fixed (H1):** Delegation guardrails enforcement — per-delegation `guardrails` JSONB fields (`to_allowlist`, `max_value_eth`, `allowed_chains`) are now enforced during treasury-mode signing in the Intents API. Previously, delegation guardrails were stored but not checked, allowing agents to bypass spend caps and address restrictions on delegated treasury transactions.
+- **Fixed (H2):** Webhook SSRF protection — webhook delivery dispatcher now validates destination URLs via `validate_audience_url()` (blocks private CIDRs, cloud metadata, `.internal` hosts, localhost) and disables HTTP redirect following to prevent SSRF via registered webhook endpoints.
+- **Fixed (H3):** Account lockout on treasury send/swap — failed password re-authentication on `POST /v1/treasury/wallets/{chain}/send` and `POST /v1/treasury/wallets/{chain}/swap` now increments `failed_login_attempts` and triggers account lockout at 10 failures (matches existing behavior on export). Previously, send/swap brute-force did not trigger lockout.
+- **Fixed (M1):** Treasury proposal `sign_proposal` authorization — `POST /v1/treasury/{id}/proposals/{pid}/sign` now verifies the caller is either a treasury signer or the proposal creator. Previously, any org member could submit signatures.
+- **Fixed (M2):** Delegation mode filter for Intents API — only delegations with `mode` set to `delegated` or `both` are accepted for direct signing via `POST /v1/agents/{id}/transactions` with `treasury_id`. Owner-mode-only delegations are rejected (they must propose via the multisig pipeline).
+- **Changed:** `@1claw/wallet-react` converted to a public git submodule (`github.com/1clawAI/wallet-react`, MIT license).
+- **Changed:** Vault version bumped to 0.22.1.
+
 ### Treasury wallet operations, webhooks, and gasless transactions (v0.22.0)
 
 - **New:** `GET /v1/treasury/wallets/{chain}/balance` — query native token and ERC-20 token balances for a treasury wallet via RPC. Accepts optional `?tokens=0x...` query param for ERC-20 addresses.
