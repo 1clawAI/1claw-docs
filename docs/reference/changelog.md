@@ -14,6 +14,19 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-05 (latest)
 
+### Treasury wallet operations, webhooks, and gasless transactions (v0.22.0)
+
+- **New:** `GET /v1/treasury/wallets/{chain}/balance` — query native token and ERC-20 token balances for a treasury wallet via RPC. Accepts optional `?tokens=0x...` query param for ERC-20 addresses.
+- **New:** `POST /v1/treasury/wallets/{chain}/send` — send native token or ERC-20 transfers from a treasury wallet. Human-only, requires password re-authentication via `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.send`.
+- **New:** `POST /v1/treasury/wallets/{chain}/swap` — DEX token swaps via 0x aggregator. Human-only with `X-Auth-Confirm` re-auth. Returns transaction hash and swap details. Requires `ZERO_X_API_KEY` env var.
+- **New:** Webhook system — register HTTP endpoints to receive real-time event notifications. Full CRUD: `POST /v1/webhooks` (create, returns signing secret), `GET /v1/webhooks` (list), `GET /v1/webhooks/{id}` (get), `PATCH /v1/webhooks/{id}` (update), `DELETE /v1/webhooks/{id}` (delete). 12 event types: `secret.created`, `secret.updated`, `secret.deleted`, `secret.accessed`, `agent.created`, `agent.deleted`, `policy.created`, `policy.updated`, `policy.deleted`, `transaction.submitted`, `transaction.signed`, `share.created`. Deliveries use HMAC-SHA256 signatures (`X-1Claw-Signature` header) with 5 retries and exponential backoff. Database migration 105.
+- **New:** `GET /v1/agents/{id}/signing-keys/{chain}/balance` — agents can query the native token balance of their signing key address.
+- **New:** `gasless: true` flag on `POST /v1/agents/{id}/transactions` — enables gas sponsorship via Pimlico paymaster for ERC-4337 smart account transactions. When set, the handler requests sponsorship before signing the UserOperation.
+- **New:** `@1claw/wallet-react` — embeddable React component package for Platform API apps. Components: `<OneclawWalletProvider>`, `<OneclawTreasuryWidget>`. Hooks: `useOneclawWallet()`. Supports wallet listing, balance display, and send operations.
+- **New:** `crypto/dex.rs` module — 0x DEX aggregator client for swap quotes.
+- **New:** `domain/webhook_dispatcher.rs` — background webhook delivery with retry logic.
+- **Changed:** Vault version bumped to 0.22.0. SDK/CLI/MCP/OpenAPI all bumped to 0.28.0.
+
 ### API key expiration and platform key rotation (v0.21.2)
 
 - **New:** All three API key types (`1ck_` human, `ocv_` agent, `plt_` platform) now support optional expiration via `api_key_expires_at`. Expired keys are rejected at authentication time with 401.
