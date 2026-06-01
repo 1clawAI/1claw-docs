@@ -14,6 +14,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Security audit fixes — social login, treasury, webhooks, internal ledger (v0.24.1, SDK/OpenAPI 0.31.0)
+
+- **Fixed (CRITICAL):** Social login Google/Apple tokens now validate OAuth **audience** and issuer (shared `oauth_tokens` module). Discord uses server-side **authorization code exchange** with `oauth_redirect_uri` (no raw access tokens in production).
+- **Fixed (CRITICAL):** Removed email-based auto-linking on social login — existing email returns **409**; users must sign in with their existing method first.
+- **Fixed (HIGH):** Internal transfers require **account ownership** (`from_account.user_id == caller.id`).
+- **Fixed (HIGH):** Internal transfers support **`Idempotency-Key`** replay protection (migration 110).
+- **Fixed (HIGH):** Fiat webhooks in production require verified **MoonPay** signature (unsigned JSON rejected).
+- **Fixed (HIGH):** Agents cannot supply client `users/...` signing paths; treasury `mode=treasury` only.
+- **Fixed (HIGH):** Webhook `PATCH` URL updates run **SSRF validation** (`validate_audience_url`).
+- **Fixed (HIGH):** Passkey `tx-assert/complete` validates **origin**; sign-count clone detection; optional **tx_digest** binding via `X-Passkey-Tx-Digest`.
+- **Fixed (MEDIUM):** Treasury send sanity cap (10k ETH); proposal `signer_address` must match registered signer; `auto_credit_account_id` ownership check; internal transfer **asset allowlist**; ledger `total` is real count.
+- **Changed:** Vault **0.24.1**. `@1claw/sdk`, `@1claw/cli`, `@1claw/mcp`, `@1claw/openapi-spec` **0.31.0** (OpenAPI **2.17.0**).
+
+---
+
 ### CDP parity Phases 2–4: deposits, fiat ramps, social login, internal ledger, embedded wallet (v0.24.0)
 
 - **New:** Deposit destinations — `POST/GET/PATCH /v1/deposit-destinations` for unique inbound payment addresses per chain. `deposit_destinations` and `deposit_events` tables (migration 106). Webhook event `deposit_destination.created`.
