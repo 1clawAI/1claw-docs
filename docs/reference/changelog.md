@@ -12,7 +12,19 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-05 (latest)
+## 2026-06 (latest)
+
+### CDP parity Phase 1: live webhooks, gasless treasury sends, wallet-react swap (v0.23.0)
+
+- **New:** Webhook delivery wired end-to-end — `dispatch_event()` calls in treasury_wallets, policies, signing_keys, transactions, and treasury_proposals handlers. Background worker `process_pending_deliveries` runs every 5s. Events: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created/signed/executed/cancelled`, `agent.transaction.broadcast/signed`, `signing_key.rotated`, `policy.created/updated/deleted`.
+- **New:** Gasless treasury wallet sends — `POST /v1/treasury/wallets/{chain}/send` accepts `gasless: true` to wrap the send as an ERC-4337 UserOperation with Pimlico paymaster sponsorship. Response includes `user_op_hash`. Requires `PIMLICO_API_KEY`.
+- **New:** `@1claw/wallet-react` v0.1.0 — added `swap()` client method, `SwapParams`/`SwapResult` types, swap exposed in context. `<OneclawTreasuryWidget />` rebuilt with three views: Send, Swap, and Receive.
+- **New:** Dashboard treasury `WalletChainCard` — inline balance with 30s auto-refresh, Send dialog (with gasless option), Swap dialog per chain. New hooks: `useTreasuryWalletBalance`, `useSendFromWallet`, `useSwapFromWallet`.
+- **Changed:** Vault version bumped to 0.23.0.
+
+---
+
+## 2026-05
 
 ### Security audit fixes (v0.22.1, 2026-05-30)
 
