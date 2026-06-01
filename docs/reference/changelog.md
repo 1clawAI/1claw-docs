@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CDP parity Phases 2–4: deposits, fiat ramps, social login, internal ledger, embedded wallet (v0.24.0)
+
+- **New:** Deposit destinations — `POST/GET/PATCH /v1/deposit-destinations` for unique inbound payment addresses per chain. `deposit_destinations` and `deposit_events` tables (migration 106). Webhook event `deposit_destination.created`.
+- **New:** Fiat on/off ramps — `POST /v1/fiat/onramp/session` (Coinbase Onramp or MoonPay widget URL), `POST /v1/fiat/offramp/initiate`, `POST /v1/fiat/webhooks` (partner completion). Config: `COINBASE_ONRAMP_APP_ID`, `MOONPAY_API_KEY`, `MOONPAY_SECRET_KEY`.
+- **New:** Social login — `POST /v1/auth/social-login` (public) accepts Google/Apple/Discord `id_token`, verifies JWKS, upserts user, auto-provisions Ethereum treasury wallet on signup. Migration 108 (`users.social_provider`, `users.social_subject`).
+- **New:** Passkey transaction authorization — `POST /v1/auth/passkeys/tx-assert/begin` and `.../complete` return a short-lived `passkey_token` usable as `X-Passkey-Token` on treasury send (alternative to `X-Auth-Confirm` password).
+- **New:** Internal accounts & ledger — `POST/GET /v1/internal-accounts`, `POST /v1/internal-transfers`, `GET /v1/internal-accounts/{id}/ledger`. Double-entry bookkeeping with `SELECT FOR UPDATE` balance checks (migration 107). Webhook `internal_transfer.completed`.
+- **New:** `@1claw/wallet-react` v0.2.0 — `<OneclawEmbeddedWallet />` with social login UI, Send/Swap/Receive/Buy views, passkey and fiat client methods.
+- **New:** SDK resources — `client.depositDestinations`, `client.internalAccounts`, `client.fiat`.
+- **New:** Dashboard hooks — `use-deposit-destinations`, `use-internal-accounts`, `use-fiat`.
+- **Changed:** Vault version bumped to 0.24.0. SDK/CLI/OpenAPI spec bumped to 0.30.0.
+
+---
+
 ### CDP parity Phase 1: live webhooks, gasless treasury sends, wallet-react swap (v0.23.0)
 
 - **New:** Webhook delivery wired end-to-end — `dispatch_event()` calls in treasury_wallets, policies, signing_keys, transactions, and treasury_proposals handlers. Background worker `process_pending_deliveries` runs every 5s. Events: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created/signed/executed/cancelled`, `agent.transaction.broadcast/signed`, `signing_key.rotated`, `policy.created/updated/deleted`.
