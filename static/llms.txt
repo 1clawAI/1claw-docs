@@ -15,6 +15,7 @@
 - npm CLI: https://www.npmjs.com/package/@1claw/cli
 - npm MCP: https://www.npmjs.com/package/@1claw/mcp
 - npm OpenAPI Spec: https://www.npmjs.com/package/@1claw/openapi-spec
+- npm elizaOS plugin: https://www.npmjs.com/package/@1claw/plugin-elizaos
 - Contact: ops@1claw.xyz
 
 ## What 1Claw Does
@@ -29,6 +30,7 @@
 - **MCP Server** (TypeScript) at mcp.1claw.xyz — Model Context Protocol for AI agents
 - **SDK** (@1claw/sdk) — TypeScript client library
 - **Wallet React** (@1claw/wallet-react) — Embeddable React component for Platform API apps (treasury widget, wallet UI)
+- **elizaOS Plugin** (@1claw/plugin-elizaos) — 8 actions + context provider for elizaOS agents (vault secrets + multi-chain signing)
 - **CLI** (@1claw/cli) — Command-line tool for CI/CD and DevOps
 - **Mobile App** (Expo/React Native) — Human-in-the-loop companion for iOS + Android: approval inbox with risk tiers, agent management, passkey/biometric auth, treasury wallets, activity feed. Beta.
 

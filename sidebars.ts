@@ -128,6 +128,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/elizaos",
+                            label: "elizaOS — vault + signing plugin",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/scaffold-agent",
                             label: "Scaffold-Agent — monorepo for onchain AI agents",
                         },

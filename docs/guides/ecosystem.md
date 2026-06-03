@@ -46,6 +46,20 @@ TypeScript integration for Hermes Agent — MCP-based secret fetching, Shroud LL
 
 ---
 
+### ElizaOS (ai16z)
+
+elizaOS plugin giving any character runtime access to a 1Claw vault and multi-chain signing keys. Includes 8 actions (GET_SECRET, LIST_SECRETS, PUT_SECRET, SIGN_MESSAGE, SIGN_TYPED_DATA, SIMULATE_TRANSACTION, SUBMIT_TRANSACTION, LIST_SIGNING_KEYS), a context provider that injects vault paths and daily spend, and optional Shroud routing — all from one `ocv_` key.
+
+| | |
+|---|---|
+| **Website** | [elizaos.ai](https://elizaos.ai) |
+| **npm** | [@1claw/plugin-elizaos](https://www.npmjs.com/package/@1claw/plugin-elizaos) |
+| **GitHub** | [1clawAI/1claw-elizaos-plugin](https://github.com/1clawAI/1claw-elizaos-plugin) |
+| **Guide** | [elizaOS plugin](/docs/guides/elizaos) |
+| **What it shows** | Bootstrap script (human `1ck_` → agent `ocv_`), 8 actions, vault context provider, Intents API signing with guardrails |
+
+---
+
 ### NemoClaw (NVIDIA)
 
 Run autonomous AI agents safely with NVIDIA NemoClaw — privacy and security controls over OpenClaw powered by NVIDIA OpenShell. 1Claw provides policy, plugin, and blueprint for secret management inside NemoClaw sandboxes.

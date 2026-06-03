@@ -12,6 +12,7 @@ import TabItem from '@theme/TabItem';
 - **JavaScript/TypeScript** — Official `@1claw/sdk`. Built from the same OpenAPI 3.1 spec as the API; supports agent auth, secrets, billing, and optional x402. See [JavaScript SDK](/docs/sdks/javascript).
 - **Go** — Official `1claw-go-sdk`. Typed client with agent auth, secrets, billing, Intents API, and more. See [Go SDK](/docs/sdks/go).
 - **Python** — No official SDK yet; use [curl examples](/docs/sdks/curl-examples) or implement a thin client with `requests`/`httpx`. See [Python](/docs/sdks/python).
+- **elizaOS** — Official plugin `@1claw/plugin-elizaos`. Gives any elizaOS character vault secrets and multi-chain signing via 8 built-in actions. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
 - **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
 
 **API contract:** The canonical source of truth for the API is the **OpenAPI 3.1** spec. It is published as the npm package [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec) (YAML and JSON) and is used to generate the SDK's types and to validate requests. For a concise endpoint list, see [API reference](/docs/reference/api-reference).
