@@ -25,6 +25,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **CLI:** `1claw agent bankr-key lease|list|revoke`.
 - **Dashboard:** Bankr Keys card on agent detail page (lease, list, revoke inline).
 - **Config:** `BANKR_PARTNER_KEY`, `BANKR_DEFAULT_WALLET_ID`, `BANKR_DEFAULT_LEASE_TTL_SECS`.
+- **Security (v0.32.2):** Leasing is deny-by-default — agents require explicit policy on `agents/{id}/bankr/*`. Agent lease responses and MCP `lease_bankr_key` output omit `bk_usr_` keys (Shroud resolves server-side). Agent default TTL 15 min; recommend 5–15 min with revoke-after-task.
 
 ---
 
