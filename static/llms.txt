@@ -84,7 +84,7 @@ Unified `POST /v1/agents/{id}/sign` endpoint with `intent_type` dispatch:
 MCP tools: `sign_message` (EIP-191), `sign_typed_data` (EIP-712). SDK: `client.agents.signIntent(agentId, { intent_type, chain, ... })`.
 
 ### Bankr Dynamic Key Vending
-Partner-key secret engine for short-lived Bankr wallet API keys. Store `bk_ptr_` partner key (`BANKR_PARTNER_KEY`); Vault issues scoped, TTL-bound `bk_usr_` keys per agent. Endpoints: `POST /v1/agents/{id}/bankr-keys/lease`, `GET .../bankr-keys`, `DELETE .../bankr-keys/{lease_id}`. Shroud auto-resolves leased keys when `X-Shroud-Provider: bankr`. SDK: `leaseBankrKey()`, `.listBankrKeys()`, `.revokeBankrKey()`. CLI: `1claw agent bankr-key`. MCP: `lease_bankr_key`.
+Partner-key secret engine for short-lived Bankr wallet API keys — **preferred over static `put_secret` for Bankr credentials**. Store `bk_ptr_` partner key server-side (`BANKR_PARTNER_KEY`); Vault issues scoped, TTL-bound `bk_usr_` keys per agent. Endpoints: `POST /v1/agents/{id}/bankr-keys/lease`, `GET /v1/agents/{id}/bankr-keys`, `DELETE /v1/agents/{id}/bankr-keys/{lease_id}`. Default TTL 1h, max 24h. Shroud resolves leased keys first when `X-Shroud-Provider: bankr`. SDK: `leaseBankrKey()`, `.listBankrKeys()`, `.revokeBankrKey()`. CLI: `1claw agent bankr-key lease|list|revoke`. MCP: `lease_bankr_key`. Guide: https://docs.1claw.xyz/docs/guides/bankr-key-vending
 
 ### Treasury
 Treasury Safe multisigs and native multi-chain wallets for human users. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` (requires Pro+ subscription) and per-treasury detail (`/treasury/[id]`) with native wallet card, safe list, deploy smart account, access requests.
@@ -301,7 +301,7 @@ The MCP server at mcp.1claw.xyz provides these tools:
 - create_vault, list_vaults, grant_access, share_secret
 - simulate_transaction, simulate_bundle, submit_transaction, sign_transaction
 - list_transactions, get_transaction, inspect_content
-- list_signing_keys, provision_signing_key, sign_message, sign_typed_data
+- list_signing_keys, provision_signing_key, sign_message, sign_typed_data, lease_bankr_key
 - platform_list_apps, platform_create_app, platform_bootstrap_user
 
 Configure in Claude Desktop, Cursor, or any MCP-compatible client. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
