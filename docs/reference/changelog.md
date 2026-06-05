@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Bankr Dynamic Key Vending (Secret Engine)
+
+- **New:** First-class "dynamic secrets" engine for Bankr. Store a long-lived partner key (`bk_ptr_`) in the secure zone; programmatically issue/revoke short-lived `bk_usr_` wallet API keys for agents — scoped, TTL-bound, and automatically cleaned up.
+- **Endpoints:** `POST /v1/agents/{id}/bankr-keys/lease`, `GET /v1/agents/{id}/bankr-keys`, `DELETE /v1/agents/{id}/bankr-keys/{lease_id}`.
+- **Lifecycle:** Leases auto-revoke on agent deletion/deactivation. Nightly sweep cleans expired leases via Bankr DELETE.
+- **Shroud integration:** When `X-Shroud-Provider: bankr`, Shroud auto-resolves the latest leased key for the agent. Falls back to static `providers/bankr/api-key`.
+- **SDK:** `client.agents.leaseBankrKey()`, `.listBankrKeys()`, `.revokeBankrKey()`.
+- **MCP:** `lease_bankr_key` tool.
+- **CLI:** `1claw agent bankr-key lease|list|revoke`.
+- **Dashboard:** Bankr Keys card on agent detail page (lease, list, revoke inline).
+- **Config:** `BANKR_PARTNER_KEY`, `BANKR_DEFAULT_WALLET_ID`, `BANKR_DEFAULT_LEASE_TTL_SECS`.
+
+---
+
 ### Shroud: Bankr LLM Gateway upstream
 
 - **New:** Shroud provider `bankr` — route agent LLM traffic through [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) (`https://llm.bankr.bot`) with `X-Shroud-Provider: bankr`. Store `bk_` keys at `providers/bankr/api-key`. Empty model allowlist (Bankr catalog is authoritative).

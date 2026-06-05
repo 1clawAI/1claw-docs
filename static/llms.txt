@@ -83,6 +83,9 @@ Unified `POST /v1/agents/{id}/sign` endpoint with `intent_type` dispatch:
 - **`transaction`**: Sign EIP-2718 typed transactions (types 0–4): legacy, EIP-2930 access list, EIP-1559, EIP-4844 blob, EIP-7702 set code. Returns `signed_tx` + `tx_hash` + `from` + `tx_type`.
 MCP tools: `sign_message` (EIP-191), `sign_typed_data` (EIP-712). SDK: `client.agents.signIntent(agentId, { intent_type, chain, ... })`.
 
+### Bankr Dynamic Key Vending
+Partner-key secret engine for short-lived Bankr wallet API keys. Store `bk_ptr_` partner key (`BANKR_PARTNER_KEY`); Vault issues scoped, TTL-bound `bk_usr_` keys per agent. Endpoints: `POST /v1/agents/{id}/bankr-keys/lease`, `GET .../bankr-keys`, `DELETE .../bankr-keys/{lease_id}`. Shroud auto-resolves leased keys when `X-Shroud-Provider: bankr`. SDK: `leaseBankrKey()`, `.listBankrKeys()`, `.revokeBankrKey()`. CLI: `1claw agent bankr-key`. MCP: `lease_bankr_key`.
+
 ### Treasury
 Treasury Safe multisigs and native multi-chain wallets for human users. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` (requires Pro+ subscription) and per-treasury detail (`/treasury/[id]`) with native wallet card, safe list, deploy smart account, access requests.
 

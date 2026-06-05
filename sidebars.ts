@@ -164,6 +164,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/bankr-key-vending",
+                            label: "Bankr Key Vending — dynamic short-lived keys",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/crypto-proxy",
                             label: "Note: Crypto proxy renamed → Intents API",
                         },
