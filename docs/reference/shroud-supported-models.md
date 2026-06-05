@@ -100,6 +100,16 @@ OpenRouter is itself a model routing gateway — it maintains its own catalog of
 
 ---
 
+## Bankr LLM Gateway (`X-Shroud-Provider: bankr`) {#bankr-models}
+
+[Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) is a unified interface for frontier models (Claude, Gemini, GPT, Grok, and more) with cost tracking and flexible payment (LLM credits, launch fees, or wallet balance). It exposes OpenAI-compatible `/v1/chat/completions` and Anthropic-compatible `/v1/messages` at `https://llm.bankr.bot`. Authenticate with your Bankr API key (`bk_...`) via the `X-API-Key` header.
+
+Shroud's config uses an **empty** allowlist — any model slug Bankr supports is accepted (e.g. `claude-opus-4.6`, `gemini-2.5-flash`, `gpt-5.5`). Check Bankr's `/v1/models` endpoint or [supported models](https://docs.bankr.bot/llm-gateway/supported-models) for the live catalog.
+
+Store your LLM Gateway key at `providers/bankr/api-key` in the vault (or pass `X-Shroud-Api-Key`). The key must have **LLM Gateway** enabled at [bankr.bot/api](https://bankr.bot/api).
+
+---
+
 ## LLM Token Billing (Stripe AI Gateway)
 
 When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route traffic through the Stripe AI Gateway instead of your provider API key. You still send the same **`X-Shroud-Provider`** (`openai`, `anthropic`, `google`, `mistral`, `cohere`, etc.).

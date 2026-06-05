@@ -14,6 +14,13 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Shroud: Bankr LLM Gateway upstream
+
+- **New:** Shroud provider `bankr` — route agent LLM traffic through [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) (`https://llm.bankr.bot`) with `X-Shroud-Provider: bankr`. Store `bk_` keys at `providers/bankr/api-key`. Empty model allowlist (Bankr catalog is authoritative).
+- **Docs:** [Shroud supported models](/docs/reference/shroud-supported-models#bankr-models), [Shroud guide](/docs/guides/shroud#supported-providers), [Ecosystem](/docs/guides/ecosystem).
+
+---
+
 ### Security audit fixes — social login, treasury, webhooks, internal ledger (v0.24.1, SDK/OpenAPI 0.31.0)
 
 - **Fixed (CRITICAL):** Social login Google/Apple tokens now validate OAuth **audience** and issuer (shared `oauth_tokens` module). Discord uses server-side **authorization code exchange** with `oauth_redirect_uri` (no raw access tokens in production).

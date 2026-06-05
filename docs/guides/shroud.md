@@ -126,16 +126,18 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 | `openrouter`   | OpenRouter (aggregates many models; single API key) — [notes](/docs/reference/shroud-supported-models#openrouter-models) |
 | `darkbloom`    | Darkbloom (hardware-attested Apple Silicon, E2E encrypted) — [notes](/docs/reference/shroud-supported-models#darkbloom-models) |
 | `venice`       | Venice AI (privacy-focused, no data retention) — [notes](/docs/reference/shroud-supported-models#venice-models) |
+| `bankr`        | Bankr LLM Gateway (multi-provider, cost tracking, wallet-funded) — [notes](/docs/reference/shroud-supported-models#bankr-models) |
 
 - **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
 - **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
 - **Darkbloom:** Use `X-Shroud-Provider: darkbloom`. Inference is routed to hardware-attested Apple Silicon with E2E encryption. Store API key at `providers/darkbloom/api-key`. Model availability is dynamic; check Darkbloom's `/v1/models`.
 - **Venice:** Use `X-Shroud-Provider: venice`. Privacy-first inference with no data retention. Store API key at `providers/venice/api-key`. Supports Claude, GPT, Grok, and TEE-backed models.
+- **Bankr:** Use `X-Shroud-Provider: bankr`. Routes to [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) at `https://llm.bankr.bot`. Store your `bk_` key at `providers/bankr/api-key` (LLM Gateway permission required). OpenAI-compatible `model` IDs (e.g. `claude-opus-4.6`, `gemini-2.5-flash`).
 - **Full allowlist:** [Shroud supported models](/docs/reference/shroud-supported-models) (kept in sync with `shroud/config/providers/*.toml`).
 
 ### Request and response format
 
-- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter, Darkbloom, Venice):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter, Darkbloom, Venice, Bankr):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`). For Bankr, use Bankr model slugs (e.g. `claude-opus-4.6`).
 - **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 

@@ -101,6 +101,20 @@ Privacy-first inference with zero data retention, optional TEE and E2EE modes. S
 
 ---
 
+### Bankr LLM Gateway
+
+Unified LLM interface for crypto agents — Claude, Gemini, GPT, Grok, and more through a single API. Pay with LLM credits, launch fees, or wallet balance on Base and other chains. OpenAI- and Anthropic-compatible endpoints.
+
+| | |
+|---|---|
+| **Website** | [bankr.bot](https://bankr.bot) |
+| **Docs** | [LLM Gateway overview](https://docs.bankr.bot/llm-gateway/overview/) |
+| **Provider header** | `X-Shroud-Provider: bankr` |
+| **Supported models** | [Reference](/docs/reference/shroud-supported-models#bankr-models) |
+| **Skill** | [1claw Bankr Skill](https://skills.bankr.bot/skills/1claw) |
+
+---
+
 ## Payments & Commerce
 
 ### ampersend (Edge & Node)
