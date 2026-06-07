@@ -14,6 +14,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Embedded Wallets: Email OTP, OAuth2, Spend Policies (v0.33.0)
+
+- **New:** Email OTP login — Passwordless authentication for embedded wallet end-users via 6-digit email codes. `POST /v1/auth/email-otp/send` (rate-limited, 5-min expiry) and `POST /v1/auth/email-otp/verify` (returns JWT + auto-provisions treasury wallets on first login). Migration 113.
+- **New:** Sign in with 1Claw — Full OAuth2 authorization code flow with PKCE; 1Claw acts as an OIDC provider for third-party apps. Endpoints: `POST /v1/oauth/authorize` (code grant), `POST /v1/oauth/token` (code exchange), `GET /v1/oauth/userinfo`. Dashboard consent page at `/oauth/authorize`. OIDC discovery updated to advertise `authorization_endpoint`, `userinfo_endpoint`, and PKCE (`S256`). Platform apps configure `redirect_uris` for OAuth client registration. Migration 114.
+- **New:** Wallet spend policies — Per-app default and per-user override policies for treasury wallet sends and swaps. Controls: recipient `to_allowlist`, `max_value_eth` per-tx cap, `daily_limit_eth`, `allowed_chains`. Endpoints: `POST/GET/PATCH/DELETE /v1/spend-policies`. Enforced server-side before signing treasury wallet transactions. Migration 115.
+- **New:** Embedded Wallets marketing page — Landing page at `/embedded-wallets` showcasing the platform for developers (feature grid, code snippets, integration steps).
+- **New:** OAuth consent page — User consent UI at `/oauth/authorize` for third-party app authorization with scope display and approve/deny.
+- **SDK:** Added `sendEmailOtp()`, `verifyEmailOtp()`, `exchangeOAuthCode()`, spend policy CRUD methods (`createSpendPolicy`, `listSpendPolicies`, `updateSpendPolicy`, `deleteSpendPolicy`).
+- **wallet-react:** Added `sendEmailOtp()` and `verifyEmailOtp()` methods for passwordless login in the React widget.
+- **OpenAPI spec:** Documented all new endpoints (email OTP, OAuth2 authorization/token/userinfo, spend policies).
+- **Docs:** 2-minute embedded wallets quickstart guide at `docs/guides/embedded-wallets-quickstart`.
+- **Changed:** OIDC discovery (`/.well-known/openid-configuration`) now advertises `authorization_endpoint`, `userinfo_endpoint`, and PKCE support (`code_challenge_methods_supported: ["S256"]`).
+
+---
+
 ### Bankr Dynamic Key Vending (Secret Engine)
 
 - **New:** First-class "dynamic secrets" engine for Bankr. Store a long-lived partner key (`bk_ptr_`) in the secure zone; programmatically issue/revoke short-lived `bk_usr_` wallet API keys for agents — scoped, TTL-bound, and automatically cleaned up.
