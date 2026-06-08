@@ -7,8 +7,8 @@
 ```
 ┌─────────┐            ┌──────────────────┐          ┌─────────────┐
 │  Agent  │ ─ lease ─▶ │   1Claw Vault    │ ─ POST ─▶│ Bankr API   │
-│         │ ◀ metadata │ (partner key in  │ ◀── key ─│             │
-│         │            │  secure zone)     │          │             │
+│         │ ◀ metadata │ (org partner key │ ◀── key ─│             │
+│         │            │  encrypted)      │          │             │
 │         │            └──────────────────┘          └─────────────┘
 │         │                    │
 │         │ ─ LLM request ─▶  │ (Shroud auto-resolves leased key)
@@ -90,12 +90,41 @@ When the human approves, the policy is applied automatically. Revoke the policy 
 
 ## Configuration
 
-Set these environment variables on the Vault service:
+### Per-organization (BYOK — recommended)
+
+Each 1Claw org stores **its own** Bankr partner credentials. The partner key is encrypted at rest and never returned by the API after save.
+
+**Dashboard:** Settings → Bankr — paste your `bk_ptr_...` partner key and optional default `wlt_...` wallet ID.
+
+**API (owner/admin only):**
+
+```bash
+# Save org credentials
+curl -X PUT https://api.1claw.xyz/v1/org/bankr-config \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "partner_key": "bk_ptr_...",
+    "default_wallet_id": "wlt_..."
+  }'
+
+# Check status (prefix only — no secret)
+curl https://api.1claw.xyz/v1/org/bankr-config \
+  -H "Authorization: Bearer $USER_TOKEN"
+```
+
+**SDK:** `client.org.getBankrConfig()`, `client.org.setBankrConfig({ partner_key, default_wallet_id })`, `client.org.deleteBankrConfig()`.
+
+Obtain partner keys from the [Bankr partner dashboard](https://docs.bankr.bot/partnership/api-keys) (`bk_ptr_<keyId>_<secret>`). Apply for partner access at [bankr.bot/partner](https://bankr.bot/partner) if needed.
+
+### Deployment fallback (optional)
+
+Self-hosted or platform operators may set a global fallback on the Vault service. Used only when an org has **not** configured BYOK.
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `BANKR_PARTNER_KEY` | Your Bankr partner key (`bk_ptr_...`) | Yes |
-| `BANKR_DEFAULT_WALLET_ID` | Default wallet ID (`wlt_...`) for key issuance | Recommended |
+| `BANKR_PARTNER_KEY` | Platform Bankr partner key (`bk_ptr_...`) | No (BYOK per org) |
+| `BANKR_DEFAULT_WALLET_ID` | Default wallet ID (`wlt_...`) when org has no default | No |
 | `BANKR_DEFAULT_LEASE_TTL_SECS` | Default TTL for **human** callers when omitted (default: 3600) | No |
 
 ## API Endpoints
