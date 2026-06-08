@@ -117,9 +117,17 @@ curl https://api.1claw.xyz/v1/org/bankr-config \
 
 Obtain partner keys from the [Bankr partner dashboard](https://docs.bankr.bot/partnership/api-keys) (`bk_ptr_<keyId>_<secret>`). Apply for partner access at [bankr.bot/partner](https://bankr.bot/partner) if needed.
 
-### Deployment fallback (optional)
+### Deployment fallback (self-hosted operators only)
 
-Self-hosted or platform operators may set a global fallback on the Vault service. Used only when an org has **not** configured BYOK.
+Optional global fallback on the Vault service. **Off by default** in multi-tenant SaaS — do not set `BANKR_PARTNER_KEY` on `api.1claw.xyz`. Use only when you intentionally run a single-tenant or self-hosted deployment where all orgs share one Bankr partner account.
+
+| Rule | Behavior |
+| --- | --- |
+| Precedence | Org BYOK always wins when configured (`credential_source: org_byok`) |
+| Fallback | Used only when org has no BYOK and `BANKR_PARTNER_KEY` is set (`credential_source: platform_fallback`) |
+| Opt-in | Treat fallback as an explicit operator choice — not for shared multi-tenant environments |
+| Audit | Each `bankr_key.leased` event includes `credential_source` |
+| Alerting | Production Vault (`hsm_provider=gcp`) emits a warning log when fallback is used — monitor in prod |
 
 | Variable | Description | Required |
 |----------|-------------|----------|
