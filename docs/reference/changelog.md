@@ -14,6 +14,33 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Risk Engine + DPoP Token Binding (v0.34.0 — 2026-06-11)
+
+#### Added
+- **Risk Engine Phase 1**: Geo-velocity (impossible travel detection), first-seen ASN/country drift, honeytoken canary secrets
+- **Risk Engine Phase 2**: DPoP token binding (RFC 9449), Continuous Access Evaluation (auto-revoke on critical)
+- Dashboard: `/security` page with risk events feed and severity filtering
+- Dashboard: `/security/honeytokens` page for canary secret management
+- Dashboard: DPoP enforcement toggle in Security settings (off/warn/required)
+- SDK: `client.risk` resource for risk events, verdicts, and honeytokens
+- SDK/MCP/CLI: `DPoPManager` for proof-of-possession token binding
+- API: `GET/POST/DELETE /v1/risk/honeytokens`, `GET /v1/risk/events`, `GET /v1/risk/verdicts`
+- MaxMind GeoLite2 IP enrichment (City + ASN) for risk scoring
+- Auth verdict gate: blocks login/token-exchange on high/critical risk score
+- Honeytoken detection: silent critical verdict on canary secret read
+
+#### Security
+- Stolen JWTs are now non-replayable when DPoP is enabled (bound to client keypair)
+- Critical risk verdicts immediately revoke all active sessions for the principal
+- Impossible travel detection catches session replay from different geography
+- ASN/country baseline drift flags credential stuffing from unfamiliar sources
+
+#### Migrations
+- `118_risk_engine_phase1.sql` — risk_events, risk_verdicts, principal_baselines, honeytokens
+- `119_dpop_and_cae.sql` — jwt_bound_keys, dpop_nonces
+
+---
+
 ### Embedded Wallets: Email OTP, OAuth2, Spend Policies (v0.33.0)
 
 - **New:** Email OTP login — Passwordless authentication for embedded wallet end-users via 6-digit email codes. `POST /v1/auth/email-otp/send` (rate-limited, 5-min expiry) and `POST /v1/auth/email-otp/verify` (returns JWT + auto-provisions treasury wallets on first login). Migration 113.
