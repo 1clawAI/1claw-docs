@@ -39,7 +39,6 @@ const config: Config = {
                     changefreq: "weekly",
                     priority: 0.5,
                     ignorePatterns: ["/tags/**"],
-                    lastmod: "date",
                 },
                 gtag: {
                     trackingID: "G-333VRQ54M7",
