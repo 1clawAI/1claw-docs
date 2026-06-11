@@ -10,7 +10,7 @@ Get your users a wallet with just an email address. No browser extensions, no se
 ## Prerequisites
 
 - A 1Claw account with a Pro+ plan
-- A platform app (`plt_` API key) — [create one in the dashboard](/platform)
+- A platform app (`plt_` API key) — [create one in the dashboard](https://app.1claw.xyz/platform)
 
 ## Install
 
@@ -123,6 +123,6 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 
 ## Next Steps
 
-- [Platform API docs](/docs/platform/overview) — full API reference
-- [Spend policies guide](/docs/guides/spend-policies) — detailed policy configuration
+- [Platform API docs](/docs/reference/api-reference) — full API reference
+- [OpenAPI spec](https://github.com/1clawAI/1claw/tree/main/packages/openapi-spec) — OpenAPI 3.1 specification
 - [wallet-react README](https://github.com/1clawAI/wallet-react) — React component docs
