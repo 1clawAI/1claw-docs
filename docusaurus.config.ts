@@ -30,6 +30,8 @@ const config: Config = {
                     routeBasePath: "docs",
                     sidebarPath: "./sidebars.ts",
                     editUrl: undefined,
+                    showLastUpdateTime: false,
+                    showLastUpdateAuthor: false,
                 },
                 blog: false,
                 theme: {
