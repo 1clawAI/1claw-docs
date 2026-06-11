@@ -301,6 +301,7 @@ const sidebars: SidebarsConfig = {
                 "security/agent-keys",
                 "security/zero-trust",
                 "security/two-factor-auth",
+                "security/risk-engine",
                 "security/compliance",
             ],
         },
