@@ -14,6 +14,18 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Security Hardening (v0.34.1 — 2026-06-21)
+
+#### Fixed
+- **H-1/H-2 (HIGH):** `create_share` now enforces vault-binding, scope access, and policy-engine read permission checks before sharing. Cross-org share recipients are validated to prevent cross-tenant secret egress.
+- **H-3 (HIGH):** Treasury wallet swap path now enforces full spend policy (per-tx cap, daily limits, denylist, 10,000-ETH sanity cap) and records swaps to the daily send ledger.
+- **H1-R (HIGH):** CAE (Continuous Access Evaluation) now properly revokes agent tokens on critical risk verdicts via `revoke_all_for_agent`, ensuring stolen agent JWTs are actually rejected by auth middleware.
+- **L-4:** Single `delete_agent` endpoint now enforces `platform_locked` guard (parity with batch-delete).
+- **L-5:** Batch-delete hardening — sanitized error messages (no raw DB errors), collapsed not-found/access-denied responses to prevent cross-tenant existence oracle.
+- **L-1/L-2:** Nightly cleanup job now sweeps expired `revoked_tokens`, `agent_active_tokens`, and `dpop_nonces` tables to prevent unbounded growth.
+
+---
+
 ### Risk Engine + DPoP Token Binding (v0.34.0 — 2026-06-11)
 
 #### Added
