@@ -68,27 +68,43 @@ curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
 
 ## Quick start (local)
 
-For local/air-gapped setups, run the MCP server via stdio. Use **agent ID + API key** so the server can refresh the JWT automatically:
-
-```bash
-cd packages/mcp && pnpm install && pnpm run build
-```
+For local setups, run the MCP server via stdio. Only `ONECLAW_AGENT_API_KEY` is needed — the server auto-discovers the agent ID and vault, and handles JWT refresh:
 
 ```json
 {
   "mcpServers": {
     "1claw": {
-      "command": "node",
-      "args": ["/path/to/packages/mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@1claw/mcp"],
       "env": {
-        "ONECLAW_AGENT_ID": "your-agent-uuid",
-        "ONECLAW_AGENT_API_KEY": "ocv_your_agent_api_key",
-        "ONECLAW_VAULT_ID": "your-vault-uuid"
+        "ONECLAW_AGENT_API_KEY": "ocv_your_agent_api_key"
       }
     }
   }
 }
 ```
+
+Or auto-configure with the CLI: `1claw setup --client cursor` (or `--client claude`).
+
+## Quick start (local daemon — offline, zero-knowledge)
+
+For fully offline use where the model should never see secret values:
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "command": "npx",
+      "args": ["-y", "@1claw/mcp"],
+      "env": {
+        "ONECLAW_LOCAL_VAULT": "true"
+      }
+    }
+  }
+}
+```
+
+Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/guides/cli#local-vault) for setup.
 
 ## Available tools
 
@@ -126,11 +142,59 @@ cd packages/mcp && pnpm install && pnpm run build
 | `list_transactions` | List recent transactions for the current agent |
 | `get_transaction` | Get details of a specific transaction by ID |
 
+### Signing keys
+
+| Tool | What it does |
+|------|-------------|
+| `provision_signing_key` | Generate a multi-chain signing key (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) |
+| `list_signing_keys` | List all active signing keys for an agent |
+| `sign_message` | EIP-191 personal_sign with an agent's signing key |
+| `sign_typed_data` | EIP-712 typed data signing with domain-aware hashing |
+
+### Platform
+
+| Tool | What it does |
+|------|-------------|
+| `platform_list_apps` | List platform apps in the org |
+| `platform_create_app` | Register a new platform app |
+| `platform_bootstrap_user` | Provision resources from a bootstrap template |
+| `platform_reissue_claim` | Mint a fresh claim URL for a bootstrapped connection |
+| `platform_rotate_key` | Rotate a platform app's `plt_` API key |
+
+### Treasury
+
+| Tool | What it does |
+|------|-------------|
+| `treasury_propose` | Create a Safe multisig proposal |
+| `treasury_sign_proposal` | Approve or reject with an EIP-712 signature |
+| `treasury_list_proposals` | List proposals filtered by status |
+
+### Approvals
+
+| Tool | What it does |
+|------|-------------|
+| `request_approval` | Ask a human to approve a policy change or sensitive action |
+| `list_approvals` | List approval requests by status |
+| `get_approval` | Poll a specific approval request |
+
+### Bankr
+
+| Tool | What it does |
+|------|-------------|
+| `lease_bankr_key` | Lease a scoped Bankr wallet API key (metadata only — key never in tool output) |
+
 ### Security
 
 | Tool | What it does |
 |------|-------------|
 | `inspect_content` | Scan text for injection, obfuscation, social engineering, and PII |
+
+### Local daemon mode
+
+| Tool | What it does |
+|------|-------------|
+| `proxy_request` | Make an HTTP request with a secret injected — value never enters the context window |
+| `list_secrets` | List secret names in the local vault (names only, no values) |
 
 ## Typical agent workflow
 
