@@ -6,9 +6,17 @@ sidebar_position: 11
 
 # 1Claw CLI
 
-The `@1claw/cli` package provides a full-featured command-line interface for 1Claw. It is designed for CI/CD pipelines, DevOps workflows, and server environments.
+The `@1claw/cli` package provides a full-featured command-line interface for 1Claw. It is designed for CI/CD pipelines, DevOps workflows, local development, and server environments.
 
 ## Installation
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install 1clawAI/tap/oneclaw
+```
+
+### npm
 
 ```bash
 npm install -g @1claw/cli
@@ -19,6 +27,14 @@ Or run with npx:
 ```bash
 npx @1claw/cli login
 ```
+
+## Quick start
+
+```bash
+1claw setup    # Login, create agent + vault + policy, configure AI clients
+```
+
+That single command provisions everything: an agent (with Shroud + Intents API enabled), a vault, an access policy, and MCP config for all detected AI clients (Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Continue.dev, Zed).
 
 ## Authentication
 
@@ -49,22 +65,324 @@ export ONECLAW_API_KEY="1ck_..."
 export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scoped commands
 ```
 
+### Password management
+
+```bash
+1claw forgot-password              # Request password reset email
+1claw reset-password               # Set new password from email token
+1claw set-password                 # Set a password (platform OIDC users)
+1claw change-email                 # Change email (sends verification code)
+```
+
 ## Main commands
 
-| Area         | Commands                                                                                       |
-| ------------ | ---------------------------------------------------------------------------------------------- |
-| **Auth**     | `login`, `logout`, `whoami`                                                                    |
-| **Vaults**   | `vault list`, `vault create`, `vault get`, `vault link`, `vault delete`                        |
-| **Secrets**  | `secret list`, `secret get`, `secret set`, `secret delete`, `secret rotate`, `secret describe` |
-| **CI/CD**    | `env pull`, `env push`, `env run -- <command>`                                                 |
-| **Agents**   | `agent list`, `agent create`, `agent get`, `agent token`                                       |
-| **Policies** | `policy list`, `policy create`, `policy delete`                                                |
-| **Sharing**  | `share create`, `share list`, `share accept`, `share revoke`                                   |
-| **Billing**  | `billing status`, `billing credits`, `billing usage`                                           |
-| **Audit**    | `audit list`                                                                                   |
-| **MFA**      | `mfa status`, `mfa enable`, `mfa disable`                                                      |
-| **Config**   | `config list`, `config set`, `config get`                                                      |
-| **Proxy**    | `proxy` — local OpenAI-compatible proxy that routes through [Shroud](/docs/guides/shroud)       |
+| Area | Commands |
+| ---- | -------- |
+| **Setup** | `setup` — auto-configure AI clients with agent, vault, and policy provisioning |
+| **Auth** | `login`, `logout`, `whoami`, `forgot-password`, `reset-password`, `set-password`, `change-email` |
+| **Vaults** | `vault list`, `vault create`, `vault get`, `vault link`, `vault unlink`, `vault delete` |
+| **Secrets** | `secret list`, `secret get`, `secret set`, `secret delete`, `secret rotate`, `secret describe`, `secret versions` |
+| **Import** | `import .env` — import secrets from .env files into a vault |
+| **CI/CD** | `env pull`, `env push`, `env run`, `env cache`, `env cache-status`, `env cache-clear` |
+| **Agents** | `agent list`, `agent create`, `agent get`, `agent update`, `agent delete`, `agent token`, `agent enroll` |
+| **Signing keys** | `agent keys list`, `agent keys create`, `agent keys rotate`, `agent keys delete`, `agent export-signing-key` |
+| **Unified signing** | `agent sign` — EIP-191, EIP-712, or raw transaction signing |
+| **Transactions** | `agent tx submit`, `agent tx sign`, `agent tx list`, `agent tx get` |
+| **Bankr keys** | `agent bankr-key lease`, `agent bankr-key list`, `agent bankr-key revoke` |
+| **Treasury** | `treasury generate`, `treasury list`, `treasury get`, `treasury balance`, `treasury send`, `treasury swap`, `treasury export`, `treasury rotate`, `treasury deactivate` |
+| **Proposals** | `treasury proposal create`, `treasury proposal list`, `treasury proposal get`, `treasury proposal sign`, `treasury proposal execute`, `treasury proposal cancel` |
+| **Policies** | `policy list`, `policy create`, `policy delete` |
+| **Sharing** | `share create`, `share list`, `share accept`, `share decline`, `share revoke` |
+| **Webhooks** | `webhook create`, `webhook list`, `webhook get`, `webhook update`, `webhook delete` |
+| **Platform** | `platform create`, `platform list`, `platform get`, `platform update`, `platform delete`, `platform rotate-key`, `platform templates`, `platform users`, `platform connected-apps`, `platform reissue-claim` |
+| **Approvals** | `approval list`, `approval get`, `approval decide` |
+| **Billing** | `billing status`, `billing credits`, `billing usage`, `billing ledger` |
+| **Audit** | `audit list` |
+| **MFA** | `mfa status`, `mfa enable`, `mfa disable` |
+| **Devices** | `device list`, `device revoke` |
+| **Config** | `config list`, `config set`, `config get` |
+| **Proxy** | `proxy` — local OpenAI-compatible proxy that routes through [Shroud](/docs/guides/shroud) |
+| **Local vault** | `local init`, `local add`, `local list`, `local get`, `local rm`, `local import`, `local export`, `local sync`, `local status`, `local destroy` |
+| **Local daemon** | `daemon start`, `daemon stop`, `daemon status`, `daemon policy add/list/remove` |
+| **OIDC** | `auth federated-token` — mint short-lived RS256 JWT for external relying parties |
+
+## Setup (AI client auto-configuration)
+
+Auto-detect and configure AI clients to use the 1Claw MCP server for runtime secret access.
+
+```bash
+1claw setup                            # Interactive: login, create agent + vault + policy, configure clients
+1claw setup --client cursor            # Configure only Cursor
+1claw setup --agent-key ocv_...        # Use a specific agent API key (skips provisioning)
+1claw setup --local                    # Configure for local daemon mode (no cloud)
+```
+
+When you choose "Create a new agent", `setup` provisions everything end-to-end:
+
+1. Creates an agent with **Shroud LLM proxy** and **Intents API** enabled
+2. Lists your existing vaults or auto-creates a "default" vault
+3. Creates a read + write access policy on `secrets/*` for the agent
+4. Binds the agent to the vault
+5. Configures each selected AI client's MCP config
+
+## Import (.env files)
+
+```bash
+1claw import .env                      # Import all keys from .env
+1claw import .env.production --prefix prod/    # Add a path prefix
+1claw import .env --dry-run            # Preview what would be imported
+1claw import .env --force              # Overwrite existing secrets
+1claw import .env --vault <id>         # Import to a specific vault
+```
+
+## Agents
+
+```bash
+1claw agent list
+1claw agent create my-agent
+1claw agent create my-agent \
+  --shroud \                           # Enable Shroud LLM proxy
+  --tx-to-allowlist 0x... \            # Transaction guardrails
+  --tx-max-value 0.1 \
+  --tx-daily-limit 1.0 \
+  --tx-allowed-chains sepolia,base
+1claw agent get <id>
+1claw agent update <id> --shroud true --intents-api true
+1claw agent delete <id>
+1claw agent token <id>                 # Generate agent JWT
+1claw agent enroll my-agent --email human@example.com   # Self-enroll (no auth)
+```
+
+## Transactions (Intents API)
+
+Submit, sign, and inspect on-chain transactions for agents with Intents API enabled.
+
+```bash
+1claw agent tx submit <agent-id> \
+  --to 0xRecipient --value 0.01 --chain sepolia
+1claw agent tx submit <agent-id> \
+  --to 0xRecipient --value 0.01 --chain sepolia --simulate
+1claw agent tx sign <agent-id> \
+  --to 0xRecipient --value 0.01 --chain sepolia   # Sign only (no broadcast)
+1claw agent tx list <agent-id>
+1claw agent tx get <agent-id> <tx-id>
+```
+
+## Signing keys (multi-chain)
+
+Manage per-agent signing keys. Keys are generated server-side and stored in the vault.
+
+```bash
+1claw agent keys list <agent-id>
+1claw agent keys create <agent-id> --chain ethereum
+1claw agent keys create <agent-id> --chain solana
+1claw agent keys rotate <agent-id> --chain ethereum
+1claw agent keys delete <agent-id> --chain ethereum
+1claw agent export-signing-key <agent-id> --chain ethereum   # Requires password
+```
+
+Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`.
+
+## Unified signing (`agent sign`)
+
+Sign messages, typed data, or raw transactions.
+
+```bash
+# EIP-191 personal_sign
+1claw agent sign <agent-id> \
+  --intent-type personal_sign --message 0x48656c6c6f
+
+# EIP-712 typed data
+1claw agent sign <agent-id> \
+  --intent-type typed_data --typed-data ./permit.json
+
+# Transaction (all EIP-2718 types: legacy, EIP-1559, EIP-4844, EIP-7702)
+1claw agent sign <agent-id> \
+  --intent-type transaction --to 0xRecipient --value 0.01 --chain base --tx-type 2
+```
+
+## Treasury wallets
+
+Multi-chain wallet generation for human users.
+
+```bash
+1claw treasury generate                         # Generate wallets for all chains
+1claw treasury generate --chains ethereum,solana
+1claw treasury list
+1claw treasury get <chain>
+1claw treasury balance <chain>
+1claw treasury balance ethereum --tokens 0xA0b8...eB48
+1claw treasury send <chain> --to 0xRecipient --amount 0.01
+1claw treasury swap <chain> \
+  --sell-token native --buy-token 0xA0b8... --amount 0.1 --slippage 1
+1claw treasury export <chain> --password <pw>    # Audit-logged
+1claw treasury rotate <chain>
+1claw treasury deactivate <chain>
+```
+
+Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Requires Pro or higher billing tier.
+
+## Treasury proposals (multisig)
+
+```bash
+1claw treasury proposal create <treasury-id> \
+  --to 0xRecipient --value 1000000000000000 --chain ethereum
+1claw treasury proposal list <treasury-id>
+1claw treasury proposal get <treasury-id> <id>
+1claw treasury proposal sign <treasury-id> <id> --signature 0x... --decision approve
+1claw treasury proposal execute <treasury-id> <id>
+1claw treasury proposal cancel <treasury-id> <id>
+```
+
+## Webhooks
+
+```bash
+1claw webhook create --url https://example.com/hook \
+  --events wallet.transfer.sent,proposal.created
+1claw webhook create --url https://example.com/hook \
+  --events agent.transaction.broadcast --secret my-hmac-secret
+1claw webhook list
+1claw webhook get <id>
+1claw webhook update <id> --active false
+1claw webhook delete <id>
+```
+
+Supported events: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created`, `proposal.signed`, `proposal.executed`, `proposal.cancelled`, `agent.transaction.broadcast`, `agent.transaction.signed`, `signing_key.rotated`, `policy.created`, `policy.updated`, `policy.deleted`.
+
+## Platform API
+
+Manage platform apps for developers building multi-tenant applications on top of 1Claw.
+
+```bash
+1claw platform create my-app my-slug
+1claw platform list
+1claw platform get <app-id>
+1claw platform update <app-id> --name new-name
+1claw platform delete <app-id>
+1claw platform rotate-key <app-id>
+1claw platform reissue-claim <connection-id>
+
+# Templates
+1claw platform templates list <app-id>
+1claw platform templates create <app-id> <name> --spec ./template.json
+
+# Connected users
+1claw platform users list <app-id>
+1claw platform connected-apps
+```
+
+## Approvals
+
+Human-in-the-loop approval workflow for agent actions.
+
+```bash
+1claw approval list
+1claw approval list --status approved
+1claw approval get <id>
+1claw approval decide <id> approve
+1claw approval decide <id> reject --reason "Not needed"
+```
+
+## Bankr dynamic key vending
+
+Lease short-lived Bankr wallet API keys. Agents need explicit policy on `agents/{id}/bankr/*` in `__agent-keys`.
+
+```bash
+1claw agent bankr-key lease <agent-id>
+1claw agent bankr-key lease <agent-id> --ttl 600 --wallet wlt_abc123
+1claw agent bankr-key list <agent-id>
+1claw agent bankr-key revoke <agent-id> <lease-id>
+```
+
+## OIDC federation
+
+Mint short-lived RS256 JWTs for external relying parties (Anthropic WIF, GCP/AWS STS).
+
+```bash
+1claw auth federated-token --audience https://api.anthropic.com
+1claw auth federated-token -a https://api.anthropic.com --raw   # Raw token for pipes
+```
+
+The agent must have `federation_enabled = true` and the audience on its allowlist.
+
+## Environment (CI/CD)
+
+```bash
+1claw env pull                         # Pull secrets as .env format
+1claw env pull --format json           # As JSON
+1claw env pull -o .env.local           # Write to file
+1claw env push .env                    # Push .env file to vault
+1claw env run -- npm start             # Run with secrets injected
+1claw env run --prefix config/ -- ./deploy.sh
+```
+
+### Environment cache (offline mode)
+
+Cache secrets locally in an AES-256-GCM encrypted file for offline `env run`.
+
+```bash
+1claw env cache                        # Download and cache secrets locally
+1claw env cache --ttl 3600             # Cache with 1-hour TTL (default: 300s)
+1claw env cache-status                 # Show cache age, vault ID, secret count
+1claw env cache-clear                  # Delete the local cache
+```
+
+When a valid cache exists, `env run` uses it automatically. Use `--no-cache` to bypass.
+
+## Local vault (offline, encrypted)
+
+Store secrets locally in an encrypted vault — no cloud required. AES-256-GCM with PBKDF2 (100k iterations).
+
+```bash
+1claw local init                       # Create local vault with passphrase
+1claw local add STRIPE_KEY             # Add secret (prompted, masked)
+1claw local list                       # List secret names (never values)
+1claw local get STRIPE_KEY             # Retrieve a value
+1claw local rm STRIPE_KEY              # Remove a secret
+1claw local import .env                # Import .env file into local vault
+1claw local export -o .env             # Export as .env format
+1claw local sync -v <vault-id>         # Push local secrets to cloud vault
+1claw local sync --pull -v <id>        # Pull cloud secrets into local vault
+1claw local status                     # Show vault info (count, sync status)
+1claw local destroy                    # Permanently delete local vault
+```
+
+Vault file: `~/.config/1claw/local-vault.enc` (0600 permissions, safe to back up).
+
+## Local daemon (secret proxy)
+
+The daemon serves secrets over a Unix socket and injects them into HTTP requests without exposing values to the AI model. The model knows *which* secret to use and *where* to send it, but never sees the raw value.
+
+```bash
+1claw daemon start                     # Unlock vault, listen on socket
+
+1claw daemon policy add STRIPE_KEY --hosts api.stripe.com
+1claw daemon policy add OPENAI_KEY --hosts api.openai.com,*.openai.com
+1claw daemon policy list
+1claw daemon policy remove STRIPE_KEY
+
+1claw daemon status
+1claw daemon stop
+```
+
+### Setup for local mode
+
+```bash
+1claw setup --local
+```
+
+This sets `ONECLAW_LOCAL_VAULT=true` and `ONECLAW_DAEMON_SOCKET` in the MCP config, so the MCP server connects to the local daemon instead of `api.1claw.xyz`. The model uses `proxy_request` to make API calls with secrets injected — the secret value never enters the context window.
+
+### Architecture
+
+```
+AI Client (Claude, Cursor, etc.)
+    └─ MCP Server (@1claw/mcp, local mode)
+         └─ Unix Socket (~/.config/1claw/daemon.sock)
+              └─ 1claw Daemon (holds decrypted vault in memory)
+                   ├─ Policy Engine (per-secret host allowlist, fail-closed)
+                   └─ Secret Proxy (injects credentials into HTTP requests)
+```
 
 ## LLM Proxy (`1claw proxy`)
 
@@ -145,34 +463,20 @@ Add to `~/.continue/config.json`:
 
 Point the base URL to `http://127.0.0.1:11434/v1`. The proxy accepts any `Authorization` header (or none) and replaces it with the Shroud agent credentials.
 
-### How it works
-
-```
-Editor (Cursor, VS Code, etc.)
-  │  POST /v1/chat/completions
-  │  Authorization: Bearer <ignored>
-  ▼
-1claw proxy (localhost:11434)
-  │  Replaces auth with X-Shroud-Agent-Key
-  │  Auto-detects X-Shroud-Provider from model name
-  │  Forwards request, streams response back
-  ▼
-shroud.1claw.xyz (TEE)
-  │  Auth → Inspect → Redact → Route
-  ▼
-LLM provider (or Stripe AI Gateway if token billing enabled)
-```
-
 ### LLM Token Billing
 
 When your org has **LLM Token Billing** enabled (Settings → Billing), the proxy works without any provider API keys. Shroud routes through Stripe AI Gateway and bills token usage to your org automatically. See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
 
-### Built-in endpoints
+## DPoP (Proof-of-Possession)
 
-| Path | Description |
-|------|-------------|
-| `/health` | Health check (`{"status":"ok","proxy":"1claw"}`) |
-| `/v1/models` | Returns available models (editors probe this on startup) |
+Enable [DPoP (RFC 9449)](https://datatracker.ietf.org/doc/html/rfc9449) to bind agent tokens to a persistent P-256 keypair. Stolen tokens are unusable without the matching private key.
+
+```bash
+export ONECLAW_DPOP=true
+1claw agent token <id>     # Token exchange includes DPoP proof + public JWK
+```
+
+The CLI generates a P-256 ECDSA keypair on first use and persists it at `~/.config/1claw/dpop-key.json`. Delete the file to rotate the keypair.
 
 ## CI/CD examples
 
@@ -188,13 +492,20 @@ When your org has **LLM Token Billing** enabled (Settings → Billing), the prox
       npm run deploy
 ```
 
-### Run a command with secrets injected
+### Docker
 
-```bash
-1claw env run -- npm start
+```dockerfile
+RUN npm install -g @1claw/cli
+CMD ["1claw", "env", "run", "--", "node", "server.js"]
 ```
 
-Secrets from the linked (or `ONECLAW_VAULT_ID`) vault are injected as environment variables for the child process.
+### Shell script
+
+```bash
+#!/bin/bash
+eval $(1claw env pull --format shell)
+./my-app
+```
 
 ## Configuration
 
