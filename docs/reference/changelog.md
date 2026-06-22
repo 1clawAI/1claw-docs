@@ -14,6 +14,29 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### Local Vault & Daemon (v0.34.2 — 2026-06-22)
+
+**Local encrypted vault:**
+- `1claw local init` — create an AES-256-GCM encrypted vault with passphrase-derived key (PBKDF2, 100k iterations)
+- `1claw local add/get/rm/list/status/destroy` — full secret lifecycle without cloud connectivity
+- `1claw local import <file>` — import from `.env` files into the local vault
+- `1claw local export` — export as `.env` format
+- `1claw local sync` — push local secrets to cloud vault; `--pull` to pull from cloud
+- File permissions hardened to 0600; safe to back up (encrypted at rest)
+
+**Local daemon & secret proxy:**
+- `1claw daemon start` — starts a Unix socket daemon that holds decrypted secrets in memory
+- `1claw daemon policy add <secret> --hosts <hosts>` — per-secret host allowlist (fail-closed: no policy = no injection)
+- `1claw daemon policy list/remove` — manage policies
+- Secret proxy: `POST /proxy` on the daemon socket injects secrets into HTTP requests per policy rules — the AI model never sees the raw secret value
+- `1claw daemon status/stop` — lifecycle management
+
+**MCP local mode:**
+- `1claw setup --local` — configures AI clients to use the daemon instead of the cloud API
+- MCP server (`ONECLAW_LOCAL_VAULT=true`) connects to daemon over Unix socket
+- `proxy_request` MCP tool: AI model specifies secret name + URL, daemon injects credential per policy
+- `list_secrets` tool shows secret names (never values) from the local vault
+
 ### CLI DX & Homebrew (v0.34.1 — 2026-06-22)
 
 **New CLI commands:**
