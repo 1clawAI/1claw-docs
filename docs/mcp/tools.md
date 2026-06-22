@@ -574,19 +574,17 @@ Server-side secret rotation. Generates a cryptographically random value as the n
 
 | Name       | Type   | Required | Description                                                             |
 | ---------- | ------ | -------- | ----------------------------------------------------------------------- |
-| `vault_id` | string | Yes      | UUID of the vault containing the secret                                 |
 | `path`     | string | Yes      | Secret path to rotate (e.g. `api-keys/stripe`)                         |
 | `length`   | number | No       | Length of generated value (8–1024, default 32)                          |
 | `charset`  | string | No       | Character set: `hex`, `base64`, `alphanumeric`, `ascii` (default: hex)  |
-| `type`     | string | No       | Secret type for the new version (e.g. `api_key`, `password`)            |
 
 ### Example
 
 ```
 Agent: "Rotate the Stripe key with a new random value"
-→ rotate_generate(vault_id: "ae370174-...", path: "api-keys/stripe", length: 64, charset: "alphanumeric")
+→ rotate_generate(path: "api-keys/stripe", length: 64, charset: "alphanumeric")
 
-Rotated secret at 'api-keys/stripe'. New version: 4 (server-generated, 64 chars, alphanumeric).
+Rotated secret at 'api-keys/stripe' with server-generated value. New version: 4.
 ```
 
 ---
@@ -599,14 +597,13 @@ List all versions of a secret (newest first). Returns version numbers, timestamp
 
 | Name       | Type   | Required | Description                                    |
 | ---------- | ------ | -------- | ---------------------------------------------- |
-| `vault_id` | string | Yes      | UUID of the vault containing the secret        |
 | `path`     | string | Yes      | Secret path (e.g. `api-keys/stripe`)           |
 
 ### Example
 
 ```
 Agent: "Show me the version history of the Stripe key"
-→ list_versions(vault_id: "ae370174-...", path: "api-keys/stripe")
+→ list_versions(path: "api-keys/stripe")
 
 Found 3 version(s) for 'api-keys/stripe':
 - v3 (current, created: 2026-05-10T14:22:00Z)
@@ -688,3 +685,86 @@ User bootstrapped:
   Agent ID: bf481285-...
   Policies: 2 created
 ```
+
+---
+
+## lease_bankr_key
+
+Lease a short-lived Bankr wallet API key for the current agent. Requires explicit policy on `agents/{id}/bankr/*` in `__agent-keys`.
+
+### Parameters
+
+| Name       | Type   | Required | Description                                              |
+| ---------- | ------ | -------- | -------------------------------------------------------- |
+| `ttl`      | number | No       | Lease TTL in seconds (default: 900, max: 86400)          |
+| `wallet_id`| string | No       | Bankr wallet ID (defaults to org-configured default)     |
+
+### Example
+
+```
+Agent: "I need a Bankr API key to check wallet balances"
+→ lease_bankr_key(ttl: 600)
+
+Bankr key leased:
+  Lease ID: a1b2c3d4-...
+  Expires in: 600s
+  Wallet ID: wlt_default
+```
+
+Note: The `bk_usr_` API key value is NOT returned in the MCP tool output — Shroud resolves it server-side when `X-Shroud-Provider: bankr` is used.
+
+---
+
+## treasury_propose
+
+Create a treasury multisig proposal.
+
+### Parameters
+
+| Name          | Type   | Required | Description                                   |
+| ------------- | ------ | -------- | --------------------------------------------- |
+| `treasury_id` | string | Yes      | UUID of the treasury                          |
+| `to`          | string | Yes      | Recipient address                             |
+| `value`       | string | Yes      | Value in wei                                  |
+| `chain`       | string | Yes      | Chain name (e.g. `ethereum`)                  |
+| `data`        | string | No       | Calldata hex (default: `"0x"`)                |
+
+### Example
+
+```
+Agent: "Propose sending 0.1 ETH from the team treasury"
+→ treasury_propose(treasury_id: "abc123-...", to: "0xRecipient...", value: "100000000000000000", chain: "ethereum")
+
+Proposal created:
+  ID: def456-...
+  Status: pending
+  Threshold: 2/3 signatures needed
+```
+
+---
+
+## treasury_sign_proposal
+
+Sign (approve or reject) a treasury multisig proposal.
+
+### Parameters
+
+| Name          | Type   | Required | Description                                        |
+| ------------- | ------ | -------- | -------------------------------------------------- |
+| `treasury_id` | string | Yes      | UUID of the treasury                               |
+| `proposal_id` | string | Yes      | UUID of the proposal                               |
+| `signature`   | string | Yes      | EIP-712 signature hex                              |
+| `decision`    | string | Yes      | `approve` or `reject`                              |
+
+---
+
+## treasury_list_proposals
+
+List proposals for a treasury.
+
+### Parameters
+
+| Name          | Type   | Required | Description                                   |
+| ------------- | ------ | -------- | --------------------------------------------- |
+| `treasury_id` | string | Yes      | UUID of the treasury                          |
+| `status`      | string | No       | Filter by status (e.g. `pending`, `executed`) |

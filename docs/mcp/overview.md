@@ -69,11 +69,35 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 | `delete_secret`    | Soft-delete a secret at a given path                                | Write      |
 | `describe_secret`  | Get metadata (type, version, expiry) without fetching the value     | Read       |
 | `rotate_and_store` | Store a new value for an existing secret and return the new version | Write      |
+| `rotate_generate`  | Server-side rotation: generate a cryptographically random value     | Write      |
+| `list_versions`    | List all versions of a secret (newest first)                        | Read       |
 | `get_env_bundle`   | Fetch an `env_bundle` secret and parse its KEY=VALUE lines as JSON  | Read       |
 | `create_vault`     | Create a new vault                                                  | Write      |
 | `list_vaults`      | List all accessible vaults                                          | Read       |
 | `grant_access`     | Grant a user or agent access to a vault                             | Write      |
 | `share_secret`     | Share a secret with someone by email                                | Write      |
+| `simulate_transaction` | Simulate a transaction via Tenderly (no signing)                | Read       |
+| `simulate_bundle`  | Simulate multiple transactions sequentially                         | Read       |
+| `submit_transaction` | Sign and broadcast a transaction                                  | Write      |
+| `sign_transaction` | Sign a transaction without broadcasting (BYORPC)                    | Write      |
+| `list_transactions` | List recent transactions for the current agent                     | Read       |
+| `get_transaction`  | Get details of a specific transaction                               | Read       |
+| `provision_signing_key` | Provision an HSM-backed signing key for a blockchain           | Write      |
+| `list_signing_keys` | List all active signing keys for the current agent                 | Read       |
+| `sign_message`     | Sign an EIP-191 personal message                                    | Write      |
+| `sign_typed_data`  | Sign EIP-712 typed structured data                                  | Write      |
+| `lease_bankr_key`  | Lease a short-lived Bankr wallet API key                            | Write      |
+| `platform_list_apps` | List platform apps in the organization                            | Read       |
+| `platform_create_app` | Register a new platform app                                      | Write      |
+| `platform_bootstrap_user` | Bootstrap resources for a connected user from a template    | Write      |
+| `platform_reissue_claim` | Reissue an expired claim URL for a connection                | Write      |
+| `platform_rotate_key` | Rotate a platform app's API key                                  | Write      |
+| `list_approvals`   | List pending approval requests                                      | Read       |
+| `get_approval`     | Get details of an approval request                                  | Read       |
+| `request_approval` | Submit an approval request (agent-only)                             | Write      |
+| `treasury_propose` | Create a treasury multisig proposal                                 | Write      |
+| `treasury_sign_proposal` | Sign a treasury proposal                                      | Write      |
+| `treasury_list_proposals` | List proposals for a treasury                                | Read       |
 | `inspect_content`  | Analyze text for prompt injection, command injection, PII, and more | Read       |
 
 ## Resources

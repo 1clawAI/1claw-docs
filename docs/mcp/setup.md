@@ -128,14 +128,14 @@ pnpm run build
       "command": "node",
       "args": ["/absolute/path/to/packages/mcp/dist/index.js"],
       "env": {
-        "ONECLAW_AGENT_ID": "your-agent-uuid",
-        "ONECLAW_AGENT_API_KEY": "ocv_your_agent_api_key",
-        "ONECLAW_VAULT_ID": "your-vault-uuid-here"
+        "ONECLAW_AGENT_API_KEY": "ocv_your_agent_api_key"
       }
     }
   }
 }
 ```
+
+The server auto-discovers the agent ID and vault from the token exchange response. You can optionally set `ONECLAW_AGENT_ID` and `ONECLAW_VAULT_ID` for explicit control.
 
 ### Cursor (recommended: agent ID + API key)
 
@@ -146,22 +146,20 @@ pnpm run build
       "command": "node",
       "args": ["./packages/mcp/dist/index.js"],
       "env": {
-        "ONECLAW_AGENT_ID": "${env:ONECLAW_AGENT_ID}",
-        "ONECLAW_AGENT_API_KEY": "${env:ONECLAW_AGENT_API_KEY}",
-        "ONECLAW_VAULT_ID": "${env:ONECLAW_VAULT_ID}"
+        "ONECLAW_AGENT_API_KEY": "${env:ONECLAW_AGENT_API_KEY}"
       }
     }
   }
 }
 ```
 
-Then set the environment variables in your shell:
+Then set the environment variable in your shell:
 
 ```bash
-export ONECLAW_AGENT_ID="your-agent-uuid"
 export ONECLAW_AGENT_API_KEY="ocv_your_agent_api_key"
-export ONECLAW_VAULT_ID="your-vault-uuid-here"
 ```
+
+The server auto-resolves the agent ID via the API key prefix and auto-discovers the vault from the token exchange. To override, also set `ONECLAW_AGENT_ID` and/or `ONECLAW_VAULT_ID`.
 
 **Alternative (static JWT):** If you prefer to pass a token yourself, set `ONECLAW_AGENT_TOKEN` to a JWT from `POST /v1/auth/agent-token` (with `agent_id` and `api_key`). The token expires in about an hour; you must refresh it manually.
 
@@ -169,13 +167,13 @@ export ONECLAW_VAULT_ID="your-vault-uuid-here"
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ONECLAW_AGENT_ID` | Yes* (stdio) | — | Agent UUID (from dashboard). Use with `ONECLAW_AGENT_API_KEY`. |
-| `ONECLAW_AGENT_API_KEY` | Yes* (stdio) | — | Agent API key (`ocv_...`). Server exchanges for JWT and auto-refreshes. |
-| `ONECLAW_AGENT_TOKEN` | Yes* (stdio) | — | Static JWT from `POST /v1/auth/agent-token` (alternative to ID + key; expires ~1 h). |
-| `ONECLAW_VAULT_ID` | Yes (stdio) | — | UUID of the vault to operate on |
+| `ONECLAW_AGENT_API_KEY` | Yes* (stdio) | — | Agent API key (`ocv_...`). Server exchanges for JWT and auto-refreshes. Also auto-resolves agent ID and vault via prefix lookup. |
+| `ONECLAW_AGENT_ID` | No | — | Agent UUID. Optional when using `ONECLAW_AGENT_API_KEY` (auto-resolved via prefix lookup). |
+| `ONECLAW_AGENT_TOKEN` | Yes* (stdio) | — | Static JWT from `POST /v1/auth/agent-token` (alternative to API key; expires ~1 h). |
+| `ONECLAW_VAULT_ID` | No | auto-discovered | UUID of the vault to operate on. When omitted, auto-discovered from the token exchange `vault_ids` or the first org vault. |
 | `ONECLAW_BASE_URL` | No | `https://api.1claw.xyz` | Override for self-hosted vault |
 
-\* Set either **`ONECLAW_AGENT_ID` + `ONECLAW_AGENT_API_KEY`** (recommended) or **`ONECLAW_AGENT_TOKEN`**.
+\* Set **`ONECLAW_AGENT_API_KEY`** (recommended, simplest) or **`ONECLAW_AGENT_TOKEN`** + **`ONECLAW_VAULT_ID`**.
 
 ## Verifying the connection
 

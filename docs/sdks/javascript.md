@@ -81,20 +81,31 @@ await client.auth.login({ email: "me@example.com", password: "..." });
 
 All API endpoints are organized into resource modules:
 
-| Module             | Methods                                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| `client.auth`      | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()` |
-| `client.vault`     | `create()`, `list()`, `get()`, `delete()`                                                          |
-| `client.secrets`   | `set()`, `get()`, `list()`, `delete()`, `rotate()`                                                 |
-| `client.access`    | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
-| `client.agents`    | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`                               |
-| `client.sharing`   | `create()`, `access()`, `revoke()`                                                                 |
-| `client.approvals` | `request()`, `list()`, `approve()`, `deny()`, `check()`                                            |
-| `client.apiKeys`   | `create()`, `list()`, `revoke()`                                                                   |
-| `client.billing`   | `usage()`, `history()`                                                                             |
-| `client.audit`     | `query()`                                                                                          |
-| `client.org`       | `listMembers()`, `updateMemberRole()`, `removeMember()`                                            |
-| `client.x402`      | `getPaymentRequirement()`, `pay()`, `verifyReceipt()`, `withPayment()`                             |
+| Module                     | Methods                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `client.auth`              | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()`, `forgotPassword()`, `resetPassword()`, `sendEmailOtp()`, `verifyEmailOtp()`, `socialLogin()`, `exchangeOAuthCode()`, `exchangeFederatedToken()` |
+| `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
+| `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
+| `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
+| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `signIntent()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()` |
+| `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`                                       |
+| `client.sharing`           | `create()`, `access()`, `revoke()`                                                                 |
+| `client.approvals`         | `request()`, `list()`, `get()`, `decide()`                                                         |
+| `client.apiKeys`           | `create()`, `list()`, `revoke()`                                                                   |
+| `client.billing`           | `usage()`, `history()`, `subscribe()`, `portal()`, `subscription()`, `creditsTopup()`, `creditsBalance()`, `creditsTransactions()`, `llmTokenBilling()`, `subscribeLlmTokenBilling()`, `disableLlmTokenBilling()` |
+| `client.audit`             | `query()`                                                                                          |
+| `client.org`               | `listMembers()`, `updateMemberRole()`, `removeMember()`, `getBankrConfig()`, `setBankrConfig()`, `deleteBankrConfig()` |
+| `client.x402`              | `getPaymentRequirement()`, `pay()`, `verifyReceipt()`, `withPayment()`                             |
+| `client.chains`            | `list()`, `get()`                                                                                  |
+| `client.treasury`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `addSigner()`, `removeSigner()`, `propose()`, `listProposals()`, `getProposal()`, `signProposal()`, `executeProposal()` |
+| `client.treasuryWallets`   | `generate()`, `list()`, `get()`, `balance()`, `send()`, `swap()`, `export()`, `rotate()`, `deactivate()`, `getEffectiveSpendPolicy()` |
+| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()` |
+| `client.devices`           | `list()`, `revoke()`                                                                               |
+| `client.passkeys`          | `list()`, `register()`, `delete()`                                                                 |
+| `client.depositDestinations` | `create()`, `list()`, `get()`, `update()`                                                        |
+| `client.internalAccounts`  | `create()`, `list()`, `get()`, `transfer()`, `getLedger()`                                         |
+| `client.fiat`              | `createOnrampSession()`, `initiateOfframp()`                                                       |
+| `client.risk`              | `listEvents()`, `getVerdict()`, `listVerdicts()`, `createHoneytoken()`, `listHoneytokens()`, `deleteHoneytoken()` |
 
 ## Sharing by email
 

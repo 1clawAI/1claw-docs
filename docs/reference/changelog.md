@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.34.7 — LLM proxy, treasury proposals, unified signing (2026-06-22)
+
+- **New:** `1claw proxy` — local OpenAI-compatible proxy that routes LLM traffic through Shroud with full inspection, secret redaction, and optional LLM Token Billing. Auto-detects provider from model name. IDE setup snippets printed on startup.
+- **New:** `1claw treasury proposal create|list|get|sign|execute|cancel` — full multisig proposal lifecycle from CLI.
+- **New:** `1claw agent sign` — unified signing command for EIP-191, EIP-712, and all EIP-2718 transaction types (0–4).
+- **New:** `1claw webhook create|list|get|update|delete` — manage webhook endpoints from CLI.
+- **New:** `1claw platform reissue-claim` — reissue expired claim URLs without re-provisioning.
+- **New:** `1claw treasury send` and `1claw treasury swap` — send native/ERC-20 tokens and swap via 0x from CLI.
+- **New:** `1claw treasury balance` — query native + ERC-20 token balances.
+- **New:** DPoP support — `ONECLAW_DPOP=true` env var enables RFC 9449 proof-of-possession. Keypair persisted at `~/.config/1claw/dpop-key.json`.
+- **Updated:** MCP tools expanded to 36 tools (added platform_reissue_claim, platform_rotate_key, list_approvals, get_approval, request_approval, treasury_propose, treasury_sign_proposal, treasury_list_proposals).
+- **Updated:** MCP auth simplified — `ONECLAW_AGENT_API_KEY` alone is sufficient (agent ID and vault auto-discovered via prefix lookup).
+- **Changed:** CLI version bumped from 0.34.2 to 0.34.7. SDK 0.34.1. MCP 0.34.1.
+
 ### Local Vault & Daemon (v0.34.2 — 2026-06-22)
 
 **Local encrypted vault:**
@@ -46,13 +60,14 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - `env run --no-cache` — bypass local cache and always fetch from API
 
 **Homebrew tap:**
-- `brew install 1clawAI/tap/1claw` — install CLI via Homebrew
+- `brew install 1clawAI/tap/oneclaw` — install CLI via Homebrew
 - `brew install 1clawAI/tap/1claw-mcp` — install MCP server via Homebrew
 - Automated formula updates on npm publish via `repository_dispatch`
 
 **Version alignment:**
-- CLI bumped to 0.34.1 (was 0.34.0)
-- MCP bumped to 0.34.1 (was 0.34.0)
+- CLI bumped to 0.34.7 (latest)
+- SDK at 0.34.1
+- MCP at 0.34.1
 - OpenAPI spec info.version bumped to 2.19.0
 
 ---

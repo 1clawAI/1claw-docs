@@ -182,6 +182,9 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/wallets/generate`           | Generate wallets for specified or all chains   |
 | GET    | `/v1/treasury/wallets`                    | List all active treasury wallets               |
 | GET    | `/v1/treasury/wallets/:chain`             | Get wallet for a specific chain                |
+| GET    | `/v1/treasury/wallets/:chain/balance`     | Get native + ERC-20 token balances             |
+| POST   | `/v1/treasury/wallets/:chain/send`        | Send native/ERC-20 (requires X-Auth-Confirm)   |
+| POST   | `/v1/treasury/wallets/:chain/swap`        | Swap tokens via 0x (requires X-Auth-Confirm)   |
 | POST   | `/v1/treasury/wallets/:chain/export`      | Export wallet with private key (audit-logged)   |
 | POST   | `/v1/treasury/wallets/:chain/rotate`      | Rotate wallet keypair                          |
 | DELETE | `/v1/treasury/wallets/:chain`             | Deactivate wallet                              |
@@ -200,6 +203,17 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/approve`      | Approve an access request      |
 | POST   | `/v1/treasury/:treasury_id/access-requests/:request_id/deny`         | Deny an access request        |
 
+### Treasury proposals (multisig)
+
+| Method | Path                                                                  | Description                              |
+| ------ | --------------------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/treasury/:treasury_id/proposals`                                 | Create a proposal                        |
+| GET    | `/v1/treasury/:treasury_id/proposals`                                 | List proposals (filterable by status)    |
+| GET    | `/v1/treasury/:treasury_id/proposals/:proposal_id`                    | Get proposal + collected signatures      |
+| POST   | `/v1/treasury/:treasury_id/proposals/:proposal_id/sign`               | Submit signature (approve/reject)        |
+| POST   | `/v1/treasury/:treasury_id/proposals/:proposal_id/execute`            | Force-execute if threshold met           |
+| DELETE | `/v1/treasury/:treasury_id/proposals/:proposal_id`                    | Cancel a pending proposal                |
+
 ## Agent Signing Keys
 
 Per-agent, per-chain signing keys provisioned by humans. Keys are stored in the HSM-backed `__agent-keys` vault. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron.
@@ -210,6 +224,8 @@ Per-agent, per-chain signing keys provisioned by humans. Keys are stored in the 
 | GET    | `/v1/agents/:agent_id/signing-keys`                       | List all signing keys for the agent      |
 | POST   | `/v1/agents/:agent_id/signing-keys/:chain/rotate`         | Rotate a chain's signing key             |
 | DELETE | `/v1/agents/:agent_id/signing-keys/:chain`                | Deactivate a chain's signing key         |
+| POST   | `/v1/agents/:agent_id/signing-keys/:chain/export`         | Export signing key (requires X-Auth-Confirm) |
+| GET    | `/v1/agents/:agent_id/signing-keys/:chain/balance`        | Get balance for signing key address      |
 
 ## Transactions & Signing (Intents API)
 
@@ -259,6 +275,113 @@ Requires `intents_api_enabled: true` on the agent. When enabled, the agent is al
 | POST   | `/v1/org/invite`           | Invite member by email |
 | PATCH  | `/v1/org/members/:user_id` | Update member role     |
 | DELETE | `/v1/org/members/:user_id` | Remove member          |
+
+## Webhooks
+
+| Method | Path                  | Description                                           |
+| ------ | --------------------- | ----------------------------------------------------- |
+| POST   | `/v1/webhooks`        | Register a webhook endpoint                           |
+| GET    | `/v1/webhooks`        | List webhooks for the org                             |
+| GET    | `/v1/webhooks/:id`    | Get webhook details                                   |
+| PATCH  | `/v1/webhooks/:id`    | Update webhook (URL, events, active)                  |
+| DELETE | `/v1/webhooks/:id`    | Delete webhook                                        |
+
+## OIDC Federation
+
+| Method | Path                         | Description                                              |
+| ------ | ---------------------------- | -------------------------------------------------------- |
+| GET    | `/.well-known/openid-configuration` | OIDC discovery document                          |
+| GET    | `/.well-known/jwks.json`     | Public JWKS (EdDSA + RS256 keys)                         |
+| POST   | `/v1/auth/federated-token`   | Exchange agent token for RS256 OIDC JWT (RFC 8693)       |
+
+## Risk Engine
+
+| Method | Path                               | Description                                    |
+| ------ | ---------------------------------- | ---------------------------------------------- |
+| GET    | `/v1/risk/events`                  | List risk events (filterable by severity)      |
+| GET    | `/v1/risk/verdicts`                | List active risk verdicts                      |
+| GET    | `/v1/risk/verdicts/:type/:id`      | Get verdict for a specific principal           |
+| GET    | `/v1/risk/honeytokens`             | List honeytoken registrations                  |
+| POST   | `/v1/risk/honeytokens`             | Create a honeytoken (canary secret)            |
+| DELETE | `/v1/risk/honeytokens/:id`         | Delete a honeytoken                            |
+
+## WebAuthn Passkeys
+
+| Method | Path                                    | Description                                  |
+| ------ | --------------------------------------- | -------------------------------------------- |
+| POST   | `/v1/auth/passkeys/register/begin`      | Begin passkey registration ceremony          |
+| POST   | `/v1/auth/passkeys/register/complete`   | Complete passkey registration                |
+| POST   | `/v1/auth/passkeys/assert/begin`        | Begin passkey login assertion                |
+| POST   | `/v1/auth/passkeys/assert/complete`     | Complete passkey login                       |
+| GET    | `/v1/auth/passkeys`                     | List registered passkeys                     |
+| DELETE | `/v1/auth/passkeys/:passkey_id`         | Delete a passkey                             |
+
+## Email OTP (Passwordless)
+
+| Method | Path                         | Description                                |
+| ------ | ---------------------------- | ------------------------------------------ |
+| POST   | `/v1/auth/email-otp/send`    | Send 6-digit verification code to email    |
+| POST   | `/v1/auth/email-otp/verify`  | Verify code, return JWT + auto-provision   |
+
+## Social Login
+
+| Method | Path                         | Description                                       |
+| ------ | ---------------------------- | ------------------------------------------------- |
+| POST   | `/v1/auth/social-login`      | Google/Apple/Discord login (returns JWT)           |
+
+## OAuth2 Authorization Server
+
+| Method | Path                         | Description                                       |
+| ------ | ---------------------------- | ------------------------------------------------- |
+| GET    | `/v1/oauth/authorize`        | Get consent info for a platform app               |
+| POST   | `/v1/oauth/authorize`        | Approve/deny authorization request                |
+| POST   | `/v1/oauth/token`            | Exchange authorization code for tokens            |
+| GET    | `/v1/oauth/userinfo`         | Get user profile (Bearer from code exchange)      |
+
+## Bankr Key Vending
+
+| Method | Path                                        | Description                       |
+| ------ | ------------------------------------------- | --------------------------------- |
+| POST   | `/v1/agents/:agent_id/bankr-keys/lease`     | Lease a short-lived Bankr API key |
+| GET    | `/v1/agents/:agent_id/bankr-keys`           | List active Bankr key leases      |
+| DELETE | `/v1/agents/:agent_id/bankr-keys/:lease_id` | Revoke a Bankr key lease          |
+
+## Deposit Destinations
+
+| Method | Path                            | Description                              |
+| ------ | ------------------------------- | ---------------------------------------- |
+| POST   | `/v1/deposit-destinations`      | Create a deposit destination             |
+| GET    | `/v1/deposit-destinations`      | List deposit destinations                |
+| GET    | `/v1/deposit-destinations/:id`  | Get deposit destination + events         |
+| PATCH  | `/v1/deposit-destinations/:id`  | Update status (active/paused/archived)   |
+
+## Fiat On/Off Ramps
+
+| Method | Path                          | Description                              |
+| ------ | ----------------------------- | ---------------------------------------- |
+| POST   | `/v1/fiat/onramp/session`     | Get onramp widget URL (Coinbase/MoonPay) |
+| POST   | `/v1/fiat/offramp/initiate`   | Get offramp widget URL                   |
+| POST   | `/v1/fiat/webhooks`           | Partner completion webhook receiver      |
+
+## Internal Accounts & Ledger
+
+| Method | Path                                   | Description                              |
+| ------ | -------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/internal-accounts`                | Create a named sub-account               |
+| GET    | `/v1/internal-accounts`                | List accounts with balances              |
+| GET    | `/v1/internal-accounts/:id`            | Get account details                      |
+| POST   | `/v1/internal-transfers`               | Transfer between accounts                |
+| GET    | `/v1/internal-accounts/:id/ledger`     | Paginated ledger history                 |
+
+## Wallet Spend Policies
+
+| Method | Path                                                 | Description                                    |
+| ------ | ---------------------------------------------------- | ---------------------------------------------- |
+| POST   | `/v1/platform/apps/:id/spend-policies`               | Create app-level spend policy                  |
+| GET    | `/v1/platform/apps/:id/spend-policies`               | List spend policies for app                    |
+| PUT    | `/v1/platform/connections/:id/spend-policy`          | Set per-user spend policy override             |
+| GET    | `/v1/treasury/wallets/spend-policy`                  | View effective spend policy (user-only)        |
+| DELETE | `/v1/platform/apps/:id/spend-policies/:pid`          | Deactivate a spend policy                      |
 
 ## Security (IP Rules)
 

@@ -79,8 +79,8 @@ When an agent fetches a secret, the server remembers the value. If that value la
 
 | Mode | Behavior |
 |------|----------|
-| `warn` (default) | Logs the threat, allows the call |
-| `block` | Rejects the call with a security error |
+| `block` (default) | Rejects the call with a security error |
+| `warn` | Logs the threat, allows the call |
 | `off` | Disables exfiltration checks |
 
 Tools that legitimately handle secrets (`get_secret`, `get_env_bundle`, `put_secret`, `rotate_and_store`) are exempt from exfiltration checks.
@@ -95,7 +95,7 @@ All features are on by default and can be tuned via environment variables:
 | `ONECLAW_MCP_SANITIZATION_MODE` | `block` | `block`, `surgical`, or `log_only` |
 | `ONECLAW_MCP_REDACT_SECRETS` | `true` | Redact known secret values from non-secret tool outputs |
 | `ONECLAW_MCP_PII_DETECTION` | `true` | Detect PII patterns in inputs and outputs |
-| `ONECLAW_MCP_EXFIL_PROTECTION` | `block` | `block`, `warn`, or `off` for secret exfiltration checks |
+| `ONECLAW_MCP_EXFIL_PROTECTION` | `block` | `block` (default), `warn`, or `off` for secret exfiltration checks |
 
 ## Standalone inspection via `inspect_content`
 
