@@ -14,6 +14,26 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI DX & Homebrew (v0.34.1 — 2026-06-22)
+
+**New CLI commands:**
+- `1claw setup` — auto-detect and configure AI clients (Claude Desktop, Cursor, VS Code, Zed, Windsurf, Claude Code) to use the 1Claw MCP server for runtime secret access
+- `1claw import <file>` — parse `.env` files and import secrets into a vault (supports `--prefix`, `--dry-run`, `--force`)
+- `env cache` / `env cache-clear` / `env cache-status` — encrypted local secret cache for offline `env run` (AES-256-GCM, `~/.config/1claw/env-cache.enc`)
+- `env run --no-cache` — bypass local cache and always fetch from API
+
+**Homebrew tap:**
+- `brew install 1clawAI/tap/1claw` — install CLI via Homebrew
+- `brew install 1clawAI/tap/1claw-mcp` — install MCP server via Homebrew
+- Automated formula updates on npm publish via `repository_dispatch`
+
+**Version alignment:**
+- CLI bumped to 0.34.1 (was 0.34.0)
+- MCP bumped to 0.34.1 (was 0.34.0)
+- OpenAPI spec info.version bumped to 2.19.0
+
+---
+
 ### Security Hardening (v0.34.1 — 2026-06-21)
 
 #### Fixed
