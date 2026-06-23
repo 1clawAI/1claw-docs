@@ -169,10 +169,28 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) for runnable demos:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (27 runnable demos). Highlights:
 
-- **basic/** — Vault CRUD, secrets, billing, signup, email-based sharing
-- **nextjs-agent-secret/** — AI agent with Claude accessing vault secrets via MCP tools
+| Example | What it demonstrates |
+| ------- | -------------------- |
+| [basic](https://github.com/1clawAI/1claw-examples/tree/main/basic) | Vault CRUD, secrets, billing, sharing, Intents API |
+| [langchain-agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent) | LangChain agent fetches secrets just-in-time |
+| [nextjs-agent-secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret) | Next.js chat app with server-side vault access |
+| [fastmcp-tool-server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server) | Custom MCP server with domain tools |
+| [shroud-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
+| [shroud-llm](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm) | LLM Token Billing via Stripe AI Gateway |
+| [tx-simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation) | On-chain signing with guardrails + Tenderly simulation |
+| [multi-chain-keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys) | HSM signing keys for 6 blockchains |
+| [evm-signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing) | EIP-191, EIP-712, and EIP-2718 transaction types |
+| [agentic-tx](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx) | End-to-end fund → sign → broadcast with guardrails |
+| [platform-connect](https://github.com/1clawAI/1claw-examples/tree/main/platform-connect) | Platform API bootstrap templates + user provisioning |
+| [treasury-wallets](https://github.com/1clawAI/1claw-examples/tree/main/treasury-wallets) | Multi-chain treasury wallets, balances, send |
+| [x402-payments](https://github.com/1clawAI/1claw-examples/tree/main/x402-payments) | Real x402 micropayments against 1Claw endpoints |
+| [ampersend-x402](https://github.com/1clawAI/1claw-examples/tree/main/ampersend-x402) | Ampersend smart-account x402 + MCP/HTTP clients |
+| [anthropic-wif](https://github.com/1clawAI/1claw-examples/tree/main/anthropic-wif) | OIDC federation → Anthropic Workload Identity |
+| [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
+
+Full catalog and run instructions: [examples README](https://github.com/1clawAI/1claw-examples#readme). From the monorepo: `./examples/scripts/test-all-examples.sh`.
 
 ## OpenAPI types
 
