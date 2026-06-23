@@ -64,26 +64,22 @@ Usage is unified across all access methods. Whether a secret is read from the da
 
 ## Pricing
 
-Every authenticated API call counts as **one request** against your monthly tier limit. Auth, health, billing, audit, org settings, and chain listing endpoints are free and do not count.
+### Overage Rates (After Tier Limit)
 
-When you exceed your tier limit, overages are charged **per operation** at tier-discounted rates (identical for prepaid credits and x402). See the [pricing page](https://1claw.xyz/pricing) for the full table.
+Included plan requests are covered by your subscription and do not incur per-request charges. When you exceed your monthly request limit, overage charges apply at tier-discounted rates (same rates for prepaid credits and x402):
 
-### Overage rates (after tier limit)
-
-Rates match `overage_cost_cents` in `vault/src/domain/billing.rs` and the [1claw.xyz/pricing](https://1claw.xyz/pricing) x402 table.
-
-| Operation | Free | Pro | Team | Business+ |
-| --------- | ---- | --- | ---- | --------- |
+| Operation | Free | Pro | Team | Business |
+| --------- | ---- | --- | ---- | -------- |
 | Read secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Write secret | $0.0225 | $0.015 | $0.0075 | $0.004 |
 | Create share | $0.009 | $0.006 | $0.003 | $0.0015 |
 | Access shared secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
-| Transaction simulate | $0.225 | $0.15 | $0.075 | $0.04 |
-| Other API calls (`api_request`) | $0.001 | $0.0005 | $0.0002 | $0.0001 |
-| Intents API submit | 0.25% of transaction value (USD), min $0.01 — no cap | same | same | same |
+| Other API requests | $0.001 | $0.0005 | $0.0002 | $0.0001 |
 
-**Pro**, **Team**, and **Business** pay lower per-operation rates than **Free**. Exact amounts also appear in dashboard billing UI and x402 `402` responses.
+Intents API transaction submit is billed at **0.25% of transaction value (USD)**, with no cap (minimum $0.01). Simulation endpoints use the proxy transaction rate above.
+
+Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 
 ## Overage Methods
 
@@ -356,26 +352,26 @@ Response shape (fields vary by org and Stripe data availability):
 
 ```json
 {
-  "enabled": true,
-  "subscription_status": "active",
-  "credit_balance": {
-    "available_cents": 0,
-    "ledger_cents": 0,
-    "used_cents": 0,
-    "currency": "usd"
-  },
-  "billing_cycle_usage": {
-    "accrued_usage_cents": 0,
-    "currency": "usd",
-    "metered_lines": [
-      {
-        "description": "Metered usage",
-        "amount_cents": 0,
-        "quantity": null,
-        "price_nickname": null
-      }
-    ]
-  }
+    "enabled": true,
+    "subscription_status": "active",
+    "credit_balance": {
+        "available_cents": 0,
+        "ledger_cents": 0,
+        "used_cents": 0,
+        "currency": "usd"
+    },
+    "billing_cycle_usage": {
+        "accrued_usage_cents": 0,
+        "currency": "usd",
+        "metered_lines": [
+            {
+                "description": "Metered usage",
+                "amount_cents": 0,
+                "quantity": null,
+                "price_nickname": null
+            }
+        ]
+    }
 }
 ```
 
