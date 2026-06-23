@@ -295,8 +295,8 @@ For operating dozens or hundreds of agents:
 ## Billing
 
 - Free: 1,000 req/mo, 3 vaults, 50 secrets, 2 agents
-- Pro ($29/mo): 25,000 req/mo, 25 vaults, 500 secrets, 10 agents
-- Team ($299/mo): 100,000 req/mo, 100 vaults, 5,000 secrets, 50 agents, SSO
+- Pro ($29/mo): 20,000 req/mo, 25 vaults, 500 secrets, 10 agents, Platform API
+- Team ($299/mo): 200,000 req/mo, 100 vaults, 5,000 secrets, 50 agents, SSO, Platform API
 - Business ($999/mo): 500,000 req/mo, unlimited vaults/secrets, 200 agents, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
 - Enterprise: Custom, unlimited, KMS delegation, BAA
 

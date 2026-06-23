@@ -19,8 +19,8 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 | Tier           | Monthly Price | Annual (billed yearly) | Requests/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
 | **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 3          |
-| **Pro**        | $29           | $290 (~$24.17/mo)      | 25,000      | 25        | 500       | 10        | 5          |
-| **Team**       | $299          | $2,990 (~$249.17/mo)   | 100,000     | 100       | 5,000     | 50        | 20         |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 25        | 500       | 10        | 5          |
+| **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 100       | 5,000     | 50        | 20         |
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 500,000     | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
@@ -64,20 +64,26 @@ Usage is unified across all access methods. Whether a secret is read from the da
 
 ## Pricing
 
-### Base Rates
+Every authenticated API call counts as **one request** against your monthly tier limit. Auth, health, billing, audit, org settings, and chain listing endpoints are free and do not count.
 
-| Endpoint                                         | Price   |
-| ------------------------------------------------ | ------- |
-| Read a secret (`GET /v1/vaults/*/secrets/*`)     | $0.001  |
-| Write a secret (`PUT /v1/vaults/*/secrets/*`)    | $0.005  |
-| Create a share link (`POST /v1/secrets/*/share`) | $0.002  |
-| Access a shared secret (`GET /v1/share/*`)       | $0.001  |
-| Query audit events (`GET /v1/audit/events`)      | $0.0005 |
-| Auth, health, listing endpoints                  | Free    |
+When you exceed your tier limit, overages are charged **per operation** at tier-discounted rates (identical for prepaid credits and x402). See the [pricing page](https://1claw.xyz/pricing) for the full table.
 
-### Overage Rates (After Tier Limit)
+### Overage rates (after tier limit)
 
-When you exceed your tier's monthly request limit, overage charges apply. Each operation has a list price; **Pro**, **Team**, and **Business** pay lower per-operation rates than **Free** (see `overage_cost_cents` in `vault/src/domain/billing.rs`). Exact per-endpoint prices are shown in the dashboard billing UI and x402 `402` responses.
+Rates match `overage_cost_cents` in `vault/src/domain/billing.rs` and the [1claw.xyz/pricing](https://1claw.xyz/pricing) x402 table.
+
+| Operation | Free | Pro | Team | Business+ |
+| --------- | ---- | --- | ---- | --------- |
+| Read secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
+| Write secret | $0.0225 | $0.015 | $0.0075 | $0.004 |
+| Create share | $0.009 | $0.006 | $0.003 | $0.0015 |
+| Access shared secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
+| Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
+| Transaction simulate | $0.225 | $0.15 | $0.075 | $0.04 |
+| Other API calls (`api_request`) | $0.001 | $0.0005 | $0.0002 | $0.0001 |
+| Intents API submit | 0.25% of transaction value (USD), min $0.01 — no cap | same | same | same |
+
+**Pro**, **Team**, and **Business** pay lower per-operation rates than **Free**. Exact amounts also appear in dashboard billing UI and x402 `402` responses.
 
 ## Overage Methods
 
@@ -192,7 +198,7 @@ Response includes subscription status, usage, and credits:
         "cancel_at_period_end": false
     },
     "usage": {
-        "tier_limit": 25000,
+        "tier_limit": 20000,
         "current_month": {
             "total_requests": 18472,
             "tier_requests": 18472,
