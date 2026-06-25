@@ -14,6 +14,17 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.35.0 — containerized agent runtime (2026-06-25)
+
+- **New:** `1claw init --docker` — provisions a secure agent runtime inside a Docker container in one command (1Claw MCP server + chat UI on port 3000). The container never receives the agent API key; the host daemon injects credentials over a read-only Unix-socket bind mount.
+- **New:** Module system — `--module=ampersend,onchain` composes container extensions from bundled `module.yaml` manifests with dependency resolution, conflict detection, and topological layer ordering. Bundled modules: `ampersend`, `onchain`, `langchain`, `elizaos`, `scaffold-agent`. `--list-modules` prints the catalog.
+- **New:** `--local` flag runs fully offline (no cloud account); the base image is built from bundled assets when not already present.
+- **New:** `1claw containers list|info|stop|rm|logs` — manage CLI-created agent containers (state stored in `~/.config/1claw/containers/{name}.json`).
+- **New:** `1claw publish` — rebuild from base + modules, build from a custom `Dockerfile`, or snapshot a running container (`--commit`), then tag and push to a registry.
+- **New:** `1claw eject` — export the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (daemon socket pre-wired) for manual control.
+- **New:** `1claw deploy --google-cloud` — generate Terraform (`main.tf`, `variables.tf`, `outputs.tf`) for Cloud Run with Secret Manager key injection; `--apply` runs `terraform apply`.
+- **Changed:** CLI version bumped from 0.34.7 to 0.35.0. Added `yaml` dependency for module manifest parsing.
+
 ### CLI v0.34.7 — LLM proxy, treasury proposals, unified signing (2026-06-22)
 
 - **New:** `1claw proxy` — local OpenAI-compatible proxy that routes LLM traffic through Shroud with full inspection, secret redaction, and optional LLM Token Billing. Auto-detects provider from model name. IDE setup snippets printed on startup.

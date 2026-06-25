@@ -79,6 +79,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | Area | Commands |
 | ---- | -------- |
 | **Setup** | `setup` — auto-configure AI clients with agent, vault, and policy provisioning |
+| **Containers** | `init --docker`, `containers list/info/stop/rm/logs`, `publish`, `eject`, `deploy --google-cloud` |
 | **Auth** | `login`, `logout`, `whoami`, `forgot-password`, `reset-password`, `set-password`, `change-email` |
 | **Vaults** | `vault list`, `vault create`, `vault get`, `vault link`, `vault unlink`, `vault delete` |
 | **Secrets** | `secret list`, `secret get`, `secret set`, `secret delete`, `secret rotate`, `secret describe`, `secret versions` |
@@ -466,6 +467,67 @@ Point the base URL to `http://127.0.0.1:11434/v1`. The proxy accepts any `Author
 ### LLM Token Billing
 
 When your org has **LLM Token Billing** enabled (Settings → Billing), the proxy works without any provider API keys. Shroud routes through Stripe AI Gateway and bills token usage to your org automatically. See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+## Containerized agent runtime (`init --docker`)
+
+`1claw init --docker` provisions a secure agent runtime inside a Docker container in one command. The container ships with the 1Claw MCP server and a lightweight chat UI on port 3000. The container **never receives the agent API key** — the host [daemon](#local-daemon-secret-proxy) injects credentials over a read-only Unix-socket bind mount, preserving the same trust boundary as local daemon mode.
+
+```bash
+1claw init --docker                          # Basic secure agent
+1claw init --docker --module=ampersend       # With x402 payments
+1claw init --docker --module=ampersend,onchain --port 8080
+1claw init --docker --local                  # Fully offline — no cloud account
+1claw init --docker --list-modules           # List available modules
+```
+
+When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your local vault. With `--local`, nothing touches the cloud. The base image is built from bundled assets if it isn't already present, so the flow works offline.
+
+### Modules
+
+Composable container extensions defined by `module.yaml` manifests bundled with the CLI. Dependencies are auto-resolved, conflicts detected, and layers topologically sorted.
+
+| Module | Description |
+| ------ | ----------- |
+| `ampersend` | x402 payment control layer (session keys, Base USDC) |
+| `onchain` | Multi-chain signing + Intents API tools |
+| `langchain` | LangChain / LangGraph agent runtime (Shroud-routed) |
+| `elizaos` | ElizaOS character runtime with vault-backed secrets |
+| `scaffold-agent` | Scaffold-ETH 2 dApp agent (depends on `onchain`) |
+
+When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stable` + module layers) instead of pulling the base image.
+
+### Managing containers
+
+```bash
+1claw containers list                  # List managed agent containers
+1claw containers info <name>           # Show details
+1claw containers logs <name>           # Tail logs
+1claw containers stop <name>           # Stop a container
+1claw containers rm <name> [--force]   # Remove container + local state
+```
+
+Container state lives in `~/.config/1claw/containers/{name}.json` and is the source of truth for `publish`, `eject`, and `deploy`.
+
+### Publish & eject
+
+```bash
+1claw publish --name my-agent --tag <user>/my-agent:v1   # Rebuild from base + modules, then push
+1claw publish --tag <user>/custom:latest                 # Build from ./Dockerfile in cwd
+1claw publish --name my-agent --commit --tag <user>/m:c  # Snapshot a running container (docker commit)
+1claw eject --name my-agent --output ./out               # Export Dockerfile + compose + module configs
+```
+
+`eject` writes the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (pre-wired with the daemon socket mount) so you can build and run manually.
+
+### Cloud deploy (Google Cloud Run)
+
+```bash
+1claw publish --name my-agent --tag <user>/my-agent:v1   # Image must be in a registry first
+1claw deploy --google-cloud --name my-agent              # Generate Terraform (main.tf, variables.tf, outputs.tf)
+1claw deploy --google-cloud --name my-agent --apply      # Generate + terraform apply (needs TF_VAR_agent_api_key)
+```
+
+In cloud mode the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount — instead of the host daemon. The entrypoint detects the mode from `ONECLAW_LOCAL_VAULT` and switches automatically.
 
 ## DPoP (Proof-of-Possession)
 
