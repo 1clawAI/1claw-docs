@@ -14,6 +14,11 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.35.1 — local vault recovery (2026-06-25)
+
+- **New:** `1claw local destroy --force` skips the confirmation prompt, and `1claw local reset` is an alias for `destroy`. Neither requires the passphrase — this is the recovery path for a forgotten local-vault passphrase. Destroy now also stops any running daemon still holding the old vault and clears its stale socket/PID.
+- **Improved:** `1claw init --docker --local` validates an existing vault's passphrase **before** starting the daemon and, on mismatch, fails fast with explicit recovery instructions instead of a generic daemon-startup timeout. `1claw daemon start` surfaces the same recovery guidance on "wrong passphrase or corrupted vault file".
+
 ### CLI v0.35.0 — containerized agent runtime (2026-06-25)
 
 - **New:** `1claw init --docker` — provisions a secure agent runtime inside a Docker container in one command (1Claw MCP server + chat UI on port 3000). The container never receives the agent API key; the host daemon injects credentials over a read-only Unix-socket bind mount.
