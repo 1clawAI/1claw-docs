@@ -524,8 +524,8 @@ Without `--detach`, `init` tails the container logs and stays in the foreground 
 
 **2. Open the chat UI** at [http://localhost:3000](http://localhost:3000). The header confirms the security model: _"credentials stay in the host daemon — this container never sees secret values."_
 
-:::tip Conversational replies need a model module
-The base image has the MCP server and chat UI but **no LLM**. To get model-backed chat, add a runtime module (e.g. `--module=langchain`). Without one, the chat UI still works for `/help`, `/secrets`, `/info`, and `/proxy`.
+:::tip Chat is wired to an LLM through Shroud (cloud mode)
+In cloud mode (anything **not** `--local`), the chat UI is connected to an LLM **through Shroud** — just type a message. The request routes via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the key); Shroud inspects the prompt and forwards it to the provider. Choose the model with `--llm-provider` / `--llm-model`. In `--local` mode there is **no LLM** (no cloud agent → no Shroud credential); only `/help`, `/secrets`, `/info`, and `/proxy` work.
 :::
 
 **3. Manage it:**
@@ -548,6 +548,22 @@ The base image has the MCP server and chat UI but **no LLM**. To get model-backe
 ```
 
 When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your **local vault** — the daemon injects it toward `*.1claw.xyz`, never into the container. With `--local`, nothing touches the cloud.
+
+### Chat LLM through Shroud (+ 1Claw token billing)
+
+In cloud mode the embedded chat UI talks to an LLM through Shroud. Pick the model:
+
+```bash
+1claw init --docker --llm-provider openai    --llm-model gpt-4o-mini            # default
+1claw init --docker --llm-provider anthropic --llm-model claude-3-5-haiku-latest
+1claw init --docker --llm-provider google    --llm-model gemini-2.5-flash
+```
+
+The container never holds the agent key — the daemon injects `X-Shroud-Agent-Key` toward `shroud.1claw.xyz`, and Shroud applies your agent's inspection/redaction policy before forwarding.
+
+:::tip Bill model usage to 1Claw (no provider key)
+Enable **LLM Token Billing** for your org (Dashboard → Billing → LLM Token Billing, or `POST /v1/billing/llm-token-billing/subscribe`). Shroud then routes through the Stripe AI Gateway and bills model usage to 1Claw — you don't configure any provider API key. Without it, Shroud needs a provider key configured for your org, otherwise the chat call returns an upstream auth error.
+:::
 
 ### Modules
 
