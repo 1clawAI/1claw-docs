@@ -14174,6 +14174,12 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.36.1 — robust port handling for `init --docker` (2026-06-25)
+
+- **Fixed:** `1claw init --docker` could fail with `Bind for 0.0.0.0:3000 failed: port is already allocated` even though the CLI's pre-check thought the port was free. The free-port check now binds `0.0.0.0` (matching how Docker publishes ports) instead of `127.0.0.1`, so ports already held by another container are correctly detected.
+- **New:** If the container still fails to start because the port is taken (a TOCTOU race, or a port held only inside the Docker VM), the CLI now automatically retries on the next free port — unless you pinned an explicit `--port`, in which case it fails with actionable guidance (`1claw containers list`, `1claw containers stop <name>`, `docker ps --filter publish=<port>`).
+- **Reminder:** manage running agent containers with `1claw containers list | info | stop | rm | logs`; manage cloud agent identities with `1claw agent list | get | update | delete`.
+
 ### CLI v0.36.0 — chat LLM through Shroud (2026-06-25)
 
 - **New:** In cloud mode, the `1claw init --docker` chat UI is now wired to an LLM **through Shroud**. Messages route via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the agent key); Shroud applies the agent's inspection/redaction policy before forwarding to the provider.

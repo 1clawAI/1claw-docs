@@ -14,6 +14,19 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.36.2 — fix cloud-mode container startup + start/restart for `init --docker` (2026-06-25)
+
+- **Fixed:** `1claw init --docker` (cloud mode) started the container but the entrypoint exited immediately with `ERROR: ONECLAW_AGENT_API_KEY is not set (cloud mode)` and looped on restart. The container is **designed never to receive the agent API key** — the host daemon brokers credentials over the mounted Unix socket — so requiring the key directly was wrong for this flow. The entrypoint now detects the mounted daemon socket and brokers all credentials through it (cloud **and** local). A direct `ONECLAW_AGENT_API_KEY` is only required for standalone deploys with no daemon socket (e.g. Cloud Run via `1claw deploy`).
+- **New:** `1claw containers start <name>` and `1claw containers restart <name>`. `start` resumes a stopped container; if the container was removed (status `absent`), it is recreated from the saved run spec (re-checking the host port). `restart` restarts a running/stopped container or recreates an absent one. The `init` command now persists the container's run spec (image, env var names, mounts, labels — never secret values) to `~/.config/1claw/containers/{name}.json` to enable this.
+- **Changed:** The chat UI header no longer shows the ambiguous `mode=cloud`. It now shows `runtime=docker` (the container is always Docker) alongside `vault=cloud|local` — clarifying that "cloud/local" refers to where the agent's identity and secrets live (a 1Claw cloud account vs an offline local CLI vault), not the runtime. `/info` reflects the same.
+- **Changed:** Base image `org.1claw.base-version` bumped so an existing `1claw/agent:stable` is rebuilt with the corrected entrypoint and clarified labels automatically on the next `init`.
+
+### CLI v0.36.1 — robust port handling for `init --docker` (2026-06-25)
+
+- **Fixed:** `1claw init --docker` could fail with `Bind for 0.0.0.0:3000 failed: port is already allocated` even though the CLI's pre-check thought the port was free. The free-port check now binds `0.0.0.0` (matching how Docker publishes ports) instead of `127.0.0.1`, so ports already held by another container are correctly detected.
+- **New:** If the container still fails to start because the port is taken (a TOCTOU race, or a port held only inside the Docker VM), the CLI now automatically retries on the next free port — unless you pinned an explicit `--port`, in which case it fails with actionable guidance (`1claw containers list`, `1claw containers stop <name>`, `docker ps --filter publish=<port>`).
+- **Reminder:** manage running agent containers with `1claw containers list | info | stop | rm | logs`; manage cloud agent identities with `1claw agent list | get | update | delete`.
+
 ### CLI v0.36.0 — chat LLM through Shroud (2026-06-25)
 
 - **New:** In cloud mode, the `1claw init --docker` chat UI is now wired to an LLM **through Shroud**. Messages route via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the agent key); Shroud applies the agent's inspection/redaction policy before forwarding to the provider.
