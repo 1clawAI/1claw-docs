@@ -347,4 +347,20 @@ The MCP server at mcp.1claw.xyz provides **36 tools** (plus `vault://secrets` re
 - lease_bankr_key (privileged — policy-gated; never returns key in tool output)
 - inspect_content (works without vault credentials; always available)
 
-Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.32.2`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
+Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.34.2`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
+
+## Containerized Agent Runtime (`1claw init --docker`, v0.36.0)
+
+`1claw init --docker` provisions a secure agent runtime inside a Docker container in one command. The container ships the 1Claw MCP server and a minimal chat UI and **never receives the agent API key or any LLM provider key** — the host daemon injects credentials over a Unix-socket mount (the same trust boundary as local daemon mode).
+
+- **Cloud mode (default):** provisions an agent (Shroud + Intents API enabled) + vault + read policies on `secrets/*` and `providers/*`, stores the agent key in the local CLI vault, and wires the chat UI to an LLM **through Shroud** (`mode=cloud`).
+- **`--local`:** fully offline — no cloud account, no LLM. Only `/help`, `/secrets`, `/info`, `/proxy` slash commands.
+- **Modules:** `--module=ampersend,onchain,langchain,elizaos,scaffold-agent` compose container extensions from bundled `module.yaml` manifests; `--list-modules` prints the catalog.
+- **Management:** `1claw containers list|info|stop|rm|logs`; `1claw publish` (rebuild + push); `1claw eject` (Dockerfile + docker-compose); `1claw deploy --google-cloud` (Terraform for Cloud Run + Secret Manager).
+
+**Chat LLM through Shroud — three provider-key sources** (container never holds the key; Shroud resolves in order):
+1. **1Claw LLM Token Billing** (default, no key): enable for the org; Shroud routes via the Stripe AI Gateway.
+2. **1Claw cloud vault:** `--llm-api-key <key>` (default `--llm-key-store cloud`) stores at `providers/<provider>/api-key`; Shroud auto-fetches with the agent JWT.
+3. **Local CLI vault (BYOK):** `--llm-api-key <key> --llm-key-store local` or `--llm-api-key-secret <name>`; the daemon injects it as the `X-Shroud-Api-Key` header.
+
+Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per provider, e.g. `gpt-4o-mini`). Local-vault recovery: `1claw local destroy --force` / `1claw local reset`.

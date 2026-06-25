@@ -2010,26 +2010,22 @@ Usage is unified across all access methods. Whether a secret is read from the da
 
 ## Pricing
 
-Every authenticated API call counts as **one request** against your monthly tier limit. Auth, health, billing, audit, org settings, and chain listing endpoints are free and do not count.
+### Overage Rates (After Tier Limit)
 
-When you exceed your tier limit, overages are charged **per operation** at tier-discounted rates (identical for prepaid credits and x402). See the [pricing page](https://1claw.xyz/pricing) for the full table.
+Included plan requests are covered by your subscription and do not incur per-request charges. When you exceed your monthly request limit, overage charges apply at tier-discounted rates (same rates for prepaid credits and x402):
 
-### Overage rates (after tier limit)
-
-Rates match `overage_cost_cents` in `vault/src/domain/billing.rs` and the [1claw.xyz/pricing](https://1claw.xyz/pricing) x402 table.
-
-| Operation | Free | Pro | Team | Business+ |
-| --------- | ---- | --- | ---- | --------- |
+| Operation | Free | Pro | Team | Business |
+| --------- | ---- | --- | ---- | -------- |
 | Read secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Write secret | $0.0225 | $0.015 | $0.0075 | $0.004 |
 | Create share | $0.009 | $0.006 | $0.003 | $0.0015 |
 | Access shared secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
-| Transaction simulate | $0.225 | $0.15 | $0.075 | $0.04 |
-| Other API calls (`api_request`) | $0.001 | $0.0005 | $0.0002 | $0.0001 |
-| Intents API submit | 0.25% of transaction value (USD), min $0.01 — no cap | same | same | same |
+| Other API requests | $0.001 | $0.0005 | $0.0002 | $0.0001 |
 
-**Pro**, **Team**, and **Business** pay lower per-operation rates than **Free**. Exact amounts also appear in dashboard billing UI and x402 `402` responses.
+Intents API transaction submit is billed at **0.25% of transaction value (USD)**, with no cap (minimum $0.01). Simulation endpoints use the proxy transaction rate above.
+
+Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 
 ## Overage Methods
 
@@ -2302,26 +2298,26 @@ Response shape (fields vary by org and Stripe data availability):
 
 ```json
 {
-  "enabled": true,
-  "subscription_status": "active",
-  "credit_balance": {
-    "available_cents": 0,
-    "ledger_cents": 0,
-    "used_cents": 0,
-    "currency": "usd"
-  },
-  "billing_cycle_usage": {
-    "accrued_usage_cents": 0,
-    "currency": "usd",
-    "metered_lines": [
-      {
-        "description": "Metered usage",
-        "amount_cents": 0,
-        "quantity": null,
-        "price_nickname": null
-      }
-    ]
-  }
+    "enabled": true,
+    "subscription_status": "active",
+    "credit_balance": {
+        "available_cents": 0,
+        "ledger_cents": 0,
+        "used_cents": 0,
+        "currency": "usd"
+    },
+    "billing_cycle_usage": {
+        "accrued_usage_cents": 0,
+        "currency": "usd",
+        "metered_lines": [
+            {
+                "description": "Metered usage",
+                "amount_cents": 0,
+                "quantity": null,
+                "price_nickname": null
+            }
+        ]
+    }
 }
 ```
 
@@ -2451,11 +2447,21 @@ npx @1claw/cli login
 
 ## Quick start
 
+**Configure your existing AI clients** (Claude Desktop, Cursor, VS Code, …):
+
 ```bash
 1claw setup    # Login, create agent + vault + policy, configure AI clients
 ```
 
 That single command provisions everything: an agent (with Shroud + Intents API enabled), a vault, an access policy, and MCP config for all detected AI clients (Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Continue.dev, Zed).
+
+**Or spin up a self-contained agent in Docker** — one command gives you a running, vault-connected agent with a chat UI, where the container never sees your API key:
+
+```bash
+1claw init --docker --local    # Fully offline; no cloud account needed
+```
+
+Open **http://localhost:3000** and you have a live agent. See [Containerized agent runtime](#containerized-agent-runtime-init---docker) below for the full walkthrough.
 
 ## Authentication
 
@@ -2500,6 +2506,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | Area | Commands |
 | ---- | -------- |
 | **Setup** | `setup` — auto-configure AI clients with agent, vault, and policy provisioning |
+| **Containers** | `init --docker`, `containers list/info/stop/rm/logs`, `publish`, `eject`, `deploy --google-cloud` |
 | **Auth** | `login`, `logout`, `whoami`, `forgot-password`, `reset-password`, `set-password`, `change-email` |
 | **Vaults** | `vault list`, `vault create`, `vault get`, `vault link`, `vault unlink`, `vault delete` |
 | **Secrets** | `secret list`, `secret get`, `secret set`, `secret delete`, `secret rotate`, `secret describe`, `secret versions` |
@@ -2765,10 +2772,16 @@ Store secrets locally in an encrypted vault — no cloud required. AES-256-GCM w
 1claw local sync -v <vault-id>         # Push local secrets to cloud vault
 1claw local sync --pull -v <id>        # Pull cloud secrets into local vault
 1claw local status                     # Show vault info (count, sync status)
-1claw local destroy                    # Permanently delete local vault
+1claw local destroy                    # Permanently delete local vault (prompts)
+1claw local destroy --force            # Delete without confirmation
+1claw local reset                      # Alias for destroy
 ```
 
 Vault file: `~/.config/1claw/local-vault.enc` (0600 permissions, safe to back up).
+
+:::warning Forgot your passphrase?
+The vault is encrypted with a passphrase-derived key — there is **no way to recover the contents** without it. To start fresh, run `1claw local destroy --force` (no passphrase required; it also stops any daemon still holding the old vault), then `1claw local init`.
+:::
 
 ## Local daemon (secret proxy)
 
@@ -2887,6 +2900,164 @@ Point the base URL to `http://127.0.0.1:11434/v1`. The proxy accepts any `Author
 ### LLM Token Billing
 
 When your org has **LLM Token Billing** enabled (Settings → Billing), the proxy works without any provider API keys. Shroud routes through Stripe AI Gateway and bills token usage to your org automatically. See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on).
+
+## Containerized agent runtime (`init --docker`)
+
+`1claw init --docker` provisions a secure agent runtime inside a Docker container in one command. The container ships with the 1Claw MCP server and a lightweight chat UI on port 3000. The container **never receives the agent API key** — the host [daemon](#local-daemon-secret-proxy) injects credentials over a read-only Unix-socket bind mount, preserving the same trust boundary as local daemon mode.
+
+**Prerequisites:** Docker installed and running, and Node 20+. That's it — `--local` needs no cloud account.
+
+### Quickstart
+
+**1. Launch an agent (offline, no cloud account):**
+
+```bash
+1claw init --docker --local
+```
+
+You'll see the runtime come up:
+
+```text
+  1Claw — Secure Agent Runtime
+
+ℹ Local mode — no cloud account or provisioning.
+✔ Image ready: 1claw/agent:stable
+✔ Daemon running on ~/.config/1claw/daemon.sock
+✔ Container started (6debaf863c02)
+✔ Agent is healthy.
+
+✓ Agent runtime is up.
+Chat UI        http://localhost:3000
+Container      docker-agent-a3f2
+Modules        none
+Key injection  daemon (container never sees the key)
+```
+
+The first run builds the base image from bundled assets (pulls `node:20-alpine` and installs the MCP server), so it takes a minute or two. Subsequent runs reuse the cached image and start in seconds.
+
+:::note Streaming logs vs. detaching
+Without `--detach`, `init` tails the container logs and stays in the foreground (you'll see _"Streaming container logs (Ctrl+C to detach; container keeps running)"_). Press **Ctrl+C** to return to your shell — the container keeps running. Use `--detach` to start in the background immediately.
+:::
+
+**2. Open the chat UI** at [http://localhost:3000](http://localhost:3000). The header confirms the security model: _"credentials stay in the host daemon — this container never sees secret values."_
+
+:::tip Chat is wired to an LLM through Shroud (cloud mode)
+In cloud mode (anything **not** `--local`), the chat UI is connected to an LLM **through Shroud** — just type a message. The request routes via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the key); Shroud inspects the prompt and forwards it to the provider. Choose the model with `--llm-provider` / `--llm-model`. In `--local` mode there is **no LLM** (no cloud agent → no Shroud credential); only `/help`, `/secrets`, `/info`, and `/proxy` work.
+:::
+
+**3. Manage it:**
+
+```bash
+1claw containers list                  # See it running
+1claw containers logs docker-agent-a3f2 --no-follow
+1claw containers stop docker-agent-a3f2
+```
+
+### Provisioning modes
+
+```bash
+1claw init --docker                          # Cloud: provisions agent + vault + read policy
+1claw init --docker --local                  # Offline: no cloud account, local vault + daemon only
+1claw init --docker --agent-key ocv_...      # Use an existing agent key (skip provisioning)
+1claw init --docker --module=onchain         # Add a module (builds a custom image)
+1claw init --docker --port 8080 --name my-agent --detach
+1claw init --docker --list-modules           # List available modules and exit
+```
+
+When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your **local vault** — the daemon injects it toward `*.1claw.xyz`, never into the container. With `--local`, nothing touches the cloud.
+
+### Chat LLM through Shroud (+ 1Claw token billing)
+
+In cloud mode the embedded chat UI talks to an LLM through Shroud. Pick the model:
+
+```bash
+1claw init --docker --llm-provider openai    --llm-model gpt-4o-mini            # default
+1claw init --docker --llm-provider anthropic --llm-model claude-3-5-haiku-latest
+1claw init --docker --llm-provider google    --llm-model gemini-2.5-flash
+```
+
+The container never holds the agent key — the daemon injects `X-Shroud-Agent-Key` toward `shroud.1claw.xyz`, and Shroud applies your agent's inspection/redaction policy before forwarding.
+
+**Where the provider key comes from** — Shroud resolves it in this order; pick whichever fits:
+
+| Option | How | Key location |
+| ------ | --- | ------------ |
+| 1Claw Token Billing | Enable LLM Token Billing for the org (Dashboard → Billing, or `POST /v1/billing/llm-token-billing/subscribe`); Shroud routes via the Stripe AI Gateway | No provider key — billed to 1Claw |
+| 1Claw vault | `--llm-api-key <key>` (default `--llm-key-store cloud`) writes `providers/<provider>/api-key`; Shroud auto-fetches it | Your 1Claw cloud vault |
+| Local CLI vault (BYOK) | `--llm-api-key <key> --llm-key-store local`, or `--llm-api-key-secret <name>` to reuse an existing local secret; the daemon injects `X-Shroud-Api-Key` | Your local CLI vault |
+
+```bash
+1claw init --docker                                  # bill to 1Claw (enable token billing)
+1claw init --docker --llm-api-key sk-...             # store in 1Claw vault (cloud, default)
+1claw init --docker --llm-api-key sk-... --llm-key-store local   # store in local CLI vault (BYOK)
+1claw init --docker --llm-api-key-secret openai-key  # reuse an existing local secret
+```
+
+In every case the container **never receives the provider key**: it's resolved server-side by Shroud (cloud vault / token billing) or injected by the host daemon (local BYOK).
+
+:::note Token billing vs. BYOK
+A BYOK provider key (`X-Shroud-Api-Key`, either cloud-vault or local) means Shroud bills the provider directly and **does not** use 1Claw Token Billing for that request. Leave the provider key unset to let LLM Token Billing cover usage.
+:::
+
+### Modules
+
+Composable container extensions defined by `module.yaml` manifests bundled with the CLI. Dependencies are auto-resolved, conflicts detected, and layers topologically sorted.
+
+| Module | Description |
+| ------ | ----------- |
+| `ampersend` | x402 payment control layer (session keys, Base USDC) |
+| `onchain` | Multi-chain signing + Intents API tools |
+| `langchain` | LangChain / LangGraph agent runtime (Shroud-routed) |
+| `elizaos` | ElizaOS character runtime with vault-backed secrets |
+| `scaffold-agent` | Scaffold-ETH 2 dApp agent (depends on `onchain`) |
+
+When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stable` + module layers) instead of pulling the base image:
+
+```bash
+1claw init --docker --module=onchain --local --detach --name onchain-agent
+```
+
+```text
+ℹ Modules: onchain
+✔ Base image ready.
+✔ Built 1claw-custom-4b5d27ae:latest
+✔ Container started — modules: onchain  (ONCHAIN_SIGNING_ENABLED=true)
+```
+
+### Managing containers
+
+```bash
+1claw containers list                  # List managed agent containers
+1claw containers info <name>           # Show details
+1claw containers logs <name>           # Tail logs (--no-follow to print and exit)
+1claw containers stop <name>           # Stop a container
+1claw containers rm <name> [--force]   # Remove container + local state
+```
+
+Container state lives in `~/.config/1claw/containers/{name}.json` and is the source of truth for `publish`, `eject`, and `deploy`.
+
+### Publish & eject
+
+Package your customized agent into a portable image:
+
+```bash
+1claw publish --name my-agent --tag <user>/my-agent:v1   # Rebuild from base + modules, then push
+1claw publish --tag <user>/custom:latest                 # Build from ./Dockerfile in cwd
+1claw publish --name my-agent --commit --tag <user>/m:c  # Snapshot a running container (docker commit)
+1claw eject --name my-agent --output ./out               # Export Dockerfile + compose + module configs
+```
+
+`publish` rebuilds reproducibly from the base image plus your modules, tags it, and pushes to the registry (run `docker login` first for Docker Hub). `eject` writes the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (pre-wired with the daemon socket mount) so you can build and run manually.
+
+### Cloud deploy (Google Cloud Run)
+
+```bash
+1claw publish --name my-agent --tag <user>/my-agent:v1   # Image must be in a registry first
+1claw deploy --google-cloud --name my-agent              # Generate Terraform (main.tf, variables.tf, outputs.tf, terraform.tfvars)
+1claw deploy --google-cloud --name my-agent --apply      # Generate + terraform apply (needs TF_VAR_agent_api_key)
+```
+
+In cloud mode the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount — instead of the host daemon. The entrypoint detects the mode from `ONECLAW_LOCAL_VAULT` and switches automatically. Review the generated Terraform before applying; `terraform validate` passes out of the box.
 
 ## DPoP (Proof-of-Possession)
 
@@ -14003,6 +14174,30 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### CLI v0.36.0 — chat LLM through Shroud (2026-06-25)
+
+- **New:** In cloud mode, the `1claw init --docker` chat UI is now wired to an LLM **through Shroud**. Messages route via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the agent key); Shroud applies the agent's inspection/redaction policy before forwarding to the provider.
+- **New:** Three provider-key sources, all keeping the key out of the container: **1Claw LLM Token Billing** (Stripe AI Gateway — no key), **1Claw cloud vault** (`--llm-api-key`, default `--llm-key-store cloud`, stored at `providers/<provider>/api-key` and auto-fetched by Shroud), and **local CLI vault BYOK** (`--llm-api-key --llm-key-store local` or `--llm-api-key-secret <name>` — the daemon injects `X-Shroud-Api-Key`). The provisioned agent now also gets a read policy on `providers/*` so cloud-vault keys resolve.
+- **New:** `--llm-provider` (default `openai`), `--llm-model` (default per provider, e.g. `gpt-4o-mini`), `--llm-api-key`, `--llm-key-store`, and `--llm-api-key-secret` flags on `init --docker`. The daemon `/proxy` now supports injecting multiple secrets into one request.
+- **Fixed:** The container chat UI reported `mode=local` even for cloud-provisioned agents — `ONECLAW_LOCAL_VAULT=true` was baked into the base image. Mode is now passed at run time; cloud agents correctly report `mode=cloud`. `--local` mode still has no LLM (no cloud agent → no Shroud credential).
+- **Changed:** The base image carries an `org.1claw.base-version` label; `init` rebuilds a stale `1claw/agent:stable` automatically when bundled assets change. CLI version 0.35.1 → 0.36.0.
+
+### CLI v0.35.1 — local vault recovery (2026-06-25)
+
+- **New:** `1claw local destroy --force` skips the confirmation prompt, and `1claw local reset` is an alias for `destroy`. Neither requires the passphrase — this is the recovery path for a forgotten local-vault passphrase. Destroy now also stops any running daemon still holding the old vault and clears its stale socket/PID.
+- **Improved:** `1claw init --docker --local` validates an existing vault's passphrase **before** starting the daemon and, on mismatch, fails fast with explicit recovery instructions instead of a generic daemon-startup timeout. `1claw daemon start` surfaces the same recovery guidance on "wrong passphrase or corrupted vault file".
+
+### CLI v0.35.0 — containerized agent runtime (2026-06-25)
+
+- **New:** `1claw init --docker` — provisions a secure agent runtime inside a Docker container in one command (1Claw MCP server + chat UI on port 3000). The container never receives the agent API key; the host daemon injects credentials over a read-only Unix-socket bind mount.
+- **New:** Module system — `--module=ampersend,onchain` composes container extensions from bundled `module.yaml` manifests with dependency resolution, conflict detection, and topological layer ordering. Bundled modules: `ampersend`, `onchain`, `langchain`, `elizaos`, `scaffold-agent`. `--list-modules` prints the catalog.
+- **New:** `--local` flag runs fully offline (no cloud account); the base image is built from bundled assets when not already present.
+- **New:** `1claw containers list|info|stop|rm|logs` — manage CLI-created agent containers (state stored in `~/.config/1claw/containers/{name}.json`).
+- **New:** `1claw publish` — rebuild from base + modules, build from a custom `Dockerfile`, or snapshot a running container (`--commit`), then tag and push to a registry.
+- **New:** `1claw eject` — export the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (daemon socket pre-wired) for manual control.
+- **New:** `1claw deploy --google-cloud` — generate Terraform (`main.tf`, `variables.tf`, `outputs.tf`) for Cloud Run with Secret Manager key injection; `--apply` runs `terraform apply`.
+- **Changed:** CLI version bumped from 0.34.7 to 0.35.0. Added `yaml` dependency for module manifest parsing.
+
 ### CLI v0.34.7 — LLM proxy, treasury proposals, unified signing (2026-06-22)
 
 - **New:** `1claw proxy` — local OpenAI-compatible proxy that routes LLM traffic through Shroud with full inspection, secret redaction, and optional LLM Token Billing. Auto-detects provider from model name. IDE setup snippets printed on startup.
@@ -15329,10 +15524,28 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) for runnable demos:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (27 runnable demos). Highlights:
 
-- **basic/** — Vault CRUD, secrets, billing, signup, email-based sharing
-- **nextjs-agent-secret/** — AI agent with Claude accessing vault secrets via MCP tools
+| Example | What it demonstrates |
+| ------- | -------------------- |
+| [basic](https://github.com/1clawAI/1claw-examples/tree/main/basic) | Vault CRUD, secrets, billing, sharing, Intents API |
+| [langchain-agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent) | LangChain agent fetches secrets just-in-time |
+| [nextjs-agent-secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret) | Next.js chat app with server-side vault access |
+| [fastmcp-tool-server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server) | Custom MCP server with domain tools |
+| [shroud-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
+| [shroud-llm](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm) | LLM Token Billing via Stripe AI Gateway |
+| [tx-simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation) | On-chain signing with guardrails + Tenderly simulation |
+| [multi-chain-keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys) | HSM signing keys for 6 blockchains |
+| [evm-signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing) | EIP-191, EIP-712, and EIP-2718 transaction types |
+| [agentic-tx](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx) | End-to-end fund → sign → broadcast with guardrails |
+| [platform-connect](https://github.com/1clawAI/1claw-examples/tree/main/platform-connect) | Platform API bootstrap templates + user provisioning |
+| [treasury-wallets](https://github.com/1clawAI/1claw-examples/tree/main/treasury-wallets) | Multi-chain treasury wallets, balances, send |
+| [x402-payments](https://github.com/1clawAI/1claw-examples/tree/main/x402-payments) | Real x402 micropayments against 1Claw endpoints |
+| [ampersend-x402](https://github.com/1clawAI/1claw-examples/tree/main/ampersend-x402) | Ampersend smart-account x402 + MCP/HTTP clients |
+| [anthropic-wif](https://github.com/1clawAI/1claw-examples/tree/main/anthropic-wif) | OIDC federation → Anthropic Workload Identity |
+| [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
+
+Full catalog and run instructions: [examples README](https://github.com/1clawAI/1claw-examples#readme). From the monorepo: `./examples/scripts/test-all-examples.sh`.
 
 ## OpenAPI types
 
