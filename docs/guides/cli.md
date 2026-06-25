@@ -561,8 +561,25 @@ In cloud mode the embedded chat UI talks to an LLM through Shroud. Pick the mode
 
 The container never holds the agent key — the daemon injects `X-Shroud-Agent-Key` toward `shroud.1claw.xyz`, and Shroud applies your agent's inspection/redaction policy before forwarding.
 
-:::tip Bill model usage to 1Claw (no provider key)
-Enable **LLM Token Billing** for your org (Dashboard → Billing → LLM Token Billing, or `POST /v1/billing/llm-token-billing/subscribe`). Shroud then routes through the Stripe AI Gateway and bills model usage to 1Claw — you don't configure any provider API key. Without it, Shroud needs a provider key configured for your org, otherwise the chat call returns an upstream auth error.
+**Where the provider key comes from** — Shroud resolves it in this order; pick whichever fits:
+
+| Option | How | Key location |
+| ------ | --- | ------------ |
+| 1Claw Token Billing | Enable LLM Token Billing for the org (Dashboard → Billing, or `POST /v1/billing/llm-token-billing/subscribe`); Shroud routes via the Stripe AI Gateway | No provider key — billed to 1Claw |
+| 1Claw vault | `--llm-api-key <key>` (default `--llm-key-store cloud`) writes `providers/<provider>/api-key`; Shroud auto-fetches it | Your 1Claw cloud vault |
+| Local CLI vault (BYOK) | `--llm-api-key <key> --llm-key-store local`, or `--llm-api-key-secret <name>` to reuse an existing local secret; the daemon injects `X-Shroud-Api-Key` | Your local CLI vault |
+
+```bash
+1claw init --docker                                  # bill to 1Claw (enable token billing)
+1claw init --docker --llm-api-key sk-...             # store in 1Claw vault (cloud, default)
+1claw init --docker --llm-api-key sk-... --llm-key-store local   # store in local CLI vault (BYOK)
+1claw init --docker --llm-api-key-secret openai-key  # reuse an existing local secret
+```
+
+In every case the container **never receives the provider key**: it's resolved server-side by Shroud (cloud vault / token billing) or injected by the host daemon (local BYOK).
+
+:::note Token billing vs. BYOK
+A BYOK provider key (`X-Shroud-Api-Key`, either cloud-vault or local) means Shroud bills the provider directly and **does not** use 1Claw Token Billing for that request. Leave the provider key unset to let LLM Token Billing cover usage.
 :::
 
 ### Modules

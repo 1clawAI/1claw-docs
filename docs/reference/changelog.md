@@ -17,8 +17,8 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 ### CLI v0.36.0 — chat LLM through Shroud (2026-06-25)
 
 - **New:** In cloud mode, the `1claw init --docker` chat UI is now wired to an LLM **through Shroud**. Messages route via the host daemon, which injects the `X-Shroud-Agent-Key` header (the container never sees the agent key); Shroud applies the agent's inspection/redaction policy before forwarding to the provider.
-- **New:** When **LLM Token Billing** is enabled for the org, Shroud routes through the Stripe AI Gateway and bills model usage to 1Claw — no provider API key required.
-- **New:** `--llm-provider` (default `openai`) and `--llm-model` (default per provider, e.g. `gpt-4o-mini`) flags on `init --docker`.
+- **New:** Three provider-key sources, all keeping the key out of the container: **1Claw LLM Token Billing** (Stripe AI Gateway — no key), **1Claw cloud vault** (`--llm-api-key`, default `--llm-key-store cloud`, stored at `providers/<provider>/api-key` and auto-fetched by Shroud), and **local CLI vault BYOK** (`--llm-api-key --llm-key-store local` or `--llm-api-key-secret <name>` — the daemon injects `X-Shroud-Api-Key`). The provisioned agent now also gets a read policy on `providers/*` so cloud-vault keys resolve.
+- **New:** `--llm-provider` (default `openai`), `--llm-model` (default per provider, e.g. `gpt-4o-mini`), `--llm-api-key`, `--llm-key-store`, and `--llm-api-key-secret` flags on `init --docker`. The daemon `/proxy` now supports injecting multiple secrets into one request.
 - **Fixed:** The container chat UI reported `mode=local` even for cloud-provisioned agents — `ONECLAW_LOCAL_VAULT=true` was baked into the base image. Mode is now passed at run time; cloud agents correctly report `mode=cloud`. `--local` mode still has no LLM (no cloud agent → no Shroud credential).
 - **Changed:** The base image carries an `org.1claw.base-version` label; `init` rebuilds a stale `1claw/agent:stable` automatically when bundled assets change. CLI version 0.35.1 → 0.36.0.
 
