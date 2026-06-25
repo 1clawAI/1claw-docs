@@ -30,11 +30,21 @@ npx @1claw/cli login
 
 ## Quick start
 
+**Configure your existing AI clients** (Claude Desktop, Cursor, VS Code, …):
+
 ```bash
 1claw setup    # Login, create agent + vault + policy, configure AI clients
 ```
 
 That single command provisions everything: an agent (with Shroud + Intents API enabled), a vault, an access policy, and MCP config for all detected AI clients (Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Continue.dev, Zed).
+
+**Or spin up a self-contained agent in Docker** — one command gives you a running, vault-connected agent with a chat UI, where the container never sees your API key:
+
+```bash
+1claw init --docker --local    # Fully offline; no cloud account needed
+```
+
+Open **http://localhost:3000** and you have a live agent. See [Containerized agent runtime](#containerized-agent-runtime-init---docker) below for the full walkthrough.
 
 ## Authentication
 
@@ -472,15 +482,66 @@ When your org has **LLM Token Billing** enabled (Settings → Billing), the prox
 
 `1claw init --docker` provisions a secure agent runtime inside a Docker container in one command. The container ships with the 1Claw MCP server and a lightweight chat UI on port 3000. The container **never receives the agent API key** — the host [daemon](#local-daemon-secret-proxy) injects credentials over a read-only Unix-socket bind mount, preserving the same trust boundary as local daemon mode.
 
+**Prerequisites:** Docker installed and running, and Node 20+. That's it — `--local` needs no cloud account.
+
+### Quickstart
+
+**1. Launch an agent (offline, no cloud account):**
+
 ```bash
-1claw init --docker                          # Basic secure agent
-1claw init --docker --module=ampersend       # With x402 payments
-1claw init --docker --module=ampersend,onchain --port 8080
-1claw init --docker --local                  # Fully offline — no cloud account
-1claw init --docker --list-modules           # List available modules
+1claw init --docker --local
 ```
 
-When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your local vault. With `--local`, nothing touches the cloud. The base image is built from bundled assets if it isn't already present, so the flow works offline.
+You'll see the runtime come up:
+
+```text
+  1Claw — Secure Agent Runtime
+
+ℹ Local mode — no cloud account or provisioning.
+✔ Image ready: 1claw/agent:stable
+✔ Daemon running on ~/.config/1claw/daemon.sock
+✔ Container started (6debaf863c02)
+✔ Agent is healthy.
+
+✓ Agent runtime is up.
+Chat UI        http://localhost:3000
+Container      docker-agent-a3f2
+Modules        none
+Key injection  daemon (container never sees the key)
+```
+
+The first run builds the base image from bundled assets (pulls `node:20-alpine` and installs the MCP server), so it takes a minute or two. Subsequent runs reuse the cached image and start in seconds.
+
+:::note Streaming logs vs. detaching
+Without `--detach`, `init` tails the container logs and stays in the foreground (you'll see _"Streaming container logs (Ctrl+C to detach; container keeps running)"_). Press **Ctrl+C** to return to your shell — the container keeps running. Use `--detach` to start in the background immediately.
+:::
+
+**2. Open the chat UI** at [http://localhost:3000](http://localhost:3000). The header confirms the security model: _"credentials stay in the host daemon — this container never sees secret values."_
+
+:::tip Conversational replies need a model module
+The base image has the MCP server and chat UI but **no LLM**. To get model-backed chat, add a runtime module (e.g. `--module=langchain`). Without one, the chat UI still works for `/help`, `/secrets`, `/info`, and `/proxy`.
+:::
+
+**3. Manage it:**
+
+```bash
+1claw containers list                  # See it running
+1claw containers logs docker-agent-a3f2 --no-follow
+1claw containers stop docker-agent-a3f2
+```
+
+### Provisioning modes
+
+```bash
+1claw init --docker                          # Cloud: provisions agent + vault + read policy
+1claw init --docker --local                  # Offline: no cloud account, local vault + daemon only
+1claw init --docker --agent-key ocv_...      # Use an existing agent key (skip provisioning)
+1claw init --docker --module=onchain         # Add a module (builds a custom image)
+1claw init --docker --port 8080 --name my-agent --detach
+1claw init --docker --list-modules           # List available modules and exit
+```
+
+When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your **local vault** — the daemon injects it toward `*.1claw.xyz`, never into the container. With `--local`, nothing touches the cloud.
 
 ### Modules
 
@@ -494,14 +555,25 @@ Composable container extensions defined by `module.yaml` manifests bundled with 
 | `elizaos` | ElizaOS character runtime with vault-backed secrets |
 | `scaffold-agent` | Scaffold-ETH 2 dApp agent (depends on `onchain`) |
 
-When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stable` + module layers) instead of pulling the base image.
+When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stable` + module layers) instead of pulling the base image:
+
+```bash
+1claw init --docker --module=onchain --local --detach --name onchain-agent
+```
+
+```text
+ℹ Modules: onchain
+✔ Base image ready.
+✔ Built 1claw-custom-4b5d27ae:latest
+✔ Container started — modules: onchain  (ONCHAIN_SIGNING_ENABLED=true)
+```
 
 ### Managing containers
 
 ```bash
 1claw containers list                  # List managed agent containers
 1claw containers info <name>           # Show details
-1claw containers logs <name>           # Tail logs
+1claw containers logs <name>           # Tail logs (--no-follow to print and exit)
 1claw containers stop <name>           # Stop a container
 1claw containers rm <name> [--force]   # Remove container + local state
 ```
@@ -510,6 +582,8 @@ Container state lives in `~/.config/1claw/containers/{name}.json` and is the sou
 
 ### Publish & eject
 
+Package your customized agent into a portable image:
+
 ```bash
 1claw publish --name my-agent --tag <user>/my-agent:v1   # Rebuild from base + modules, then push
 1claw publish --tag <user>/custom:latest                 # Build from ./Dockerfile in cwd
@@ -517,17 +591,17 @@ Container state lives in `~/.config/1claw/containers/{name}.json` and is the sou
 1claw eject --name my-agent --output ./out               # Export Dockerfile + compose + module configs
 ```
 
-`eject` writes the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (pre-wired with the daemon socket mount) so you can build and run manually.
+`publish` rebuilds reproducibly from the base image plus your modules, tags it, and pushes to the registry (run `docker login` first for Docker Hub). `eject` writes the generated `Dockerfile`, module configs, and a `docker-compose.yaml` (pre-wired with the daemon socket mount) so you can build and run manually.
 
 ### Cloud deploy (Google Cloud Run)
 
 ```bash
 1claw publish --name my-agent --tag <user>/my-agent:v1   # Image must be in a registry first
-1claw deploy --google-cloud --name my-agent              # Generate Terraform (main.tf, variables.tf, outputs.tf)
+1claw deploy --google-cloud --name my-agent              # Generate Terraform (main.tf, variables.tf, outputs.tf, terraform.tfvars)
 1claw deploy --google-cloud --name my-agent --apply      # Generate + terraform apply (needs TF_VAR_agent_api_key)
 ```
 
-In cloud mode the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount — instead of the host daemon. The entrypoint detects the mode from `ONECLAW_LOCAL_VAULT` and switches automatically.
+In cloud mode the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount — instead of the host daemon. The entrypoint detects the mode from `ONECLAW_LOCAL_VAULT` and switches automatically. Review the generated Terraform before applying; `terraform validate` passes out of the box.
 
 ## DPoP (Proof-of-Possession)
 
