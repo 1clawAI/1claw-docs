@@ -582,19 +582,59 @@ In every case the container **never receives the provider key**: it's resolved s
 A BYOK provider key (`X-Shroud-Api-Key`, either cloud-vault or local) means Shroud bills the provider directly and **does not** use 1Claw Token Billing for that request. Leave the provider key unset to let LLM Token Billing cover usage.
 :::
 
-### Modules
+### How the container is built (architecture)
 
-Composable container extensions defined by `module.yaml` manifests bundled with the CLI. Dependencies are auto-resolved, conflicts detected, and layers topologically sorted.
+Every runtime is layered on the bundled base image `1claw/agent:stable`:
 
-| Module | Description |
-| ------ | ----------- |
-| `ampersend` | x402 payment control layer (session keys, Base USDC) |
-| `onchain` | Multi-chain signing + Intents API tools |
-| `langchain` | LangChain / LangGraph agent runtime (Shroud-routed) |
-| `elizaos` | ElizaOS character runtime with vault-backed secrets |
-| `scaffold-agent` | Scaffold-ETH 2 dApp agent (depends on `onchain`) |
+```text
+1claw/agent:stable           ← base image (bundled with the CLI, builds offline)
+ ├── node + the 1Claw MCP server (1claw-mcp)
+ ├── chat UI (zero-dependency Node server on :3000)
+ ├── entrypoint.sh            ← brokers credentials
+ └── healthcheck.sh           ← drives container health status
+        │
+        ▼  (only when --module is used)
+1claw-custom-<hash>:latest    ← FROM 1claw/agent:stable + one RUN/COPY/ENV block per module
+```
 
-When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stable` + module layers) instead of pulling the base image:
+- **Base image** is built from assets bundled with the CLI (works offline) and stamped with an `org.1claw.base-version` label. When the CLI ships new base assets, `init` rebuilds a stale `1claw/agent:stable` automatically.
+- **The entrypoint is credential-aware, not mode-aware.** It keys off the mounted daemon socket:
+  - **Socket present** (the default for `init --docker`, cloud *and* `--local`) → the host daemon brokers every credential over the read-only mount; the key never enters the container.
+  - **No socket** (a standalone deploy, e.g. Cloud Run via `1claw deploy`) → it requires `ONECLAW_AGENT_API_KEY` directly (from a Secret Manager mount).
+- **Module startup hooks.** After the credential check the entrypoint runs every executable `/app/modules/*/startup.sh`, then launches the chat UI (the health anchor) in the foreground.
+
+### Modules &amp; the template system
+
+A **module** is a composable container extension declared by a `module.yaml` manifest. Each bundled module lives in its own directory in the CLI (`src/modules/<name>/`) with any assets it copies in. When you pass `--module=<name>`, the CLI reads the manifest(s), resolves them into an ordered set, and **generates a Dockerfile**: `FROM 1claw/agent:stable` followed by one layer block per module.
+
+**Manifest schema (`module.yaml`):**
+
+| Field | Type | Becomes |
+| ----- | ---- | ------- |
+| `name` | string (required) | Module id (directory name is canonical) |
+| `version` | string (required) | Image content hash + layer comment |
+| `description` | string (required) | Shown by `--list-modules` |
+| `docker.apk` | string[] | `RUN apk add --no-cache ...` |
+| `docker.packages` | string[] | `RUN npm install -g ...` |
+| `docker.copy` | `{src,dest}[]` | `COPY modules/<name>/<src> <dest>` (`.sh` auto-`chmod +x`) |
+| `docker.env` | map | `ENV KEY=value` |
+| `docker.ports` | string[] | Documented extra ports |
+| `required_secrets` | `{path,description,optional}[]` | Secrets surfaced to the user |
+| `tools` | string[] | MCP tools advertised |
+| `depends` | string[] | Modules pulled in automatically |
+| `conflicts` | string[] | Modules that cannot be combined |
+
+**Resolution rules:** requested names load first, then `depends` recursively; the full set is checked for mutual `conflicts` (hard error); finally it is **topologically sorted** (dependencies before dependents) with **cycle detection**. The ordered `name@version` list is hashed to name the image `1claw-custom-<hash>:latest`, so identical module sets reuse the same reproducible image.
+
+| Module | Description | Depends |
+| ------ | ----------- | ------- |
+| `ampersend` | x402 payment control layer (session keys, Base USDC) | — |
+| `onchain` | Multi-chain signing + Intents API tools | — |
+| `langchain` | LangChain / LangGraph agent runtime (Shroud-routed) | — |
+| `elizaos` | ElizaOS character runtime with vault-backed secrets | — |
+| `scaffold-agent` | Scaffold-ETH 2 dApp agent | `onchain` |
+
+When modules are present, the CLI builds a custom image instead of pulling the base:
 
 ```bash
 1claw init --docker --module=onchain --local --detach --name onchain-agent
@@ -606,6 +646,38 @@ When modules are present, the CLI builds a custom image (`FROM 1claw/agent:stabl
 ✔ Built 1claw-custom-4b5d27ae:latest
 ✔ Container started — modules: onchain  (ONCHAIN_SIGNING_ENABLED=true)
 ```
+
+### Authoring a module (extending)
+
+Modules ship with the CLI, so adding one means dropping a directory into `src/modules/` (then rebuilding/publishing the CLI):
+
+```yaml
+# src/modules/my-tool/module.yaml
+name: my-tool
+version: 1.0.0
+description: My custom agent capability.
+author: you
+docker:
+  apk: [ripgrep]
+  packages: ["my-agent-sdk@latest"]
+  copy:
+    - src: startup.sh                # lives next to module.yaml
+      dest: /app/modules/my-tool/startup.sh
+  env:
+    MY_TOOL_ENABLED: "true"
+required_secrets:
+  - path: integrations/my-tool/api-key
+    description: API key (injected by the daemon at runtime)
+    optional: true
+depends: []        # e.g. [onchain] to require another module
+conflicts: []      # e.g. [other-tool] to forbid combining
+```
+
+Add any assets referenced by `copy` (e.g. `startup.sh`, run once at boot — keep secrets out of it and resolve them through the daemon at runtime), then `1claw init --docker --module=my-tool`.
+
+:::tip Don't want to modify the CLI?
+Run `1claw eject --name <agent> --output ./out` to export the generated `Dockerfile`, the module asset tree, and a `docker-compose.yaml` (daemon socket pre-wired). Edit the Dockerfile freely, then `1claw publish --context ./out --tag <user>/<image>:tag`. This is the supported path for fully custom images.
+:::
 
 ### Managing containers
 
@@ -640,7 +712,7 @@ Package your customized agent into a portable image:
 1claw deploy --google-cloud --name my-agent --apply      # Generate + terraform apply (needs TF_VAR_agent_api_key)
 ```
 
-In cloud mode the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount — instead of the host daemon. The entrypoint detects the mode from `ONECLAW_LOCAL_VAULT` and switches automatically. Review the generated Terraform before applying; `terraform validate` passes out of the box.
+In a standalone Cloud Run deploy there is no host daemon, so the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount. The entrypoint detects this automatically (no daemon socket mounted → require `ONECLAW_AGENT_API_KEY`). Review the generated Terraform before applying; `terraform validate` passes out of the box.
 
 ## DPoP (Proof-of-Possession)
 
