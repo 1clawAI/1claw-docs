@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** via `POST /v1/agents/enroll` (public, no auth). You can supply a **human's email** (if they already have a 1Claw account) or **name only** and use the returned **`approval_url`** so they approve in the browser. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
 
+:::tip Fastest path
+Wiring an AI assistant? Run [`1claw setup`](/docs/quickstart#fastest-cli-setup) — it creates the agent, vault, policy, and MCP config automatically. For API-only agents, see the [Quickstart hub](/docs/quickstart) integration table.
+:::
+
 :::tip Try it out
 Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (SDK + agent token) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent fetches secrets just-in-time).
 :::

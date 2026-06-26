@@ -11,6 +11,10 @@ import TabItem from '@theme/TabItem';
 
 This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
 
+:::tip Fastest path
+Prefer the CLI? Run [`1claw login`](/docs/guides/cli#authentication), then `1claw vault create` and `1claw secret set`. Or use [`1claw setup`](/docs/quickstart#fastest-cli-setup) to provision vault + agent + AI client MCP in one step. See the [Quickstart hub](/docs/quickstart) for all paths.
+:::
+
 :::tip Try it out
 Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault CRUD, secrets, billing, sharing, Intents API).
 :::
