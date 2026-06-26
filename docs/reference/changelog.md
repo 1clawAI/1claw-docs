@@ -14,6 +14,14 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### API v2.20.0 / SDK 0.34.2 / MCP 0.34.3 — raw digest signing + EIP-712 fixes (2026-06-26)
+
+- **New:** Raw digest signing intent on `POST /v1/agents/{id}/sign` — `intent_type: "eip712_digest"` (alias `"digest"`) signs a client-computed 32-byte `hash` directly and returns a 65-byte `r‖s‖v` signature that recovers to the agent's EOA. This unblocks **ERC-1271 / ERC-7739 nested EIP-712** flows (e.g. **Polymarket** CLOB orders) where the canonical hash is computed client-side and must match the verifier exactly, which 1Claw's own `typed_data` recomputation would otherwise diverge from.
+- **Security:** Raw digest signing is **blind signing** (no domain/transaction inspection, guardrails bypassed), so it is gated behind a new per-agent **`raw_signing_enabled`** flag — **off by default**, only a human can enable it (agents cannot self-enable), and every use is audit-logged as `signing_key.raw_digest_sign`. Surfaced as a toggle (with an explicit warning) on the dashboard agent detail page.
+- **Fixed:** EIP-712 `uintN`/`intN` encoding for `typed_data` now uses arbitrary-precision integers — decimal strings that happened to be valid hex are no longer misparsed, and values larger than `u128` are no longer silently encoded as zero. Negative `intN` values use correct two's-complement.
+- **New:** Platform bootstrap templates accept `provision_eoa: true` per agent — generates a standalone secp256k1 EOA for the agent (returned as `agent_evm_address` in the bootstrap summary) so platform-provisioned agents can deploy/operate ERC-4337 smart accounts client-side without a Pro+ treasury-wallet flow.
+- **MCP:** New `sign_digest` tool wraps the `eip712_digest` intent. **SDK:** `signIntent` accepts `intent_type: "eip712_digest"` + `hash`; `AgentResponse`/`UpdateAgentRequest` expose `raw_signing_enabled`.
+
 ### CLI v0.36.2 — fix cloud-mode container startup + start/restart for `init --docker` (2026-06-25)
 
 - **Fixed:** `1claw init --docker` (cloud mode) started the container but the entrypoint exited immediately with `ERROR: ONECLAW_AGENT_API_KEY is not set (cloud mode)` and looped on restart. The container is **designed never to receive the agent API key** — the host daemon brokers credentials over the mounted Unix socket — so requiring the key directly was wrong for this flow. The entrypoint now detects the mounted daemon socket and brokers all credentials through it (cloud **and** local). A direct `ONECLAW_AGENT_API_KEY` is only required for standalone deploys with no daemon socket (e.g. Cloud Run via `1claw deploy`).

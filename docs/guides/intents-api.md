@@ -600,6 +600,34 @@ console.log(data.signature, data.typed_data_hash, data.from);
 </TabItem>
 </Tabs>
 
+### Raw digest signing (ERC-1271 / ERC-7739) {#eip712-digest}
+
+Some protocols compute a **canonical** EIP-712 digest client-side — notably **ERC-1271 / ERC-7739 nested `TypedDataSign`** payloads used by smart-contract accounts (e.g. **Polymarket** CLOB orders). For these, re-deriving the hash server-side from `typed_data` can diverge from the verifier's expected hash and cause the signature to be rejected. The `eip712_digest` intent signs a pre-computed 32-byte digest **directly**, returning a 65-byte `r‖s‖v` signature that recovers to the agent's EOA.
+
+:::warning Blind signing
+`eip712_digest` is **blind signing**: 1Claw cannot inspect what the digest authorizes, so transaction guardrails are bypassed. It is gated behind the per-agent **`raw_signing_enabled`** flag (off by default — a human must enable it; agents cannot self-enable), and every use is audit-logged as `signing_key.raw_digest_sign`. Only enable it for agents that genuinely need ERC-1271/ERC-7739 flows.
+:::
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent_type": "eip712_digest",
+    "chain": "ethereum",
+    "hash": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+  }'
+```
+
+```typescript
+const { data } = await client.agents.sign(agentId, {
+  intent_type: "eip712_digest",
+  chain: "ethereum",
+  hash: "0x59c6...690d", // client-computed canonical 32-byte digest
+});
+console.log(data.signature, data.from);
+```
+
 ### Transaction types (EIP-2718) {#tx-types}
 
 The unified sign endpoint supports all EIP-2718 envelope types via the `tx_type` field:
@@ -632,6 +660,7 @@ const { data } = await client.agents.sign(agentId, {
 | `message_signing_enabled` | `boolean` | Must be `true` for EIP-191 personal_sign (default: `false`). |
 | `eip712_default_policy` | `"deny"` \| `"allow"` | Default policy for EIP-712 domains not in the allowlist (default: `"deny"`). |
 | `eip712_domain_allowlist` | `JSON[]` | List of allowed domains, e.g. `[{"verifying_contract": "0xA0b..."}]`. Known dangerous types (Permit, Permit2) always require explicit allowlisting. |
+| `raw_signing_enabled` | `boolean` | Must be `true` for the `eip712_digest` (raw/blind digest) intent (default: `false`). Human-set only; agents cannot enable it. |
 
 ---
 
@@ -712,6 +741,14 @@ Tool: sign_typed_data
 Args:
   chain: "ethereum"
   typed_data: { types: {...}, primaryType: "Permit", domain: {...}, message: {...} }
+```
+
+**`sign_digest`** — sign a client-computed 32-byte digest directly (raw/blind signing; requires `raw_signing_enabled`). For ERC-1271 / ERC-7739 nested EIP-712 flows (e.g. Polymarket):
+```
+Tool: sign_digest
+Args:
+  chain: "ethereum"
+  hash: "0x59c6...690d"   // canonical 32-byte digest computed client-side
 ```
 
 ---

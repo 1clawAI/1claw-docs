@@ -437,6 +437,35 @@ Agent: "Sign this Permit for USDC approval"
 
 ---
 
+## sign_digest
+
+Sign a client-computed 32-byte digest **directly** (raw/blind signing). Returns a 65-byte `r‖s‖v` signature that recovers to the agent's EOA. Use this for **ERC-1271 / ERC-7739** nested EIP-712 flows (e.g. **Polymarket** CLOB orders) where the canonical hash is computed client-side and must match the verifier exactly.
+
+:::warning Blind signing
+No domain/transaction inspection is performed and guardrails are bypassed. The agent must have **`raw_signing_enabled: true`** (set by a human; agents cannot self-enable) or the call returns 403. Every use is audit-logged as `signing_key.raw_digest_sign`.
+:::
+
+### Parameters
+
+| Name    | Type   | Required | Description                                          |
+| ------- | ------ | -------- | ---------------------------------------------------- |
+| `chain` | string | Yes      | Chain name (e.g. `ethereum`)                         |
+| `hash`  | string | Yes      | 0x-prefixed 32-byte (64 hex char) digest to sign     |
+
+### Example
+
+```
+Agent: "Sign this Polymarket order digest"
+→ sign_digest(chain: "ethereum", hash: "0x59c6...690d")
+
+{
+  "signature": "0x3046...",
+  "from": "0x1234..."
+}
+```
+
+---
+
 ## submit_transaction
 
 Sign and broadcast a transaction. Optionally simulate first via Tenderly.
