@@ -388,11 +388,15 @@ Per [RFC 8252 §7.3](https://datatracker.ietf.org/doc/html/rfc8252#section-7.3),
 
 1. Your app redirects users to:
    ```
-   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&scope=link&state=RANDOM
+   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=link&state=RANDOM
    ```
 2. The user sees the 1Claw consent page and approves.
 3. 1Claw redirects back to your `redirect_uri` with an authorization `code`.
 4. Your backend exchanges the code for tokens via `POST /v1/oauth/token`.
+
+:::warning client_id is your app slug, not the UUID
+The `client_id` parameter must be your platform app's **slug** (e.g. `cubeverse`), not the app UUID. You set the slug when creating the app. If you pass the UUID, you'll get "Unknown client_id". Find your slug in the dashboard at Platform → your app → Details.
+:::
 
 ### Cross-Org User Linking
 
