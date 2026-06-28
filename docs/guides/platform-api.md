@@ -347,6 +347,71 @@ A complete template for a DeFi trading platform with Shroud inspection, Intents 
 
 ---
 
+## Redirect URIs & "Sign in with 1Claw"
+
+If your platform app uses the OAuth consent flow ("Sign in with 1Claw"), you need to register allowed redirect URIs. These are the URLs that 1Claw will redirect users back to after login/consent.
+
+### Adding Redirect URIs
+
+**Dashboard:** Go to **Platform** → your app → **Settings** tab → **Redirect URIs** section. Add each callback URL (e.g. `https://myapp.com/callback`).
+
+**API:**
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "redirect_uris": [
+      "https://myapp.com/callback",
+      "http://localhost:3000/callback"
+    ]
+  }'
+```
+
+**SDK:**
+
+```typescript
+await client.platform.updateApp(appId, {
+  redirect_uris: [
+    "https://myapp.com/callback",
+    "http://localhost:3000/callback",
+  ],
+});
+```
+
+:::tip localhost is allowed
+Per [RFC 8252 §7.3](https://datatracker.ietf.org/doc/html/rfc8252#section-7.3), `http://localhost` (any port) is allowed for development. No HTTPS required for loopback addresses.
+:::
+
+### OAuth Flow
+
+1. Your app redirects users to:
+   ```
+   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&scope=link&state=RANDOM
+   ```
+2. The user sees the 1Claw consent page and approves.
+3. 1Claw redirects back to your `redirect_uri` with an authorization `code`.
+4. Your backend exchanges the code for tokens via `POST /v1/oauth/token`.
+
+### Cross-Org User Linking
+
+When you call `POST /v1/platform/users/upsert` and the user already exists in a *different* organization, the API returns `409 Conflict` with a `link_required` response:
+
+```json
+{
+  "link_required": {
+    "consent_url": "https://1claw.xyz/oauth/authorize?client_id=your-slug&scope=link&login_hint=user@example.com",
+    "user_email": "user@example.com",
+    "message": "User exists in a different organization. Redirect them to consent_url to link."
+  }
+}
+```
+
+Redirect the user to `consent_url`. After they consent, a cross-org connection is created and subsequent `upsert` calls will succeed.
+
+---
+
 ## Auth Modes
 
 Set `auth_mode` when creating your platform app:
