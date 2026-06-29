@@ -86,6 +86,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 | `list_signing_keys` | List all active signing keys for the current agent                 | Read       |
 | `sign_message`     | Sign an EIP-191 personal message                                    | Write      |
 | `sign_typed_data`  | Sign EIP-712 typed structured data                                  | Write      |
+| `sign_digest`      | Sign a raw 32-byte digest (blind signing, requires `raw_signing_enabled`) | Write |
 | `lease_bankr_key`  | Lease a short-lived Bankr wallet API key                            | Write      |
 | `platform_list_apps` | List platform apps in the organization                            | Read       |
 | `platform_create_app` | Register a new platform app                                      | Write      |

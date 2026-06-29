@@ -1,264 +1,140 @@
+---
+title: Bankr Key Vending
+description: Dynamic key vending for short-lived Bankr wallet API keys — deny-by-default, policy-gated, no secret in tool output.
+sidebar_position: 16
+---
+
 # Bankr Dynamic Key Vending
 
-1Claw can act as a **dynamic secrets engine** for [Bankr](https://bankr.bot): store a long-lived partner key in the vault secure zone, then programmatically issue and destroy short-lived Bankr wallet API keys scoped to each agent's session.
+The Bankr key vending system issues short-lived `bk_usr_` API keys to agents on demand, replacing static `put_secret` patterns. The partner key (`bk_ptr_`) is stored server-side; the vault issues scoped, TTL-bound user keys. This is the recommended pattern for Bankr wallet access.
 
-## Overview
+:::tip Security model
+- **Deny-by-default:** Agents need an explicit policy on `agents/{id}/bankr/*` in `__agent-keys` vault with `write` permission.
+- **No secret in output:** Agent lease responses and MCP `lease_bankr_key` omit the `bk_usr_` key value — Shroud resolves it server-side.
+- **Short TTL:** Recommend 5–15 min for autonomous agents; max 86400s (24h).
+:::
 
-```
-┌─────────┐            ┌──────────────────┐          ┌─────────────┐
-│  Agent  │ ─ lease ─▶ │   1Claw Vault    │ ─ POST ─▶│ Bankr API   │
-│         │ ◀ metadata │ (org partner key │ ◀── key ─│             │
-│         │            │  encrypted)      │          │             │
-│         │            └──────────────────┘          └─────────────┘
-│         │                    │
-│         │ ─ LLM request ─▶  │ (Shroud auto-resolves leased key)
-└─────────┘            ┌──────────────────┐
-                       │  Shroud TEE      │
-                       └──────────────────┘
-```
+## Setup
 
-**Key properties:**
+### 1. Configure Your Org's Bankr Partner Key
 
-- Partner key (`bk_ptr_`) never leaves the vault — agents never receive it in API or MCP responses.
-- Leased `bk_usr_` keys are stored in `__agent-keys` for Shroud; **agent callers do not get `api_key` in the lease response** (secret output protection).
-- Leased keys are time-limited and scoped (LLM Gateway only by default).
-- Automatic revocation on agent delete, deactivation, or TTL expiry.
-- Max 5 concurrent leases per agent.
+Store your `bk_ptr_` partner key via the dashboard or API:
 
-## Permission model (deny-by-default)
+**Dashboard:** Settings → Bankr → enter your partner key + default wallet ID.
 
-Bankr key leasing is a **privileged action**. Agents have **zero access by default** — same as all 1Claw secrets.
-
-| Caller | Requirement |
-|--------|-------------|
-| **Agent** | Explicit access policy on the org's `__agent-keys` vault granting `write` on `agents/{agent_id}/bankr/*`. JWT scope must match `agents/{agent_id}/bankr/lease`. Agent may only lease for **its own** `agent_id`. |
-| **Human** | Org membership; agent must belong to caller's org. Receives `api_key` once in the lease response (for CI/dashboard use). |
-
-Without a matching policy, agent lease requests return **403**.
-
-### Least-privilege policy example
-
-Grant lease access only — not broad `__agent-keys` read:
-
-```json
-POST /v1/vaults/{agent_keys_vault_id}/policies
-{
-  "principal_type": "agent",
-  "principal_id": "550e8400-e29b-41d4-a716-446655440000",
-  "secret_path_pattern": "agents/550e8400-e29b-41d4-a716-446655440000/bankr/*",
-  "permissions": ["write"]
-}
-```
-
-Resolve `agent_keys_vault_id` via `GET /v1/org/agent-keys-vault`.
-
-After creating or changing policies, **re-exchange the agent token** so JWT scopes include the new path pattern.
-
-### Approval-gated access (recommended for production)
-
-For high-risk agents, do not grant the policy directly. Have the agent request human approval first:
-
-```json
-POST /v1/approvals/request
-{
-  "action": "policy_change",
-  "target_type": "agent",
-  "target_id": "550e8400-e29b-41d4-a716-446655440000",
-  "summary": "{\"vault_id\":\"...\",\"principal_type\":\"agent\",\"principal_id\":\"550e8400-e29b-41d4-a716-446655440000\",\"secret_path_pattern\":\"agents/550e8400-e29b-41d4-a716-446655440000/bankr/*\",\"permissions\":[\"write\"]}",
-  "reason": "Need short-lived Bankr LLM access for one task",
-  "risk_tier": 2
-}
-```
-
-When the human approves, the policy is applied automatically. Revoke the policy (or the lease) when the task completes.
-
-## TTL guidance
-
-| Context | Recommended TTL | Notes |
-|---------|-----------------|-------|
-| Autonomous / public agents | **5–15 minutes** (300–900 s) | Default **15 min** when an agent omits `ttl_seconds` |
-| Human / CI one-off | 15–60 minutes | Set explicitly via `--ttl` or request body |
-| Long-running batch jobs | Up to 24 hours | Hard cap; prefer revoke-after-task |
-
-**Revoke-after-task pattern:** lease → use Shroud (`X-Shroud-Provider: bankr`) → `DELETE .../bankr-keys/{lease_id}` when done. Do not rely on TTL alone for sensitive workflows.
-
-## Secret output handling
-
-- **REST / MCP (agent JWT):** Response includes `lease_id`, `wallet_id`, `expires_at` only — **no `api_key`**.
-- **REST (human JWT):** Response includes `api_key` once; treat like any other secret (do not log, paste into chat, or store in prompts).
-- **MCP `lease_bankr_key`:** Tool output never includes the key; use Shroud for LLM traffic or list/revoke by lease ID.
-
-## Configuration
-
-### Per-organization (BYOK — recommended)
-
-Each 1Claw org stores **its own** Bankr partner credentials. The partner key is encrypted at rest and never returned by the API after save.
-
-**Dashboard:** Settings → Bankr — paste your `bk_ptr_...` partner key and optional default `wlt_...` wallet ID.
-
-**API (owner/admin only):**
+**API:**
 
 ```bash
-# Save org credentials
-curl -X PUT https://api.1claw.xyz/v1/org/bankr-config \
-  -H "Authorization: Bearer $USER_TOKEN" \
+curl -X PUT "https://api.1claw.xyz/v1/org/bankr-config" \
+  -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{
-    "partner_key": "bk_ptr_...",
-    "default_wallet_id": "wlt_..."
-  }'
-
-# Check status (prefix only — no secret)
-curl https://api.1claw.xyz/v1/org/bankr-config \
-  -H "Authorization: Bearer $USER_TOKEN"
-```
-
-**SDK:** `client.org.getBankrConfig()`, `client.org.setBankrConfig({ partner_key, default_wallet_id })`, `client.org.deleteBankrConfig()`.
-
-Obtain partner keys from the [Bankr partner dashboard](https://docs.bankr.bot/partnership/api-keys) (`bk_ptr_<keyId>_<secret>`). Apply for partner access at [bankr.bot/partner](https://bankr.bot/partner) if needed.
-
-### Deployment fallback (self-hosted operators only)
-
-Optional global fallback on the Vault service. **Off by default** in multi-tenant SaaS — do not set `BANKR_PARTNER_KEY` on `api.1claw.xyz`. Use only when you intentionally run a single-tenant or self-hosted deployment where all orgs share one Bankr partner account.
-
-| Rule | Behavior |
-| --- | --- |
-| Precedence | Org BYOK always wins when configured (`credential_source: org_byok`) |
-| Fallback | Used only when org has no BYOK and `BANKR_PARTNER_KEY` is set (`credential_source: platform_fallback`) |
-| Opt-in | Treat fallback as an explicit operator choice — not for shared multi-tenant environments |
-| Audit | Each `bankr_key.leased` event includes `credential_source` |
-| Alerting | Production Vault (`hsm_provider=gcp`) emits a warning log when fallback is used — monitor in prod |
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `BANKR_PARTNER_KEY` | Platform Bankr partner key (`bk_ptr_...`) | No (BYOK per org) |
-| `BANKR_DEFAULT_WALLET_ID` | Default wallet ID (`wlt_...`) when org has no default | No |
-| `BANKR_DEFAULT_LEASE_TTL_SECS` | Default TTL for **human** callers when omitted (default: 3600) | No |
-
-## API Endpoints
-
-### Lease a key
-
-```bash
-curl -X POST https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys/lease \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ttl_seconds": 600,
-    "permissions": {
-      "llm_gateway_enabled": true,
-      "agent_api_enabled": false,
-      "read_only": true
-    }
+    "partner_key": "bk_ptr_YOUR_KEY",
+    "default_wallet_id": "wlt_YOUR_WALLET"
   }'
 ```
 
-**Agent response (no secret):**
-
-```json
-{
-  "lease_id": "550e8400-e29b-41d4-a716-446655440000",
-  "wallet_id": "wlt_abc123",
-  "expires_at": "2026-06-05T18:10:00Z"
-}
-```
-
-**Human response (includes key once):**
-
-```json
-{
-  "lease_id": "550e8400-e29b-41d4-a716-446655440000",
-  "api_key": "bk_usr_abc12345_xxxxxxxxxxx",
-  "wallet_id": "wlt_abc123",
-  "expires_at": "2026-06-05T18:10:00Z"
-}
-```
-
-### List active leases
-
-```bash
-curl https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Revoke a lease
-
-```bash
-curl -X DELETE https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys/{lease_id} \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## SDK Usage
+**SDK:**
 
 ```typescript
-import { OneclawClient } from "@1claw/sdk";
-
-const client = new OneclawClient({ apiKey: "ocv_..." }); // agent key
-
-const { data: lease } = await client.agents.leaseBankrKey(agentId, {
-  ttl_seconds: 600,
-  permissions: { llm_gateway_enabled: true, agent_api_enabled: false, read_only: true },
+await client.org.setBankrConfig({
+  partner_key: "bk_ptr_YOUR_KEY",
+  default_wallet_id: "wlt_YOUR_WALLET",
 });
-
-// Agent: lease.api_key is undefined — use Shroud
-console.log(lease.lease_id, lease.expires_at);
-
-await client.agents.revokeBankrKey(agentId, lease.lease_id);
 ```
 
-## CLI Usage
+The partner key is encrypted at rest (AES-256-GCM + org_id AAD).
+
+### 2. Grant Agent Access
+
+Create a policy allowing your agent to lease keys:
 
 ```bash
-# Lease (human token; default TTL 15 min)
-1claw agent bankr-key lease <agent-id> --ttl 600
-
-1claw agent bankr-key list <agent-id>
-1claw agent bankr-key revoke <agent-id> <lease-id>
+curl -X POST "https://api.1claw.xyz/v1/vaults/AGENT_KEYS_VAULT_ID/policies" \
+  -H "Authorization: Bearer YOUR_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "principal_type": "agent",
+    "principal_id": "YOUR_AGENT_ID",
+    "secret_path_pattern": "agents/YOUR_AGENT_ID/bankr/*",
+    "permissions": ["write"]
+  }'
 ```
+
+The `__agent-keys` vault ID can be found via `GET /v1/org/agent-keys-vault`.
+
+### 3. Agent Leases a Key
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_ID/bankr-keys/lease" \
+  -H "Authorization: Bearer AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "ttl": 600 }'
+```
+
+Response (agent callers do NOT receive `api_key`):
+
+```json
+{
+  "lease_id": "a1b2c3d4-...",
+  "wallet_id": "wlt_default",
+  "expires_at": "2026-06-29T10:10:00Z"
+}
+```
+
+### 4. Shroud Resolves the Key
+
+When the agent makes requests with `X-Shroud-Provider: bankr`, Shroud looks up the latest active leased key from `__agent-keys` at `agents/{id}/bankr/{lease_id}` and injects it automatically.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/agents/{id}/bankr-keys/lease` | Lease a new key (max 5 concurrent per agent) |
+| `GET` | `/v1/agents/{id}/bankr-keys` | List active leases |
+| `DELETE` | `/v1/agents/{id}/bankr-keys/{lease_id}` | Revoke a lease early |
 
 ## MCP Tool
 
-`lease_bankr_key` is **privileged** and **deny-by-default** (requires policy on `agents/{id}/bankr/*`). It does **not** return the `bk_usr_` key in tool output.
+The `lease_bankr_key` tool is available in the MCP server. It is **privileged** — it never returns the `bk_usr_` key in the tool output to prevent accidental exfiltration.
 
-```json
-{
-  "tool": "lease_bankr_key",
-  "arguments": {
-    "ttl_seconds": 600,
-    "llm_gateway_enabled": true,
-    "agent_api_enabled": false,
-    "read_only": true
-  }
-}
+```
+Agent: "I need a Bankr API key to check wallet balances"
+→ lease_bankr_key(ttl: 600)
+
+Bankr key leased:
+  Lease ID: a1b2c3d4-...
+  Expires in: 600s
+  Wallet ID: wlt_default
 ```
 
-After leasing, route LLM traffic through Shroud with `X-Shroud-Provider: bankr`. Revoke the lease when the task completes.
+## SDK / CLI
 
-## Shroud Integration
+**SDK:**
 
-When an agent sends LLM traffic through Shroud with `X-Shroud-Provider: bankr`, Shroud automatically resolves the latest active leased key. No `get_secret` or tool output handling required.
+```typescript
+const lease = await client.agents.leaseBankrKey(agentId, { ttl: 600 });
+const leases = await client.agents.listBankrKeys(agentId);
+await client.agents.revokeBankrKey(agentId, leaseId);
+```
 
-Fallback order:
+**CLI:**
 
-1. Active Bankr key lease (newest first)
-2. Static key at `providers/bankr/api-key` in the agent's vault
-3. Agent-supplied `X-Shroud-Api-Key` header
+```bash
+1claw agent bankr-key lease --ttl 600
+1claw agent bankr-key list
+1claw agent bankr-key revoke LEASE_ID
+```
 
-## Lifecycle & Security
+## Lifecycle
 
-| Event | Action |
-|-------|--------|
-| Agent deleted | All active leases revoked via Bankr API |
-| Agent deactivated (`is_active: false`) | All active leases revoked |
-| Lease TTL expires | Nightly sweep marks as revoked |
-| Max leases (5) reached | New lease request returns 400 |
+- Keys are automatically revoked when an agent is deleted or deactivated.
+- A nightly sweep revokes expired leases via the Bankr DELETE API.
+- Maximum 5 concurrent leases per agent.
 
-All lease/revoke operations are audit-logged as `bankr_key.leased` and `bankr_key.revoked` (never logs secret values).
+## Best Practices
 
-## Dashboard
-
-The agent detail page shows a **Bankr Keys** card with:
-
-- Table of active leases (ID, wallet, key ID, expiry)
-- "Lease Key" button for one-click provisioning (human session; key shown once if returned)
-- Per-lease "Revoke" action
+1. **Use the shortest TTL practical** — 5–15 min for autonomous task execution.
+2. **Revoke after task completion** — don't let leases expire naturally if the task is done.
+3. **Monitor via audit log** — events `bankr_key.leased` and `bankr_key.revoked` are recorded (never logs secret values).
+4. **Prefer over static secrets** — dynamic vending with short TTL is safer than storing a static Bankr key in a vault path.

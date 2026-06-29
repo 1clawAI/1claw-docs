@@ -14,6 +14,14 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### API v2.20.1 / SDK 0.34.3 / CLI 0.36.4 — OAuth branding + redirect URI validation (2026-06-29)
+
+- **New:** Platform apps can configure a `logo_url` for branding on OAuth login and consent pages. When a user visits the "Sign in with 1Claw" flow, the app's logo and name are shown. Set via Dashboard (Platform → app → Settings → App Branding) or `PATCH /v1/platform/apps/{id}`.
+- **New:** Public branding endpoint `GET /v1/platform/apps/by-slug/{slug}/branding` — returns `{ name, logo_url, slug }` without authentication.
+- **New:** Dedicated `validate_redirect_uri()` function for OAuth redirect URIs allows `http://localhost` and `http://127.0.0.1` per RFC 8252 §7.3 (native/dev clients). Cloud metadata and non-loopback private IPs remain blocked.
+- **Dashboard:** Platform app detail page has a "Redirect URIs" editor in the Settings tab. Login and consent pages show app branding (logo + name) when the OAuth `client_id` query parameter is present.
+- **Docs:** Updated Platform API guide with redirect URI management instructions and a warning that `client_id` must be the app **slug** (not UUID).
+
 ### API v2.20.0 / SDK 0.34.2 / MCP 0.34.3 — raw digest signing + EIP-712 fixes (2026-06-26)
 
 - **New:** Raw digest signing intent on `POST /v1/agents/{id}/sign` — `intent_type: "eip712_digest"` (alias `"digest"`) signs a client-computed 32-byte `hash` directly and returns a 65-byte `r‖s‖v` signature that recovers to the agent's EOA. This unblocks **ERC-1271 / ERC-7739 nested EIP-712** flows (e.g. **Polymarket** CLOB orders) where the canonical hash is computed client-side and must match the verifier exactly, which 1Claw's own `typed_data` recomputation would otherwise diverge from.
@@ -69,7 +77,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** `1claw treasury send` and `1claw treasury swap` — send native/ERC-20 tokens and swap via 0x from CLI.
 - **New:** `1claw treasury balance` — query native + ERC-20 token balances.
 - **New:** DPoP support — `ONECLAW_DPOP=true` env var enables RFC 9449 proof-of-possession. Keypair persisted at `~/.config/1claw/dpop-key.json`.
-- **Updated:** MCP tools expanded to 36 tools (added platform_reissue_claim, platform_rotate_key, list_approvals, get_approval, request_approval, treasury_propose, treasury_sign_proposal, treasury_list_proposals).
+- **Updated:** MCP tools expanded to 37 tools (added platform_reissue_claim, platform_rotate_key, list_approvals, get_approval, request_approval, treasury_propose, treasury_sign_proposal, treasury_list_proposals, sign_digest).
 - **Updated:** MCP auth simplified — `ONECLAW_AGENT_API_KEY` alone is sufficient (agent ID and vault auto-discovered via prefix lookup).
 - **Changed:** CLI version bumped from 0.34.2 to 0.34.7. SDK 0.34.1. MCP 0.34.1.
 

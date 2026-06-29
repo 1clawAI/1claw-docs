@@ -1386,270 +1386,146 @@ The TypeScript SDK supports an `AuditSink` plugin interface for forwarding audit
 
 ## Bankr Dynamic Key Vending
 
+---
+title: Bankr Key Vending
+description: Dynamic key vending for short-lived Bankr wallet API keys — deny-by-default, policy-gated, no secret in tool output.
+sidebar_position: 16
+---
+
 # Bankr Dynamic Key Vending
 
-1Claw can act as a **dynamic secrets engine** for [Bankr](https://bankr.bot): store a long-lived partner key in the vault secure zone, then programmatically issue and destroy short-lived Bankr wallet API keys scoped to each agent's session.
+The Bankr key vending system issues short-lived `bk_usr_` API keys to agents on demand, replacing static `put_secret` patterns. The partner key (`bk_ptr_`) is stored server-side; the vault issues scoped, TTL-bound user keys. This is the recommended pattern for Bankr wallet access.
 
-## Overview
+:::tip Security model
+- **Deny-by-default:** Agents need an explicit policy on `agents/{id}/bankr/*` in `__agent-keys` vault with `write` permission.
+- **No secret in output:** Agent lease responses and MCP `lease_bankr_key` omit the `bk_usr_` key value — Shroud resolves it server-side.
+- **Short TTL:** Recommend 5–15 min for autonomous agents; max 86400s (24h).
+:::
 
-```
-┌─────────┐            ┌──────────────────┐          ┌─────────────┐
-│  Agent  │ ─ lease ─▶ │   1Claw Vault    │ ─ POST ─▶│ Bankr API   │
-│         │ ◀ metadata │ (org partner key │ ◀── key ─│             │
-│         │            │  encrypted)      │          │             │
-│         │            └──────────────────┘          └─────────────┘
-│         │                    │
-│         │ ─ LLM request ─▶  │ (Shroud auto-resolves leased key)
-└─────────┘            ┌──────────────────┐
-                       │  Shroud TEE      │
-                       └──────────────────┘
-```
+## Setup
 
-**Key properties:**
+### 1. Configure Your Org's Bankr Partner Key
 
-- Partner key (`bk_ptr_`) never leaves the vault — agents never receive it in API or MCP responses.
-- Leased `bk_usr_` keys are stored in `__agent-keys` for Shroud; **agent callers do not get `api_key` in the lease response** (secret output protection).
-- Leased keys are time-limited and scoped (LLM Gateway only by default).
-- Automatic revocation on agent delete, deactivation, or TTL expiry.
-- Max 5 concurrent leases per agent.
+Store your `bk_ptr_` partner key via the dashboard or API:
 
-## Permission model (deny-by-default)
+**Dashboard:** Settings → Bankr → enter your partner key + default wallet ID.
 
-Bankr key leasing is a **privileged action**. Agents have **zero access by default** — same as all 1Claw secrets.
-
-| Caller | Requirement |
-|--------|-------------|
-| **Agent** | Explicit access policy on the org's `__agent-keys` vault granting `write` on `agents/{agent_id}/bankr/*`. JWT scope must match `agents/{agent_id}/bankr/lease`. Agent may only lease for **its own** `agent_id`. |
-| **Human** | Org membership; agent must belong to caller's org. Receives `api_key` once in the lease response (for CI/dashboard use). |
-
-Without a matching policy, agent lease requests return **403**.
-
-### Least-privilege policy example
-
-Grant lease access only — not broad `__agent-keys` read:
-
-```json
-POST /v1/vaults/{agent_keys_vault_id}/policies
-{
-  "principal_type": "agent",
-  "principal_id": "550e8400-e29b-41d4-a716-446655440000",
-  "secret_path_pattern": "agents/550e8400-e29b-41d4-a716-446655440000/bankr/*",
-  "permissions": ["write"]
-}
-```
-
-Resolve `agent_keys_vault_id` via `GET /v1/org/agent-keys-vault`.
-
-After creating or changing policies, **re-exchange the agent token** so JWT scopes include the new path pattern.
-
-### Approval-gated access (recommended for production)
-
-For high-risk agents, do not grant the policy directly. Have the agent request human approval first:
-
-```json
-POST /v1/approvals/request
-{
-  "action": "policy_change",
-  "target_type": "agent",
-  "target_id": "550e8400-e29b-41d4-a716-446655440000",
-  "summary": "{\"vault_id\":\"...\",\"principal_type\":\"agent\",\"principal_id\":\"550e8400-e29b-41d4-a716-446655440000\",\"secret_path_pattern\":\"agents/550e8400-e29b-41d4-a716-446655440000/bankr/*\",\"permissions\":[\"write\"]}",
-  "reason": "Need short-lived Bankr LLM access for one task",
-  "risk_tier": 2
-}
-```
-
-When the human approves, the policy is applied automatically. Revoke the policy (or the lease) when the task completes.
-
-## TTL guidance
-
-| Context | Recommended TTL | Notes |
-|---------|-----------------|-------|
-| Autonomous / public agents | **5–15 minutes** (300–900 s) | Default **15 min** when an agent omits `ttl_seconds` |
-| Human / CI one-off | 15–60 minutes | Set explicitly via `--ttl` or request body |
-| Long-running batch jobs | Up to 24 hours | Hard cap; prefer revoke-after-task |
-
-**Revoke-after-task pattern:** lease → use Shroud (`X-Shroud-Provider: bankr`) → `DELETE .../bankr-keys/{lease_id}` when done. Do not rely on TTL alone for sensitive workflows.
-
-## Secret output handling
-
-- **REST / MCP (agent JWT):** Response includes `lease_id`, `wallet_id`, `expires_at` only — **no `api_key`**.
-- **REST (human JWT):** Response includes `api_key` once; treat like any other secret (do not log, paste into chat, or store in prompts).
-- **MCP `lease_bankr_key`:** Tool output never includes the key; use Shroud for LLM traffic or list/revoke by lease ID.
-
-## Configuration
-
-### Per-organization (BYOK — recommended)
-
-Each 1Claw org stores **its own** Bankr partner credentials. The partner key is encrypted at rest and never returned by the API after save.
-
-**Dashboard:** Settings → Bankr — paste your `bk_ptr_...` partner key and optional default `wlt_...` wallet ID.
-
-**API (owner/admin only):**
+**API:**
 
 ```bash
-# Save org credentials
-curl -X PUT https://api.1claw.xyz/v1/org/bankr-config \
-  -H "Authorization: Bearer $USER_TOKEN" \
+curl -X PUT "https://api.1claw.xyz/v1/org/bankr-config" \
+  -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{
-    "partner_key": "bk_ptr_...",
-    "default_wallet_id": "wlt_..."
-  }'
-
-# Check status (prefix only — no secret)
-curl https://api.1claw.xyz/v1/org/bankr-config \
-  -H "Authorization: Bearer $USER_TOKEN"
-```
-
-**SDK:** `client.org.getBankrConfig()`, `client.org.setBankrConfig({ partner_key, default_wallet_id })`, `client.org.deleteBankrConfig()`.
-
-Obtain partner keys from the [Bankr partner dashboard](https://docs.bankr.bot/partnership/api-keys) (`bk_ptr_<keyId>_<secret>`). Apply for partner access at [bankr.bot/partner](https://bankr.bot/partner) if needed.
-
-### Deployment fallback (self-hosted operators only)
-
-Optional global fallback on the Vault service. **Off by default** in multi-tenant SaaS — do not set `BANKR_PARTNER_KEY` on `api.1claw.xyz`. Use only when you intentionally run a single-tenant or self-hosted deployment where all orgs share one Bankr partner account.
-
-| Rule | Behavior |
-| --- | --- |
-| Precedence | Org BYOK always wins when configured (`credential_source: org_byok`) |
-| Fallback | Used only when org has no BYOK and `BANKR_PARTNER_KEY` is set (`credential_source: platform_fallback`) |
-| Opt-in | Treat fallback as an explicit operator choice — not for shared multi-tenant environments |
-| Audit | Each `bankr_key.leased` event includes `credential_source` |
-| Alerting | Production Vault (`hsm_provider=gcp`) emits a warning log when fallback is used — monitor in prod |
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `BANKR_PARTNER_KEY` | Platform Bankr partner key (`bk_ptr_...`) | No (BYOK per org) |
-| `BANKR_DEFAULT_WALLET_ID` | Default wallet ID (`wlt_...`) when org has no default | No |
-| `BANKR_DEFAULT_LEASE_TTL_SECS` | Default TTL for **human** callers when omitted (default: 3600) | No |
-
-## API Endpoints
-
-### Lease a key
-
-```bash
-curl -X POST https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys/lease \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ttl_seconds": 600,
-    "permissions": {
-      "llm_gateway_enabled": true,
-      "agent_api_enabled": false,
-      "read_only": true
-    }
+    "partner_key": "bk_ptr_YOUR_KEY",
+    "default_wallet_id": "wlt_YOUR_WALLET"
   }'
 ```
 
-**Agent response (no secret):**
-
-```json
-{
-  "lease_id": "550e8400-e29b-41d4-a716-446655440000",
-  "wallet_id": "wlt_abc123",
-  "expires_at": "2026-06-05T18:10:00Z"
-}
-```
-
-**Human response (includes key once):**
-
-```json
-{
-  "lease_id": "550e8400-e29b-41d4-a716-446655440000",
-  "api_key": "bk_usr_abc12345_xxxxxxxxxxx",
-  "wallet_id": "wlt_abc123",
-  "expires_at": "2026-06-05T18:10:00Z"
-}
-```
-
-### List active leases
-
-```bash
-curl https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Revoke a lease
-
-```bash
-curl -X DELETE https://api.1claw.xyz/v1/agents/{agent_id}/bankr-keys/{lease_id} \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## SDK Usage
+**SDK:**
 
 ```typescript
-import { OneclawClient } from "@1claw/sdk";
-
-const client = new OneclawClient({ apiKey: "ocv_..." }); // agent key
-
-const { data: lease } = await client.agents.leaseBankrKey(agentId, {
-  ttl_seconds: 600,
-  permissions: { llm_gateway_enabled: true, agent_api_enabled: false, read_only: true },
+await client.org.setBankrConfig({
+  partner_key: "bk_ptr_YOUR_KEY",
+  default_wallet_id: "wlt_YOUR_WALLET",
 });
-
-// Agent: lease.api_key is undefined — use Shroud
-console.log(lease.lease_id, lease.expires_at);
-
-await client.agents.revokeBankrKey(agentId, lease.lease_id);
 ```
 
-## CLI Usage
+The partner key is encrypted at rest (AES-256-GCM + org_id AAD).
+
+### 2. Grant Agent Access
+
+Create a policy allowing your agent to lease keys:
 
 ```bash
-# Lease (human token; default TTL 15 min)
-1claw agent bankr-key lease <agent-id> --ttl 600
-
-1claw agent bankr-key list <agent-id>
-1claw agent bankr-key revoke <agent-id> <lease-id>
+curl -X POST "https://api.1claw.xyz/v1/vaults/AGENT_KEYS_VAULT_ID/policies" \
+  -H "Authorization: Bearer YOUR_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "principal_type": "agent",
+    "principal_id": "YOUR_AGENT_ID",
+    "secret_path_pattern": "agents/YOUR_AGENT_ID/bankr/*",
+    "permissions": ["write"]
+  }'
 ```
+
+The `__agent-keys` vault ID can be found via `GET /v1/org/agent-keys-vault`.
+
+### 3. Agent Leases a Key
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_ID/bankr-keys/lease" \
+  -H "Authorization: Bearer AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "ttl": 600 }'
+```
+
+Response (agent callers do NOT receive `api_key`):
+
+```json
+{
+  "lease_id": "a1b2c3d4-...",
+  "wallet_id": "wlt_default",
+  "expires_at": "2026-06-29T10:10:00Z"
+}
+```
+
+### 4. Shroud Resolves the Key
+
+When the agent makes requests with `X-Shroud-Provider: bankr`, Shroud looks up the latest active leased key from `__agent-keys` at `agents/{id}/bankr/{lease_id}` and injects it automatically.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/agents/{id}/bankr-keys/lease` | Lease a new key (max 5 concurrent per agent) |
+| `GET` | `/v1/agents/{id}/bankr-keys` | List active leases |
+| `DELETE` | `/v1/agents/{id}/bankr-keys/{lease_id}` | Revoke a lease early |
 
 ## MCP Tool
 
-`lease_bankr_key` is **privileged** and **deny-by-default** (requires policy on `agents/{id}/bankr/*`). It does **not** return the `bk_usr_` key in tool output.
+The `lease_bankr_key` tool is available in the MCP server. It is **privileged** — it never returns the `bk_usr_` key in the tool output to prevent accidental exfiltration.
 
-```json
-{
-  "tool": "lease_bankr_key",
-  "arguments": {
-    "ttl_seconds": 600,
-    "llm_gateway_enabled": true,
-    "agent_api_enabled": false,
-    "read_only": true
-  }
-}
+```
+Agent: "I need a Bankr API key to check wallet balances"
+→ lease_bankr_key(ttl: 600)
+
+Bankr key leased:
+  Lease ID: a1b2c3d4-...
+  Expires in: 600s
+  Wallet ID: wlt_default
 ```
 
-After leasing, route LLM traffic through Shroud with `X-Shroud-Provider: bankr`. Revoke the lease when the task completes.
+## SDK / CLI
 
-## Shroud Integration
+**SDK:**
 
-When an agent sends LLM traffic through Shroud with `X-Shroud-Provider: bankr`, Shroud automatically resolves the latest active leased key. No `get_secret` or tool output handling required.
+```typescript
+const lease = await client.agents.leaseBankrKey(agentId, { ttl: 600 });
+const leases = await client.agents.listBankrKeys(agentId);
+await client.agents.revokeBankrKey(agentId, leaseId);
+```
 
-Fallback order:
+**CLI:**
 
-1. Active Bankr key lease (newest first)
-2. Static key at `providers/bankr/api-key` in the agent's vault
-3. Agent-supplied `X-Shroud-Api-Key` header
+```bash
+1claw agent bankr-key lease --ttl 600
+1claw agent bankr-key list
+1claw agent bankr-key revoke LEASE_ID
+```
 
-## Lifecycle & Security
+## Lifecycle
 
-| Event | Action |
-|-------|--------|
-| Agent deleted | All active leases revoked via Bankr API |
-| Agent deactivated (`is_active: false`) | All active leases revoked |
-| Lease TTL expires | Nightly sweep marks as revoked |
-| Max leases (5) reached | New lease request returns 400 |
+- Keys are automatically revoked when an agent is deleted or deactivated.
+- A nightly sweep revokes expired leases via the Bankr DELETE API.
+- Maximum 5 concurrent leases per agent.
 
-All lease/revoke operations are audit-logged as `bankr_key.leased` and `bankr_key.revoked` (never logs secret values).
+## Best Practices
 
-## Dashboard
-
-The agent detail page shows a **Bankr Keys** card with:
-
-- Table of active leases (ID, wallet, key ID, expiry)
-- "Lease Key" button for one-click provisioning (human session; key shown once if returned)
-- Per-lease "Revoke" action
+1. **Use the shortest TTL practical** — 5–15 min for autonomous task execution.
+2. **Revoke after task completion** — don't let leases expire naturally if the task is done.
+3. **Monitor via audit log** — events `bankr_key.leased` and `bankr_key.revoked` are recorded (never logs secret values).
+4. **Prefer over static secrets** — dynamic vending with short TTL is safer than storing a static Bankr key in a vault path.
 
 
 ---
@@ -6639,6 +6515,75 @@ A complete template for a DeFi trading platform with Shroud inspection, Intents 
 
 ---
 
+## Redirect URIs & "Sign in with 1Claw"
+
+If your platform app uses the OAuth consent flow ("Sign in with 1Claw"), you need to register allowed redirect URIs. These are the URLs that 1Claw will redirect users back to after login/consent.
+
+### Adding Redirect URIs
+
+**Dashboard:** Go to **Platform** → your app → **Settings** tab → **Redirect URIs** section. Add each callback URL (e.g. `https://myapp.com/callback`).
+
+**API:**
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "redirect_uris": [
+      "https://myapp.com/callback",
+      "http://localhost:3000/callback"
+    ]
+  }'
+```
+
+**SDK:**
+
+```typescript
+await client.platform.updateApp(appId, {
+  redirect_uris: [
+    "https://myapp.com/callback",
+    "http://localhost:3000/callback",
+  ],
+});
+```
+
+:::tip localhost is allowed
+Per [RFC 8252 §7.3](https://datatracker.ietf.org/doc/html/rfc8252#section-7.3), `http://localhost` (any port) is allowed for development. No HTTPS required for loopback addresses.
+:::
+
+### OAuth Flow
+
+1. Your app redirects users to:
+   ```
+   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=link&state=RANDOM
+   ```
+2. The user sees the 1Claw consent page and approves.
+3. 1Claw redirects back to your `redirect_uri` with an authorization `code`.
+4. Your backend exchanges the code for tokens via `POST /v1/oauth/token`.
+
+:::warning client_id is your app slug, not the UUID
+The `client_id` parameter must be your platform app's **slug** (e.g. `cubeverse`), not the app UUID. You set the slug when creating the app. If you pass the UUID, you'll get "Unknown client_id". Find your slug in the dashboard at Platform → your app → Details.
+:::
+
+### Cross-Org User Linking
+
+When you call `POST /v1/platform/users/upsert` and the user already exists in a *different* organization, the API returns `409 Conflict` with a `link_required` response:
+
+```json
+{
+  "link_required": {
+    "consent_url": "https://1claw.xyz/oauth/authorize?client_id=your-slug&scope=link&login_hint=user@example.com",
+    "user_email": "user@example.com",
+    "message": "User exists in a different organization. Redirect them to consent_url to link."
+  }
+}
+```
+
+Redirect the user to `consent_url`. After they consent, a cross-org connection is created and subsequent `upsert` calls will succeed.
+
+---
+
 ## Auth Modes
 
 Set `auth_mode` when creating your platform app:
@@ -11363,6 +11308,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 | `list_signing_keys` | List all active signing keys for the current agent                 | Read       |
 | `sign_message`     | Sign an EIP-191 personal message                                    | Write      |
 | `sign_typed_data`  | Sign EIP-712 typed structured data                                  | Write      |
+| `sign_digest`      | Sign a raw 32-byte digest (blind signing, requires `raw_signing_enabled`) | Write |
 | `lease_bankr_key`  | Lease a short-lived Bankr wallet API key                            | Write      |
 | `platform_list_apps` | List platform apps in the organization                            | Read       |
 | `platform_create_app` | Register a new platform app                                      | Write      |
@@ -12586,6 +12532,10 @@ import TabItem from '@theme/TabItem';
 
 An **agent** gets access by either (1) being **registered by a human** in the dashboard, or (2) **self-enrolling** via `POST /v1/agents/enroll` (public, no auth). You can supply a **human's email** (if they already have a 1Claw account) or **name only** and use the returned **`approval_url`** so they approve in the browser. Once the agent has an **API key** (`ocv_...`), it exchanges that for a short-lived JWT and calls the same API to list and fetch secrets. Access is enforced by **policies** created by the human.
 
+:::tip Fastest path
+Wiring an AI assistant? Run [`1claw setup`](/docs/quickstart#fastest-cli-setup) — it creates the agent, vault, policy, and MCP config automatically. For API-only agents, see the [Quickstart hub](/docs/quickstart) integration table.
+:::
+
 :::tip Try it out
 Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (SDK + agent token) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent fetches secrets just-in-time).
 :::
@@ -12813,6 +12763,10 @@ import TabItem from '@theme/TabItem';
 
 This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
 
+:::tip Fastest path
+Prefer the CLI? Run [`1claw login`](/docs/guides/cli#authentication), then `1claw vault create` and `1claw secret set`. Or use [`1claw setup`](/docs/quickstart#fastest-cli-setup) to provision vault + agent + AI client MCP in one step. See the [Quickstart hub](/docs/quickstart) for all paths.
+:::
+
 :::tip Try it out
 Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault CRUD, secrets, billing, sharing, Intents API).
 :::
@@ -13019,45 +12973,252 @@ Returns `{ "secrets": [ ... ] }` with id, path, type, version, metadata, created
 
 ---
 title: Quickstart
-description: Get started with 1claw in minutes — choose your path below.
+description: Get started with 1Claw in minutes — CLI setup, human and agent flows, and integration paths.
 slug: /quickstart
 ---
 
 # Quickstart
 
-Get from zero to a stored (or fetched) secret in a few minutes. Choose the guide that matches your role:
+Get from zero to a working integration in a few minutes. **Start with the CLI** if you want the fastest path — one command provisions a vault, agent, access policy, and wires your AI tools (Cursor, Claude Desktop, VS Code, and more).
 
-## For humans
+:::tip Fastest path — recommended
+Install the CLI and run **`1claw setup`**. It logs you in, creates an agent + vault + policy, and configures MCP for every AI client it detects. No manual curl, no copy-pasting API keys into config files.
 
-You own the secrets. Sign up, create a vault, store a secret, and read it back.
+```bash
+brew install 1clawAI/tap/oneclaw   # or: npm install -g @1claw/cli
+1claw setup
+```
 
-**You will learn to:**
+When setup finishes, your AI assistant can call 1Claw tools (`get_secret`, `list_secrets`, and more) at runtime — secrets stay in the vault, not in prompts or `.env` files. See the [CLI guide](/docs/guides/cli) for all options (`--client cursor`, `--local`, existing agent keys).
+:::
 
-- Obtain a JWT via email/password or Google
-- Create a vault
-- Store and retrieve a secret
+## How 1Claw works
 
-[Start the human quickstart &rarr;](/docs/quickstart/humans)
+1Claw has two roles. **Humans** own secrets and decide what agents can access. **Agents** fetch secrets at runtime through scoped, audited policies — they never get blanket vault access.
 
-## For agents
+```mermaid
+flowchart LR
+  subgraph Human["You (human)"]
+    H1[Sign up / login]
+    H2[Create vault]
+    H3[Store secrets]
+    H4[Register agent + policy]
+  end
+  subgraph Agent["Your agent / AI tool"]
+    A1[Agent API key ocv_]
+    A2[Exchange for JWT]
+    A3[Fetch allowed secrets]
+  end
+  H1 --> H2 --> H3 --> H4
+  H4 --> A1 --> A2 --> A3
+  H3 -.->|encrypted in HSM| Vault[(Vault)]
+  A3 --> Vault
+```
 
-An agent accesses secrets that a human has shared. Exchange an API key for a JWT, then list and fetch secrets.
+| Role | You are… | You do… | Auth |
+| ---- | -------- | ------- | ---- |
+| **Human** | Developer, operator, or team owner | Create vaults, store secrets, register agents, write policies | Email/password, Google, passkey, or personal API key (`1ck_`) |
+| **Agent** | AI assistant, service, or automation | List and fetch secrets the human allowed; optionally sign txs or route LLM calls through Shroud | Agent API key (`ocv_`) → short-lived JWT |
 
-**You will learn to:**
+Same API for both: `https://api.1claw.xyz`. The dashboard at [1claw.xyz](https://1claw.xyz) is a UI on top of the same endpoints.
 
-- Exchange an agent API key for a short-lived JWT
-- List accessible secrets
-- Fetch a decrypted secret value
+---
 
-[Start the agent quickstart &rarr;](/docs/quickstart/agents)
+## Pick your path
+
+| Goal | Fastest route | Steps |
+| ---- | ------------- | ----- |
+| **AI assistant with vault access** (Cursor, Claude, etc.) | [`1claw setup`](#fastest-cli-setup) | 1 command |
+| **Store secrets as a human** (scripts, apps, CI) | [Human path](#human-path-store-and-use-secrets) | 3–4 steps |
+| **Agent fetching secrets** (service, LangChain, custom code) | [Agent path](#agent-path-fetch-secrets-at-runtime) | 2–4 steps |
+| **Human grants agent access end-to-end** | [Golden path](/docs/guides/give-agent-access) or `1claw setup` | 4 steps |
+| **No cloud / offline secrets** | `1claw init --docker --local` or [local vault](/docs/guides/cli#local-vault-offline-encrypted) | See [CLI](/docs/guides/cli) |
+
+---
+
+## Fastest: CLI setup
+
+**Best for:** Cursor, Claude Desktop, Claude Code, VS Code, Windsurf, Zed, Continue — any tool that supports MCP.
+
+```bash
+brew install 1clawAI/tap/oneclaw
+1claw setup
+```
+
+What `setup` does in one flow:
+
+1. **Login** — browser device flow at [1claw.xyz](https://1claw.xyz) (no password in terminal)
+2. **Provision** — agent (Shroud + Intents enabled), vault, and read/write policy on `secrets/*`
+3. **Configure** — writes MCP config for each detected AI client
+
+**Already have an agent key?** Skip provisioning:
+
+```bash
+1claw setup --agent-key ocv_YOUR_KEY
+```
+
+**Import existing `.env` secrets:**
+
+```bash
+1claw login
+1claw vault create my-vault          # or use default from setup
+1claw import .env --vault <vault-id>
+```
+
+**Run a command with secrets injected (CI/CD):**
+
+```bash
+export ONECLAW_TOKEN="..."           # or ONECLAW_API_KEY + ONECLAW_VAULT_ID
+1claw env run -- npm start
+```
+
+Full command reference: [CLI guide](/docs/guides/cli).
+
+---
+
+## Human path: store and use secrets
+
+**You own the vault.** Sign up, create a vault, store a secret, read it back.
+
+### Option A — CLI (fewest steps)
+
+```bash
+1claw login
+1claw vault create "My Vault"
+1claw secret set api-keys/openai --value "sk-proj-..." --type api_key
+1claw secret get api-keys/openai
+```
+
+### Option B — Dashboard
+
+1. Sign up at [1claw.xyz](https://1claw.xyz)
+2. **Vaults → Create vault** (or use the [onboarding wizard](https://1claw.xyz/onboarding))
+3. **Secrets → Add secret** at a path like `api-keys/openai`
+4. Optional: **Agents → Register agent** and **Policies → Grant access**
+
+### Option C — REST API / SDK
+
+Step-by-step curl and TypeScript examples: [Quickstart for humans](/docs/quickstart/humans).
+
+---
+
+## Agent path: fetch secrets at runtime
+
+**An agent only sees what a human allowed.** Zero access by default until a policy grants specific paths.
+
+### How an agent gets credentials
+
+| Method | Who initiates | When to use |
+| ------ | ------------- | ----------- |
+| **Human registers agent** | You in dashboard or `1claw agent create` | You control provisioning; share `ocv_` key once |
+| **Self-enrollment** | Agent calls `POST /v1/agents/enroll` | Agent-first flows; human approves via email or link |
+| **`1claw setup`** | CLI during setup | Fastest when wiring an AI client |
+
+### Minimal agent flow (already have `ocv_` key)
+
+```bash
+# Exchange key for JWT (CLI handles refresh automatically in scripts)
+1claw agent token <agent-id>
+
+# Or with curl — see full guide
+curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key":"ocv_..."}'
+```
+
+Then list and fetch secrets the policy allows (metadata vs decrypted value):
+
+```bash
+1claw secret list --vault <vault-id>    # as agent: set ONECLAW_AGENT_API_KEY
+```
+
+Full walkthrough (enroll, token, list, fetch, share back): [Quickstart for agents](/docs/quickstart/agents).
+
+:::info Policies are the gate
+An agent with an API key but **no policy** gets **zero secrets**. After creating an agent, always add a policy (dashboard, `1claw policy create`, or let `1claw setup` do it). See [Give an agent access](/docs/guides/give-agent-access).
+:::
+
+---
+
+## Ways to integrate
+
+Choose the interface that matches where your code runs:
+
+| Integration | Best for | Get started |
+| ----------- | -------- | ----------- |
+| **[CLI](/docs/guides/cli)** | Fastest onboarding, CI/CD, `env run`, local daemon | `1claw setup` |
+| **[Dashboard](https://1claw.xyz)** | Visual setup, policies, audit log, billing | Sign up → onboarding wizard |
+| **[MCP Server](/docs/mcp/overview)** | AI assistants (Claude, Cursor, GPT) calling vault tools | `1claw setup` or [MCP setup](/docs/mcp/setup) |
+| **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
+| **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
+| **[Shroud proxy](/docs/guides/shroud)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
+| **[Intents API](/docs/guides/intents-api)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
+| **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
+| **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
+
+### Common integration patterns
+
+**1. AI coding assistant (recommended)**
+
+```bash
+1claw setup --client cursor    # or omit --client for all detected tools
+```
+
+Agent uses MCP tools at runtime; you manage secrets in the vault via dashboard or CLI.
+
+**2. Application / backend service**
+
+Use the SDK or REST API with a personal API key (`1ck_`) for human operations, or an agent key (`ocv_`) for automated fetch. See [JavaScript SDK](/docs/sdks/javascript).
+
+**3. CI/CD pipeline**
+
+```bash
+export ONECLAW_TOKEN="${{ secrets.ONECLAW_TOKEN }}"
+1claw env pull -o .env.production
+npm run deploy
+```
+
+**4. LLM app with guardrails**
+
+Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.xyz`. See [Shroud](/docs/guides/shroud) and [IDE setup](/docs/guides/ide-shroud-setup).
+
+**5. On-chain agent**
+
+Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/guides/intents-api).
+
+---
+
+## End-to-end in four steps (human + agent)
+
+The shortest manual path if you are not using `1claw setup`:
+
+1. **Sign up** — [1claw.xyz](https://1claw.xyz) or `1claw login`
+2. **Vault + secret** — `1claw vault create` + `1claw secret set …` (or dashboard)
+3. **Agent + policy** — `1claw agent create my-agent` + `1claw policy create …` (or [golden path guide](/docs/guides/give-agent-access))
+4. **Connect** — MCP via `1claw setup`, SDK in your app, or `1claw agent token` + API calls
+
+---
 
 ## Prerequisites
 
-| Requirement  | Details                                                                     |
-| ------------ | --------------------------------------------------------------------------- |
-| **Account**  | Sign up at [1claw.xyz](https://1claw.xyz) (free tier: 1,000 requests/month) |
-| **curl**     | All examples use `curl`; any HTTP client works                              |
-| **Base URL** | `https://api.1claw.xyz`                                                     |
+| Requirement | Details |
+| ----------- | ------- |
+| **Account** | Free tier at [1claw.xyz](https://1claw.xyz) — 1,000 requests/month, 3 vaults, 2 agents |
+| **CLI** | Node 20+ for `npm install -g @1claw/cli`, or Homebrew tap above |
+| **API base URL** | `https://api.1claw.xyz` |
+| **curl / HTTP client** | Only needed if you skip the CLI and follow the REST quickstarts |
+
+---
+
+## Next steps
+
+- [Quickstart for humans](/docs/quickstart/humans) — REST/SDK vault CRUD in detail
+- [Quickstart for agents](/docs/quickstart/agents) — enroll, token exchange, fetch secrets
+- [Give an agent access](/docs/guides/give-agent-access) — golden path with policies
+- [Parts of 1Claw](/docs/concepts/parts-of-1claw) — Vault, Shroud, Intents, and all interfaces
+- [CLI](/docs/guides/cli) — full command reference, Docker runtime, local daemon
+- [MCP overview](/docs/mcp/overview) — tools your AI assistant can call
+- [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples
 
 
 ---
@@ -14312,6 +14473,14 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-06 (latest)
 
+### API v2.20.1 / SDK 0.34.3 / CLI 0.36.4 — OAuth branding + redirect URI validation (2026-06-29)
+
+- **New:** Platform apps can configure a `logo_url` for branding on OAuth login and consent pages. When a user visits the "Sign in with 1Claw" flow, the app's logo and name are shown. Set via Dashboard (Platform → app → Settings → App Branding) or `PATCH /v1/platform/apps/{id}`.
+- **New:** Public branding endpoint `GET /v1/platform/apps/by-slug/{slug}/branding` — returns `{ name, logo_url, slug }` without authentication.
+- **New:** Dedicated `validate_redirect_uri()` function for OAuth redirect URIs allows `http://localhost` and `http://127.0.0.1` per RFC 8252 §7.3 (native/dev clients). Cloud metadata and non-loopback private IPs remain blocked.
+- **Dashboard:** Platform app detail page has a "Redirect URIs" editor in the Settings tab. Login and consent pages show app branding (logo + name) when the OAuth `client_id` query parameter is present.
+- **Docs:** Updated Platform API guide with redirect URI management instructions and a warning that `client_id` must be the app **slug** (not UUID).
+
 ### API v2.20.0 / SDK 0.34.2 / MCP 0.34.3 — raw digest signing + EIP-712 fixes (2026-06-26)
 
 - **New:** Raw digest signing intent on `POST /v1/agents/{id}/sign` — `intent_type: "eip712_digest"` (alias `"digest"`) signs a client-computed 32-byte `hash` directly and returns a 65-byte `r‖s‖v` signature that recovers to the agent's EOA. This unblocks **ERC-1271 / ERC-7739 nested EIP-712** flows (e.g. **Polymarket** CLOB orders) where the canonical hash is computed client-side and must match the verifier exactly, which 1Claw's own `typed_data` recomputation would otherwise diverge from.
@@ -14367,7 +14536,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** `1claw treasury send` and `1claw treasury swap` — send native/ERC-20 tokens and swap via 0x from CLI.
 - **New:** `1claw treasury balance` — query native + ERC-20 token balances.
 - **New:** DPoP support — `ONECLAW_DPOP=true` env var enables RFC 9449 proof-of-possession. Keypair persisted at `~/.config/1claw/dpop-key.json`.
-- **Updated:** MCP tools expanded to 36 tools (added platform_reissue_claim, platform_rotate_key, list_approvals, get_approval, request_approval, treasury_propose, treasury_sign_proposal, treasury_list_proposals).
+- **Updated:** MCP tools expanded to 37 tools (added platform_reissue_claim, platform_rotate_key, list_approvals, get_approval, request_approval, treasury_propose, treasury_sign_proposal, treasury_list_proposals, sign_digest).
 - **Updated:** MCP auth simplified — `ONECLAW_AGENT_API_KEY` alone is sufficient (agent ID and vault auto-discovered via prefix lookup).
 - **Changed:** CLI version bumped from 0.34.2 to 0.34.7. SDK 0.34.1. MCP 0.34.1.
 
