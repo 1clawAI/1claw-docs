@@ -123,6 +123,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/agent-templates",
+                            label: "Agent templates — contribute a spawn template",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/openclaw",
                             label: "OpenClaw — Cursor / editor plugin",
                         },

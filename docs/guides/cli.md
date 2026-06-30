@@ -733,7 +733,7 @@ Templates support the same three methods as `init --docker`:
 
 ### Community templates
 
-Templates are hosted in the [`1clawAI/agent-templates`](https://github.com/1clawAI/agent-templates) repository. Community contributions are welcome — see the [CONTRIBUTING.md](https://github.com/1clawAI/agent-templates/blob/main/CONTRIBUTING.md) guide.
+Templates live in the public [`1clawAI/agent-templates`](https://github.com/1clawAI/agent-templates) repository. To add or update a template, follow the **[Add an agent template](./agent-templates)** guide (step-by-step for fork, manifest, registry, CI, and PR). Technical schema details are in the repo’s [CONTRIBUTING.md](https://github.com/1clawAI/agent-templates/blob/main/CONTRIBUTING.md).
 
 ### Managing containers
 
