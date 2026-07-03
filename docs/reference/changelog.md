@@ -14,6 +14,18 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
+
+- **New:** **30+ XRPL transaction types** via the `xrpl_tx_json` field on `SubmitTransactionRequest`, `SignTransactionRequest`, and `SignIntentRequest`. Pass a raw XRPL transaction JSON object and the server uses the `xrpl-rust` binary codec to encode and sign it. `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. Supported types: Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, AccountDelete, EscrowCreate/Finish/Cancel, PaymentChannelCreate/Fund/Claim, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw/Bid/Delete/Vote, SetRegularKey, SignerListSet, DepositPreauth, CheckCreate/Cash/Cancel, TicketCreate, Clawback.
+- **New:** `xrpl-rust` v1.1.0 crate added to both Vault and Shroud (TEE), replacing the hand-rolled Payment-only STObject serializer. The legacy `to`/`value`/`destination_tag` Payment path is preserved for backward compatibility.
+- **New:** Unsupported XRPL transaction types are rejected with a descriptive error listing all supported types.
+- **SDK:** `xrpl_tx_json` field added to `SubmitTransactionRequest`, `SignTransactionRequest`, and `SignIntentRequest` in the TypeScript SDK, Python SDK, and Go SDK.
+- **MCP:** `submit_transaction` and `sign_transaction` tools accept `xrpl_tx_json` parameter.
+- **OpenAPI:** `xrpl_tx_json` field added to all three transaction request schemas.
+- **Tests:** `test-nonevm-signing-prod.sh` extended with TrustSet, AccountSet, unsupported type, and unified `/sign` OfferCreate tests. `test-shroud-prod.sh` gains XRP `xrpl_tx_json` TrustSet dispatch test and XRP Payment dispatch test.
+- **Dashboard:** Intents page updated to highlight XRP's 30+ transaction type support.
+- **Examples:** `examples/non-evm-keys` updated with TrustSet example via `xrpl_tx_json`.
+
 ### API v2.23.0 / SDK 0.36.0 / Vault 0.36.0 / MCP 0.36.0 — Non-EVM transaction signing (2026-07-03)
 
 - **New:** Full on-chain **transaction signing + broadcast** for **Bitcoin, Solana, XRP, Cardano, and Tron** through the Intents API (`POST /v1/agents/{id}/transactions`, `POST .../transactions/sign`, unified `POST .../sign` with `intent_type: "transaction"`). 1Claw dispatches by chain family, auto-fetches chain data (Bitcoin UTXOs/fee via mempool.space, Solana blockhash, XRP sequence, Cardano protocol params via Blockfrost, Tron ref block via TronGrid), signs in the HSM (or Shroud TEE), and broadcasts.
