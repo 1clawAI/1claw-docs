@@ -459,6 +459,76 @@ Signing keys are provisioned server-side during bootstrap — the platform opera
 
 ---
 
+## Resource Grants (User-Side)
+
+After a user claims their bootstrapped resources, they can grant your platform app access to **additional** vaults and agents beyond what the template provisioned. This is useful when your users have pre-existing 1Claw resources they want to connect.
+
+### How It Works
+
+1. Your app redirects the user to the 1Claw grant page:
+   ```
+   https://1claw.xyz/connect/{your-slug}/grant?connection={connection_id}
+   ```
+2. The user selects which vaults and agents to share.
+3. Your backend can query the grants to discover what access it has.
+
+### API
+
+**Grant resources** (user-authenticated, `1ck_` key):
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grant" \
+  -H "Authorization: Bearer 1ck_USER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vault_ids": ["vault-uuid-1", "vault-uuid-2"],
+    "agent_ids": ["agent-uuid-1"]
+  }'
+```
+
+**List active grants:**
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants" \
+  -H "Authorization: Bearer 1ck_USER_KEY"
+```
+
+**Revoke a grant:**
+
+```bash
+curl -X DELETE "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants/GRANT_ID" \
+  -H "Authorization: Bearer 1ck_USER_KEY"
+```
+
+### SDK
+
+```typescript
+// User-authenticated client (1ck_ key)
+const userClient = new OneclawClient({ apiKey: "1ck_user_key" });
+
+// Grant access
+const { data } = await userClient.platform.grantAccess(connectionId, {
+  vault_ids: ["vault-uuid"],
+  agent_ids: ["agent-uuid"],
+});
+
+// List grants
+const { data: grants } = await userClient.platform.listGrants(connectionId);
+
+// Revoke
+await userClient.platform.revokeGrant(connectionId, grantId);
+```
+
+### Dashboard
+
+Users can manage grants from **Settings → Connected Apps** — each app shows shared resource counts with expandable grant panels and per-grant revoke buttons.
+
+:::tip
+Resource grants are always user-initiated. Platform operators cannot grant themselves access — only the connected user can share their resources. Grants are instantly revocable.
+:::
+
+---
+
 ## Platform Audit
 
 Track all platform-related events for your app:
