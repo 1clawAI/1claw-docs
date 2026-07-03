@@ -197,7 +197,7 @@ Configure which models an agent is allowed (or denied) to use via the agent's `s
 PATCH /v1/agents/{id}
 {
   "shroud_config": {
-    "allowed_models": ["gpt-4o-mini", "claude-sonnet-4-5-20250929"],
+    "allowed_models": ["gpt-4o-mini", "claude-sonnet-5"],
     "denied_models": ["gpt-4.1-nano"]
   }
 }
@@ -207,7 +207,7 @@ PATCH /v1/agents/{id}
 ```typescript
 await client.agents.update(agentId, {
   shroud_config: {
-    allowed_models: ["gpt-4o-mini", "claude-sonnet-4-5-20250929"],
+    allowed_models: ["gpt-4o-mini", "claude-sonnet-5"],
     denied_models: ["gpt-4.1-nano"],
   },
 });
@@ -247,7 +247,7 @@ curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
   -H "X-Shroud-Provider: anthropic" \
   -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
   -H "Content-Type: application/json" \
-  -d '{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"Hello"}]}'
+  -d '{"model":"claude-sonnet-5","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
 ### Example: TypeScript (fetch)
@@ -1254,7 +1254,7 @@ The policy engine reads its configuration from the agent's `shroud_config`. Ther
 
   // Provider/model restrictions (policy engine allowlist)
   allowed_providers: ["openai", "anthropic"],
-  allowed_models: ["gpt-4o-mini", "claude-sonnet-4-5-20250929"],
+  allowed_models: ["gpt-4o-mini", "claude-sonnet-5"],
   denied_models: ["gpt-4.1-nano"],
 
   // Injection thresholds (policy engine blocks when exceeded)
