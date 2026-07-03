@@ -12,7 +12,17 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-06 (latest)
+## 2026-07 (latest)
+
+### API v2.22.0 / SDK 0.35.0 / Vault 0.35.0 — Platform resource grants (2026-07-03)
+
+- **New:** Platform resource grants — users can grant platform apps access to specific vaults and agents via `POST /v1/platform/connections/{id}/grant`. Grants are per-vault with configurable `allowed_paths` and `permissions`. List active grants via `GET .../grants`, revoke individual grants via `DELETE .../grants/{grant_id}`.
+- **New:** Dashboard grant page at `/connect/{slug}/grant` — vault/agent picker with checkboxes for selecting resources to share with a platform app. Linked from OAuth consent and claim flows.
+- **Enhanced:** Connected Apps page (`/settings/connected-apps`) rewritten — now shows vault/agent counts per app, expandable "Resource Grants" panel with per-grant details, and individual revoke buttons with confirmation dialog.
+- **Fixed:** `GET /v1/platform/connected-apps` response key changed from `connected_apps` to `apps` to match the SDK and dashboard expectations.
+- **SDK:** New methods on `PlatformResource`: `grantAccess(connectionId, data)`, `listGrants(connectionId)`, `revokeGrant(connectionId, grantId)`.
+
+## 2026-06
 
 ### API v2.20.1 / SDK 0.34.3 / CLI 0.36.4 — OAuth branding + redirect URI validation (2026-06-29)
 

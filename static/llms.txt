@@ -234,6 +234,9 @@ Key endpoints:
 - `POST /v1/platform/claim/{token}` — Redeem claim token (public; marks connection as claimed; 409 if reused, 410 if expired)
 - `GET /v1/platform/connected-apps` — List connected apps (user-only)
 - `DELETE /v1/platform/connected-apps/{id}` — Disconnect from platform app
+- `POST /v1/platform/connections/{id}/grant` — Grant platform app access to selected vaults/agents (user-only)
+- `GET /v1/platform/connections/{id}/grants` — List active resource grants for a connection
+- `DELETE /v1/platform/connections/{id}/grants/{grant_id}` — Revoke a specific resource grant
 
 Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 
@@ -335,7 +338,7 @@ Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit
 
 ## MCP Tools (for AI agents)
 
-The MCP server at mcp.1claw.xyz provides **36 tools** (plus `vault://secrets` resource):
+The MCP server at mcp.1claw.xyz provides **37 tools** (plus `vault://secrets` resource):
 - list_secrets, get_secret, put_secret, delete_secret, describe_secret
 - rotate_and_store, rotate_generate, get_env_bundle, list_versions
 - create_vault, list_vaults, grant_access, share_secret
@@ -348,7 +351,7 @@ The MCP server at mcp.1claw.xyz provides **36 tools** (plus `vault://secrets` re
 - lease_bankr_key (privileged — policy-gated; never returns key in tool output)
 - inspect_content (works without vault credentials; always available)
 
-Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.34.2`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
+Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.35.0`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
 
 ## Containerized Agent Runtime (`1claw init --docker`, v0.36.0)
 
