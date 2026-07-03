@@ -14,6 +14,18 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### API v2.23.0 / SDK 0.36.0 / Vault 0.36.0 / MCP 0.36.0 — Non-EVM transaction signing (2026-07-03)
+
+- **New:** Full on-chain **transaction signing + broadcast** for **Bitcoin, Solana, XRP, Cardano, and Tron** through the Intents API (`POST /v1/agents/{id}/transactions`, `POST .../transactions/sign`, unified `POST .../sign` with `intent_type: "transaction"`). 1Claw dispatches by chain family, auto-fetches chain data (Bitcoin UTXOs/fee via mempool.space, Solana blockhash, XRP sequence, Cardano protocol params via Blockfrost, Tron ref block via TronGrid), signs in the HSM (or Shroud TEE), and broadcasts.
+- **New:** Chain-specific optional fields on transaction requests: `destination_tag` (XRP), `memo`, `fee_rate_sat_per_vbyte` (Bitcoin), `fee_limit_sun` (Tron TRC-20), `token_mint` / `token_decimals` (Solana SPL + Tron TRC-20), `ttl` (Cardano). `value` is the human-readable major unit (BTC/SOL/XRP/ADA/TRX) as a decimal string.
+- **New:** Chain registry migration adds `chain_type` column and seeds non-EVM mainnets + testnets (`bitcoin-testnet`, `solana-devnet`, `xrp-testnet`, `cardano-preprod`, `tron-shasta`, etc.).
+- **New:** Shroud TEE parity — non-EVM signing inside confidential memory with the same family dispatch and guardrails as Vault API.
+- **Note:** Tenderly `simulate_first` and `/simulate` endpoints remain **EVM-only** (no-op for non-EVM chains).
+- **Cardano:** Requires server-side Blockfrost project id (`BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_MAINNET`, or generic `BLOCKFROST_PROJECT_ID`).
+- **Examples:** `examples/non-evm-keys` now includes `npm run sign -- <chain> <to> <amount>` for sign + broadcast demos.
+- **Tests:** New `scripts/test-nonevm-signing-prod.sh` wired into `run-production-tests.sh`; Shroud prod tests assert non-EVM dispatch.
+- **SDK:** `SubmitTransactionRequest` / `SignTransactionRequest` extended with non-EVM fields; OpenAPI spec updated.
+
 ### API v2.22.0 / SDK 0.35.0 / Vault 0.35.0 — Platform resource grants (2026-07-03)
 
 - **New:** Platform resource grants — users can grant platform apps access to specific vaults and agents via `POST /v1/platform/connections/{id}/grant`. Grants are per-vault with configurable `allowed_paths` and `permissions`. List active grants via `GET .../grants`, revoke individual grants via `DELETE .../grants/{grant_id}`.

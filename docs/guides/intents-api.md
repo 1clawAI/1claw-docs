@@ -512,10 +512,118 @@ The response includes the `public_key`, derived `address`, `curve`, and `key_ver
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | `client.signingKeys.export(agentId, chain, { password })` |
 
-Only human users can provision, rotate, and export keys — agents get 403. Export requires password re-authentication via the `X-Auth-Confirm` header and is audit-logged as `signing_key.export`. Failed re-auth increments `failed_login_attempts` and can trigger account lockout. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support address derivation; on-chain signing for those chains is on the roadmap.
+Only human users can provision, rotate, and export keys — agents get 403. Export requires password re-authentication via the `X-Auth-Confirm` header and is audit-logged as `signing_key.export`. Failed re-auth increments `failed_login_attempts` and can trigger account lockout. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support both address derivation **and on-chain transaction signing + broadcast** — see [Non-EVM transaction signing](#non-evm) below.
 
 :::tip Platform API auto-provisioning
 If you're using the [Platform API](/docs/guides/platform-api), signing keys can be auto-provisioned during bootstrap by including a `signing_keys` array in your template spec — no separate API call needed.
+:::
+
+---
+
+## Non-EVM transaction signing {#non-evm}
+
+The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
+
+1claw fetches the chain-specific data it needs automatically (UTXOs and fee rate for Bitcoin, latest blockhash for Solana, account sequence for XRP, protocol parameters and UTXOs for Cardano, the reference block for Tron), signs, and (unless you use the sign-only endpoint) broadcasts via the chain's RPC.
+
+### Value units
+
+`value` is always the **human-readable major unit** as a decimal string (e.g. `"0.5"` for 0.5 BTC). 1claw converts to base units internally:
+
+| Chain | Base unit | Decimals | Address format |
+| --- | --- | --- | --- |
+| Bitcoin | satoshi | 8 | bech32 P2WPKH (`bc1q…`) |
+| Solana | lamport | 9 | Base58 |
+| XRP | drop | 6 | Base58Check (`r…`) |
+| Cardano | lovelace | 6 | Bech32 enterprise (`addr1…`) |
+| Tron | sun | 6 | Base58Check (`T…`) |
+
+### Chain-specific request fields
+
+All fields are optional and ignored on chains where they don't apply:
+
+| Field | Type | Chain | Purpose |
+| --- | --- | --- | --- |
+| `destination_tag` | number | XRP | Destination tag for exchange deposits |
+| `memo` | string | XRP, Solana | Optional memo |
+| `fee_rate_sat_per_vbyte` | number | Bitcoin | Override the fetched fee rate |
+| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit |
+| `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
+| `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
+| `ttl` | number | Cardano | Time-to-live (absolute slot) |
+
+For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
+
+### Supported networks
+
+Mainnets and testnets are in the chain registry: `bitcoin` / `bitcoin-testnet`, `solana` / `solana-devnet`, `xrp` / `xrp-testnet`, `cardano` / `cardano-preprod`, `tron` / `tron-shasta`. Cardano broadcast requires a Blockfrost project id configured server-side (`BLOCKFROST_PROJECT_ID_PREPROD` for preprod, `BLOCKFROST_PROJECT_ID_MAINNET` for mainnet, or the generic `BLOCKFROST_PROJECT_ID`).
+
+### Example — native transfers
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+# Bitcoin (testnet): send 0.001 BTC
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "bitcoin-testnet",
+    "to": "tb1q...",
+    "value": "0.001"
+  }'
+
+# Solana (devnet): send 0.25 SOL
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "solana-devnet", "to": "9xQ...", "value": "0.25" }'
+
+# XRP (testnet): send 10 XRP with a destination tag
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "xrp-testnet", "to": "rPT1...", "value": "10", "destination_tag": 12345 }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+// Solana: send 0.25 SOL
+const { data: sol } = await client.agents.submitTransaction(agentId, {
+  chain: "solana-devnet",
+  to: "9xQ...",
+  value: "0.25",
+});
+console.log(sol.tx_hash, sol.status); // base58 signature, "broadcast"
+
+// Cardano: send 2 ADA with a TTL
+const { data: ada } = await client.agents.submitTransaction(agentId, {
+  chain: "cardano-preprod",
+  to: "addr_test1...",
+  value: "2",
+  ttl: 90_000_000,
+});
+
+// Tron TRC-20 (USDT): send 5 tokens, sign only (no broadcast)
+const { data: usdt } = await client.agents.signTransaction(agentId, {
+  chain: "tron",
+  to: "TR7NH...",
+  value: "5",
+  token_mint: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+  token_decimals: 6,
+});
+```
+
+</TabItem>
+</Tabs>
+
+The response shape matches EVM: `{ tx_hash, from, to, value, status, raw_tx }`. For non-EVM chains the signed payload is returned as `raw_tx` (base64/hex depending on the chain) and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron).
+
+:::note Tenderly simulation is EVM-only
+`simulate_first` and the `/simulate` endpoints only apply to EVM chains. For non-EVM chains they are a no-op — use the sign-only endpoint if you want to inspect the signed transaction before broadcasting it yourself.
 :::
 
 ---
