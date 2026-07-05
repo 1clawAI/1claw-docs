@@ -14,6 +14,48 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### API v2.25.0 / SDK 0.38.0 / Vault 0.38.0 / MCP 0.38.0 — Token guardrails, known tokens registry, per-chain guardrails (2026-07-05)
+
+#### Added
+- **Token allowlist guardrail** (`tx_token_allowlist`): Controls which token contracts/mints an agent can interact with. Applied to `token_mint` on non-EVM chains and ERC-20 contract addresses on EVM chains. Checked case-insensitively.
+- **Known tokens only** (`tx_known_tokens_only`): When enabled, restricts agents to verified tokens in the known tokens registry. Unknown token contracts/mints are rejected with 403.
+- **XRP transaction type allowlist** (`xrpl_allowed_tx_types`): Controls which XRPL transaction types are allowed when using `xrpl_tx_json`. Empty = all supported types. Unsupported types return 403.
+- **Per-chain guardrails** (`per_chain_guardrails`): Chain-specific overrides for `max_value`, `daily_limit`, `to_allowlist`, and `token_allowlist`. Strictest of global and per-chain values wins.
+- **Per-chain daily spend tracking** (`tx_spent_today_by_chain`): `GET /v1/agents/{id}` now returns per-chain daily spend in native units with correct decimals (e.g. `{ "ethereum": "0.5", "solana": "2.0" }`), replacing the ETH-only `tx_spent_today_eth` for multi-chain accuracy.
+- **Known tokens registry**: Public endpoints `GET /v1/tokens` (filterable by `?chain=`) and `GET /v1/chains/{chain}/tokens` for listing verified tokens. Admin endpoints `POST /v1/admin/tokens` and `DELETE /v1/admin/tokens/{id}` for registry management.
+- **ERC-20 server-side builder**: When `token_mint` is provided on EVM chains, the handler generates ERC-20 `transfer(to, amount)` calldata server-side — agents no longer need to construct calldata manually.
+- **Extended token balance**: `GET /v1/agents/{id}/signing-keys/{chain}/balance` now accepts optional `?tokens=` query param (comma-separated contract addresses/mints) to include specific ERC-20/SPL/TRC-20 token balances alongside native balance.
+- **Solana ATA auto-creation**: SPL token transfers automatically create the recipient's Associated Token Account if it doesn't exist, adding a `CreateAssociatedTokenAccount` instruction before the transfer.
+- **Cardano native asset transfers**: Multi-asset output support with min-ADA enforcement. `token_mint` is `policy_id.asset_name` hex.
+- **Memo support**: Solana (Memo Program v2 instruction appended), XRP (Memos array in `xrpl_tx_json`), Tron (`extra_data` field).
+- **UTXO locking**: Concurrent Bitcoin and Cardano transactions are serialized via the `utxo_locks` table to prevent double-spending the same UTXO. Locks auto-expire after 5 minutes.
+
+#### Fixed
+- **Daily spend unit mismatch**: Per-chain daily spend now uses correct native-unit decimals instead of ETH-equivalent conversion, which could under-count spend on high-decimal chains.
+- **XRP guardrail bypass**: `xrpl_tx_json` transactions now enforce all agent guardrails (chains, allowlist, value caps, daily limits) — previously bypassed when using raw XRPL JSON.
+- **`/sign` EVM persistence**: Transactions submitted via the unified `POST /v1/agents/{id}/sign` endpoint with `intent_type: "transaction"` are now correctly persisted for audit and daily-limit tracking.
+
+#### Migrations
+- `124_agent_token_guardrails.sql` — `tx_token_allowlist`, `tx_known_tokens_only`, `xrpl_allowed_tx_types`, `per_chain_guardrails` columns on `agents` table.
+- `125_known_tokens.sql` — `known_tokens` table with unique index on `(chain, contract_address)`.
+- `126_utxo_locks.sql` — `utxo_locks` table for concurrent UTXO transaction serialization.
+
+#### SDK/CLI/Dashboard
+- **SDK**: `CreateAgentRequest`, `UpdateAgentRequest`, and `AgentResponse` include all new guardrail fields. Token registry types added.
+- **CLI**: New flags `--tx-token-allowlist`, `--tx-known-tokens-only`, `--xrpl-allowed-tx-types`, `--per-chain-guardrails` on `agent create` and `agent update`.
+- **Dashboard**: Token allowlist editor, known-tokens-only toggle, per-chain guardrails visual editor, and XRPL transaction type multi-select on agent detail page. Token registry hook (`use-token-registry.ts`).
+
+---
+
+### Vault 0.37.1 / Shroud 0.37.1 — Official Rust SDKs for Bitcoin & Solana signing (2026-07-04)
+
+- **Improved:** Bitcoin transaction signing now uses the official **`rust-bitcoin`** crate (v0.32) instead of hand-rolled secp256k1 + BIP-143 logic. All recipient address types are supported: P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot). Key generation, address derivation, and UTXO-based transaction construction use `rust-bitcoin` types end-to-end, eliminating custom serialization code.
+- **Improved:** Solana transaction signing now uses the official **`solana-sdk`** crate (v4) instead of manual Ed25519 + compact message serialization. PDA derivation uses `Pubkey::find_program_address` (replacing the custom off-curve check with `curve25519-dalek`). SPL token transfers use proper Associated Token Account derivation. Key generation, address formatting, and transaction construction are fully type-safe.
+- **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
+- **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
+- **Verified end-to-end:** Live testnet transactions confirmed on all non-EVM chains — Solana Devnet (sign-only, submit/broadcast, unified sign), Bitcoin Signet (sign-only, submit/broadcast), Tron Shasta (sign-only, submit/broadcast), and Cardano Preprod (sign-only, submit/broadcast).
+- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/guides/intents-api#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
+
 ### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
 
 - **New:** **30+ XRPL transaction types** via the `xrpl_tx_json` field on `SubmitTransactionRequest`, `SignTransactionRequest`, and `SignIntentRequest`. Pass a raw XRPL transaction JSON object and the server uses the `xrpl-rust` binary codec to encode and sign it. `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. Supported types: Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, AccountDelete, EscrowCreate/Finish/Cancel, PaymentChannelCreate/Fund/Claim, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw/Bid/Delete/Vote, SetRegularKey, SignerListSet, DepositPreauth, CheckCreate/Cash/Cancel, TicketCreate, Clawback.

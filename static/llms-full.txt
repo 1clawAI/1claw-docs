@@ -5039,8 +5039,8 @@ Instead of manually storing a raw private key in a vault, you can provision HSM-
 | Chain | Curve | Address format |
 | --- | --- | --- |
 | Ethereum | secp256k1 | 0x (EIP-55 checksum) |
-| Bitcoin | secp256k1 | P2WPKH (bech32, bc1q…) |
-| Solana | Ed25519 | Base58 |
+| Bitcoin | secp256k1 | P2WPKH / P2TR (bech32) — via `rust-bitcoin` |
+| Solana | Ed25519 | Base58 — via `solana-sdk` |
 | XRP | Ed25519 | Base58Check (r…) |
 | Cardano | Ed25519 | Bech32 enterprise (addr1…) |
 | Tron | secp256k1 | Base58Check (T…) |
@@ -5089,10 +5089,152 @@ The response includes the `public_key`, derived `address`, `curve`, and `key_ver
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | `client.signingKeys.export(agentId, chain, { password })` |
 
-Only human users can provision, rotate, and export keys — agents get 403. Export requires password re-authentication via the `X-Auth-Confirm` header and is audit-logged as `signing_key.export`. Failed re-auth increments `failed_login_attempts` and can trigger account lockout. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support both address derivation **and on-chain transaction signing + broadcast** via the Intents API. `value` is the major-unit decimal string (BTC/SOL/XRP/ADA/TRX); 1claw auto-fetches chain data (Bitcoin UTXOs/fee, Solana blockhash, XRP sequence, Cardano protocol params, Tron ref block), signs in the HSM/TEE, and broadcasts. Chain-specific optional fields: `destination_tag` (XRP), `memo`, `fee_rate_sat_per_vbyte` (BTC), `fee_limit_sun` (Tron), `token_mint`/`token_decimals` (SPL + TRC-20), `ttl` (Cardano). Tenderly `simulate_first` is EVM-only (no-op for non-EVM).
+Only human users can provision, rotate, and export keys — agents get 403. Export requires password re-authentication via the `X-Auth-Confirm` header and is audit-logged as `signing_key.export`. Failed re-auth increments `failed_login_attempts` and can trigger account lockout. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support both address derivation **and on-chain transaction signing + broadcast** — see [Non-EVM transaction signing](#non-evm) below.
 
 :::tip Platform API auto-provisioning
 If you're using the [Platform API](/docs/guides/platform-api), signing keys can be auto-provisioned during bootstrap by including a `signing_keys` array in your template spec — no separate API call needed.
+:::
+
+---
+
+## Non-EVM transaction signing {#non-evm}
+
+The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
+
+Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl) for 30+ transaction types.
+
+1claw fetches the chain-specific data it needs automatically (UTXOs and fee rate for Bitcoin, latest blockhash for Solana, account sequence for XRP, protocol parameters and UTXOs for Cardano, the reference block for Tron), signs, and (unless you use the sign-only endpoint) broadcasts via the chain's RPC.
+
+### Value units
+
+`value` is always the **human-readable major unit** as a decimal string (e.g. `"0.5"` for 0.5 BTC). 1claw converts to base units internally:
+
+| Chain | Base unit | Decimals | Address format |
+| --- | --- | --- | --- |
+| Bitcoin | satoshi | 8 | bech32 P2WPKH (`bc1q…`) |
+| Solana | lamport | 9 | Base58 |
+| XRP | drop | 6 | Base58Check (`r…`) |
+| Cardano | lovelace | 6 | Bech32 enterprise (`addr1…`) |
+| Tron | sun | 6 | Base58Check (`T…`) |
+
+### Chain-specific request fields
+
+All fields are optional and ignored on chains where they don't apply:
+
+| Field | Type | Chain | Purpose |
+| --- | --- | --- | --- |
+| `destination_tag` | number | XRP | Destination tag for exchange deposits |
+| `memo` | string | XRP, Solana | Optional memo |
+| `fee_rate_sat_per_vbyte` | number | Bitcoin | Override the fetched fee rate |
+| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit |
+| `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
+| `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
+| `ttl` | number | Cardano | Time-to-live (absolute slot) |
+
+For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
+
+### Supported networks & testnets {#non-evm-networks}
+
+All non-EVM chains support both mainnet and testnet signing. Use the `chain` field to select the network:
+
+| Chain | Mainnet `chain` | Testnet `chain` | Testnet explorer | Faucet |
+| --- | --- | --- | --- | --- |
+| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Solana | `solana` | `solana-devnet`, `solana-testnet` | [explorer.solana.com/?cluster=devnet](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) (GitHub login), `solana airdrop <SOL> <address> --url devnet` |
+| XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Cardano | `cardano` | `cardano-preprod`, `cardano-preview` | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (web or API) |
+| Tron | `tron` | `tron-shasta`, `tron-nile` | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) (2,000 TRX + 1,000 USDT) |
+
+:::tip Testnet address formats
+Bitcoin testnet/signet addresses use the `tb1q…` prefix (derived from the same key as mainnet `bc1q…`). Cardano preprod addresses use `addr_test1…` (derived from the same key as mainnet `addr1…`). Solana, XRP, and Tron use the same address format on all networks.
+:::
+
+#### External API dependencies
+
+| Chain | External service | Required config |
+| --- | --- | --- |
+| Bitcoin | [mempool.space](https://mempool.space/) | None (public API) |
+| Solana | Solana JSON-RPC | None (public endpoints: `api.devnet.solana.com`, `api.mainnet-beta.solana.com`) |
+| XRP | XRPL WebSocket/HTTP | None (public: `s1.ripple.com`, `s.altnet.rippletest.net`) |
+| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (or `BLOCKFROST_PROJECT_ID_PREPROD` / `BLOCKFROST_PROJECT_ID_MAINNET`). Free tier: 50k req/day. |
+| Tron | [TronGrid](https://www.trongrid.io/) | None (public API: `api.trongrid.io`, `api.shasta.trongrid.io`) |
+
+#### Cardano Preprod faucet (API)
+
+The Cardano preprod faucet supports programmatic requests:
+
+```bash
+curl -X POST "https://faucet.preprod.world.dev.cardano.org/send-money/<YOUR_ADDR_TEST1_ADDRESS>?api_key=ooseiteiquo7Wie9oochooyiequi4ooc"
+```
+
+Rate limit: one request per address per 24 hours.
+
+### Example — native transfers
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+# Bitcoin (testnet): send 0.001 BTC
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "bitcoin-testnet",
+    "to": "tb1q...",
+    "value": "0.001"
+  }'
+
+# Solana (devnet): send 0.25 SOL
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "solana-devnet", "to": "9xQ...", "value": "0.25" }'
+
+# XRP (testnet): send 10 XRP with a destination tag
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "xrp-testnet", "to": "rPT1...", "value": "10", "destination_tag": 12345 }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+// Solana: send 0.25 SOL
+const { data: sol } = await client.agents.submitTransaction(agentId, {
+  chain: "solana-devnet",
+  to: "9xQ...",
+  value: "0.25",
+});
+console.log(sol.tx_hash, sol.status); // base58 signature, "broadcast"
+
+// Cardano: send 2 ADA with a TTL
+const { data: ada } = await client.agents.submitTransaction(agentId, {
+  chain: "cardano-preprod",
+  to: "addr_test1...",
+  value: "2",
+  ttl: 90_000_000,
+});
+
+// Tron TRC-20 (USDT): send 5 tokens, sign only (no broadcast)
+const { data: usdt } = await client.agents.signTransaction(agentId, {
+  chain: "tron",
+  to: "TR7NH...",
+  value: "5",
+  token_mint: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+  token_decimals: 6,
+});
+```
+
+</TabItem>
+</Tabs>
+
+The response shape matches EVM: `{ tx_hash, from, to, value, status, raw_tx }`. For non-EVM chains the signed payload is returned as `raw_tx` (base64/hex depending on the chain) and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron).
+
+:::note Tenderly simulation is EVM-only
+`simulate_first` and the `/simulate` endpoints only apply to EVM chains. For non-EVM chains they are a no-op — use the sign-only endpoint if you want to inspect the signed transaction before broadcasting it yourself.
 :::
 
 ---
@@ -5373,11 +5515,23 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 
 ### Testnet chains
 
+#### EVM testnets
+
 | Chain        | Chain ID | Native token | Explorer |
 | ------------ | -------- | ------------ | -------- |
 | Sepolia      | 11155111 | ETH          | [sepolia.etherscan.io](https://sepolia.etherscan.io) |
 | Base Sepolia | 84532    | ETH          | [sepolia.basescan.org](https://sepolia.basescan.org) |
 | Arc Testnet  | 5042002  | USDC         | [testnet.arcscan.app](https://testnet.arcscan.app) |
+
+#### Non-EVM testnets
+
+| Chain | Network | Native token | Explorer | Faucet |
+| --- | --- | --- | --- | --- |
+| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) |
+| Solana | `solana-devnet` | SOL | [explorer.solana.com (devnet)](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) |
+| XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Cardano | `cardano-preprod` | tADA | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
+| Tron | `tron-shasta` | TRX | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
 
 ### Adding a chain
 
@@ -5532,7 +5686,7 @@ The initial POST submission always returns `signed_tx` for the originating calle
 2. **Set `expires_at`** — register agents with an expiry so leaked API keys have a bounded blast radius.
 3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
 4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
-5. **Use testnets first** — store a testnet key (Sepolia, Base Sepolia) and verify the flow before moving to mainnet.
+5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](#non-evm-networks) for faucet links.
 
 
 ---
@@ -6904,6 +7058,76 @@ Array of blockchain signing keys to auto-provision for the first agent at bootst
 
 :::tip
 Signing keys are provisioned server-side during bootstrap — the platform operator never sees the private keys, and no user interaction is required. The `plt_` key cannot read signing keys across the org boundary, maintaining custody separation.
+:::
+
+---
+
+## Resource Grants (User-Side)
+
+After a user claims their bootstrapped resources, they can grant your platform app access to **additional** vaults and agents beyond what the template provisioned. This is useful when your users have pre-existing 1Claw resources they want to connect.
+
+### How It Works
+
+1. Your app redirects the user to the 1Claw grant page:
+   ```
+   https://1claw.xyz/connect/{your-slug}/grant?connection={connection_id}
+   ```
+2. The user selects which vaults and agents to share.
+3. Your backend can query the grants to discover what access it has.
+
+### API
+
+**Grant resources** (user-authenticated, `1ck_` key):
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grant" \
+  -H "Authorization: Bearer 1ck_USER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vault_ids": ["vault-uuid-1", "vault-uuid-2"],
+    "agent_ids": ["agent-uuid-1"]
+  }'
+```
+
+**List active grants:**
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants" \
+  -H "Authorization: Bearer 1ck_USER_KEY"
+```
+
+**Revoke a grant:**
+
+```bash
+curl -X DELETE "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants/GRANT_ID" \
+  -H "Authorization: Bearer 1ck_USER_KEY"
+```
+
+### SDK
+
+```typescript
+// User-authenticated client (1ck_ key)
+const userClient = new OneclawClient({ apiKey: "1ck_user_key" });
+
+// Grant access
+const { data } = await userClient.platform.grantAccess(connectionId, {
+  vault_ids: ["vault-uuid"],
+  agent_ids: ["agent-uuid"],
+});
+
+// List grants
+const { data: grants } = await userClient.platform.listGrants(connectionId);
+
+// Revoke
+await userClient.platform.revokeGrant(connectionId, grantId);
+```
+
+### Dashboard
+
+Users can manage grants from **Settings → Connected Apps** — each app shows shared resource counts with expandable grant panels and per-grant revoke buttons.
+
+:::tip
+Resource grants are always user-initiated. Platform operators cannot grant themselves access — only the connected user can share their resources. Grants are instantly revocable.
 :::
 
 ---
@@ -14752,7 +14976,48 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-06 (latest)
+## 2026-07 (latest)
+
+### Vault 0.37.1 / Shroud 0.37.1 — Official Rust SDKs for Bitcoin & Solana signing (2026-07-04)
+
+- **Improved:** Bitcoin transaction signing now uses the official **`rust-bitcoin`** crate (v0.32) instead of hand-rolled secp256k1 + BIP-143 logic. All recipient address types are supported: P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot). Key generation, address derivation, and UTXO-based transaction construction use `rust-bitcoin` types end-to-end, eliminating custom serialization code.
+- **Improved:** Solana transaction signing now uses the official **`solana-sdk`** crate (v4) instead of manual Ed25519 + compact message serialization. PDA derivation uses `Pubkey::find_program_address` (replacing the custom off-curve check with `curve25519-dalek`). SPL token transfers use proper Associated Token Account derivation. Key generation, address formatting, and transaction construction are fully type-safe.
+- **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
+- **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
+
+### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
+
+- **New:** **30+ XRPL transaction types** via the `xrpl_tx_json` field on `SubmitTransactionRequest`, `SignTransactionRequest`, and `SignIntentRequest`. Pass a raw XRPL transaction JSON object and the server uses the `xrpl-rust` binary codec to encode and sign it. `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. Supported types: Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, AccountDelete, EscrowCreate/Finish/Cancel, PaymentChannelCreate/Fund/Claim, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw/Bid/Delete/Vote, SetRegularKey, SignerListSet, DepositPreauth, CheckCreate/Cash/Cancel, TicketCreate, Clawback.
+- **New:** `xrpl-rust` v1.1.0 crate added to both Vault and Shroud (TEE), replacing the hand-rolled Payment-only STObject serializer. The legacy `to`/`value`/`destination_tag` Payment path is preserved for backward compatibility.
+- **New:** Unsupported XRPL transaction types are rejected with a descriptive error listing all supported types.
+- **SDK:** `xrpl_tx_json` field added to `SubmitTransactionRequest`, `SignTransactionRequest`, and `SignIntentRequest` in the TypeScript SDK, Python SDK, and Go SDK.
+- **MCP:** `submit_transaction` and `sign_transaction` tools accept `xrpl_tx_json` parameter.
+- **OpenAPI:** `xrpl_tx_json` field added to all three transaction request schemas.
+- **Tests:** `test-nonevm-signing-prod.sh` extended with TrustSet, AccountSet, unsupported type, and unified `/sign` OfferCreate tests. `test-shroud-prod.sh` gains XRP `xrpl_tx_json` TrustSet dispatch test and XRP Payment dispatch test.
+- **Dashboard:** Intents page updated to highlight XRP's 30+ transaction type support.
+- **Examples:** `examples/non-evm-keys` updated with TrustSet example via `xrpl_tx_json`.
+
+### API v2.23.0 / SDK 0.36.0 / Vault 0.36.0 / MCP 0.36.0 — Non-EVM transaction signing (2026-07-03)
+
+- **New:** Full on-chain **transaction signing + broadcast** for **Bitcoin, Solana, XRP, Cardano, and Tron** through the Intents API (`POST /v1/agents/{id}/transactions`, `POST .../transactions/sign`, unified `POST .../sign` with `intent_type: "transaction"`). 1Claw dispatches by chain family, auto-fetches chain data (Bitcoin UTXOs/fee via mempool.space, Solana blockhash, XRP sequence, Cardano protocol params via Blockfrost, Tron ref block via TronGrid), signs in the HSM (or Shroud TEE), and broadcasts.
+- **New:** Chain-specific optional fields on transaction requests: `destination_tag` (XRP), `memo`, `fee_rate_sat_per_vbyte` (Bitcoin), `fee_limit_sun` (Tron TRC-20), `token_mint` / `token_decimals` (Solana SPL + Tron TRC-20), `ttl` (Cardano). `value` is the human-readable major unit (BTC/SOL/XRP/ADA/TRX) as a decimal string.
+- **New:** Chain registry migration adds `chain_type` column and seeds non-EVM mainnets + testnets (`bitcoin-testnet`, `solana-devnet`, `xrp-testnet`, `cardano-preprod`, `tron-shasta`, etc.).
+- **New:** Shroud TEE parity — non-EVM signing inside confidential memory with the same family dispatch and guardrails as Vault API.
+- **Note:** Tenderly `simulate_first` and `/simulate` endpoints remain **EVM-only** (no-op for non-EVM chains).
+- **Cardano:** Requires server-side Blockfrost project id (`BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_MAINNET`, or generic `BLOCKFROST_PROJECT_ID`).
+- **Examples:** `examples/non-evm-keys` now includes `npm run sign -- <chain> <to> <amount>` for sign + broadcast demos.
+- **Tests:** New `scripts/test-nonevm-signing-prod.sh` wired into `run-production-tests.sh`; Shroud prod tests assert non-EVM dispatch.
+- **SDK:** `SubmitTransactionRequest` / `SignTransactionRequest` extended with non-EVM fields; OpenAPI spec updated.
+
+### API v2.22.0 / SDK 0.35.0 / Vault 0.35.0 — Platform resource grants (2026-07-03)
+
+- **New:** Platform resource grants — users can grant platform apps access to specific vaults and agents via `POST /v1/platform/connections/{id}/grant`. Grants are per-vault with configurable `allowed_paths` and `permissions`. List active grants via `GET .../grants`, revoke individual grants via `DELETE .../grants/{grant_id}`.
+- **New:** Dashboard grant page at `/connect/{slug}/grant` — vault/agent picker with checkboxes for selecting resources to share with a platform app. Linked from OAuth consent and claim flows.
+- **Enhanced:** Connected Apps page (`/settings/connected-apps`) rewritten — now shows vault/agent counts per app, expandable "Resource Grants" panel with per-grant details, and individual revoke buttons with confirmation dialog.
+- **Fixed:** `GET /v1/platform/connected-apps` response key changed from `connected_apps` to `apps` to match the SDK and dashboard expectations.
+- **SDK:** New methods on `PlatformResource`: `grantAccess(connectionId, data)`, `listGrants(connectionId)`, `revokeGrant(connectionId, grantId)`.
+
+## 2026-06
 
 ### API v2.20.1 / SDK 0.34.3 / CLI 0.36.4 — OAuth branding + redirect URI validation (2026-06-29)
 

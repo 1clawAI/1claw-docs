@@ -462,8 +462,8 @@ Instead of manually storing a raw private key in a vault, you can provision HSM-
 | Chain | Curve | Address format |
 | --- | --- | --- |
 | Ethereum | secp256k1 | 0x (EIP-55 checksum) |
-| Bitcoin | secp256k1 | P2WPKH (bech32, bc1q…) |
-| Solana | Ed25519 | Base58 |
+| Bitcoin | secp256k1 | P2WPKH / P2TR (bech32) — via `rust-bitcoin` |
+| Solana | Ed25519 | Base58 — via `solana-sdk` |
 | XRP | Ed25519 | Base58Check (r…) |
 | Cardano | Ed25519 | Bech32 enterprise (addr1…) |
 | Tron | secp256k1 | Base58Check (T…) |
@@ -524,6 +524,8 @@ If you're using the [Platform API](/docs/guides/platform-api), signing keys can 
 
 The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
 
+Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl) for 30+ transaction types.
+
 1claw fetches the chain-specific data it needs automatically (UTXOs and fee rate for Bitcoin, latest blockhash for Solana, account sequence for XRP, protocol parameters and UTXOs for Cardano, the reference block for Tron), signs, and (unless you use the sign-only endpoint) broadcasts via the chain's RPC.
 
 ### Value units
@@ -554,9 +556,41 @@ All fields are optional and ignored on chains where they don't apply:
 
 For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
 
-### Supported networks
+### Supported networks & testnets {#non-evm-networks}
 
-Mainnets and testnets are in the chain registry: `bitcoin` / `bitcoin-testnet`, `solana` / `solana-devnet`, `xrp` / `xrp-testnet`, `cardano` / `cardano-preprod`, `tron` / `tron-shasta`. Cardano broadcast requires a Blockfrost project id configured server-side (`BLOCKFROST_PROJECT_ID_PREPROD` for preprod, `BLOCKFROST_PROJECT_ID_MAINNET` for mainnet, or the generic `BLOCKFROST_PROJECT_ID`).
+All non-EVM chains support both mainnet and testnet signing. Use the `chain` field to select the network:
+
+| Chain | Mainnet `chain` | Testnet `chain` | Testnet explorer | Faucet |
+| --- | --- | --- | --- | --- |
+| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Solana | `solana` | `solana-devnet`, `solana-testnet` | [explorer.solana.com/?cluster=devnet](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) (GitHub login), `solana airdrop <SOL> <address> --url devnet` |
+| XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Cardano | `cardano` | `cardano-preprod`, `cardano-preview` | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (web or API) |
+| Tron | `tron` | `tron-shasta`, `tron-nile` | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) (2,000 TRX + 1,000 USDT) |
+
+:::tip Testnet address formats
+Bitcoin testnet/signet addresses use the `tb1q…` prefix (derived from the same key as mainnet `bc1q…`). Cardano preprod addresses use `addr_test1…` (derived from the same key as mainnet `addr1…`). Solana, XRP, and Tron use the same address format on all networks.
+:::
+
+#### External API dependencies
+
+| Chain | External service | Required config |
+| --- | --- | --- |
+| Bitcoin | [mempool.space](https://mempool.space/) | None (public API) |
+| Solana | Solana JSON-RPC | None (public endpoints: `api.devnet.solana.com`, `api.mainnet-beta.solana.com`) |
+| XRP | XRPL WebSocket/HTTP | None (public: `s1.ripple.com`, `s.altnet.rippletest.net`) |
+| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (or `BLOCKFROST_PROJECT_ID_PREPROD` / `BLOCKFROST_PROJECT_ID_MAINNET`). Free tier: 50k req/day. |
+| Tron | [TronGrid](https://www.trongrid.io/) | None (public API: `api.trongrid.io`, `api.shasta.trongrid.io`) |
+
+#### Cardano Preprod faucet (API)
+
+The Cardano preprod faucet supports programmatic requests:
+
+```bash
+curl -X POST "https://faucet.preprod.world.dev.cardano.org/send-money/<YOUR_ADDR_TEST1_ADDRESS>?api_key=ooseiteiquo7Wie9oochooyiequi4ooc"
+```
+
+Rate limit: one request per address per 24 hours.
 
 ### Example — native transfers
 
@@ -904,11 +938,23 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 
 ### Testnet chains
 
+#### EVM testnets
+
 | Chain        | Chain ID | Native token | Explorer |
 | ------------ | -------- | ------------ | -------- |
 | Sepolia      | 11155111 | ETH          | [sepolia.etherscan.io](https://sepolia.etherscan.io) |
 | Base Sepolia | 84532    | ETH          | [sepolia.basescan.org](https://sepolia.basescan.org) |
 | Arc Testnet  | 5042002  | USDC         | [testnet.arcscan.app](https://testnet.arcscan.app) |
+
+#### Non-EVM testnets
+
+| Chain | Network | Native token | Explorer | Faucet |
+| --- | --- | --- | --- | --- |
+| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) |
+| Solana | `solana-devnet` | SOL | [explorer.solana.com (devnet)](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) |
+| XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Cardano | `cardano-preprod` | tADA | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
+| Tron | `tron-shasta` | TRX | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
 
 ### Adding a chain
 
@@ -970,6 +1016,10 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
 | `tx_max_value_eth` | `string` | Maximum value per transaction in ETH (e.g. `"1.0"`). Null = no per-tx limit. |
 | `tx_daily_limit_eth` | `string` | Rolling 24-hour spend limit in ETH. Null = no daily limit. |
+| `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
+| `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
+| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
+| `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -982,7 +1032,9 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
     "tx_allowed_chains": ["ethereum", "base"],
     "tx_to_allowlist": ["0xSafeAddress1", "0xSafeAddress2"],
     "tx_max_value_eth": "0.5",
-    "tx_daily_limit_eth": "5.0"
+    "tx_daily_limit_eth": "5.0",
+    "tx_token_allowlist": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+    "tx_known_tokens_only": true
   }'
 ```
 
@@ -995,6 +1047,8 @@ const { data: agent } = await client.agents.update(agentId, {
   tx_to_allowlist: ["0xSafeAddress1", "0xSafeAddress2"],
   tx_max_value_eth: "0.5",
   tx_daily_limit_eth: "5.0",
+  tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+  tx_known_tokens_only: true,
 });
 ```
 
@@ -1002,6 +1056,74 @@ const { data: agent } = await client.agents.update(agentId, {
 </Tabs>
 
 When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
+
+### Token guardrails {#token-guardrails}
+
+Two complementary controls restrict which tokens an agent can transfer:
+
+**Token allowlist** (`tx_token_allowlist`): An explicit list of token contract addresses or mints the agent may interact with. Applied to `token_mint` on non-EVM chains and the ERC-20 contract address on EVM token transfers. Case-insensitive. When empty, all tokens are permitted.
+
+**Known tokens only** (`tx_known_tokens_only`): When enabled, the agent can only transact with tokens present in the [known tokens registry](#token-registry). This is useful for restricting agents to verified, well-known tokens without maintaining a per-agent allowlist.
+
+Both guardrails can be used together — the token must pass **both** checks (allowlist AND known registry) when both are set.
+
+### Per-chain guardrails {#per-chain-guardrails}
+
+Override global guardrails on a per-chain basis using `per_chain_guardrails`. This is useful when an agent operates across multiple chains with different risk profiles — for example, a higher spend limit on a testnet than on mainnet.
+
+```json
+{
+  "per_chain_guardrails": {
+    "ethereum": {
+      "max_value": "1.0",
+      "daily_limit": "10.0",
+      "to_allowlist": ["0xSafeContract"],
+      "token_allowlist": ["0xUSDC"]
+    },
+    "solana": {
+      "max_value": "100",
+      "daily_limit": "500"
+    }
+  }
+}
+```
+
+Per-chain values override the global guardrails for that specific chain. When both global and per-chain values are set, the **strictest** wins.
+
+### XRP transaction type allowlist {#xrpl-tx-types}
+
+When using `xrpl_tx_json` for advanced XRP transactions, you can restrict which transaction types are permitted:
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "xrpl_allowed_tx_types": ["Payment", "TrustSet", "OfferCreate"] }'
+```
+
+If the agent submits an `xrpl_tx_json` with a `TransactionType` not in the allowlist, the request is rejected with 403.
+
+### Known tokens registry {#token-registry}
+
+A curated registry of verified token contracts. Use `GET /v1/tokens` (filterable by `?chain=`) or `GET /v1/chains/{chain}/tokens` to query it.
+
+Admins can manage the registry via `POST /v1/admin/tokens` (add) and `DELETE /v1/admin/tokens/{id}` (remove). Each entry includes `chain`, `contract_address`, `symbol`, `name`, `decimals`, and an optional `logo_url`.
+
+### Extended token balance {#token-balance}
+
+The signing key balance endpoint now supports querying specific token balances alongside native balance:
+
+```bash
+# Query native + specific ERC-20 token balances
+curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The `?tokens=` parameter accepts comma-separated contract addresses or mints. Works across all chains: ERC-20 (EVM), SPL (Solana), TRC-20 (Tron).
+
+### Per-chain daily spend tracking {#per-chain-spend}
+
+`GET /v1/agents/{id}` now returns `tx_spent_today_by_chain` alongside the existing `tx_spent_today_eth`. The per-chain field uses correct native-unit decimals per chain (ETH for Ethereum, BTC for Bitcoin, SOL for Solana, etc.) instead of converting everything to ETH, providing accurate multi-chain spend tracking for daily limit enforcement.
 
 ---
 
@@ -1063,4 +1185,4 @@ The initial POST submission always returns `signed_tx` for the originating calle
 2. **Set `expires_at`** — register agents with an expiry so leaked API keys have a bounded blast radius.
 3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
 4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
-5. **Use testnets first** — store a testnet key (Sepolia, Base Sepolia) and verify the flow before moving to mainnet.
+5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](#non-evm-networks) for faucet links.
