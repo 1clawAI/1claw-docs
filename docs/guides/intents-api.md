@@ -462,7 +462,7 @@ Instead of manually storing a raw private key in a vault, you can provision HSM-
 | Chain | Curve | Address format |
 | --- | --- | --- |
 | Ethereum | secp256k1 | 0x (EIP-55 checksum) |
-| Bitcoin | secp256k1 | P2WPKH / P2TR (bech32) — via `rust-bitcoin` |
+| Bitcoin | secp256k1 | P2WPKH bech32 (`bc1q…` / `tb1q…`) — via `rust-bitcoin` |
 | Solana | Ed25519 | Base58 — via `solana-sdk` |
 | XRP | Ed25519 | Base58Check (r…) |
 | Cardano | Ed25519 | Bech32 enterprise (addr1…) |
@@ -547,12 +547,13 @@ All fields are optional and ignored on chains where they don't apply:
 | Field | Type | Chain | Purpose |
 | --- | --- | --- | --- |
 | `destination_tag` | number | XRP | Destination tag for exchange deposits |
-| `memo` | string | XRP, Solana | Optional memo |
+| `memo` | string | XRP, Solana | Optional memo (planned; currently accepted but not applied — use `Memos` inside `xrpl_tx_json` for XRP) |
 | `fee_rate_sat_per_vbyte` | number | Bitcoin | Override the fetched fee rate |
-| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit |
+| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit (default: 100,000,000 = 100 TRX) |
 | `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
 | `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
-| `ttl` | number | Cardano | Time-to-live (absolute slot) |
+| `ttl` | number | Cardano | Time-to-live (absolute slot; default: current slot + 7200) |
+| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for [30+ transaction types](#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Overrides `to`/`value`/`destination_tag` when present. |
 
 For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
 
@@ -562,7 +563,7 @@ All non-EVM chains support both mainnet and testnet signing. Use the `chain` fie
 
 | Chain | Mainnet `chain` | Testnet `chain` | Testnet explorer | Faucet |
 | --- | --- | --- | --- | --- |
-| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha, 0.001–0.09 sBTC), [signetfaucet.com](https://signetfaucet.com/) (captcha) |
 | Solana | `solana` | `solana-devnet`, `solana-testnet` | [explorer.solana.com/?cluster=devnet](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) (GitHub login), `solana airdrop <SOL> <address> --url devnet` |
 | XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
 | Cardano | `cardano` | `cardano-preprod`, `cardano-preview` | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (web or API) |
@@ -578,19 +579,19 @@ Bitcoin testnet/signet addresses use the `tb1q…` prefix (derived from the same
 | --- | --- | --- |
 | Bitcoin | [mempool.space](https://mempool.space/) | None (public API) |
 | Solana | Solana JSON-RPC | None (public endpoints: `api.devnet.solana.com`, `api.mainnet-beta.solana.com`) |
-| XRP | XRPL WebSocket/HTTP | None (public: `s1.ripple.com`, `s.altnet.rippletest.net`) |
-| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (or `BLOCKFROST_PROJECT_ID_PREPROD` / `BLOCKFROST_PROJECT_ID_MAINNET`). Free tier: 50k req/day. |
+| XRP | XRPL HTTP JSON-RPC | None (public: `xrplcluster.com`, `s.altnet.rippletest.net:51234`) |
+| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (generic fallback), or per-network: `BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_PREVIEW`, `BLOCKFROST_PROJECT_ID_MAINNET`. Also accepts `BLOCKFROST_API_KEY` as an alias. Free tier: 50k req/day. |
 | Tron | [TronGrid](https://www.trongrid.io/) | None (public API: `api.trongrid.io`, `api.shasta.trongrid.io`) |
 
 #### Cardano Preprod faucet (API)
 
-The Cardano preprod faucet supports programmatic requests:
+The Cardano preprod faucet supports programmatic requests (api key is optional):
 
 ```bash
 curl -X POST "https://faucet.preprod.world.dev.cardano.org/send-money/<YOUR_ADDR_TEST1_ADDRESS>?api_key=ooseiteiquo7Wie9oochooyiequi4ooc"
 ```
 
-Rate limit: one request per address per 24 hours.
+Rate limit: one request per address per 24 hours. The default API key above is public; you can also submit without one.
 
 ### Example — native transfers
 
@@ -654,7 +655,7 @@ const { data: usdt } = await client.agents.signTransaction(agentId, {
 </TabItem>
 </Tabs>
 
-The response shape matches EVM: `{ tx_hash, from, to, value, status, raw_tx }`. For non-EVM chains the signed payload is returned as `raw_tx` (base64/hex depending on the chain) and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron).
+The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, status }`. For non-EVM chains, the `value_wei` field contains the chain-native base unit (satoshis for Bitcoin, lamports for Solana, drops for XRP, lovelace for Cardano, sun for Tron), `signed_tx` contains the signed payload (hex or base64 depending on the chain), and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron). For sign-only responses, `chain_id` and `nonce` are `0` for non-EVM chains.
 
 :::note Tenderly simulation is EVM-only
 `simulate_first` and the `/simulate` endpoints only apply to EVM chains. For non-EVM chains they are a no-op — use the sign-only endpoint if you want to inspect the signed transaction before broadcasting it yourself.
@@ -950,11 +951,13 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 
 | Chain | Network | Native token | Explorer | Faucet |
 | --- | --- | --- | --- | --- |
-| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) |
+| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Bitcoin | `bitcoin-testnet` | tBTC | [mempool.space/testnet](https://mempool.space/testnet) | — (testnet3 faucets are scarce) |
 | Solana | `solana-devnet` | SOL | [explorer.solana.com (devnet)](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) |
 | XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
 | Cardano | `cardano-preprod` | tADA | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
 | Tron | `tron-shasta` | TRX | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
+| Tron | `tron-nile` | TRX | [nile.tronscan.org](https://nile.tronscan.org/) | [nileex.io](https://nileex.io/join/getJoinPage) |
 
 ### Adding a chain
 
@@ -1015,7 +1018,7 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
 | `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
 | `tx_max_value_eth` | `string` | Maximum value per transaction in ETH (e.g. `"1.0"`). Null = no per-tx limit. |
-| `tx_daily_limit_eth` | `string` | Rolling 24-hour spend limit in ETH. Null = no daily limit. |
+| `tx_daily_limit_eth` | `string` | Rolling 24-hour spend limit (numeric, in native major units — despite the `_eth` suffix this is compared as a raw number against all chains combined). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
 | `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
 | `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
 | `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
@@ -1076,19 +1079,17 @@ Override global guardrails on a per-chain basis using `per_chain_guardrails`. Th
   "per_chain_guardrails": {
     "ethereum": {
       "max_value": "1.0",
-      "daily_limit": "10.0",
       "to_allowlist": ["0xSafeContract"],
       "token_allowlist": ["0xUSDC"]
     },
     "solana": {
-      "max_value": "100",
-      "daily_limit": "500"
+      "max_value": "100"
     }
   }
 }
 ```
 
-Per-chain values override the global guardrails for that specific chain. When both global and per-chain values are set, the **strictest** wins.
+Supported per-chain fields: `max_value`, `to_allowlist`, `token_allowlist`. Per-chain values override the global guardrails for that specific chain. When both global and per-chain values are set, the **strictest** wins. Use the global `tx_daily_limit_eth` for daily spend limits (per-chain daily limits are not yet supported).
 
 ### XRP transaction type allowlist {#xrpl-tx-types}
 
