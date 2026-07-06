@@ -31,7 +31,7 @@ For "Send $0.01 to Vitalik" to work you need:
 ### 3.1 Agent and Intents API
 
 - Enable **Intents API** on the demo agent.
-- (Optional) Set guardrails: e.g. `tx_allowed_chains`: `["base-sepolia"]`, `tx_to_allowlist`: include `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`, `tx_max_value_eth`: `0.02`, or leave empty for no restrictions.
+- (Optional) Set guardrails: e.g. `tx_allowed_chains`: `["base-sepolia"]`, `tx_to_allowlist`: include `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`, `tx_max_value`: `0.02`, or leave empty for no restrictions.
 
 ### 3.2 Signing key in a vault
 

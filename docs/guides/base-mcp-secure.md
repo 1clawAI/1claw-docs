@@ -189,8 +189,8 @@ When the setup wizard creates your agent, it configures server-side guardrails t
 |---|---|---|
 | `tx_allowed_chains` | Restrict which chains the agent can transact on | `["base"]` |
 | `tx_to_allowlist` | Only allow transfers to approved addresses | `["0xMorphoVault...", "0xYourCold..."]` |
-| `tx_max_value_eth` | Cap a single transaction | `0.1` ETH |
-| `tx_daily_limit_eth` | Rolling 24h spend cap | `1.0` ETH |
+| `tx_max_value` | Cap a single transaction (native major units) | `0.1` ETH (on EVM), `0.01` BTC (on Bitcoin) |
+| `tx_daily_limit` | Rolling 24h per-chain spend cap | `1.0` (native units) |
 | `simulate_first` | Tenderly dry-run before broadcast | Always |
 
 These are enforced in the TEE before signing. Even if the model is tricked into calling a transfer tool, the guardrails reject it.
@@ -236,8 +236,8 @@ With the secured version:
 
 1. Shroud scores the injection and blocks it before the model sees the malicious content
 2. Even if it gets through, `tx_to_allowlist` rejects the unknown address
-3. Even if the address was allowed, `tx_max_value_eth` caps the amount
-4. Even if the cap was high enough, `tx_daily_limit_eth` blocks cumulative spend
+3. Even if the address was allowed, `tx_max_value` caps the amount
+4. Even if the cap was high enough, `tx_daily_limit` blocks cumulative spend
 5. Tenderly simulation flags the unusual transfer before broadcast
 
 ## Updating guardrails
@@ -251,8 +251,8 @@ const client = new OneclawClient({ baseUrl: "https://api.1claw.xyz", apiKey: "1c
 
 await client.agents.update("agent-uuid", {
   tx_to_allowlist: ["0xMorphoVault", "0xColdWallet"],
-  tx_max_value_eth: "0.05",
-  tx_daily_limit_eth: "0.5",
+  tx_max_value: "0.05",
+  tx_daily_limit: "0.5",
   tx_allowed_chains: ["base"],
 });
 ```

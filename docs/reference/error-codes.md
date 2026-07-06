@@ -57,7 +57,7 @@ Transaction and simulation endpoints return these status codes and messages:
 | Code | When | `detail` (examples) |
 |------|------|---------------------|
 | 400 | Bad Request | Invalid `value`, `data` (hex), `to` address, or `signing_key_path`. `signing_key_path` must start with `keys/`, `wallets/`, or `agents/`. Unknown chain name. Invalid `max_fee_per_gas` / `max_priority_fee_per_gas` / `gas_price`. |
-| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value_eth`. Would exceed `tx_daily_limit_eth`. Cannot submit on behalf of another agent. |
+| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value`. Would exceed `tx_daily_limit`. Cannot submit on behalf of another agent. |
 | 404 | Not Found | Agent or transaction not found. |
 | 409 | Conflict | Idempotency key reused (duplicate request); retry with a new key or wait. |
 | 422 | Unprocessable Entity | Simulation reverted. Response includes `status: "simulation_failed"` and simulation details. Transaction was **not** signed or broadcast. Fix the tx (e.g. insufficient balance, revert reason) and retry. |

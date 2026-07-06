@@ -27,7 +27,7 @@ The Intents API allows agents to submit blockchain transactions while private ke
 |--------------|-------------|----------------------|
 | Chain allowlist | Optional `tx_allowed_chains` restricts which chains the agent can use. | Handler: `validate_agent_tx`; 403 if chain not allowed. |
 | Recipient allowlist | Optional `tx_to_allowlist` restricts destination addresses. | Handler: 403 if `to` not in list. |
-| Value cap | Optional `tx_max_value_eth` and `tx_daily_limit_eth` limit value per tx and rolling 24h. | Handler: sum and compare; 403 if exceeded. |
+| Value cap | Optional `tx_max_value` and `tx_daily_limit` limit value per tx and rolling 24h per-chain (in native major units). `tx_max_value_eth` / `tx_daily_limit_eth` accepted as deprecated aliases. | Handler: sum and compare; 403 if exceeded. |
 | Signing key path | `signing_key_path` restricted to `keys/*`, `wallets/*`, `agents/{id}/keys/*` to prevent arbitrary secret exfiltration. | `validate_signing_key_path()`; 400 if disallowed. |
 
 ---

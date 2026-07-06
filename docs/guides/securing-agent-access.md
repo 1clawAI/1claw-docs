@@ -105,8 +105,8 @@ For agents that interact with blockchains, enable the **Intents API** to prevent
 Additionally, configure **transaction guardrails**:
 
 - `tx_to_allowlist`: Permitted destination addresses.
-- `tx_max_value_eth`: Maximum value per transaction.
-- `tx_daily_limit_eth`: Rolling 24-hour spend cap.
+- `tx_max_value`: Maximum value per transaction (in native major units — ETH, BTC, SOL, etc.). `tx_max_value_eth` is accepted as a deprecated alias.
+- `tx_daily_limit`: Rolling 24-hour per-chain spend cap. `tx_daily_limit_eth` is accepted as a deprecated alias.
 - `tx_allowed_chains`: Restrict to specific chains.
 
 See [Intents API guide](/docs/guides/intents-api) for details.

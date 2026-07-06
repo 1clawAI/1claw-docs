@@ -1017,8 +1017,10 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | ----- | ---- | ----------- |
 | `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
 | `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
-| `tx_max_value_eth` | `string` | Maximum value per transaction in ETH (e.g. `"1.0"`). Null = no per-tx limit. |
-| `tx_daily_limit_eth` | `string` | Rolling 24-hour spend limit (numeric, in native major units — despite the `_eth` suffix this is compared as a raw number against all chains combined). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
+| `tx_max_value` | `string` | Maximum value per transaction in **native major units** for the chain family (e.g. `"0.01"` = 0.01 BTC on Bitcoin, 0.5 ETH on EVM, 2 SOL on Solana). Null = no per-tx limit. |
+| `tx_daily_limit` | `string` | Rolling 24-hour spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
+| `tx_max_value_eth` | `string` | **Deprecated.** Alias for `tx_max_value` (same unit semantics). |
+| `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
 | `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
 | `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
 | `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
@@ -1034,8 +1036,8 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
   -d '{
     "tx_allowed_chains": ["ethereum", "base"],
     "tx_to_allowlist": ["0xSafeAddress1", "0xSafeAddress2"],
-    "tx_max_value_eth": "0.5",
-    "tx_daily_limit_eth": "5.0",
+    "tx_max_value": "0.5",
+    "tx_daily_limit": "5.0",
     "tx_token_allowlist": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
     "tx_known_tokens_only": true
   }'
@@ -1048,8 +1050,8 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
 const { data: agent } = await client.agents.update(agentId, {
   tx_allowed_chains: ["ethereum", "base"],
   tx_to_allowlist: ["0xSafeAddress1", "0xSafeAddress2"],
-  tx_max_value_eth: "0.5",
-  tx_daily_limit_eth: "5.0",
+  tx_max_value: "0.5",
+  tx_daily_limit: "5.0",
   tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
   tx_known_tokens_only: true,
 });
@@ -1089,7 +1091,7 @@ Override global guardrails on a per-chain basis using `per_chain_guardrails`. Th
 }
 ```
 
-Supported per-chain fields: `max_value`, `to_allowlist`, `token_allowlist`. Per-chain values override the global guardrails for that specific chain. When both global and per-chain values are set, the **strictest** wins. Use the global `tx_daily_limit_eth` for daily spend limits (per-chain daily limits are not yet supported).
+Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist` (legacy `*_eth` keys accepted). Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins. Daily limits compare against **that chain family's** spend today (`tx_spent_today_by_chain`), not a cross-chain total.
 
 ### XRP transaction type allowlist {#xrpl-tx-types}
 
@@ -1124,7 +1126,7 @@ The `?tokens=` parameter accepts comma-separated contract addresses or mints. Wo
 
 ### Per-chain daily spend tracking {#per-chain-spend}
 
-`GET /v1/agents/{id}` now returns `tx_spent_today_by_chain` alongside the existing `tx_spent_today_eth`. The per-chain field uses correct native-unit decimals per chain (ETH for Ethereum, BTC for Bitcoin, SOL for Solana, etc.) instead of converting everything to ETH, providing accurate multi-chain spend tracking for daily limit enforcement.
+`GET /v1/agents/{id}` returns `tx_spent_today_by_chain` (keys: `evm`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`) and `tx_spent_today` (cross-family sum). Daily limits (`tx_daily_limit`) compare against **that chain family's** spend from `tx_spent_today_by_chain`, not the cross-chain total. Legacy `tx_spent_today_eth` is a deprecated alias for `tx_spent_today`.
 
 ---
 
