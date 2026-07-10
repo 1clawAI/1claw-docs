@@ -1189,3 +1189,179 @@ The initial POST submission always returns `signed_tx` for the originating calle
 3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
 4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
 5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](#non-evm-networks) for faucet links.
+
+---
+
+## Execution Intents (Pro+) {#execution-intents}
+
+Execution Intents extend the Intents API beyond blockchain transactions. Agents can make **HTTP calls, database queries, and external service interactions** through pre-configured **bindings** — without ever seeing the underlying credentials.
+
+:::info Tier requirements
+- **Pro:** HTTP and GraphQL binding types
+- **Team+:** All binding types (Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- **Business+:** TEE execution mode (requests execute inside Shroud's confidential enclave)
+:::
+
+### How it works
+
+1. A **human** creates a binding on the agent — a named credential handle (e.g. `stripe-api`, `analytics-db`) with connection details and authentication.
+2. The agent calls `POST /v1/agents/:id/execute` with the binding name and request parameters.
+3. The server injects credentials server-side, executes the request, and returns the response — the agent never sees API keys, database passwords, or tokens.
+
+### Enabling Execution Intents
+
+Set `execution_intents_enabled: true` when creating or updating an agent:
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "execution_intents_enabled": true }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data } = await client.agents.update(agentId, {
+  execution_intents_enabled: true,
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Creating a binding
+
+Bindings are human-only — agents cannot create or modify their own bindings.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "config": {
+      "base_url": "https://api.stripe.com",
+      "auth_type": "bearer",
+      "auth_credential": "sk_live_...",
+      "allowed_hosts": ["api.stripe.com"],
+      "timeout_ms": 10000
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  config: {
+    base_url: "https://api.stripe.com",
+    auth_type: "bearer",
+    auth_credential: "sk_live_...",
+    allowed_hosts: ["api.stripe.com"],
+    timeout_ms: 10000,
+  },
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Executing a request
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "stripe-api",
+    "intent_type": "http",
+    "params": {
+      "method": "GET",
+      "path": "/v1/customers?limit=10"
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: result } = await client.bindings.execute(agentId, {
+  binding: "stripe-api",
+  intent_type: "http",
+  params: {
+    method: "GET",
+    path: "/v1/customers?limit=10",
+  },
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Binding types
+
+| Type | Tier | Description |
+| --- | --- | --- |
+| `http` | Pro | REST API calls with credential injection |
+| `graphql` | Pro | GraphQL queries/mutations |
+| `postgres` | Team+ | PostgreSQL queries |
+| `mysql` | Team+ | MySQL queries |
+| `redis` | Team+ | Redis commands |
+| `grpc` | Team+ | gRPC calls |
+| `smtp` | Team+ | Email sending |
+| `cloud_sdk` | Team+ | Cloud provider SDK calls |
+| `s3` | Team+ | S3-compatible storage operations |
+| `custom` | Team+ | Custom integrations |
+
+### Binding lifecycle
+
+| Operation | Endpoint | SDK |
+| --- | --- | --- |
+| Create | `POST /v1/agents/{id}/bindings` | `client.bindings.create(agentId, data)` |
+| List | `GET /v1/agents/{id}/bindings` | `client.bindings.list(agentId)` |
+| Get | `GET /v1/agents/{id}/bindings/{bid}` | `client.bindings.get(agentId, bindingId)` |
+| Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
+| Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
+| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
+| Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
+| List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
+
+### MCP tools
+
+**`execute_http`** — execute an HTTP request through a binding:
+```
+Tool: execute_http
+Args:
+  binding: "stripe-api"
+  method: "GET"
+  path: "/v1/customers?limit=10"
+```
+
+**`list_bindings`** — list available bindings for the current agent:
+```
+Tool: list_bindings
+```
+
+### Security model
+
+- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly.
+- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames.
+- **Host allowlist:** Each binding defines `allowed_hosts` — requests to unlisted hosts are rejected.
+- **Audit trail:** Every execution is recorded in the `execution_events` table with request/response metadata and cost.
+- **TEE mode (Business+):** Requests execute inside Shroud's AMD SEV-SNP enclave for maximum isolation.

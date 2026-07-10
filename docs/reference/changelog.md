@@ -14,6 +14,36 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### API v2.26.0 / SDK 0.40.0 / Vault 0.39.0 / MCP 0.40.0 — Execution Intents (2026-07-10)
+
+#### Execution Intents (Pro+)
+- **New:** Execution Intents API — agents can make HTTP calls, database queries, and external service interactions through pre-configured **bindings**. Credentials are stored server-side in the `__agent-keys` vault and never exposed to agents.
+- **New:** Binding types: HTTP, GraphQL (Pro tier), plus Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom (Team+ tier). TEE execution mode available on Business+ for enhanced security.
+- **New:** Per-binding guardrails: host allowlists, timeouts, authentication types (bearer, basic, header, query).
+- **New:** Full execution audit trail via `execution_events` table with per-event cost tracking.
+- **New:** CRUD endpoints under `/v1/agents/{id}/bindings` (human-only creation). Execute endpoint: `POST /v1/agents/{id}/execute`. Test endpoint: `POST /v1/agents/{id}/bindings/{binding_id}/test`.
+- **New:** Agent field `execution_intents_enabled` (boolean, default false). JWT claim `execution_intents_enabled` gates access; middleware `require_execution_intents` enforces it.
+- **New:** `execution_guardrails` JSONB on agents — per-agent execution guardrails (allowed hosts, max duration, rate limits).
+- **New:** Tier-based billing: `execution_intent` (2¢ Pro → 0.5¢ Business) and `execution_intent_tee` (10¢ Pro → 2.5¢ Business) per execution. Monthly limits: Pro 1K, Team 10K, Business 50K, Enterprise unlimited.
+
+#### SDK/CLI/MCP/Dashboard
+- **SDK:** `client.bindings.create()`, `.list()`, `.get()`, `.update()`, `.delete()`, `.test()`, `.execute()`, `.listExecutions()`.
+- **MCP:** New `execute_http` and `list_bindings` tools.
+- **CLI:** Execution intents support via SDK integration.
+- **Dashboard:** `ExecutionIntentsCard` on agent detail page — toggle, binding list, create/test/delete.
+
+#### Migrations
+- `129_execution_intents.sql` — `agent_bindings` and `execution_events` tables.
+
+#### Version Bumps
+- Vault API: 0.39.0
+- SDK: 0.40.0
+- MCP: 0.40.0
+- CLI: 0.40.0
+- OpenAPI: 0.40.0
+
+---
+
 ### API v2.25.0 / SDK 0.38.0 / Vault 0.38.0 / MCP 0.38.0 — Token guardrails, known tokens registry, per-chain guardrails (2026-07-05)
 
 #### Added
