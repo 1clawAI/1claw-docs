@@ -14,6 +14,32 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### Execution Intents 2.0 — executor framework, real GraphQL, guardrail enforcement, credential lifecycle (2026-07-12)
+
+#### Executor framework
+- **New:** Trait-based executor framework (`domain/execution/`) with a shared `ExecutionContext` that centralizes SSRF validation, host/path allowlisting, credential loading, and timeout resolution — no executor can accidentally skip a guardrail. Replaces the previous single-file HTTP dispatch.
+- **New:** Real **GraphQL executor** — POSTs `{ query, variables, operationName }`, surfaces GraphQL `errors[]`, and uses introspection for connectivity tests (previously GraphQL was an HTTP alias).
+
+#### Guardrail enforcement
+- **New:** Per-binding `allowed_paths` is now enforced at execute time (trailing-`*` wildcard supported); disallowed paths are recorded as `denied`.
+- **New:** Agent-level `execution_guardrails` are enforced: `allowed_hosts` (strictest of binding + agent), `allowed_binding_types` (at execute, not just create), `max_duration_ms` (applied as the real client timeout), and `max_requests_per_minute` (per-agent rate limit).
+- **Changed:** Connectivity `test` now runs through the same `ExecutionContext` as `execute`, so SSRF and host-allowlist checks apply to tests too.
+
+#### Credential lifecycle & custody
+- **New:** Explicit credential rotation endpoint — `POST /v1/agents/{id}/bindings/{binding_id}/rotate-credential`.
+- **New:** `credential_set` boolean on binding responses reports whether a credential is stored, without ever exposing the value.
+- **Fixed:** Binding delete now **purges the stored credential** (no orphaned secrets); `secret_type` unified to `credential`.
+
+#### Execution surface & billing
+- **New:** `execution_surface` on the execute response truthfully reports `vault` or `tee` (TEE only when a Shroud execution endpoint is configured); `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` makes TEE requests 501 when no enclave endpoint is present, instead of silently running in Vault.
+- **Fixed:** Only **successful** executions count toward the monthly execution quota; the TEE cost premium is charged as a delta over the base rate to avoid double-billing.
+
+#### Clients & UI
+- **New:** MCP tools `create_binding`, `test_binding`, `list_executions`, and generic `execute_intent` (joining `execute_http` and `list_bindings`).
+- **New:** SDK `client.bindings.rotateCredential()`; OpenAPI updated with the rotate-credential path, `credential_set`, and `execution_surface`.
+- **New:** Dashboard Execution Intents card rebuilt with tabs (Bindings / Execution Log / Playground), inline binding edit + `is_active` toggle, per-binding and per-agent guardrail editors, tier-aware type gating, and write-only credential UX.
+- **New:** Audit events for binding create/update/delete/rotate and every execution outcome (`success` / `error` / `denied`).
+
 ### Vault 0.39.1 / Shroud 0.37.2 — dRPC managed RPC, Robinhood Chain, security hardening (2026-07-12)
 
 #### dRPC Managed RPC Endpoints
