@@ -38,6 +38,8 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** MCP tools `create_binding`, `test_binding`, `list_executions`, and generic `execute_intent` (joining `execute_http` and `list_bindings`).
 - **New:** SDK `client.bindings.rotateCredential()`; OpenAPI updated with the rotate-credential path, `credential_set`, and `execution_surface`.
 - **New:** Dashboard Execution Intents card rebuilt with tabs (Bindings / Execution Log / Playground), inline binding edit + `is_active` toggle, per-binding and per-agent guardrail editors, tier-aware type gating, and write-only credential UX.
+- **New:** CLI `@1claw/cli@0.40.1` — `1claw agent binding` subcommands (create, list, get, update, delete, test, rotate-credential, execute, executions); `--execution-intents` and `--execution-guardrails` on agent create/update.
+- **New:** Python SDK `oneclaw@0.2.1` — `bindings.rotate_credential()`; Go SDK `v0.40.1` — `Bindings.RotateCredential()` and `credential_set` on binding responses.
 - **New:** Audit events for binding create/update/delete/rotate and every execution outcome (`success` / `error` / `denied`).
 
 ### Vault 0.39.1 / Shroud 0.37.2 — dRPC managed RPC, Robinhood Chain, security hardening (2026-07-12)

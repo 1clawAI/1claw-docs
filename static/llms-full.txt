@@ -2618,6 +2618,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Signing keys** | `agent keys list`, `agent keys create`, `agent keys rotate`, `agent keys delete`, `agent export-signing-key` |
 | **Unified signing** | `agent sign` — EIP-191, EIP-712, or raw transaction signing |
 | **Transactions** | `agent tx submit`, `agent tx sign`, `agent tx list`, `agent tx get` |
+| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions` |
 | **Bankr keys** | `agent bankr-key lease`, `agent bankr-key list`, `agent bankr-key revoke` |
 | **Treasury** | `treasury generate`, `treasury list`, `treasury get`, `treasury balance`, `treasury send`, `treasury swap`, `treasury export`, `treasury rotate`, `treasury deactivate` |
 | **Proposals** | `treasury proposal create`, `treasury proposal list`, `treasury proposal get`, `treasury proposal sign`, `treasury proposal execute`, `treasury proposal cancel` |
@@ -2678,6 +2679,8 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
   --tx-allowed-chains sepolia,base
 1claw agent get <id>
 1claw agent update <id> --shroud true --intents-api true
+1claw agent update <id> --execution-intents true \
+  --execution-guardrails '{"max_requests_per_minute":30,"allowed_binding_types":["http","graphql"]}'
 1claw agent delete <id>
 1claw agent token <id>                 # Generate agent JWT
 1claw agent enroll my-agent --email human@example.com   # Self-enroll (no auth)
@@ -2812,6 +2815,29 @@ Human-in-the-loop approval workflow for agent actions.
 1claw approval decide <id> approve
 1claw approval decide <id> reject --reason "Not needed"
 ```
+
+## Execution Intents (bindings)
+
+HTTP and GraphQL calls through named bindings — credentials stay server-side. Requires Pro+ tier and `execution_intents_enabled` on the agent.
+
+```bash
+1claw agent binding create <agent-id> \
+  --name stripe-api --type http \
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"],"allowed_paths":["/v1/*"]}' \
+  --credential sk_live_...
+1claw agent binding list <agent-id>
+1claw agent binding get <agent-id> <binding-id>
+1claw agent binding update <agent-id> <binding-id> --active false
+1claw agent binding test <agent-id> <binding-id>
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding execute <agent-id> \
+  --binding stripe-api --intent-type http \
+  --params '{"method":"GET","path":"/v1/customers?limit=5"}'
+1claw agent binding executions <agent-id> --limit 20
+1claw agent binding delete <agent-id> <binding-id>
+```
+
+See [Intents API — Execution Intents](/docs/guides/intents-api#execution-intents) for tier gating, guardrails, and TEE mode.
 
 ## Bankr dynamic key vending
 
@@ -5827,11 +5853,12 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
   -d '{
     "name": "stripe-api",
     "binding_type": "http",
+    "credential": "sk_live_...",
     "config": {
       "base_url": "https://api.stripe.com",
       "auth_type": "bearer",
-      "auth_credential": "sk_live_...",
       "allowed_hosts": ["api.stripe.com"],
+      "allowed_paths": ["/v1/*"],
       "timeout_ms": 10000
     }
   }'
@@ -5844,14 +5871,16 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
 const { data: binding } = await client.bindings.create(agentId, {
   name: "stripe-api",
   binding_type: "http",
+  credential: "sk_live_...",
   config: {
     base_url: "https://api.stripe.com",
     auth_type: "bearer",
-    auth_credential: "sk_live_...",
     allowed_hosts: ["api.stripe.com"],
+    allowed_paths: ["/v1/*"],
     timeout_ms: 10000,
   },
 });
+// binding.credential_set === true; credential value is never returned
 ```
 
 </TabItem>
@@ -5918,32 +5947,80 @@ const { data: result } = await client.bindings.execute(agentId, {
 | Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
 | Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
 | Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
+| Rotate credential | `POST /v1/agents/{id}/bindings/{bid}/rotate-credential` | `client.bindings.rotateCredential(agentId, bindingId, { credential })` |
 | Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
 | List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
 
+Binding responses include **`credential_set`** (boolean) so you can confirm a credential is stored without ever exposing the value. Deleting a binding **purges** the stored credential.
+
+### GraphQL example
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "github-graphql",
+    "intent_type": "graphql",
+    "params": {
+      "query": "query { viewer { login } }"
+    }
+  }'
+```
+
+The GraphQL executor POSTs `{ query, variables, operationName }`, surfaces `errors[]` from the upstream API, and uses introspection for connectivity tests.
+
+### Agent execution guardrails
+
+Set per-agent limits with `execution_guardrails` (JSON) on create/update:
+
+```json
+{
+  "allowed_hosts": ["api.stripe.com"],
+  "allowed_binding_types": ["http", "graphql"],
+  "max_duration_ms": 15000,
+  "max_requests_per_minute": 30
+}
+```
+
+At execute time the server enforces the **strictest** of binding-level and agent-level guardrails. Violations are recorded as `denied` in `execution_events`.
+
 ### MCP tools
 
-**`execute_http`** — execute an HTTP request through a binding:
-```
-Tool: execute_http
-Args:
-  binding: "stripe-api"
-  method: "GET"
-  path: "/v1/customers?limit=10"
+| Tool | Description |
+| --- | --- |
+| `execute_http` | HTTP request through a binding (`binding`, `method`, `path`, optional `body`/`headers`) |
+| `execute_intent` | Generic execute (`binding`, `intent_type`, `params`) — HTTP, GraphQL, etc. |
+| `list_bindings` | List bindings for the current agent |
+| `create_binding` | Create a binding (human-only; privileged) |
+| `test_binding` | Connectivity test (same SSRF/allowlist checks as execute) |
+| `list_executions` | Recent execution events for the agent |
+
+### CLI
+
+```bash
+1claw agent binding create <agent-id> --name stripe-api --type http \
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"]}' \
+  --credential sk_live_...
+1claw agent binding list <agent-id>
+1claw agent binding test <agent-id> <binding-id>
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding execute <agent-id> --binding stripe-api --intent-type http \
+  --params '{"method":"GET","path":"/v1/customers?limit=5"}'
+1claw agent binding executions <agent-id>
 ```
 
-**`list_bindings`** — list available bindings for the current agent:
-```
-Tool: list_bindings
-```
+Enable on the agent: `1claw agent update <id> --execution-intents true --execution-guardrails '{"max_requests_per_minute":30}'`
 
 ### Security model
 
-- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly.
-- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames.
-- **Host allowlist:** Each binding defines `allowed_hosts` — requests to unlisted hosts are rejected.
-- **Audit trail:** Every execution is recorded in the `execution_events` table with request/response metadata and cost.
-- **TEE mode (Business+):** Requests execute inside Shroud's AMD SEV-SNP enclave for maximum isolation.
+- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly. Responses use `credential_set`, not the secret value.
+- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames. Connectivity tests use the same checks as execute.
+- **Host and path allowlists:** Each binding defines `allowed_hosts` and optional `allowed_paths` (trailing-`*` wildcard). Agent `execution_guardrails.allowed_hosts` can further restrict destinations.
+- **Binding type gating:** Agent `execution_guardrails.allowed_binding_types` is enforced at execute time, not only at create.
+- **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
+- **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
+- **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
 
 
 ---
@@ -13276,6 +13353,83 @@ List proposals for a treasury.
 | `treasury_id` | string | Yes      | UUID of the treasury                          |
 | `status`      | string | No       | Filter by status (e.g. `pending`, `executed`) |
 
+---
+
+## execute_http
+
+Execute an HTTP request through a named binding. Requires `execution_intents_enabled` on the agent.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                   |
+| --------- | ------ | -------- | --------------------------------------------- |
+| `binding` | string | Yes      | Binding name (e.g. `stripe-api`)              |
+| `method`  | string | No       | HTTP method (default `GET`)                   |
+| `path`    | string | Yes      | Path and query (e.g. `/v1/customers`)         |
+| `body`    | string | No       | Request body                                  |
+| `headers` | object | No       | Extra headers (auth injected server-side)     |
+
+---
+
+## execute_intent
+
+Generic execution for HTTP, GraphQL, and other binding types.
+
+### Parameters
+
+| Name             | Type   | Required | Description                                |
+| ---------------- | ------ | -------- | ------------------------------------------ |
+| `binding`        | string | Yes      | Binding name                               |
+| `intent_type`    | string | Yes      | `http`, `graphql`, etc.                    |
+| `params`         | object | Yes      | Type-specific params (e.g. GraphQL query)  |
+| `execution_mode` | string | No       | `vault` (default) or `tee` when available  |
+
+---
+
+## list_bindings
+
+List bindings for the current agent. Returns `credential_set` — never credential values.
+
+---
+
+## create_binding
+
+Create a binding (human-only).
+
+### Parameters
+
+| Name           | Type   | Required | Description              |
+| -------------- | ------ | -------- | ------------------------ |
+| `name`         | string | Yes      | Unique binding name      |
+| `binding_type` | string | Yes      | `http`, `graphql`, etc.  |
+| `config`       | object | Yes      | Connection config        |
+| `credential`   | string | No       | Credential (write-only)  |
+
+---
+
+## test_binding
+
+Test binding connectivity (same SSRF/allowlist checks as execute).
+
+### Parameters
+
+| Name         | Type   | Required | Description  |
+| ------------ | ------ | -------- | ------------ |
+| `binding_id` | string | Yes      | Binding UUID |
+
+---
+
+## list_executions
+
+List recent execution events for the agent.
+
+### Parameters
+
+| Name     | Type   | Required | Description                       |
+| -------- | ------ | -------- | --------------------------------- |
+| `limit`  | number | No       | Max events (default 20)           |
+| `status` | string | No       | `success`, `error`, or `denied`   |
+
 
 ---
 
@@ -15234,6 +15388,34 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
 ## 2026-07 (latest)
+
+### Execution Intents 2.0 — executor framework, real GraphQL, guardrail enforcement, credential lifecycle (2026-07-12)
+
+#### Executor framework
+- **New:** Trait-based executor framework (`domain/execution/`) with a shared `ExecutionContext` that centralizes SSRF validation, host/path allowlisting, credential loading, and timeout resolution — no executor can accidentally skip a guardrail. Replaces the previous single-file HTTP dispatch.
+- **New:** Real **GraphQL executor** — POSTs `{ query, variables, operationName }`, surfaces GraphQL `errors[]`, and uses introspection for connectivity tests (previously GraphQL was an HTTP alias).
+
+#### Guardrail enforcement
+- **New:** Per-binding `allowed_paths` is now enforced at execute time (trailing-`*` wildcard supported); disallowed paths are recorded as `denied`.
+- **New:** Agent-level `execution_guardrails` are enforced: `allowed_hosts` (strictest of binding + agent), `allowed_binding_types` (at execute, not just create), `max_duration_ms` (applied as the real client timeout), and `max_requests_per_minute` (per-agent rate limit).
+- **Changed:** Connectivity `test` now runs through the same `ExecutionContext` as `execute`, so SSRF and host-allowlist checks apply to tests too.
+
+#### Credential lifecycle & custody
+- **New:** Explicit credential rotation endpoint — `POST /v1/agents/{id}/bindings/{binding_id}/rotate-credential`.
+- **New:** `credential_set` boolean on binding responses reports whether a credential is stored, without ever exposing the value.
+- **Fixed:** Binding delete now **purges the stored credential** (no orphaned secrets); `secret_type` unified to `credential`.
+
+#### Execution surface & billing
+- **New:** `execution_surface` on the execute response truthfully reports `vault` or `tee` (TEE only when a Shroud execution endpoint is configured); `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` makes TEE requests 501 when no enclave endpoint is present, instead of silently running in Vault.
+- **Fixed:** Only **successful** executions count toward the monthly execution quota; the TEE cost premium is charged as a delta over the base rate to avoid double-billing.
+
+#### Clients & UI
+- **New:** MCP tools `create_binding`, `test_binding`, `list_executions`, and generic `execute_intent` (joining `execute_http` and `list_bindings`).
+- **New:** SDK `client.bindings.rotateCredential()`; OpenAPI updated with the rotate-credential path, `credential_set`, and `execution_surface`.
+- **New:** Dashboard Execution Intents card rebuilt with tabs (Bindings / Execution Log / Playground), inline binding edit + `is_active` toggle, per-binding and per-agent guardrail editors, tier-aware type gating, and write-only credential UX.
+- **New:** CLI `@1claw/cli@0.40.1` — `1claw agent binding` subcommands (create, list, get, update, delete, test, rotate-credential, execute, executions); `--execution-intents` and `--execution-guardrails` on agent create/update.
+- **New:** Python SDK `oneclaw@0.2.1` — `bindings.rotate_credential()`; Go SDK `v0.40.1` — `Bindings.RotateCredential()` and `credential_set` on binding responses.
+- **New:** Audit events for binding create/update/delete/rotate and every execution outcome (`success` / `error` / `denied`).
 
 ### Vault 0.39.1 / Shroud 0.37.2 — dRPC managed RPC, Robinhood Chain, security hardening (2026-07-12)
 

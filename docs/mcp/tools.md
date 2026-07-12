@@ -797,3 +797,80 @@ List proposals for a treasury.
 | ------------- | ------ | -------- | --------------------------------------------- |
 | `treasury_id` | string | Yes      | UUID of the treasury                          |
 | `status`      | string | No       | Filter by status (e.g. `pending`, `executed`) |
+
+---
+
+## execute_http
+
+Execute an HTTP request through a named binding. Requires `execution_intents_enabled` on the agent.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                   |
+| --------- | ------ | -------- | --------------------------------------------- |
+| `binding` | string | Yes      | Binding name (e.g. `stripe-api`)              |
+| `method`  | string | No       | HTTP method (default `GET`)                   |
+| `path`    | string | Yes      | Path and query (e.g. `/v1/customers`)         |
+| `body`    | string | No       | Request body                                  |
+| `headers` | object | No       | Extra headers (auth injected server-side)     |
+
+---
+
+## execute_intent
+
+Generic execution for HTTP, GraphQL, and other binding types.
+
+### Parameters
+
+| Name             | Type   | Required | Description                                |
+| ---------------- | ------ | -------- | ------------------------------------------ |
+| `binding`        | string | Yes      | Binding name                               |
+| `intent_type`    | string | Yes      | `http`, `graphql`, etc.                    |
+| `params`         | object | Yes      | Type-specific params (e.g. GraphQL query)  |
+| `execution_mode` | string | No       | `vault` (default) or `tee` when available  |
+
+---
+
+## list_bindings
+
+List bindings for the current agent. Returns `credential_set` — never credential values.
+
+---
+
+## create_binding
+
+Create a binding (human-only).
+
+### Parameters
+
+| Name           | Type   | Required | Description              |
+| -------------- | ------ | -------- | ------------------------ |
+| `name`         | string | Yes      | Unique binding name      |
+| `binding_type` | string | Yes      | `http`, `graphql`, etc.  |
+| `config`       | object | Yes      | Connection config        |
+| `credential`   | string | No       | Credential (write-only)  |
+
+---
+
+## test_binding
+
+Test binding connectivity (same SSRF/allowlist checks as execute).
+
+### Parameters
+
+| Name         | Type   | Required | Description  |
+| ------------ | ------ | -------- | ------------ |
+| `binding_id` | string | Yes      | Binding UUID |
+
+---
+
+## list_executions
+
+List recent execution events for the agent.
+
+### Parameters
+
+| Name     | Type   | Required | Description                       |
+| -------- | ------ | -------- | --------------------------------- |
+| `limit`  | number | No       | Max events (default 20)           |
+| `status` | string | No       | `success`, `error`, or `denied`   |

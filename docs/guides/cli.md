@@ -100,6 +100,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Signing keys** | `agent keys list`, `agent keys create`, `agent keys rotate`, `agent keys delete`, `agent export-signing-key` |
 | **Unified signing** | `agent sign` — EIP-191, EIP-712, or raw transaction signing |
 | **Transactions** | `agent tx submit`, `agent tx sign`, `agent tx list`, `agent tx get` |
+| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions` |
 | **Bankr keys** | `agent bankr-key lease`, `agent bankr-key list`, `agent bankr-key revoke` |
 | **Treasury** | `treasury generate`, `treasury list`, `treasury get`, `treasury balance`, `treasury send`, `treasury swap`, `treasury export`, `treasury rotate`, `treasury deactivate` |
 | **Proposals** | `treasury proposal create`, `treasury proposal list`, `treasury proposal get`, `treasury proposal sign`, `treasury proposal execute`, `treasury proposal cancel` |
@@ -160,6 +161,8 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
   --tx-allowed-chains sepolia,base
 1claw agent get <id>
 1claw agent update <id> --shroud true --intents-api true
+1claw agent update <id> --execution-intents true \
+  --execution-guardrails '{"max_requests_per_minute":30,"allowed_binding_types":["http","graphql"]}'
 1claw agent delete <id>
 1claw agent token <id>                 # Generate agent JWT
 1claw agent enroll my-agent --email human@example.com   # Self-enroll (no auth)
@@ -294,6 +297,29 @@ Human-in-the-loop approval workflow for agent actions.
 1claw approval decide <id> approve
 1claw approval decide <id> reject --reason "Not needed"
 ```
+
+## Execution Intents (bindings)
+
+HTTP and GraphQL calls through named bindings — credentials stay server-side. Requires Pro+ tier and `execution_intents_enabled` on the agent.
+
+```bash
+1claw agent binding create <agent-id> \
+  --name stripe-api --type http \
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"],"allowed_paths":["/v1/*"]}' \
+  --credential sk_live_...
+1claw agent binding list <agent-id>
+1claw agent binding get <agent-id> <binding-id>
+1claw agent binding update <agent-id> <binding-id> --active false
+1claw agent binding test <agent-id> <binding-id>
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding execute <agent-id> \
+  --binding stripe-api --intent-type http \
+  --params '{"method":"GET","path":"/v1/customers?limit=5"}'
+1claw agent binding executions <agent-id> --limit 20
+1claw agent binding delete <agent-id> <binding-id>
+```
+
+See [Intents API — Execution Intents](/docs/guides/intents-api#execution-intents) for tier gating, guardrails, and TEE mode.
 
 ## Bankr dynamic key vending
 
