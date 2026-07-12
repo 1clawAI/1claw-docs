@@ -904,7 +904,7 @@ The proxy can broadcast transactions to any chain in the registry. All mainnet c
 You can always fetch the live list with `GET /v1/chains`. The response includes `chain_id`, `rpc_url`, `explorer_url`, and `native_currency` for every chain.
 :::
 
-### Mainnet chains (28)
+### Mainnet chains (29)
 
 | Chain             | Chain ID | Native token | Explorer                                                           |
 | ----------------- | -------- | ------------ | ------------------------------------------------------------------ |
@@ -936,6 +936,7 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 | Taiko             | 167000   | ETH          | [taikoscan.io](https://taikoscan.io)                               |
 | Scroll            | 534352   | ETH          | [scrollscan.com](https://scrollscan.com)                           |
 | Zora              | 7777777  | ETH          | [explorer.zora.energy](https://explorer.zora.energy)               |
+| Robinhood Chain   | 4663     | RBH          | [robinhoodchain.com](https://robinhoodchain.com)                   |
 
 ### Testnet chains
 
@@ -946,6 +947,7 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 | Sepolia      | 11155111 | ETH          | [sepolia.etherscan.io](https://sepolia.etherscan.io) |
 | Base Sepolia | 84532    | ETH          | [sepolia.basescan.org](https://sepolia.basescan.org) |
 | Arc Testnet  | 5042002  | USDC         | [testnet.arcscan.app](https://testnet.arcscan.app) |
+| Robinhood Testnet | 46630    | RBH          | [testnet.robinhoodchain.com](https://testnet.robinhoodchain.com) |
 
 #### Non-EVM testnets
 

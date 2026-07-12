@@ -14,6 +14,42 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### Vault 0.39.1 / Shroud 0.37.2 — dRPC managed RPC, Robinhood Chain, security hardening (2026-07-12)
+
+#### dRPC Managed RPC Endpoints
+- **New:** Automatic dRPC RPC fallback for **25 EVM chains** when `DRPC_API_KEY` is configured. When a chain has no explicit `rpc_url` in the database, the Vault and Shroud dynamically construct a dRPC endpoint URL. Supported chains: Ethereum, Base, Optimism, Arbitrum, Polygon, Avalanche, BSC, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sepolia, Holesky, Base Sepolia, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy.
+- **New:** `resolve_effective_rpc()` shared helper in Vault consolidates RPC resolution: explicit DB URL → dRPC fallback → public testnet fallback.
+- **New:** Shroud `ChainRegistry` expanded to 29 EVM chains with `effective_rpc_url()` method mirroring Vault's resolution logic.
+- **New:** Numeric chain ID → dRPC reverse lookup via `drpc_slug_for_chain_id()` — enables dRPC support even when chains are referenced by numeric ID only.
+
+#### Robinhood Chain Support
+- **New:** Robinhood Chain (mainnet, chain ID 4663) and Robinhood Testnet (chain ID 46630) added to the chain registry.
+- **New:** Native RPC endpoints configured: `https://mainnet.robinhoodchain.com/rpc` (mainnet) and `https://testnet.robinhoodchain.com/rpc` (testnet).
+- **New:** Known tokens seeded: RBH (mainnet, `0xRBH...`), USDC (mainnet), testRBH (testnet).
+- **New:** `resolve_chain_id()` recognizes `robinhood-chain`, `robinhood_chain`, `robinhood`, `robinhood-testnet`, `robinhood_testnet`.
+- **New:** `signing_key_chain_for()` maps `robinhood-chain` and `robinhood-testnet` to `ethereum` (secp256k1).
+- **New:** Database migration `131_add_robinhood_chain.sql`.
+
+#### Security Hardening (July 11-12 Audit)
+- **Fixed (HIGH):** Execution Intents cross-agent confused-deputy — all binding handlers (`list_bindings`, `get_binding`, `execute`, `test_binding`, `list_execution_events`) now enforce `caller.id == agent_id` ownership check. Previously, an agent with Execution Intents enabled could access another agent's bindings.
+- **Fixed (HIGH):** X-Forwarded-For IP spoofing — changed from leftmost to **rightmost** XFF entry parsing for untrusted requests. GCP's Global Frontend appends the true client IP as the last entry; leftmost parsing was trusting attacker-controlled values.
+- **Fixed (MEDIUM):** Platform-grant scope bypass — `authorize_platform_grant` enforced on `delete_secret`, `get_secret_version`, `rotate_secret`, and `disable_version` handlers. Previously, platform grants with `allowed_paths` restrictions were not checked on these operations.
+- **Fixed (MEDIUM):** Execution events plaintext response bodies — response bodies are now truncated to 4KB, sensitive headers stripped, and sensitive patterns (API keys, tokens) redacted before persisting to `execution_events`. Field `redactions_applied` tracks sanitization.
+- **Fixed (LOW):** SSRF trailing-dot bypass — `validate_audience_url()` and `validate_redirect_uri()` now strip trailing dots from hostnames before security checks (e.g., `metadata.google.internal.` no longer bypasses the blocklist).
+- **Fixed (LOW):** Execution event caller misattribution — `insert_execution_event` now uses `caller.id` instead of `agent_id` from the URL for correct audit attribution.
+
+#### Intents API Chain Parity
+- **Improved:** `resolve_chain_id()` expanded from 10 to **30 chain names/aliases** — all dRPC-supported networks are now resolvable by name in transaction requests.
+- **Improved:** Shroud `drpc_chain_slug()` made case-insensitive for parity with Vault.
+- **Improved:** Shroud `seed_defaults()` expanded to cover all 29 EVM chains with correct chain IDs, native currencies, and EIP-1559 support flags.
+
+#### Infrastructure
+- **New:** `DRPC_API_KEY` environment variable on Vault (Cloud Run) and Shroud (GKE). Configured via Terraform (`infra/variables.tf`), GitHub Actions secrets, and K8s secrets.
+- **New:** `scripts/test-drpc-connectivity.sh` — verifies dRPC connectivity across 22 chains via `eth_chainId` calls.
+- **New:** dRPC connectivity test integrated into `run-production-tests.sh` (auto-skipped when `DRPC_API_KEY` is not set).
+
+---
+
 ### API v2.26.0 / SDK 0.40.0 / Vault 0.39.0 / MCP 0.40.0 — Execution Intents (2026-07-10)
 
 #### Execution Intents (Pro+)

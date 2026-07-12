@@ -1948,8 +1948,8 @@ When the setup wizard creates your agent, it configures server-side guardrails t
 |---|---|---|
 | `tx_allowed_chains` | Restrict which chains the agent can transact on | `["base"]` |
 | `tx_to_allowlist` | Only allow transfers to approved addresses | `["0xMorphoVault...", "0xYourCold..."]` |
-| `tx_max_value_eth` | Cap a single transaction | `0.1` ETH |
-| `tx_daily_limit_eth` | Rolling 24h spend cap | `1.0` ETH |
+| `tx_max_value` | Cap a single transaction (native major units) | `0.1` ETH (on EVM), `0.01` BTC (on Bitcoin) |
+| `tx_daily_limit` | Rolling 24h per-chain spend cap | `1.0` (native units) |
 | `simulate_first` | Tenderly dry-run before broadcast | Always |
 
 These are enforced in the TEE before signing. Even if the model is tricked into calling a transfer tool, the guardrails reject it.
@@ -1995,8 +1995,8 @@ With the secured version:
 
 1. Shroud scores the injection and blocks it before the model sees the malicious content
 2. Even if it gets through, `tx_to_allowlist` rejects the unknown address
-3. Even if the address was allowed, `tx_max_value_eth` caps the amount
-4. Even if the cap was high enough, `tx_daily_limit_eth` blocks cumulative spend
+3. Even if the address was allowed, `tx_max_value` caps the amount
+4. Even if the cap was high enough, `tx_daily_limit` blocks cumulative spend
 5. Tenderly simulation flags the unusual transfer before broadcast
 
 ## Updating guardrails
@@ -2010,8 +2010,8 @@ const client = new OneclawClient({ baseUrl: "https://api.1claw.xyz", apiKey: "1c
 
 await client.agents.update("agent-uuid", {
   tx_to_allowlist: ["0xMorphoVault", "0xColdWallet"],
-  tx_max_value_eth: "0.05",
-  tx_daily_limit_eth: "0.5",
+  tx_max_value: "0.05",
+  tx_daily_limit: "0.5",
   tx_allowed_chains: ["base"],
 });
 ```
@@ -5039,7 +5039,7 @@ Instead of manually storing a raw private key in a vault, you can provision HSM-
 | Chain | Curve | Address format |
 | --- | --- | --- |
 | Ethereum | secp256k1 | 0x (EIP-55 checksum) |
-| Bitcoin | secp256k1 | P2WPKH / P2TR (bech32) — via `rust-bitcoin` |
+| Bitcoin | secp256k1 | P2WPKH bech32 (`bc1q…` / `tb1q…`) — via `rust-bitcoin` |
 | Solana | Ed25519 | Base58 — via `solana-sdk` |
 | XRP | Ed25519 | Base58Check (r…) |
 | Cardano | Ed25519 | Bech32 enterprise (addr1…) |
@@ -5124,12 +5124,13 @@ All fields are optional and ignored on chains where they don't apply:
 | Field | Type | Chain | Purpose |
 | --- | --- | --- | --- |
 | `destination_tag` | number | XRP | Destination tag for exchange deposits |
-| `memo` | string | XRP, Solana | Optional memo |
+| `memo` | string | XRP, Solana | Optional memo (planned; currently accepted but not applied — use `Memos` inside `xrpl_tx_json` for XRP) |
 | `fee_rate_sat_per_vbyte` | number | Bitcoin | Override the fetched fee rate |
-| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit |
+| `fee_limit_sun` | number | Tron | TRC-20 energy fee limit (default: 100,000,000 = 100 TRX) |
 | `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
 | `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
-| `ttl` | number | Cardano | Time-to-live (absolute slot) |
+| `ttl` | number | Cardano | Time-to-live (absolute slot; default: current slot + 7200) |
+| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for [30+ transaction types](#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Overrides `to`/`value`/`destination_tag` when present. |
 
 For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
 
@@ -5139,7 +5140,7 @@ All non-EVM chains support both mainnet and testnet signing. Use the `chain` fie
 
 | Chain | Mainnet `chain` | Testnet `chain` | Testnet explorer | Faucet |
 | --- | --- | --- | --- | --- |
-| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha, 0.001–0.09 sBTC), [signetfaucet.com](https://signetfaucet.com/) (captcha) |
 | Solana | `solana` | `solana-devnet`, `solana-testnet` | [explorer.solana.com/?cluster=devnet](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) (GitHub login), `solana airdrop <SOL> <address> --url devnet` |
 | XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
 | Cardano | `cardano` | `cardano-preprod`, `cardano-preview` | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (web or API) |
@@ -5155,19 +5156,19 @@ Bitcoin testnet/signet addresses use the `tb1q…` prefix (derived from the same
 | --- | --- | --- |
 | Bitcoin | [mempool.space](https://mempool.space/) | None (public API) |
 | Solana | Solana JSON-RPC | None (public endpoints: `api.devnet.solana.com`, `api.mainnet-beta.solana.com`) |
-| XRP | XRPL WebSocket/HTTP | None (public: `s1.ripple.com`, `s.altnet.rippletest.net`) |
-| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (or `BLOCKFROST_PROJECT_ID_PREPROD` / `BLOCKFROST_PROJECT_ID_MAINNET`). Free tier: 50k req/day. |
+| XRP | XRPL HTTP JSON-RPC | None (public: `xrplcluster.com`, `s.altnet.rippletest.net:51234`) |
+| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (generic fallback), or per-network: `BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_PREVIEW`, `BLOCKFROST_PROJECT_ID_MAINNET`. Also accepts `BLOCKFROST_API_KEY` as an alias. Free tier: 50k req/day. |
 | Tron | [TronGrid](https://www.trongrid.io/) | None (public API: `api.trongrid.io`, `api.shasta.trongrid.io`) |
 
 #### Cardano Preprod faucet (API)
 
-The Cardano preprod faucet supports programmatic requests:
+The Cardano preprod faucet supports programmatic requests (api key is optional):
 
 ```bash
 curl -X POST "https://faucet.preprod.world.dev.cardano.org/send-money/<YOUR_ADDR_TEST1_ADDRESS>?api_key=ooseiteiquo7Wie9oochooyiequi4ooc"
 ```
 
-Rate limit: one request per address per 24 hours.
+Rate limit: one request per address per 24 hours. The default API key above is public; you can also submit without one.
 
 ### Example — native transfers
 
@@ -5231,7 +5232,7 @@ const { data: usdt } = await client.agents.signTransaction(agentId, {
 </TabItem>
 </Tabs>
 
-The response shape matches EVM: `{ tx_hash, from, to, value, status, raw_tx }`. For non-EVM chains the signed payload is returned as `raw_tx` (base64/hex depending on the chain) and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron).
+The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, status }`. For non-EVM chains, the `value_wei` field contains the chain-native base unit (satoshis for Bitcoin, lamports for Solana, drops for XRP, lovelace for Cardano, sun for Tron), `signed_tx` contains the signed payload (hex or base64 depending on the chain), and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron). For sign-only responses, `chain_id` and `nonce` are `0` for non-EVM chains.
 
 :::note Tenderly simulation is EVM-only
 `simulate_first` and the `/simulate` endpoints only apply to EVM chains. For non-EVM chains they are a no-op — use the sign-only endpoint if you want to inspect the signed transaction before broadcasting it yourself.
@@ -5480,7 +5481,7 @@ The proxy can broadcast transactions to any chain in the registry. All mainnet c
 You can always fetch the live list with `GET /v1/chains`. The response includes `chain_id`, `rpc_url`, `explorer_url`, and `native_currency` for every chain.
 :::
 
-### Mainnet chains (28)
+### Mainnet chains (29)
 
 | Chain             | Chain ID | Native token | Explorer                                                           |
 | ----------------- | -------- | ------------ | ------------------------------------------------------------------ |
@@ -5512,6 +5513,7 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 | Taiko             | 167000   | ETH          | [taikoscan.io](https://taikoscan.io)                               |
 | Scroll            | 534352   | ETH          | [scrollscan.com](https://scrollscan.com)                           |
 | Zora              | 7777777  | ETH          | [explorer.zora.energy](https://explorer.zora.energy)               |
+| Robinhood Chain   | 4663     | RBH          | [robinhoodchain.com](https://robinhoodchain.com)                   |
 
 ### Testnet chains
 
@@ -5522,16 +5524,19 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 | Sepolia      | 11155111 | ETH          | [sepolia.etherscan.io](https://sepolia.etherscan.io) |
 | Base Sepolia | 84532    | ETH          | [sepolia.basescan.org](https://sepolia.basescan.org) |
 | Arc Testnet  | 5042002  | USDC         | [testnet.arcscan.app](https://testnet.arcscan.app) |
+| Robinhood Testnet | 46630    | RBH          | [testnet.robinhoodchain.com](https://testnet.robinhoodchain.com) |
 
 #### Non-EVM testnets
 
 | Chain | Network | Native token | Explorer | Faucet |
 | --- | --- | --- | --- | --- |
-| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) |
+| Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (no captcha), [signetfaucet.com](https://signetfaucet.com/) |
+| Bitcoin | `bitcoin-testnet` | tBTC | [mempool.space/testnet](https://mempool.space/testnet) | — (testnet3 faucets are scarce) |
 | Solana | `solana-devnet` | SOL | [explorer.solana.com (devnet)](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) |
 | XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
 | Cardano | `cardano-preprod` | tADA | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
 | Tron | `tron-shasta` | TRX | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
+| Tron | `tron-nile` | TRX | [nile.tronscan.org](https://nile.tronscan.org/) | [nileex.io](https://nileex.io/join/getJoinPage) |
 
 ### Adding a chain
 
@@ -5591,8 +5596,14 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | ----- | ---- | ----------- |
 | `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
 | `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
-| `tx_max_value_eth` | `string` | Maximum value per transaction in ETH (e.g. `"1.0"`). Null = no per-tx limit. |
-| `tx_daily_limit_eth` | `string` | Rolling 24-hour spend limit in ETH. Null = no daily limit. |
+| `tx_max_value` | `string` | Maximum value per transaction in **native major units** for the chain family (e.g. `"0.01"` = 0.01 BTC on Bitcoin, 0.5 ETH on EVM, 2 SOL on Solana). Null = no per-tx limit. |
+| `tx_daily_limit` | `string` | Rolling 24-hour spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
+| `tx_max_value_eth` | `string` | **Deprecated.** Alias for `tx_max_value` (same unit semantics). |
+| `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
+| `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
+| `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
+| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
+| `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -5604,8 +5615,10 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
   -d '{
     "tx_allowed_chains": ["ethereum", "base"],
     "tx_to_allowlist": ["0xSafeAddress1", "0xSafeAddress2"],
-    "tx_max_value_eth": "0.5",
-    "tx_daily_limit_eth": "5.0"
+    "tx_max_value": "0.5",
+    "tx_daily_limit": "5.0",
+    "tx_token_allowlist": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+    "tx_known_tokens_only": true
   }'
 ```
 
@@ -5616,8 +5629,10 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
 const { data: agent } = await client.agents.update(agentId, {
   tx_allowed_chains: ["ethereum", "base"],
   tx_to_allowlist: ["0xSafeAddress1", "0xSafeAddress2"],
-  tx_max_value_eth: "0.5",
-  tx_daily_limit_eth: "5.0",
+  tx_max_value: "0.5",
+  tx_daily_limit: "5.0",
+  tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+  tx_known_tokens_only: true,
 });
 ```
 
@@ -5625,6 +5640,72 @@ const { data: agent } = await client.agents.update(agentId, {
 </Tabs>
 
 When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
+
+### Token guardrails {#token-guardrails}
+
+Two complementary controls restrict which tokens an agent can transfer:
+
+**Token allowlist** (`tx_token_allowlist`): An explicit list of token contract addresses or mints the agent may interact with. Applied to `token_mint` on non-EVM chains and the ERC-20 contract address on EVM token transfers. Case-insensitive. When empty, all tokens are permitted.
+
+**Known tokens only** (`tx_known_tokens_only`): When enabled, the agent can only transact with tokens present in the [known tokens registry](#token-registry). This is useful for restricting agents to verified, well-known tokens without maintaining a per-agent allowlist.
+
+Both guardrails can be used together — the token must pass **both** checks (allowlist AND known registry) when both are set.
+
+### Per-chain guardrails {#per-chain-guardrails}
+
+Override global guardrails on a per-chain basis using `per_chain_guardrails`. This is useful when an agent operates across multiple chains with different risk profiles — for example, a higher spend limit on a testnet than on mainnet.
+
+```json
+{
+  "per_chain_guardrails": {
+    "ethereum": {
+      "max_value": "1.0",
+      "to_allowlist": ["0xSafeContract"],
+      "token_allowlist": ["0xUSDC"]
+    },
+    "solana": {
+      "max_value": "100"
+    }
+  }
+}
+```
+
+Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist` (legacy `*_eth` keys accepted). Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins. Daily limits compare against **that chain family's** spend today (`tx_spent_today_by_chain`), not a cross-chain total.
+
+### XRP transaction type allowlist {#xrpl-tx-types}
+
+When using `xrpl_tx_json` for advanced XRP transactions, you can restrict which transaction types are permitted:
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "xrpl_allowed_tx_types": ["Payment", "TrustSet", "OfferCreate"] }'
+```
+
+If the agent submits an `xrpl_tx_json` with a `TransactionType` not in the allowlist, the request is rejected with 403.
+
+### Known tokens registry {#token-registry}
+
+A curated registry of verified token contracts. Use `GET /v1/tokens` (filterable by `?chain=`) or `GET /v1/chains/{chain}/tokens` to query it.
+
+Admins can manage the registry via `POST /v1/admin/tokens` (add) and `DELETE /v1/admin/tokens/{id}` (remove). Each entry includes `chain`, `contract_address`, `symbol`, `name`, `decimals`, and an optional `logo_url`.
+
+### Extended token balance {#token-balance}
+
+The signing key balance endpoint now supports querying specific token balances alongside native balance:
+
+```bash
+# Query native + specific ERC-20 token balances
+curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The `?tokens=` parameter accepts comma-separated contract addresses or mints. Works across all chains: ERC-20 (EVM), SPL (Solana), TRC-20 (Tron).
+
+### Per-chain daily spend tracking {#per-chain-spend}
+
+`GET /v1/agents/{id}` returns `tx_spent_today_by_chain` (keys: `evm`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`) and `tx_spent_today` (cross-family sum). Daily limits (`tx_daily_limit`) compare against **that chain family's** spend from `tx_spent_today_by_chain`, not the cross-chain total. Legacy `tx_spent_today_eth` is a deprecated alias for `tx_spent_today`.
 
 ---
 
@@ -5687,6 +5768,182 @@ The initial POST submission always returns `signed_tx` for the originating calle
 3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
 4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
 5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](#non-evm-networks) for faucet links.
+
+---
+
+## Execution Intents (Pro+) {#execution-intents}
+
+Execution Intents extend the Intents API beyond blockchain transactions. Agents can make **HTTP calls, database queries, and external service interactions** through pre-configured **bindings** — without ever seeing the underlying credentials.
+
+:::info Tier requirements
+- **Pro:** HTTP and GraphQL binding types
+- **Team+:** All binding types (Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- **Business+:** TEE execution mode (requests execute inside Shroud's confidential enclave)
+:::
+
+### How it works
+
+1. A **human** creates a binding on the agent — a named credential handle (e.g. `stripe-api`, `analytics-db`) with connection details and authentication.
+2. The agent calls `POST /v1/agents/:id/execute` with the binding name and request parameters.
+3. The server injects credentials server-side, executes the request, and returns the response — the agent never sees API keys, database passwords, or tokens.
+
+### Enabling Execution Intents
+
+Set `execution_intents_enabled: true` when creating or updating an agent:
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "execution_intents_enabled": true }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data } = await client.agents.update(agentId, {
+  execution_intents_enabled: true,
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Creating a binding
+
+Bindings are human-only — agents cannot create or modify their own bindings.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "config": {
+      "base_url": "https://api.stripe.com",
+      "auth_type": "bearer",
+      "auth_credential": "sk_live_...",
+      "allowed_hosts": ["api.stripe.com"],
+      "timeout_ms": 10000
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  config: {
+    base_url: "https://api.stripe.com",
+    auth_type: "bearer",
+    auth_credential: "sk_live_...",
+    allowed_hosts: ["api.stripe.com"],
+    timeout_ms: 10000,
+  },
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Executing a request
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "stripe-api",
+    "intent_type": "http",
+    "params": {
+      "method": "GET",
+      "path": "/v1/customers?limit=10"
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: result } = await client.bindings.execute(agentId, {
+  binding: "stripe-api",
+  intent_type: "http",
+  params: {
+    method: "GET",
+    path: "/v1/customers?limit=10",
+  },
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Binding types
+
+| Type | Tier | Description |
+| --- | --- | --- |
+| `http` | Pro | REST API calls with credential injection |
+| `graphql` | Pro | GraphQL queries/mutations |
+| `postgres` | Team+ | PostgreSQL queries |
+| `mysql` | Team+ | MySQL queries |
+| `redis` | Team+ | Redis commands |
+| `grpc` | Team+ | gRPC calls |
+| `smtp` | Team+ | Email sending |
+| `cloud_sdk` | Team+ | Cloud provider SDK calls |
+| `s3` | Team+ | S3-compatible storage operations |
+| `custom` | Team+ | Custom integrations |
+
+### Binding lifecycle
+
+| Operation | Endpoint | SDK |
+| --- | --- | --- |
+| Create | `POST /v1/agents/{id}/bindings` | `client.bindings.create(agentId, data)` |
+| List | `GET /v1/agents/{id}/bindings` | `client.bindings.list(agentId)` |
+| Get | `GET /v1/agents/{id}/bindings/{bid}` | `client.bindings.get(agentId, bindingId)` |
+| Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
+| Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
+| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
+| Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
+| List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
+
+### MCP tools
+
+**`execute_http`** — execute an HTTP request through a binding:
+```
+Tool: execute_http
+Args:
+  binding: "stripe-api"
+  method: "GET"
+  path: "/v1/customers?limit=10"
+```
+
+**`list_bindings`** — list available bindings for the current agent:
+```
+Tool: list_bindings
+```
+
+### Security model
+
+- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly.
+- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames.
+- **Host allowlist:** Each binding defines `allowed_hosts` — requests to unlisted hosts are rejected.
+- **Audit trail:** Every execution is recorded in the `execution_events` table with request/response metadata and cost.
+- **TEE mode (Business+):** Requests execute inside Shroud's AMD SEV-SNP enclave for maximum isolation.
 
 
 ---
@@ -7707,8 +7964,8 @@ For agents that interact with blockchains, enable the **Intents API** to prevent
 Additionally, configure **transaction guardrails**:
 
 - `tx_to_allowlist`: Permitted destination addresses.
-- `tx_max_value_eth`: Maximum value per transaction.
-- `tx_daily_limit_eth`: Rolling 24-hour spend cap.
+- `tx_max_value`: Maximum value per transaction (in native major units — ETH, BTC, SOL, etc.). `tx_max_value_eth` is accepted as a deprecated alias.
+- `tx_daily_limit`: Rolling 24-hour per-chain spend cap. `tx_daily_limit_eth` is accepted as a deprecated alias.
 - `tx_allowed_chains`: Restrict to specific chains.
 
 See [Intents API guide](/docs/guides/intents-api) for details.
@@ -14978,12 +15235,113 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### Vault 0.39.1 / Shroud 0.37.2 — dRPC managed RPC, Robinhood Chain, security hardening (2026-07-12)
+
+#### dRPC Managed RPC Endpoints
+- **New:** Automatic dRPC RPC fallback for **25 EVM chains** when `DRPC_API_KEY` is configured. When a chain has no explicit `rpc_url` in the database, the Vault and Shroud dynamically construct a dRPC endpoint URL. Supported chains: Ethereum, Base, Optimism, Arbitrum, Polygon, Avalanche, BSC, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sepolia, Holesky, Base Sepolia, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy.
+- **New:** `resolve_effective_rpc()` shared helper in Vault consolidates RPC resolution: explicit DB URL → dRPC fallback → public testnet fallback.
+- **New:** Shroud `ChainRegistry` expanded to 29 EVM chains with `effective_rpc_url()` method mirroring Vault's resolution logic.
+- **New:** Numeric chain ID → dRPC reverse lookup via `drpc_slug_for_chain_id()` — enables dRPC support even when chains are referenced by numeric ID only.
+
+#### Robinhood Chain Support
+- **New:** Robinhood Chain (mainnet, chain ID 4663) and Robinhood Testnet (chain ID 46630) added to the chain registry.
+- **New:** Native RPC endpoints configured: `https://mainnet.robinhoodchain.com/rpc` (mainnet) and `https://testnet.robinhoodchain.com/rpc` (testnet).
+- **New:** Known tokens seeded: RBH (mainnet, `0xRBH...`), USDC (mainnet), testRBH (testnet).
+- **New:** `resolve_chain_id()` recognizes `robinhood-chain`, `robinhood_chain`, `robinhood`, `robinhood-testnet`, `robinhood_testnet`.
+- **New:** `signing_key_chain_for()` maps `robinhood-chain` and `robinhood-testnet` to `ethereum` (secp256k1).
+- **New:** Database migration `131_add_robinhood_chain.sql`.
+
+#### Security Hardening (July 11-12 Audit)
+- **Fixed (HIGH):** Execution Intents cross-agent confused-deputy — all binding handlers (`list_bindings`, `get_binding`, `execute`, `test_binding`, `list_execution_events`) now enforce `caller.id == agent_id` ownership check. Previously, an agent with Execution Intents enabled could access another agent's bindings.
+- **Fixed (HIGH):** X-Forwarded-For IP spoofing — changed from leftmost to **rightmost** XFF entry parsing for untrusted requests. GCP's Global Frontend appends the true client IP as the last entry; leftmost parsing was trusting attacker-controlled values.
+- **Fixed (MEDIUM):** Platform-grant scope bypass — `authorize_platform_grant` enforced on `delete_secret`, `get_secret_version`, `rotate_secret`, and `disable_version` handlers. Previously, platform grants with `allowed_paths` restrictions were not checked on these operations.
+- **Fixed (MEDIUM):** Execution events plaintext response bodies — response bodies are now truncated to 4KB, sensitive headers stripped, and sensitive patterns (API keys, tokens) redacted before persisting to `execution_events`. Field `redactions_applied` tracks sanitization.
+- **Fixed (LOW):** SSRF trailing-dot bypass — `validate_audience_url()` and `validate_redirect_uri()` now strip trailing dots from hostnames before security checks (e.g., `metadata.google.internal.` no longer bypasses the blocklist).
+- **Fixed (LOW):** Execution event caller misattribution — `insert_execution_event` now uses `caller.id` instead of `agent_id` from the URL for correct audit attribution.
+
+#### Intents API Chain Parity
+- **Improved:** `resolve_chain_id()` expanded from 10 to **30 chain names/aliases** — all dRPC-supported networks are now resolvable by name in transaction requests.
+- **Improved:** Shroud `drpc_chain_slug()` made case-insensitive for parity with Vault.
+- **Improved:** Shroud `seed_defaults()` expanded to cover all 29 EVM chains with correct chain IDs, native currencies, and EIP-1559 support flags.
+
+#### Infrastructure
+- **New:** `DRPC_API_KEY` environment variable on Vault (Cloud Run) and Shroud (GKE). Configured via Terraform (`infra/variables.tf`), GitHub Actions secrets, and K8s secrets.
+- **New:** `scripts/test-drpc-connectivity.sh` — verifies dRPC connectivity across 22 chains via `eth_chainId` calls.
+- **New:** dRPC connectivity test integrated into `run-production-tests.sh` (auto-skipped when `DRPC_API_KEY` is not set).
+
+---
+
+### API v2.26.0 / SDK 0.40.0 / Vault 0.39.0 / MCP 0.40.0 — Execution Intents (2026-07-10)
+
+#### Execution Intents (Pro+)
+- **New:** Execution Intents API — agents can make HTTP calls, database queries, and external service interactions through pre-configured **bindings**. Credentials are stored server-side in the `__agent-keys` vault and never exposed to agents.
+- **New:** Binding types: HTTP, GraphQL (Pro tier), plus Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom (Team+ tier). TEE execution mode available on Business+ for enhanced security.
+- **New:** Per-binding guardrails: host allowlists, timeouts, authentication types (bearer, basic, header, query).
+- **New:** Full execution audit trail via `execution_events` table with per-event cost tracking.
+- **New:** CRUD endpoints under `/v1/agents/{id}/bindings` (human-only creation). Execute endpoint: `POST /v1/agents/{id}/execute`. Test endpoint: `POST /v1/agents/{id}/bindings/{binding_id}/test`.
+- **New:** Agent field `execution_intents_enabled` (boolean, default false). JWT claim `execution_intents_enabled` gates access; middleware `require_execution_intents` enforces it.
+- **New:** `execution_guardrails` JSONB on agents — per-agent execution guardrails (allowed hosts, max duration, rate limits).
+- **New:** Tier-based billing: `execution_intent` (2¢ Pro → 0.5¢ Business) and `execution_intent_tee` (10¢ Pro → 2.5¢ Business) per execution. Monthly limits: Pro 1K, Team 10K, Business 50K, Enterprise unlimited.
+
+#### SDK/CLI/MCP/Dashboard
+- **SDK:** `client.bindings.create()`, `.list()`, `.get()`, `.update()`, `.delete()`, `.test()`, `.execute()`, `.listExecutions()`.
+- **MCP:** New `execute_http` and `list_bindings` tools.
+- **CLI:** Execution intents support via SDK integration.
+- **Dashboard:** `ExecutionIntentsCard` on agent detail page — toggle, binding list, create/test/delete.
+
+#### Migrations
+- `129_execution_intents.sql` — `agent_bindings` and `execution_events` tables.
+
+#### Version Bumps
+- Vault API: 0.39.0
+- SDK: 0.40.0
+- MCP: 0.40.0
+- CLI: 0.40.0
+- OpenAPI: 0.40.0
+
+---
+
+### API v2.25.0 / SDK 0.38.0 / Vault 0.38.0 / MCP 0.38.0 — Token guardrails, known tokens registry, per-chain guardrails (2026-07-05)
+
+#### Added
+- **Token allowlist guardrail** (`tx_token_allowlist`): Controls which token contracts/mints an agent can interact with. Applied to `token_mint` on non-EVM chains and ERC-20 contract addresses on EVM chains. Checked case-insensitively.
+- **Known tokens only** (`tx_known_tokens_only`): When enabled, restricts agents to verified tokens in the known tokens registry. Unknown token contracts/mints are rejected with 403.
+- **XRP transaction type allowlist** (`xrpl_allowed_tx_types`): Controls which XRPL transaction types are allowed when using `xrpl_tx_json`. Empty = all supported types. Unsupported types return 403.
+- **Per-chain guardrails** (`per_chain_guardrails`): Chain-specific overrides for `max_value`, `daily_limit`, `to_allowlist`, and `token_allowlist`. Strictest of global and per-chain values wins.
+- **Per-chain daily spend tracking** (`tx_spent_today_by_chain`): `GET /v1/agents/{id}` now returns per-chain daily spend in native units with correct decimals (e.g. `{ "ethereum": "0.5", "solana": "2.0" }`). The canonical field is `tx_spent_today` / `tx_spent_today_by_chain`; the deprecated `tx_spent_today_eth` alias is still returned for backward compatibility.
+- **Known tokens registry**: Public endpoints `GET /v1/tokens` (filterable by `?chain=`) and `GET /v1/chains/{chain}/tokens` for listing verified tokens. Admin endpoints `POST /v1/admin/tokens` and `DELETE /v1/admin/tokens/{id}` for registry management.
+- **ERC-20 server-side builder**: When `token_mint` is provided on EVM chains, the handler generates ERC-20 `transfer(to, amount)` calldata server-side — agents no longer need to construct calldata manually.
+- **Extended token balance**: `GET /v1/agents/{id}/signing-keys/{chain}/balance` now accepts optional `?tokens=` query param (comma-separated contract addresses/mints) to include specific ERC-20/SPL/TRC-20 token balances alongside native balance.
+- **Solana ATA auto-creation**: SPL token transfers automatically create the recipient's Associated Token Account if it doesn't exist, adding a `CreateAssociatedTokenAccount` instruction before the transfer.
+- **Cardano native asset transfers**: Multi-asset output support with min-ADA enforcement. `token_mint` is `policy_id.asset_name` hex.
+- **Memo support**: Solana (Memo Program v2 instruction appended), XRP (Memos array in `xrpl_tx_json`), Tron (`extra_data` field).
+- **UTXO locking**: Concurrent Bitcoin and Cardano transactions are serialized via the `utxo_locks` table to prevent double-spending the same UTXO. Locks auto-expire after 5 minutes.
+
+#### Fixed
+- **Daily spend unit mismatch**: Per-chain daily spend now uses correct native-unit decimals instead of ETH-equivalent conversion, which could under-count spend on high-decimal chains.
+- **XRP guardrail bypass**: `xrpl_tx_json` transactions now enforce all agent guardrails (chains, allowlist, value caps, daily limits) — previously bypassed when using raw XRPL JSON.
+- **`/sign` EVM persistence**: Transactions submitted via the unified `POST /v1/agents/{id}/sign` endpoint with `intent_type: "transaction"` are now correctly persisted for audit and daily-limit tracking.
+
+#### Migrations
+- `124_agent_token_guardrails.sql` — `tx_token_allowlist`, `tx_known_tokens_only`, `xrpl_allowed_tx_types`, `per_chain_guardrails` columns on `agents` table.
+- `125_known_tokens.sql` — `known_tokens` table with unique index on `(chain, contract_address)`.
+- `126_utxo_locks.sql` — `utxo_locks` table for concurrent UTXO transaction serialization.
+
+#### SDK/CLI/Dashboard
+- **SDK**: `CreateAgentRequest`, `UpdateAgentRequest`, and `AgentResponse` include all new guardrail fields. Token registry types added.
+- **CLI**: New flags `--tx-token-allowlist`, `--tx-known-tokens-only`, `--xrpl-allowed-tx-types`, `--per-chain-guardrails` on `agent create` and `agent update`.
+- **Dashboard**: Token allowlist editor, known-tokens-only toggle, per-chain guardrails visual editor, and XRPL transaction type multi-select on agent detail page. Token registry hook (`use-token-registry.ts`).
+
+---
+
 ### Vault 0.37.1 / Shroud 0.37.1 — Official Rust SDKs for Bitcoin & Solana signing (2026-07-04)
 
 - **Improved:** Bitcoin transaction signing now uses the official **`rust-bitcoin`** crate (v0.32) instead of hand-rolled secp256k1 + BIP-143 logic. All recipient address types are supported: P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot). Key generation, address derivation, and UTXO-based transaction construction use `rust-bitcoin` types end-to-end, eliminating custom serialization code.
 - **Improved:** Solana transaction signing now uses the official **`solana-sdk`** crate (v4) instead of manual Ed25519 + compact message serialization. PDA derivation uses `Pubkey::find_program_address` (replacing the custom off-curve check with `curve25519-dalek`). SPL token transfers use proper Associated Token Account derivation. Key generation, address formatting, and transaction construction are fully type-safe.
 - **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
 - **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
+- **Verified end-to-end:** Live testnet transactions confirmed on all non-EVM chains — Solana Devnet (sign-only, submit/broadcast, unified sign), Bitcoin Signet (sign-only, submit/broadcast), Tron Shasta (sign-only, submit/broadcast), and Cardano Preprod (sign-only, submit/broadcast).
+- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/guides/intents-api#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
 
 ### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
 
@@ -15704,7 +16062,7 @@ Transaction and simulation endpoints return these status codes and messages:
 | Code | When | `detail` (examples) |
 |------|------|---------------------|
 | 400 | Bad Request | Invalid `value`, `data` (hex), `to` address, or `signing_key_path`. `signing_key_path` must start with `keys/`, `wallets/`, or `agents/`. Unknown chain name. Invalid `max_fee_per_gas` / `max_priority_fee_per_gas` / `gas_price`. |
-| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value_eth`. Would exceed `tx_daily_limit_eth`. Cannot submit on behalf of another agent. |
+| 403 | Forbidden | Agent not allowed on this chain (`tx_allowed_chains`). Destination not in `tx_to_allowlist`. Transaction value exceeds `tx_max_value`. Would exceed `tx_daily_limit`. Cannot submit on behalf of another agent. |
 | 404 | Not Found | Agent or transaction not found. |
 | 409 | Conflict | Idempotency key reused (duplicate request); retry with a new key or wait. |
 | 422 | Unprocessable Entity | Simulation reverted. Response includes `status: "simulation_failed"` and simulation details. Transaction was **not** signed or broadcast. Fix the tx (e.g. insufficient balance, revert reason) and retry. |
