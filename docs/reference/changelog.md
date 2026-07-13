@@ -14,6 +14,22 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### v0.41.2 — Overhead budget and transaction count limits (2026-07-13)
+
+#### Anti-drain guardrails
+- **New:** `tx_max_per_day` (INTEGER) on agents — daily transaction count cap (UTC calendar day). Prevents high-frequency drain attacks. Per-chain override via `per_chain_guardrails.{chain}.max_per_day`.
+- **New:** `tx_overhead_budget` (JSONB) on agents — per-chain daily budget for non-value costs (rent, fees, energy) in native units. Prevents ATA rent drain (Solana), XRP reserve exhaustion, Tron energy drain, and fee storms. Format: `{"solana": "0.5", "xrp": "100", "ethereum": "0.01"}`.
+- **New:** `solana_ata_allowlist` (TEXT[]) on agents — restricts which Solana wallet addresses may have Associated Token Accounts created. Prevents ATA rent drain attacks by limiting recipients.
+- **New:** `agent_overhead_ledger` table (migration 127) — tracks per-chain overhead costs for budget enforcement.
+- **New:** `domain/overhead.rs` — per-chain overhead cost estimation module covering EVM (gas), Solana (rent + priority fees), Bitcoin (fee rate), XRP (reserves), Cardano (min-ADA), and Tron (energy).
+- **New:** Response fields `tx_count_today` and `tx_overhead_today_by_chain` in `GET /v1/agents/{id}` for dashboards and Shroud.
+- **New:** `per_chain_guardrails` extended with `max_per_day`, `overhead_budget`, and `max_ata_creates_per_day` fields.
+- **Shroud:** `AgentTxGuardrails` mirrors new fields; enforcement parity with Vault API.
+- **Dashboard:** Transaction Guardrails card gains Max Transactions Per Day, Overhead Budget (JSON), and Solana ATA Allowlist fields. Summary badges for active limits.
+- **Clients:** SDK (`tx_max_per_day`, `tx_overhead_budget`, `solana_ata_allowlist`, `tx_count_today`, `tx_overhead_today_by_chain`), CLI (`--tx-max-per-day`, `--tx-overhead-budget`, `--solana-ata-allowlist`), Python SDK, Go SDK, Mobile, and OpenAPI spec updated.
+
+---
+
 ### v0.41.1 — TEE enforcement toggles (2026-07-13)
 
 #### Agent-level TEE enforcement (Pro+)
