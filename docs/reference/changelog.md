@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### v0.41.1 — TEE enforcement toggles (2026-07-13)
+
+#### Agent-level TEE enforcement (Pro+)
+- **New:** `intents_require_tee` boolean on agents — when enabled, transaction sign/submit requests to `api.1claw.xyz` are rejected with 403. Agents must route through `shroud.1claw.xyz` where signing happens inside the hardware enclave.
+- **New:** `execution_require_tee` boolean on agents — when enabled, execute requests to `api.1claw.xyz` are rejected AND all direct secret reads by the agent are blocked. Forces use of Execution Intents bindings through the TEE.
+- **New:** `X-1Claw-TEE-Origin` HMAC verification module (`vault/src/api/middleware/tee_origin.rs`) — Shroud sets this header on proxied requests; Vault validates using shared `ONECLAW_TEE_ORIGIN_SECRET`.
+- **Changed:** "Enable Intents API" toggle moved from the Overview tab to the Signing tab on agent detail page.
+- **Dashboard:** Two new TEE enforcement toggles on the Signing tab with Pro+ tier badge, disabled states (dependent on base flags), and confirmation dialog warning about breaking changes.
+- **Migration 133:** Adds `intents_require_tee BOOLEAN DEFAULT false` and `execution_require_tee BOOLEAN DEFAULT false` to `agents` table.
+- **JWT claims:** `intents_require_tee` and `execution_require_tee` included in agent JWTs when true.
+- **Clients:** SDK, CLI (`--intents-require-tee`, `--execution-require-tee`), Python SDK, Go SDK, and OpenAPI spec updated.
+
+---
+
 ### v0.41.0 — Live-pointer credential references for Execution Intents (2026-07-12)
 
 #### Credential sources
