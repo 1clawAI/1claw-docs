@@ -14,6 +14,27 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### v0.41.0 — Live-pointer credential references for Execution Intents (2026-07-12)
+
+#### Credential sources
+- **New:** `credential_source` field on `CreateBindingRequest` and `UpdateBindingRequest` — a tagged union supporting two modes:
+  - `{ type: "inline", value: {...} }` — legacy behavior, credential copied into `__agent-keys` vault
+  - `{ type: "vault_ref", vault_id: "...", path: "..." }` — **live pointer** to an existing vault secret. The executor resolves the secret at execution time, so rotations in the source vault are reflected automatically without manual credential rotation.
+- **New:** `BindingResponse` includes `credential_source_type` ("inline" | "vault_ref"), `credential_vault_id`, and `credential_path` so the UI can display how credentials are sourced.
+- **New:** Dashboard binding form has a **Manual / From Vault** toggle — selecting "From Vault" lets users pick an existing vault secret; the binding references it directly (no duplication).
+- **New:** Validation ensures the referenced vault belongs to the same org and the secret path exists.
+- **Migration 132:** Adds `credential_vault_id UUID` (FK to vaults, ON DELETE SET NULL) and `credential_path TEXT` columns to `agent_bindings`.
+
+#### Clients
+- **SDK:** `CredentialSource` type exported; `CreateBindingRequest` and `UpdateBindingRequest` accept `credential_source`. Version bumped to `@1claw/sdk@0.41.0`.
+- **CLI:** `agent binding create --vault-ref <vault-id>:<path>` flag. Version bumped to `@1claw/cli@0.41.0`.
+- **MCP:** `create_binding` tool accepts `credential_source` parameter. Version bumped to `@1claw/mcp@0.41.0`.
+- **OpenAPI:** `CredentialSource` schema added; binding request/response schemas updated. Version bumped to `@1claw/openapi-spec@0.41.0`.
+- **Python SDK:** `CredentialSource` model, `credential_source` field on binding requests.
+- **Go SDK:** `CredentialSource` struct, updated binding request/response types.
+
+---
+
 ### Execution Intents 2.0 — executor framework, real GraphQL, guardrail enforcement, credential lifecycle (2026-07-12)
 
 #### Executor framework

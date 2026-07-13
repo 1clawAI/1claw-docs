@@ -1283,6 +1283,58 @@ const { data: binding } = await client.bindings.create(agentId, {
 </TabItem>
 </Tabs>
 
+### Vault-ref credentials (live pointers)
+
+Instead of copying a credential into the binding, you can **reference an existing vault secret**. The server resolves the secret at execution time — if you rotate the upstream secret, every binding referencing it picks up the new value automatically.
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { CredentialSource } from "@1claw/sdk";
+
+const vaultRef: CredentialSource = {
+  type: "vault_ref",
+  vault_id: "550e8400-e29b-41d4-a716-446655440000",
+  path: "integrations/stripe-key",
+};
+
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  config: { base_url: "https://api.stripe.com", auth_type: "bearer" },
+  credential_source: vaultRef,
+});
+// binding.credential_source_type === "vault_ref"
+// binding.credential_vault_id, binding.credential_path are set
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "config": { "base_url": "https://api.stripe.com", "auth_type": "bearer" },
+    "credential_source": {
+      "type": "vault_ref",
+      "vault_id": "550e8400-e29b-41d4-a716-446655440000",
+      "path": "integrations/stripe-key"
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+:::tip
+Use vault-ref credentials when multiple bindings share the same upstream API key, or when you have an existing secret rotation workflow. Changes to the vault secret are reflected immediately — no manual credential rotation needed.
+:::
+
 ### Executing a request
 
 <Tabs groupId="code-examples">
