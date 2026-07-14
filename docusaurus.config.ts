@@ -14,6 +14,7 @@ const config: Config = {
     // SSR/SSG: Docusaurus build produces static HTML for every page (including index).
     trailingSlash: false,
     markdown: {
+        mermaid: true,
         hooks: {
             onBrokenMarkdownLinks: "warn",
         },
@@ -159,6 +160,7 @@ const config: Config = {
         },
     } satisfies Preset.ThemeConfig,
     themes: [
+        "@docusaurus/theme-mermaid",
         [
             "@easyops-cn/docusaurus-search-local",
             {

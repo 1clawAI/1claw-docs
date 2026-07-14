@@ -28,7 +28,7 @@ sequenceDiagram
     Vault->>Vault: card guardrails (enabled, caps, payTo allowlist)
     Vault->>Laso: GET /get-card (no payment) → 402 accepts[]
     Vault->>Vault: validate challenge, sign EIP-3009 with agent's ETH key
-    Vault->>Laso: replay with X-PAYMENT → card_id, status pending
+    Vault->>Laso: replay with PAYMENT-SIGNATURE → card_id, status pending
     Vault-->>Agent: { card_ref, status: pending }  (no PAN, ever)
     loop card_monitor (15s)
         Vault->>Laso: GET /get-card-data
