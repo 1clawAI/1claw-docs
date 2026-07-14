@@ -174,6 +174,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/payment-cards",
+                            label: "Payment Cards — order prepaid/gift cards via x402",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/crypto-proxy",
                             label: "Note: Crypto proxy renamed → Intents API",
                         },

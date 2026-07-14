@@ -14,6 +14,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### Payment Card Vault — x402 card ordering (Laso) (2026-07-14)
+
+#### Agents can order prepaid & gift cards, paid with USDC via x402, without ever seeing the PAN
+- **New:** `POST /v1/agents/{id}/cards/order` — order a prepaid or gift card. Paid with an **outbound x402 payment** the Vault constructs and signs (EIP-3009 `TransferWithAuthorization`) using the agent's own Ethereum signing key on Base. Requires `cards_enabled` (Pro+) and an `Idempotency-Key` header. Returns a masked card reference — never a PAN.
+- **New:** Card lifecycle endpoints — `GET /v1/cards`, `GET /v1/cards/{id}` (masked to last4), `POST /v1/cards/{id}/reveal` (human `X-Auth-Confirm` re-auth, or per-card agent reveal policy; audit-logged), `PATCH /v1/cards/{id}` (reveal policy / `void_after`, human-only), `POST /v1/cards/{id}/void` (1Claw-level lock, forward-looking only), `POST /v1/cards/{id}/refresh` (rate-limited → clean 429 + `Retry-After`), `POST /v1/cards/import` (human-only, full encrypted storage with one-time-read CVV), `POST /v1/cards/gift-cards/search`.
+- **New:** Ordering guardrails on agents — `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd` (enforced atomically over a rolling 24h window), `card_payto_allowlist`, `card_reveal_enabled`. These bound the purchase, not how a revealed card is later spent.
+- **New:** Outbound x402 client (`crypto/x402_client.rs`) validates every 402 challenge before signing — `payTo` allowlist, Base network, exact requested amount, and the pinned Base USDC contract. The stored Laso bearer token is constrained in code to a hardcoded card-endpoint path allowlist (never `/withdraw` or `/send-payment`).
+- **New:** `card_monitor` background worker (15s, advisory-lock leader election) — polls the issuer, fills `last4`/expiry/balance, stores gift-card redemption payloads as secrets, fires webhooks, auto-voids past `void_after`, and reconciles `ordering`-stuck rows as `orphaned_payment`.
+- **New:** Webhook events `card.ordered`, `card.ready`, `card.revealed`, `card.voided`, `card.depleted`, `card.orphaned_payment`.
+- **Security:** PCI-conscious reference mode (only the issuer card id + encrypted refresh token stored; PAN/CVV fetched just-in-time at reveal). Shroud's PII detector now Luhn-validates PANs and detects CVV/expiry patterns, blocking card data in LLM traffic; full-mode PANs are excluded from the admin secrets manifest.
+- **DB:** migration 135 (extends `secret_type` with `payment_card`/`gift_card`), migration 136 (`payment_cards` table + agent guardrail columns).
+- **Clients:** SDK `client.cards.*`, CLI `1claw card order|list|get|reveal|void|refresh|import`, MCP `order_card`/`order_gift_card`/`search_gift_cards`/`list_cards`/`get_card_status` (reveal omitted from MCP), OpenAPI spec, and a Cards dashboard page + agent "Card Ordering Guardrails" card.
+
+---
+
 ### v0.41.2 — Overhead budget and transaction count limits (2026-07-13)
 
 #### Anti-drain guardrails
