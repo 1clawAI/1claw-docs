@@ -377,6 +377,19 @@ Response shape (fields vary by org and Stripe data availability):
 
 `credit_balance` and `billing_cycle_usage` are omitted when Stripe does not return them. The dashboard (**Settings → Billing**) shows the same provider list and usage detail when present.
 
+## Payment Card Ordering
+
+Card ordering via the [Payment Card Vault](/docs/guides/payment-cards) is available on all tiers with monthly volume quotas:
+
+| Tier | Cards/month | Default max order | Default daily limit |
+|------|------------|-------------------|---------------------|
+| Free | 5 | $25 | $25 |
+| Pro | 50 | — | — |
+| Team | 200 | — | — |
+| Business+ | Unlimited | — | — |
+
+A **3% platform fee** per order is debited from prepaid credits (best-effort; orders still proceed if credit balance is insufficient). Humans can override the per-agent max order and daily limit to values above or below the tier defaults.
+
 ## MCP and Billing
 
 MCP tool calls go through the same vault API and count toward the same usage quota. When an agent calls `get_secret` via MCP, that's one API request.

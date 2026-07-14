@@ -874,3 +874,66 @@ List recent execution events for the agent.
 | -------- | ------ | -------- | --------------------------------- |
 | `limit`  | number | No       | Max events (default 20)           |
 | `status` | string | No       | `success`, `error`, or `denied`   |
+
+---
+
+## order_card
+
+Order a prepaid card via x402 payment on Base. The agent never sees the PAN.
+
+### Parameters
+
+| Name         | Type   | Required | Description                              |
+| ------------ | ------ | -------- | ---------------------------------------- |
+| `amount_usd` | string | Yes      | Amount in USD (e.g. `"25.00"`)           |
+| `kind`       | string | No       | `prepaid` (default) or `gift_card`       |
+| `country`    | string | No       | ISO country code for gift card search    |
+
+---
+
+## order_gift_card
+
+Order a gift card for a specific brand/server.
+
+### Parameters
+
+| Name             | Type   | Required | Description                        |
+| ---------------- | ------ | -------- | ---------------------------------- |
+| `amount_usd`     | string | Yes      | Amount in USD                      |
+| `laso_server_id` | string | Yes      | Server ID from `search_gift_cards` |
+| `country`        | string | No       | ISO country code                   |
+
+---
+
+## search_gift_cards
+
+Search available gift card brands by keyword.
+
+### Parameters
+
+| Name      | Type   | Required | Description              |
+| --------- | ------ | -------- | ------------------------ |
+| `query`   | string | Yes      | Brand name to search for |
+| `country` | string | No       | ISO country code filter  |
+
+---
+
+## list_cards
+
+List all payment cards for the current agent (masked to last4).
+
+---
+
+## get_card_status
+
+Get the status and details of a specific card (masked).
+
+### Parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `card_id` | string | Yes      | Card UUID   |
+
+:::warning
+Card **reveal** is intentionally NOT available as an MCP tool. Revealing a live PAN/CVV in the model's context window would defeat the security model. Use the dashboard, SDK, or CLI with password re-authentication instead.
+:::
