@@ -14,7 +14,7 @@ Card issuance is powered by [**Laso**](https://laso.finance) — a payment-gated
 - **Agents never see PANs by default.** Card details are fetched just-in-time from the issuer at reveal, or stored encrypted for manually-imported cards.
 - **x402 challenges are validated before signing.** The Vault only ever signs a Base USDC transfer to an allowlisted recipient, for the exact amount requested.
 - **Ordering guardrails bound the purchase, not the spend.** Once a card is revealed, it can be used anywhere up to its balance — 1Claw has no further control.
-- **Pro+ tier** required to enable card ordering per agent.
+- **Available on all tiers.** Free tier: $25/order, $25/day, 5 cards/month. A 3% platform fee per order is debited from prepaid credits.
 :::
 
 ## How it works
@@ -42,7 +42,7 @@ sequenceDiagram
 
 1. The agent has an Ethereum signing key: `POST /v1/agents/{id}/signing-keys { "chain": "ethereum" }`.
 2. That signing-key address holds USDC on **Base mainnet** (fund it via a treasury send, deposit destination, or external transfer).
-3. Card ordering is enabled on the agent (Pro+).
+3. Card ordering is enabled on the agent (`cards_enabled: true`).
 4. Your deployment has [Laso](https://laso.finance) configured (`LASO_BASE_URL` and `LASO_PAYTO_ALLOWLIST` env vars). The hosted 1Claw platform at `api.1claw.xyz` includes this by default.
 
 ## Enable card ordering on an agent
