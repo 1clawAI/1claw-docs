@@ -8,6 +8,8 @@ sidebar_position: 18
 
 The Payment Card Vault lets an agent order a prepaid or gift card and pay for it with an outbound **x402** payment, signed with the agent's own Ethereum key. The agent never sees the card number (PAN) or CVV. Humans reveal card details on demand, gated by password re-authentication.
 
+Card issuance is powered by [**Laso**](https://laso.finance) — a payment-gated card API that accepts x402 payments on Base. Each agent gets an isolated Laso identity (wallet-based SIWx auth), and payments are signed with the agent's own Ethereum key, so no shared credentials exist between agents.
+
 :::tip Security model
 - **Agents never see PANs by default.** Card details are fetched just-in-time from the issuer at reveal, or stored encrypted for manually-imported cards.
 - **x402 challenges are validated before signing.** The Vault only ever signs a Base USDC transfer to an allowlisted recipient, for the exact amount requested.
@@ -41,6 +43,7 @@ sequenceDiagram
 1. The agent has an Ethereum signing key: `POST /v1/agents/{id}/signing-keys { "chain": "ethereum" }`.
 2. That signing-key address holds USDC on **Base mainnet** (fund it via a treasury send, deposit destination, or external transfer).
 3. Card ordering is enabled on the agent (Pro+).
+4. Your deployment has [Laso](https://laso.finance) configured (`LASO_BASE_URL` and `LASO_PAYTO_ALLOWLIST` env vars). The hosted 1Claw platform at `api.1claw.xyz` includes this by default.
 
 ## Enable card ordering on an agent
 
@@ -157,4 +160,4 @@ Agents using MCP get `order_card`, `order_gift_card`, `search_gift_cards`, `list
 
 ## PCI note
 
-For issuer-backed cards, 1Claw runs in "reference mode" — it stores only the issuer's card id and an encrypted refresh token, and fetches the PAN/CVV just-in-time at reveal, keeping raw card numbers out of long-term storage. Manually imported cards use full encrypted storage; discuss this mode with a QSA before relying on it for compliance. The dashboard and audit log always mask to `last4`.
+For [Laso](https://laso.finance)-issued cards, 1Claw runs in **reference mode** — it stores only the Laso `card_id` and an encrypted refresh token, and fetches the PAN/CVV just-in-time from Laso at reveal. Raw card numbers never enter 1Claw's long-term storage, keeping PCI scope minimal. Manually imported cards use full encrypted storage; discuss this mode with a QSA before relying on it for compliance. The dashboard and audit log always mask to `last4`.
