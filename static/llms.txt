@@ -441,3 +441,7 @@ Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/m
 3. **Local CLI vault (BYOK):** `--llm-api-key <key> --llm-key-store local` or `--llm-api-key-secret <name>`; the daemon injects it as the `X-Shroud-Api-Key` header.
 
 Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per provider, e.g. `gpt-4o-mini`). Local-vault recovery: `1claw local destroy --force` / `1claw local reset`.
+
+## Agent Templates (`1claw spawn`, v0.41.5)
+
+`1claw spawn <template>` scaffolds a framework-specific AI agent project. By default it copies the template into a local project folder (`./<template-name>/`), initializes a git repo, builds the Docker image from that copy, and starts the container. Flags: `--output <dir>` (custom folder), `--no-copy` (container-only, no local files), `--list`, `--refresh`. Templates: langchain, crewai, openai-agents, agentkit, smolagents, llamaindex, pydantic-ai, agno, coder (Python); typescript-sdk, mastra, elizaos (TypeScript). Same daemon-socket security model as `init --docker` — container never sees keys. Same LLM auth options (token billing / cloud vault / local BYOK).

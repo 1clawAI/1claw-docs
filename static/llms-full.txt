@@ -2670,10 +2670,10 @@ That single command provisions everything: an agent (with Shroud + Intents API e
 
 ```bash
 1claw init --docker --local    # Fully offline; no cloud account needed
-1claw spawn langchain          # Framework-specific agent from a template
+1claw spawn langchain          # Scaffold project folder + build + run from template
 ```
 
-Open **http://localhost:3000** and you have a live agent. See [Containerized agent runtime](#containerized-agent-runtime-init---docker) and [Agent templates](#agent-templates-spawn) below for the full walkthrough.
+Open **http://localhost:3000** and you have a live agent. Your source files are in `./langchain/` — edit and rebuild anytime. See [Containerized agent runtime](#containerized-agent-runtime-init---docker) and [Agent templates](#agent-templates-spawn) below for the full walkthrough.
 
 ## Authentication
 
@@ -3336,17 +3336,39 @@ Run `1claw eject --name <agent> --output ./out` to export the generated `Dockerf
 
 ## Agent templates (`spawn`)
 
-`1claw spawn` creates a framework-specific AI agent from a pre-built template. Each template includes a Dockerfile, starter code, and an entrypoint pre-wired with 1Claw MCP and Shroud for LLM routing.
+`1claw spawn` scaffolds a framework-specific AI agent project from a pre-built template. By default it copies the template into a local project folder (with a fresh git repo), builds a Docker image from it, and starts the container. You get editable source files and a running agent in one command.
 
 ```bash
-1claw spawn langchain                        # LangChain agent with Shroud LLM routing
+1claw spawn langchain                        # → ./langchain/ project folder + running container
 1claw spawn crewai --llm-api-key sk-...      # CrewAI crew with your own API key
 1claw spawn openai-agents --local            # OpenAI Agents SDK, fully offline
+1claw spawn langchain --output ./my-agent    # Custom output directory
+1claw spawn langchain --no-copy              # Container only (no local files)
 1claw spawn --list                           # List all available templates
 1claw spawn --refresh                        # Force-refresh templates from GitHub
 ```
 
 Like `init --docker`, the container follows the daemon-socket security model — **the container never sees raw API keys.** All credentials are injected by the host daemon at runtime.
+
+### Default behavior
+
+When you run `1claw spawn <template>`:
+
+1. Template files are copied to `./<template-name>/` (or the path you specify with `--output`)
+2. A git repository is initialized in the project folder
+3. The Docker image is built from the local copy
+4. The container starts with the daemon socket mounted
+
+After spawning, edit the files in your project folder (e.g. `agent.py`), then rebuild:
+
+```bash
+cd langchain/           # Your editable project
+# ... make changes ...
+1claw containers stop langchain-abc123
+1claw spawn langchain   # Rebuilds from the local copy
+```
+
+Use `--no-copy` to skip the local folder and get the old container-only behavior.
 
 ### Available templates
 
