@@ -14,6 +14,20 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-07 (latest)
 
+### Payment Card Vault — human-in-the-loop approval (2026-07-17)
+
+#### Card orders require human approval by default
+- **New:** `card_require_approval` on agents (default **true**). When enabled, `POST /v1/agents/{id}/cards/order` returns **202** with `status: awaiting_approval` and `approval_id` — x402 payment runs only after a human approves.
+- **New:** `GET /v1/approvals/quick-decide` — public one-click approve/deny from email (SHA-256 hashed, single-use tokens in `approval_quick_tokens`; 7-day TTL). Dashboard proxy: `GET /api/approvals/quick-decide`.
+- **New:** Approval notifications — email with Approve/Deny CTAs; push notification dispatch to registered mobile devices.
+- **New:** Auto-execution on `POST /v1/approvals/{id}/decide` when `action == card_order` (approved → pay + Laso; rejected → `card.rejected` webhook).
+- **New:** Risk-tier step-up on approve (T2+ requires `X-Auth-Confirm` re-auth token; T3 passkey/TOTP).
+- **New:** TOTP as re-auth method — `POST /v1/auth/reauth/begin` + `complete` with `method: "totp"`.
+- **New:** Webhook events `approval.created`, `approval.decided`, `card.rejected`.
+- **New:** Card statuses `awaiting_approval`, `rejected`; `approval_id` on card responses.
+- **DB:** migration 139 (`card_require_approval`, `approval_quick_tokens`, extended status CHECK).
+- **Clients:** Dashboard approval detail card-order renderer, guardrails toggle, mobile `card_order` screen; SDK types updated.
+
 ### Payment Card Vault — x402 card ordering (Laso) (2026-07-14)
 
 #### Agents can order prepaid & gift cards, paid with USDC via x402, without ever seeing the PAN
