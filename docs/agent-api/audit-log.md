@@ -35,6 +35,18 @@ for (const event of data.events) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+events = client.audit.list_events(limit=10)
+for e in events.data.get("events", []):
+    print(e["action"], e["resource_type"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

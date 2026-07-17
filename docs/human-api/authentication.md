@@ -51,6 +51,17 @@ await client.auth.login({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):**
@@ -100,6 +111,17 @@ await client.auth.google({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Same as email/password (`access_token`, `token_type`, `expires_in`).
@@ -139,6 +161,17 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Same shape as above.
@@ -167,6 +200,17 @@ curl -X DELETE https://api.1claw.xyz/v1/auth/token \
 
 ```typescript
 await client.auth.logout();
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
 ```
 
 </TabItem>
@@ -205,6 +249,17 @@ await client.auth.changePassword({
   current_password: "...",
   new_password: "...",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
 ```
 
 </TabItem>

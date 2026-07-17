@@ -35,6 +35,18 @@ for (const s of data.secrets) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

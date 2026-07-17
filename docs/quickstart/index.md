@@ -125,7 +125,7 @@ Full command reference: [CLI guide](/docs/guides/cli).
 
 ### Option C — REST API / SDK
 
-Step-by-step curl and TypeScript examples: [Quickstart for humans](/docs/quickstart/humans).
+Step-by-step curl, TypeScript, and Python examples: [Quickstart for humans](/docs/quickstart/humans).
 
 ---
 

@@ -35,6 +35,18 @@ for (const p of data.policies) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+policies = client.policies.list(vault_id)
+for p in policies.data["policies"]:
+    print(p["secret_path_pattern"], p["permissions"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

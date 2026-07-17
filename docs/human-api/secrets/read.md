@@ -38,6 +38,17 @@ console.log(secret.value);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

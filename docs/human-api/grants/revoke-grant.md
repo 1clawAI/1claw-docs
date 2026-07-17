@@ -32,6 +32,16 @@ await client.access.revoke(vaultId, policyId);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.delete(vault_id, policy_id)
+```
+
+</TabItem>
 </Tabs>
 
 ## Response

@@ -38,6 +38,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW-KEY...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 **Response (201):** Same shape as create; `version` will be 2 (or next). The secret value is never returned.

@@ -64,6 +64,22 @@ console.log(data.agent.id, data.api_key); // Store api_key securely
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (201)

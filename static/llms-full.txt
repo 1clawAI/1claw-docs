@@ -37,6 +37,18 @@ for (const event of data.events) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+events = client.audit.list_events(limit=10)
+for e in events.data.get("events", []):
+    print(e["action"], e["resource_type"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)
@@ -120,6 +132,16 @@ const client = createClient({
   apiKey: "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs",
 });
 // All subsequent calls use the auto-managed JWT
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
 ```
 
 </TabItem>
@@ -220,6 +242,17 @@ const { data: secret } = await client.secrets.get(
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Response (200)
@@ -287,6 +320,18 @@ const { data } = await client.secrets.list(VAULT_ID);
 for (const s of data.secrets) {
   console.log(`${s.path} (${s.type}, v${s.version})`);
 }
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
 ```
 
 </TabItem>
@@ -1095,6 +1140,21 @@ console.log("Agent ID:", result.agent_id);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+resp = client.agents.enroll(
+    "my-agent",
+    "alice@example.com",
+    description="CI pipeline agent",
+)
+print(resp.data.get("agent_id"), resp.data.get("approval_url"))
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -1162,6 +1222,16 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 ## 4. Read and write secrets
@@ -1195,6 +1265,23 @@ await client.secrets.set(VAULT_ID, "credentials/db-password", "s3cret!", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## 5. Share secrets back to your human
@@ -1224,6 +1311,16 @@ const { data: share } = await client.sharing.create(secretId, {
   expires_at: "2026-12-31T00:00:00Z",
   max_access_count: 10,
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
 ```
 
 </TabItem>
@@ -2423,6 +2520,19 @@ Response shape (fields vary by org and Stripe data availability):
 ```
 
 `credit_balance` and `billing_cycle_usage` are omitted when Stripe does not return them. The dashboard (**Settings → Billing**) shows the same provider list and usage detail when present.
+
+## Payment Card Ordering
+
+Card ordering via the [Payment Card Vault](/docs/guides/payment-cards) is available on all tiers with monthly volume quotas:
+
+| Tier | Cards/month | Default max order | Default daily limit |
+|------|------------|-------------------|---------------------|
+| Free | 5 | $25 | $25 |
+| Pro | 50 | — | — |
+| Team | 200 | — | — |
+| Business+ | Unlimited | — | — |
+
+A **3% platform fee** per order is debited from prepaid credits (best-effort; orders still proceed if credit balance is insufficient). Humans can override the per-agent max order and daily limit to values above or below the tier defaults.
 
 ## MCP and Billing
 
@@ -4344,6 +4454,17 @@ await client.secrets.set(vault.id, "api-keys/openai", "sk-proj-...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
+```
+
+</TabItem>
 </Tabs>
 
 ## 2. Register an agent (human)
@@ -4375,6 +4496,22 @@ const apiKey = data.api_key; // Store securely — shown only once
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ## 3. Create a policy (human)
@@ -4403,6 +4540,22 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 await client.access.grantAgent(vault.id, agentId, ["read"], {
   secretPathPattern: "**",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.create(
+    vault_id,
+    principal_type="agent",
+    principal_id=agent_id,
+    secret_path_pattern="production/*",
+    permissions=["read"],
+)
 ```
 
 </TabItem>
@@ -4441,6 +4594,16 @@ const agentClient = createClient({
 
 const { data: secret } = await agentClient.secrets.get(VAULT_ID, "api-keys/openai");
 // Use secret.value — don't log or persist
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
 ```
 
 </TabItem>
@@ -4691,19 +4854,14 @@ const { data } = await client.agents.create({
 <TabItem value="python" label="Python">
 
 ```python
-import os
-import requests
+from oneclaw import create_client
 
-BASE = "https://api.1claw.xyz"
-headers = {"Authorization": f"Bearer {os.environ['ONECLAW_TOKEN']}"}
-r = requests.post(
-    f"{BASE}/v1/agents",
-    json={"name": "DeFi Bot", "intents_api_enabled": True},
-    headers=headers,
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "DeFi Bot",
+    intents_api_enabled=True,
 )
-r.raise_for_status()
-agent = r.json()
-agent_id = agent["id"]
+agent_id = resp.data["agent"]["id"]
 ```
 
 </TabItem>
@@ -4755,20 +4913,18 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 <TabItem value="python" label="Python">
 
 ```python
-r = requests.post(
-    f"{BASE}/v1/agents/{agent_id}/transactions",
-    json={
-        "chain": "ethereum",
-        "to": "0xRecipientAddress",
-        "value": "1.0",
-        "data": "0x",
-        "signing_key_path": "wallets/hot-wallet",
-    },
-    headers=headers,
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0xRecipientAddress",
+    value="1.0",
+    data="0x",
+    signing_key_path="wallets/hot-wallet",
 )
-r.raise_for_status()
-tx = r.json()
-print(tx["tx_hash"], tx["status"])
+print(resp.data.get("tx_hash"), resp.data.get("status"))
 ```
 
 </TabItem>
@@ -4809,6 +4965,18 @@ const { data: txList } = await client.agents.listTransactions(agentId);
 
 // Get transaction
 const { data: tx } = await client.agents.getTransaction(agentId, txId);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+agents = client.agents.list()
+for a in agents.data["agents"]:
+    print(a["name"], a["id"])
 ```
 
 </TabItem>
@@ -4854,6 +5022,22 @@ const { data: signedTx } = await client.agents.signTransaction(agentId, {
 // Broadcast yourself using ethers, viem, or raw RPC
 console.log(signedTx.signed_tx); // 0x02f8...
 console.log(signedTx.tx_hash);   // 0xabc123...
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -4929,6 +5113,22 @@ const { data: sim } = await client.agents.simulateTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 The response includes:
@@ -4978,6 +5178,22 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 ### Bundle simulation
@@ -5009,6 +5225,22 @@ const { data: bundle } = await client.agents.simulateBundle(agentId, {
     { chain: "base", to: "0xRouter", value: "0", data: "0xswap..." },
   ],
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -5054,6 +5286,22 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 ## Multi-chain signing keys {#signing-keys}
@@ -5091,6 +5339,17 @@ const { data: key } = await client.signingKeys.create(agentId, {
   chain: "ethereum",
 });
 console.log(key.public_key, key.address); // 0x04abc...  0x1234...
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.signing_keys.create(agent_id, chain="ethereum")
+print(resp.data["address"])
 ```
 
 </TabItem>
@@ -5256,6 +5515,22 @@ const { data: usdt } = await client.agents.signTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, status }`. For non-EVM chains, the `value_wei` field contains the chain-native base unit (satoshis for Bitcoin, lamports for Solana, drops for XRP, lovelace for Cardano, sun for Tron), `signed_tx` contains the signed payload (hex or base64 depending on the chain), and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron). For sign-only responses, `chain_id` and `nonce` are `0` for non-EVM chains.
@@ -5301,6 +5576,22 @@ console.log(data.signature, data.message_hash, data.from);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ### EIP-712 typed data {#eip712}
@@ -5341,6 +5632,22 @@ const { data } = await client.agents.sign(agentId, {
   },
 });
 console.log(data.signature, data.typed_data_hash, data.from);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -5608,6 +5915,17 @@ const response = await fetch("https://api.1claw.xyz/v1/admin/chains", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 See the [Admin API reference](/docs/reference/api-reference#admin) for update and delete endpoints.
@@ -5660,6 +5978,16 @@ const { data: agent } = await client.agents.update(agentId, {
   tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
   tx_known_tokens_only: true,
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
 ```
 
 </TabItem>
@@ -5837,6 +6165,16 @@ const { data } = await client.agents.update(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 ### Creating a binding
@@ -5884,7 +6222,91 @@ const { data: binding } = await client.bindings.create(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
+
+### Vault-ref credentials (live pointers)
+
+Instead of copying a credential into the binding, you can **reference an existing vault secret**. The server resolves the secret at execution time — if you rotate the upstream secret, every binding referencing it picks up the new value automatically.
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { CredentialSource } from "@1claw/sdk";
+
+const vaultRef: CredentialSource = {
+  type: "vault_ref",
+  vault_id: "550e8400-e29b-41d4-a716-446655440000",
+  path: "integrations/stripe-key",
+};
+
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  config: { base_url: "https://api.stripe.com", auth_type: "bearer" },
+  credential_source: vaultRef,
+});
+// binding.credential_source_type === "vault_ref"
+// binding.credential_vault_id, binding.credential_path are set
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "config": { "base_url": "https://api.stripe.com", "auth_type": "bearer" },
+    "credential_source": {
+      "type": "vault_ref",
+      "vault_id": "550e8400-e29b-41d4-a716-446655440000",
+      "path": "integrations/stripe-key"
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+:::tip
+Use vault-ref credentials when multiple bindings share the same upstream API key, or when you have an existing secret rotation workflow. Changes to the vault secret are reflected immediately — no manual credential rotation needed.
+:::
 
 ### Executing a request
 
@@ -5917,6 +6339,22 @@ const { data: result } = await client.bindings.execute(agentId, {
     path: "/v1/customers?limit=10",
   },
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -6439,6 +6877,324 @@ You don't need to enable MPC manually for treasury wallets — it's configured a
 
 ---
 
+## Multi-Chain Signing
+
+---
+title: Multi-Chain Signing
+description: HSM-backed signing for Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron. Provision keys, sign transactions, and broadcast — the private key never leaves hardware.
+sidebar_position: 14
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Multi-Chain Signing
+
+1Claw signs and broadcasts transactions for **six blockchains** from inside the HSM (or the Shroud TEE). The private key never leaves hardware. Agents submit transaction intents; the server signs, optionally broadcasts, and returns the result.
+
+This page consolidates everything you need: key provisioning, supported chains, transaction signing, and guardrails. For the full Intents API reference (EVM-specific features like EIP-712, simulation, gasless transactions), see [Intents API](/docs/guides/intents-api).
+
+---
+
+## Supported chains
+
+| Chain | Curve | Address format | Mainnet `chain` | Testnet `chain` |
+| --- | --- | --- | --- | --- |
+| Ethereum | secp256k1 | 0x (EIP-55) | `ethereum`, `base`, `optimism`, `arbitrum`, `polygon` | `sepolia`, `base-sepolia` |
+| Bitcoin | secp256k1 | P2WPKH bech32 (`bc1q…`) | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` |
+| Solana | Ed25519 | Base58 | `solana` | `solana-devnet`, `solana-testnet` |
+| XRP | Ed25519 | Base58Check (`r…`) | `xrp` | `xrp-testnet` |
+| Cardano | Ed25519 | Bech32 enterprise (`addr1…`) | `cardano` | `cardano-preprod`, `cardano-preview` |
+| Tron | secp256k1 | Base58Check (`T…`) | `tron` | `tron-shasta`, `tron-nile` |
+
+---
+
+## Provisioning signing keys
+
+Signing keys are provisioned per-agent by a human. The HSM generates the keypair; the private key is stored in the org's `__agent-keys` vault.
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: key } = await client.signingKeys.create(agentId, {
+  chain: "ethereum",
+});
+console.log(key.public_key, key.address);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.signing_keys.create(agent_id, chain="ethereum")
+print(resp.data["address"])
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "ethereum" }'
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent signing-keys create $AGENT_ID --chain ethereum
+```
+
+</TabItem>
+</Tabs>
+
+Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `tron`).
+
+### Key lifecycle
+
+| Operation | Endpoint | SDK |
+| --- | --- | --- |
+| Provision | `POST /v1/agents/{id}/signing-keys` | `client.signingKeys.create(agentId, { chain })` |
+| List | `GET /v1/agents/{id}/signing-keys` | `client.signingKeys.list(agentId)` |
+| Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.balance(agentId, chain)` |
+| Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
+| Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
+| Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |
+
+Only human users can provision, rotate, and export keys — agents receive 403.
+
+---
+
+## Signing and broadcasting transactions
+
+Use `POST /v1/agents/{id}/transactions` to sign and broadcast, or `POST /v1/agents/{id}/transactions/sign` to sign without broadcasting.
+
+The `chain` field determines which signing module is used. 1Claw automatically fetches chain data (UTXOs, fee rates, blockhashes, sequence numbers) before signing.
+
+### Value format
+
+`value` is always the **human-readable major unit** as a decimal string:
+
+| Chain | Example `value` | Meaning |
+| --- | --- | --- |
+| Bitcoin | `"0.001"` | 0.001 BTC |
+| Solana | `"0.5"` | 0.5 SOL |
+| XRP | `"10"` | 10 XRP |
+| Cardano | `"5"` | 5 ADA |
+| Tron | `"100"` | 100 TRX |
+
+### Chain-specific fields
+
+| Field | Chain | Purpose |
+| --- | --- | --- |
+| `destination_tag` | XRP | Destination tag for exchange deposits |
+| `fee_rate_sat_per_vbyte` | Bitcoin | Override the auto-fetched fee rate |
+| `fee_limit_sun` | Tron | TRC-20 energy fee limit (default 100M sun; max 500M) |
+| `token_mint` | Solana, Tron, Cardano, EVM | Token contract/mint for token transfers |
+| `token_decimals` | Solana, Tron | Token decimals (default 6) |
+| `ttl` | Cardano | Time-to-live in absolute slots (default: current + 7200) |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-api#xrpl-tx-types) |
+| `memo` | Solana | On-chain memo (Memo Program v2) |
+
+---
+
+## Examples
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+// Bitcoin: send 0.001 BTC
+const btc = await client.agents.submitTransaction(agentId, {
+  chain: "bitcoin-signet",
+  to: "tb1q...",
+  value: "0.001",
+});
+
+// Solana: send 0.25 SOL
+const sol = await client.agents.submitTransaction(agentId, {
+  chain: "solana-devnet",
+  to: "9xQ...",
+  value: "0.25",
+});
+
+// XRP: send 10 XRP with a destination tag
+const xrp = await client.agents.submitTransaction(agentId, {
+  chain: "xrp-testnet",
+  to: "rPT1...",
+  value: "10",
+  destination_tag: 12345,
+});
+
+// Cardano: send 2 ADA
+const ada = await client.agents.submitTransaction(agentId, {
+  chain: "cardano-preprod",
+  to: "addr_test1...",
+  value: "2",
+});
+
+// Tron: send 100 TRX
+const trx = await client.agents.submitTransaction(agentId, {
+  chain: "tron-shasta",
+  to: "T...",
+  value: "100",
+});
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+# Bitcoin
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "bitcoin-signet", "to": "tb1q...", "value": "0.001" }'
+
+# Solana
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "solana-devnet", "to": "9xQ...", "value": "0.25" }'
+
+# XRP with destination tag
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chain": "xrp-testnet", "to": "rPT1...", "value": "10", "destination_tag": 12345 }'
+```
+
+</TabItem>
+</Tabs>
+
+### Token transfers
+
+For SPL, TRC-20, ERC-20, and Cardano native assets, add `token_mint`:
+
+```typescript
+// Solana SPL token (USDC)
+const spl = await client.agents.submitTransaction(agentId, {
+  chain: "solana-devnet",
+  to: "9xQ...",
+  value: "5",
+  token_mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  token_decimals: 6,
+});
+
+// Tron TRC-20 (USDT)
+const trc20 = await client.agents.submitTransaction(agentId, {
+  chain: "tron",
+  to: "TR7NH...",
+  value: "5",
+  token_mint: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+  token_decimals: 6,
+});
+```
+
+Solana SPL transfers auto-create the recipient's Associated Token Account if it doesn't exist.
+
+---
+
+## XRPL advanced transactions
+
+For any of the 30+ XRPL transaction types beyond simple Payment, use the `xrpl_tx_json` field:
+
+```typescript
+// TrustSet — allow up to 1000 USD from an issuer
+const trustSet = await client.agents.submitTransaction(agentId, {
+  chain: "xrp-testnet",
+  xrpl_tx_json: {
+    TransactionType: "TrustSet",
+    LimitAmount: {
+      currency: "USD",
+      issuer: "rIssuer...",
+      value: "1000",
+    },
+  },
+});
+```
+
+1Claw auto-fills `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey`. The full list of supported types includes Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, EscrowCreate/Finish/Cancel, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw, and many more.
+
+---
+
+## Transaction guardrails
+
+Per-agent controls enforced before signing. Configure via the dashboard, SDK, or CLI.
+
+| Guardrail | Purpose |
+| --- | --- |
+| `tx_allowed_chains` | Restrict to specific chains |
+| `tx_to_allowlist` | Permitted destination addresses |
+| `tx_max_value_eth` | Max value per transaction (native major units) |
+| `tx_daily_limit_eth` | Rolling 24h cumulative spend |
+| `tx_token_allowlist` | Allowed token contracts/mints |
+| `tx_max_per_day` | Max transactions per UTC day |
+| `per_chain_guardrails` | Chain-specific overrides (JSON) |
+
+```typescript
+await client.agents.update(agentId, {
+  intents_api_enabled: true,
+  tx_allowed_chains: ["ethereum", "solana"],
+  tx_to_allowlist: ["0x...", "9xQ..."],
+  tx_max_value_eth: "1.0",
+  tx_daily_limit_eth: "10.0",
+});
+```
+
+Violations return 403 with a descriptive error before any signing occurs.
+
+---
+
+## UTXO locking (Bitcoin & Cardano)
+
+Concurrent transactions are serialized via UTXO locks to prevent double-spends. Locks auto-expire after 5 minutes and are released on successful broadcast or error.
+
+---
+
+## Testnet faucets
+
+| Chain | Faucet |
+| --- | --- |
+| Bitcoin Signet | [faucet.coinbin.org](https://faucet.coinbin.org/) |
+| Solana Devnet | [faucet.solana.com](https://faucet.solana.com/) or `solana airdrop` |
+| XRP Testnet | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Cardano Preprod | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
+| Tron Shasta | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
+
+---
+
+## Further reading
+
+- [Intents API](/docs/guides/intents-api) — full reference including EVM features, EIP-712, simulation, and the unified sign endpoint
+- [Payment Cards](/docs/guides/payment-cards) — order prepaid cards using the agent's Ethereum signing key via x402
+- [Securing Agent Access](/docs/guides/securing-agent-access) — scoped permissions, vault binding, and token TTL
+
+
+---
+
 ## OIDC federation — Anthropic Workload Identity Federation (WIF)
 
 ---
@@ -6929,6 +7685,97 @@ The 1claw skill teaches your agent how to call 1Claw's MCP tools (e.g. `list_sec
 - [MCP Server](/docs/mcp/overview) — 1Claw MCP tools and setup in detail.
 - [Give an agent access](/docs/guides/give-agent-access) — Create policies so your agent can access the right vault and paths.
 - [Plugin repository](https://github.com/1clawAI/1claw-openclaw-plugin) — Plugin source (includes bundled skill).
+
+
+---
+
+## Payment Cards
+
+---
+title: Payment Cards
+description: Order prepaid and gift cards for agents via x402, with human-in-the-loop approval and PCI-conscious reveal.
+sidebar_position: 5
+---
+
+# Payment Cards
+
+Agents can order **prepaid** and **gift cards** paid with USDC on Base via an outbound **x402 payment**. The agent never sees the PAN or CVV by default — humans reveal card details when needed.
+
+## Human-in-the-loop approval (default)
+
+By default, **`card_require_approval` is `true`** on every agent. When an agent calls `POST /v1/agents/{id}/cards/order`:
+
+1. Guardrails are validated (amount caps, daily limit, payTo allowlist).
+2. A `payment_cards` row is created with `status: awaiting_approval`.
+3. An approval is created with `action: card_order` and assigned to the agent's creator.
+4. The API returns **202 Accepted** with `approval_id` — **no x402 payment yet**.
+5. A human approves via one of:
+   - **Dashboard** — [1claw.xyz/approvals](https://1claw.xyz/approvals)
+   - **Mobile app** — push notification + risk-tier step-up (biometric / TOTP)
+   - **Email** — one-click Approve/Deny links (`GET /v1/approvals/quick-decide`, proxied at `/api/approvals/quick-decide` on the dashboard domain)
+
+On **approve**, Vault runs the x402 payment and Laso order; the card moves to `pending` then `ready`. On **reject**, the card becomes `rejected`.
+
+Set `card_require_approval: false` on trusted agents with tight guardrails to skip the queue (synchronous payment).
+
+### Risk tiers (card orders)
+
+| Tier | Amount (USD) | Step-up on approve |
+|------|----------------|---------------------|
+| T1 | ≤ $25 | None |
+| T2 | $25 – $100 | Password or re-auth token (`X-Auth-Confirm`) |
+| T3 | > $100 | Passkey or TOTP re-auth token |
+
+Obtain a re-auth token: `POST /v1/auth/reauth/begin` with `{ "method": "password" \| "passkey" \| "totp" }`, then `POST /v1/auth/reauth/complete` → use the `rat_` token in `X-Auth-Confirm`.
+
+## Ordering guardrails
+
+Per-agent fields (human-set in the dashboard or API):
+
+| Field | Description |
+|-------|-------------|
+| `cards_enabled` | Master toggle for card ordering (Pro+ tier) |
+| `card_max_order_usd` | Max USD per order |
+| `card_daily_limit_usd` | Rolling 24h spend cap (atomic) |
+| `card_payto_allowlist` | Allowed x402 `payTo` addresses (empty = server default Laso recipients) |
+| `card_reveal_enabled` | Whether agents may reveal (subject to per-card policy) |
+| `card_require_approval` | Human approval before payment (default **true**) |
+
+## Reveal card details
+
+`POST /v1/cards/{id}/reveal` — humans must pass **`X-Auth-Confirm`**:
+
+- Account password, or
+- **`rat_` re-auth token** from passkey/TOTP flow (recommended for Google/social login users without a password)
+
+Agents receive 403 unless a human enabled `reveal_policy.agent_reveal` on the card.
+
+## Webhooks
+
+Subscribe to: `approval.created`, `approval.decided`, `card.ordered`, `card.ready`, `card.rejected`, `card.revealed`, `card.voided`, `card.depleted`, `card.orphaned_payment`.
+
+## SDK example
+
+```typescript
+import { createClient } from "@1claw/sdk";
+
+const client = createClient({ apiKey: process.env.ONECLAW_API_KEY! });
+
+// Agent orders a card (returns 202 when approval required)
+const order = await client.cards.order(agentId, {
+  kind: "prepaid",
+  amount_usd: "25.00",
+}, { idempotencyKey: crypto.randomUUID() });
+
+if (order.status === "awaiting_approval") {
+  console.log("Waiting for human approval:", order.approval_id);
+}
+
+// Human approves in dashboard or via API
+await client.approvals.decide(approvalId, { decision: "approved" });
+```
+
+See also: [Intents API](/docs/guides/intents-api) (agent signing keys for x402 payment), [Approvals](/docs/human-api/overview) (mobile companion app).
 
 
 ---
@@ -7640,6 +8487,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## Optional: limit exposure
@@ -7674,6 +8538,16 @@ console.log(data.version);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.secrets.rotate_generate(vault_id, "api-keys/openai", length=32, charset="base64")
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -7704,6 +8578,18 @@ curl "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/api-keys%2Fopena
 ```typescript
 const { data } = await client.secrets.listVersions(vaultId, "api-keys/openai");
 console.log(data.versions); // newest first; check is_disabled
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
 ```
 
 </TabItem>
@@ -7741,6 +8627,17 @@ console.log(data.value);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -7770,6 +8667,17 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/api-keys%
 
 ```typescript
 await client.secrets.disableVersion(vaultId, "api-keys/openai", 2);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
 ```
 
 </TabItem>
@@ -7803,6 +8711,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/rotate-key" \
 ```typescript
 const { data } = await client.agents.rotateKey(agentId);
 console.log(data.api_key); // New key — store securely
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -8197,6 +9121,16 @@ const { data: share } = await client.sharing.create(secretId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -8242,6 +9176,16 @@ const { data: share } = await client.sharing.create(secretId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 The backend resolves the agent's `created_by` field to identify the human. No user UUID or email needed. The human sees the share in their **Inbound** shares and accepts it.
@@ -8280,6 +9224,16 @@ const { data: secret } = await client.sharing.access(shareId);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 Returns the decrypted secret value if the share is still valid (not expired, under access limit).
@@ -8301,6 +9255,16 @@ curl -X DELETE https://api.1claw.xyz/v1/share/{share_id} \
 
 ```typescript
 await client.sharing.revoke(shareId);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.delete(vault_id, policy_id)
 ```
 
 </TabItem>
@@ -10520,6 +11484,251 @@ For a full list of error codes and response shapes, see [Error codes](/docs/refe
 
 ---
 
+## @1claw/wallet-react
+
+---
+title: "@1claw/wallet-react"
+description: Embeddable React treasury wallet components for third-party apps. Social login, Send, Swap, Receive, and Buy — all with spend policy enforcement.
+sidebar_position: 15
+---
+
+# @1claw/wallet-react
+
+Drop-in React components that give your users a full crypto wallet experience — email login, social login, Send, Swap, Receive, and Buy — authenticated via your Platform API key. The widget handles authentication, key management, and transaction signing; you handle the UI placement.
+
+**Source:** [github.com/1clawAI/wallet-react](https://github.com/1clawAI/wallet-react) (MIT)
+
+---
+
+## Install
+
+```bash
+npm install @1claw/wallet-react
+# or
+pnpm add @1claw/wallet-react
+# or
+yarn add @1claw/wallet-react
+```
+
+---
+
+## Quick start
+
+```tsx
+import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-react";
+
+function App() {
+  return (
+    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
+      <OneclawEmbeddedWallet
+        features={["send", "swap", "receive", "buy"]}
+        socialProviders={["google", "apple", "email"]}
+        chains={["ethereum", "base", "solana"]}
+      />
+    </OneclawWalletProvider>
+  );
+}
+```
+
+That's it. Users sign in via email OTP or social login, and get auto-provisioned multi-chain wallets.
+
+---
+
+## Components
+
+### `<OneclawWalletProvider>`
+
+Context provider that wraps your app. Must be an ancestor of any wallet component or hook.
+
+| Prop | Type | Required | Description |
+| --- | --- | --- | --- |
+| `apiKey` | `string` | Yes | Your Platform API key (`plt_...`) |
+| `baseUrl` | `string` | No | API base URL (defaults to `https://api.1claw.xyz`) |
+| `children` | `ReactNode` | Yes | Your app content |
+
+### `<OneclawEmbeddedWallet>`
+
+Full wallet UI with login, dashboard, and transaction views.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `features` | `string[]` | `["send", "swap", "receive", "buy"]` | Which views to show |
+| `socialProviders` | `string[]` | `["email"]` | Login methods: `"email"`, `"google"`, `"apple"`, `"discord"` |
+| `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
+| `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color scheme |
+
+### `<OneclawTreasuryWidget>`
+
+Compact widget showing wallet balances and quick actions. Same props as `OneclawEmbeddedWallet`.
+
+---
+
+## Hook: `useOneclawWallet()`
+
+For programmatic access without the full widget UI.
+
+```tsx
+import { useOneclawWallet } from "@1claw/wallet-react";
+
+function MyComponent() {
+  const { wallets, balances, send, swap, refresh } = useOneclawWallet();
+
+  const handleSend = async () => {
+    await send({
+      chain: "ethereum",
+      to: "0x...",
+      amount: "0.01",
+    });
+  };
+
+  return (
+    <div>
+      {wallets.map((w) => (
+        <div key={w.chain}>
+          {w.chain}: {w.address} — {balances[w.chain]?.native ?? "loading..."}
+        </div>
+      ))}
+      <button onClick={handleSend}>Send 0.01 ETH</button>
+    </div>
+  );
+}
+```
+
+### Return value
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `wallets` | `Wallet[]` | Array of provisioned wallets with `chain`, `address`, `publicKey` |
+| `balances` | `Record<string, Balance>` | Per-chain native + token balances (auto-refreshes every 30s) |
+| `send(params)` | `(SendParams) => Promise<SendResult>` | Send native or token transfer |
+| `swap(params)` | `(SwapParams) => Promise<SwapResult>` | Swap tokens via 0x DEX aggregator |
+| `refresh()` | `() => Promise<void>` | Force-refresh balances |
+
+---
+
+## Authentication flows
+
+The widget handles login automatically. Supported methods:
+
+| Method | How it works |
+| --- | --- |
+| **Email OTP** | 6-digit code sent to the user's email. No password. |
+| **Google** | Google ID token verified server-side. |
+| **Apple** | Apple ID token verified server-side. |
+| **Discord** | OAuth authorization code exchanged server-side. |
+
+On first login, wallets are auto-provisioned for the specified `chains`. Subsequent logins re-use existing wallets.
+
+### Programmatic auth
+
+```tsx
+import { useOneclawWallet } from "@1claw/wallet-react";
+
+const { socialLogin, sendEmailOtp, verifyEmailOtp } = useOneclawWallet();
+
+// Email OTP
+await sendEmailOtp("user@example.com");
+await verifyEmailOtp("user@example.com", "123456", ["ethereum", "solana"]);
+
+// Social login
+await socialLogin({ provider: "google", id_token: googleIdToken });
+```
+
+---
+
+## Spend policies
+
+Platform developers control what users can do with their wallets via spend policies. Policies are enforced server-side before signing.
+
+```typescript
+// Set app-wide defaults (server-side, using your plt_ key)
+await platformClient.createSpendPolicy(appId, {
+  max_value_per_tx_eth: "0.1",
+  daily_limit_eth: "1.0",
+  allowed_chains: ["ethereum", "base"],
+  max_transactions_per_day: 50,
+});
+```
+
+Users see a clear error if a transaction violates a policy — the widget never attempts to sign a blocked transaction.
+
+---
+
+## Passkey transaction authorization
+
+For high-value sends, require WebAuthn passkey confirmation instead of (or in addition to) a password:
+
+```tsx
+const { beginPasskeyTxAuth, completePasskeyTxAuth, sendWithPasskey } = useOneclawWallet();
+
+// Full flow: passkey challenge → sign → send
+await sendWithPasskey({
+  chain: "ethereum",
+  to: "0x...",
+  amount: "1.0",
+});
+```
+
+The passkey proof binds to the specific transaction parameters (chain, to, value) — it cannot be replayed for a different transaction.
+
+---
+
+## Gasless transactions
+
+When connected to an EVM chain with Pimlico configured, pass `gasless: true` to wrap the send as an ERC-4337 UserOperation with sponsored gas:
+
+```tsx
+await send({
+  chain: "ethereum",
+  to: "0x...",
+  amount: "0.01",
+  gasless: true,
+});
+```
+
+The user pays no gas; the paymaster covers it.
+
+---
+
+## Fiat on-ramps
+
+The `"buy"` feature integrates partner widgets (Coinbase Onramp, MoonPay) so users can purchase crypto directly into their wallet:
+
+```tsx
+<OneclawEmbeddedWallet features={["send", "receive", "buy"]} />
+```
+
+No additional configuration needed — the widget handles widget URLs and callbacks.
+
+---
+
+## Configuration
+
+| Environment variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_ONECLAW_API_KEY` | Your `plt_` Platform API key |
+| `NEXT_PUBLIC_ONECLAW_BASE_URL` | API base URL (default: `https://api.1claw.xyz`) |
+
+---
+
+## Prerequisites
+
+- A 1Claw account with a **Pro or higher** plan
+- A Platform App (`plt_` API key) — [create one in the dashboard](/docs/guides/platform-api)
+- React 18+ and a bundler (Next.js, Vite, etc.)
+
+---
+
+## Further reading
+
+- [Embedded Wallets Quickstart](/docs/guides/embedded-wallets-quickstart) — the 2-minute version
+- [Platform API](/docs/guides/platform-api) — full platform developer documentation
+- [Treasury Wallets](/docs/guides/treasury) — the underlying treasury wallet system
+- [GitHub: @1claw/wallet-react](https://github.com/1clawAI/wallet-react) — source code and README
+
+
+---
+
 ## x402 Integration Guide
 
 ---
@@ -10711,6 +11920,16 @@ await client.agents.delete(agentId);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 **Response:** 204 No Content.
@@ -10740,6 +11959,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/ec7e0226-30f0-4dda-b169-f060a35026
 ```typescript
 const { data } = await client.agents.rotateKey(agentId);
 console.log(data.api_key); // Store new key
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -10793,6 +12028,18 @@ const { data } = await client.agents.list();
 for (const a of data.agents) {
   console.log(a.name, a.id, a.is_active);
 }
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+agents = client.agents.list()
+for a in agents.data["agents"]:
+    print(a["name"], a["id"])
 ```
 
 </TabItem>
@@ -10886,6 +12133,22 @@ const { data } = await client.agents.create({
   scopes: ["vaults:read"],
 });
 console.log(data.agent.id, data.api_key); // Store api_key securely
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -10994,6 +12257,17 @@ await client.auth.login({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):**
@@ -11043,6 +12317,17 @@ await client.auth.google({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Same as email/password (`access_token`, `token_type`, `expires_in`).
@@ -11082,6 +12367,17 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Same shape as above.
@@ -11110,6 +12406,17 @@ curl -X DELETE https://api.1claw.xyz/v1/auth/token \
 
 ```typescript
 await client.auth.logout();
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
 ```
 
 </TabItem>
@@ -11148,6 +12455,17 @@ await client.auth.changePassword({
   current_password: "...",
   new_password: "...",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
 ```
 
 </TabItem>
@@ -11319,6 +12637,22 @@ await client.access.grantAgent(vaultId, agentId, ["read"], {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.create(
+    vault_id,
+    principal_type="agent",
+    principal_id=agent_id,
+    secret_path_pattern="production/*",
+    permissions=["read"],
+)
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (201)
@@ -11388,6 +12722,18 @@ for (const p of data.policies) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+policies = client.policies.list(vault_id)
+for p in policies.data["policies"]:
+    print(p["secret_path_pattern"], p["permissions"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)
@@ -11453,6 +12799,16 @@ curl -X DELETE "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies/897b37da-a265
 
 ```typescript
 await client.access.revoke(vaultId, policyId);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.delete(vault_id, policy_id)
 ```
 
 </TabItem>
@@ -11604,6 +12960,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (201 Created)
@@ -11675,6 +13048,16 @@ await client.secrets.delete(vaultId, "api-keys/old-key");
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.secrets.delete(vault_id, "api-keys/openai")
+```
+
+</TabItem>
 </Tabs>
 
 ## Response
@@ -11733,6 +13116,17 @@ curl -s "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/se
 ```typescript
 const { data: secret } = await client.secrets.get(vaultId, "api-keys/openai");
 console.log(secret.value);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
 ```
 
 </TabItem>
@@ -11814,6 +13208,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## Current behavior
@@ -11862,6 +13273,23 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" 
 await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW-KEY...", {
   type: "api_key",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
 ```
 
 </TabItem>
@@ -12408,6 +13836,16 @@ const { data } = await client.auth.agentToken({
   api_key: "ocv_...",
 });
 console.log(data.access_token);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
 ```
 
 </TabItem>
@@ -13430,6 +14868,69 @@ List recent execution events for the agent.
 | `limit`  | number | No       | Max events (default 20)           |
 | `status` | string | No       | `success`, `error`, or `denied`   |
 
+---
+
+## order_card
+
+Order a prepaid card via x402 payment on Base. The agent never sees the PAN.
+
+### Parameters
+
+| Name         | Type   | Required | Description                              |
+| ------------ | ------ | -------- | ---------------------------------------- |
+| `amount_usd` | string | Yes      | Amount in USD (e.g. `"25.00"`)           |
+| `kind`       | string | No       | `prepaid` (default) or `gift_card`       |
+| `country`    | string | No       | ISO country code for gift card search    |
+
+---
+
+## order_gift_card
+
+Order a gift card for a specific brand/server.
+
+### Parameters
+
+| Name             | Type   | Required | Description                        |
+| ---------------- | ------ | -------- | ---------------------------------- |
+| `amount_usd`     | string | Yes      | Amount in USD                      |
+| `laso_server_id` | string | Yes      | Server ID from `search_gift_cards` |
+| `country`        | string | No       | ISO country code                   |
+
+---
+
+## search_gift_cards
+
+Search available gift card brands by keyword.
+
+### Parameters
+
+| Name      | Type   | Required | Description              |
+| --------- | ------ | -------- | ------------------------ |
+| `query`   | string | Yes      | Brand name to search for |
+| `country` | string | No       | ISO country code filter  |
+
+---
+
+## list_cards
+
+List all payment cards for the current agent (masked to last4).
+
+---
+
+## get_card_status
+
+Get the status and details of a specific card (masked).
+
+### Parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `card_id` | string | Yes      | Card UUID   |
+
+:::warning
+Card **reveal** is intentionally NOT available as an MCP tool. Revealing a live PAN/CVV in the model's context window would defeat the security model. Use the dashboard, SDK, or CLI with password re-authentication instead.
+:::
+
 
 ---
 
@@ -13494,6 +14995,16 @@ const data = await res.json();
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.agents.enroll("my-agent", "admin@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 **Name only (link-only enrollment):**
@@ -13544,6 +15055,16 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -13586,6 +15107,18 @@ for (const s of data.secrets) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
+```
+
+</TabItem>
 </Tabs>
 
 **Response:** `{ "secrets": [ { "id", "path", "type", "version", "metadata", "created_at", "expires_at" }, ... ] }`
@@ -13609,6 +15142,17 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
 const { data: secret } = await client.secrets.get(VAULT_ID, "api-keys/openai");
 // Use the value for the intended call — don't log or persist it
 console.log(`Retrieved ${secret.path} (${secret.type}, v${secret.version})`);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
 ```
 
 </TabItem>
@@ -13640,6 +15184,16 @@ await client.sharing.create(secretId, {
   recipient_type: "creator",
   expires_at: "2026-12-31T00:00:00Z",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
 ```
 
 </TabItem>
@@ -13716,6 +15270,17 @@ await client.auth.login({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -13755,6 +15320,17 @@ const { data: vault } = await client.vault.create({
   description: "Secrets for my app",
 });
 console.log(vault.id); // ae370174-9aee-4b02-ba7c-d1519930c709
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
 ```
 
 </TabItem>
@@ -13811,6 +15387,23 @@ console.log(secret.path, `v${secret.version}`); // api-keys/openai v1
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 **Response (201):**
@@ -13847,6 +15440,17 @@ console.log(secret.value); // sk-proj-... (use securely, don't log in production
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Includes decrypted `value` plus metadata. Keep this response secure.
@@ -13869,6 +15473,18 @@ const { data } = await client.secrets.list(vault.id);
 for (const s of data.secrets) {
   console.log(`${s.path} (${s.type}, v${s.version})`);
 }
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
 ```
 
 </TabItem>
@@ -14014,7 +15630,7 @@ Full command reference: [CLI guide](/docs/guides/cli).
 
 ### Option C — REST API / SDK
 
-Step-by-step curl and TypeScript examples: [Quickstart for humans](/docs/quickstart/humans).
+Step-by-step curl, TypeScript, and Python examples: [Quickstart for humans](/docs/quickstart/humans).
 
 ---
 
@@ -15388,6 +17004,86 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
 ## 2026-07 (latest)
+
+### Payment Card Vault — human-in-the-loop approval (2026-07-17)
+
+#### Card orders require human approval by default
+- **New:** `card_require_approval` on agents (default **true**). When enabled, `POST /v1/agents/{id}/cards/order` returns **202** with `status: awaiting_approval` and `approval_id` — x402 payment runs only after a human approves.
+- **New:** `GET /v1/approvals/quick-decide` — public one-click approve/deny from email (SHA-256 hashed, single-use tokens in `approval_quick_tokens`; 7-day TTL). Dashboard proxy: `GET /api/approvals/quick-decide`.
+- **New:** Approval notifications — email with Approve/Deny CTAs; push notification dispatch to registered mobile devices.
+- **New:** Auto-execution on `POST /v1/approvals/{id}/decide` when `action == card_order` (approved → pay + Laso; rejected → `card.rejected` webhook).
+- **New:** Risk-tier step-up on approve (T2+ requires `X-Auth-Confirm` re-auth token; T3 passkey/TOTP).
+- **New:** TOTP as re-auth method — `POST /v1/auth/reauth/begin` + `complete` with `method: "totp"`.
+- **New:** Webhook events `approval.created`, `approval.decided`, `card.rejected`.
+- **New:** Card statuses `awaiting_approval`, `rejected`; `approval_id` on card responses.
+- **DB:** migration 139 (`card_require_approval`, `approval_quick_tokens`, extended status CHECK).
+- **Clients:** Dashboard approval detail card-order renderer, guardrails toggle, mobile `card_order` screen; SDK types updated.
+
+### Payment Card Vault — x402 card ordering (Laso) (2026-07-14)
+
+#### Agents can order prepaid & gift cards, paid with USDC via x402, without ever seeing the PAN
+- **New:** `POST /v1/agents/{id}/cards/order` — order a prepaid or gift card. Paid with an **outbound x402 payment** the Vault constructs and signs (EIP-3009 `TransferWithAuthorization`) using the agent's own Ethereum signing key on Base. Requires `cards_enabled` and an `Idempotency-Key` header. Available on all tiers (Free: $25/order, 5 cards/month; Pro: 50/month; Team: 200/month; Business+: unlimited). A 3% platform fee per order is debited from prepaid credits. Returns a masked card reference — never a PAN.
+- **New:** Card lifecycle endpoints — `GET /v1/cards`, `GET /v1/cards/{id}` (masked to last4), `POST /v1/cards/{id}/reveal` (human `X-Auth-Confirm` re-auth, or per-card agent reveal policy; audit-logged), `PATCH /v1/cards/{id}` (reveal policy / `void_after`, human-only), `POST /v1/cards/{id}/void` (1Claw-level lock, forward-looking only), `POST /v1/cards/{id}/refresh` (rate-limited → clean 429 + `Retry-After`), `POST /v1/cards/import` (human-only, full encrypted storage with one-time-read CVV), `POST /v1/cards/gift-cards/search`.
+- **New:** Ordering guardrails on agents — `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd` (enforced atomically over a rolling 24h window), `card_payto_allowlist`, `card_reveal_enabled`. These bound the purchase, not how a revealed card is later spent.
+- **New:** Outbound x402 client (`crypto/x402_client.rs`) validates every 402 challenge before signing — `payTo` allowlist, Base network, exact requested amount, and the pinned Base USDC contract. The stored Laso bearer token is constrained in code to a hardcoded card-endpoint path allowlist (never `/withdraw` or `/send-payment`).
+- **New:** `card_monitor` background worker (15s, advisory-lock leader election) — polls the issuer, fills `last4`/expiry/balance, stores gift-card redemption payloads as secrets, fires webhooks, auto-voids past `void_after`, and reconciles `ordering`-stuck rows as `orphaned_payment`.
+- **New:** Webhook events `card.ordered`, `card.ready`, `card.revealed`, `card.voided`, `card.depleted`, `card.orphaned_payment`.
+- **Security:** PCI-conscious reference mode (only the issuer card id + encrypted refresh token stored; PAN/CVV fetched just-in-time at reveal). Shroud's PII detector now Luhn-validates PANs and detects CVV/expiry patterns, blocking card data in LLM traffic; full-mode PANs are excluded from the admin secrets manifest.
+- **DB:** migration 135 (extends `secret_type` with `payment_card`/`gift_card`), migration 136 (`payment_cards` table + agent guardrail columns).
+- **Clients:** SDK `client.cards.*`, CLI `1claw card order|list|get|reveal|void|refresh|import`, MCP `order_card`/`order_gift_card`/`search_gift_cards`/`list_cards`/`get_card_status` (reveal omitted from MCP), OpenAPI spec, and a Cards dashboard page + agent "Card Ordering Guardrails" card.
+
+---
+
+### v0.41.2 — Overhead budget and transaction count limits (2026-07-13)
+
+#### Anti-drain guardrails
+- **New:** `tx_max_per_day` (INTEGER) on agents — daily transaction count cap (UTC calendar day). Prevents high-frequency drain attacks. Per-chain override via `per_chain_guardrails.{chain}.max_per_day`.
+- **New:** `tx_overhead_budget` (JSONB) on agents — per-chain daily budget for non-value costs (rent, fees, energy) in native units. Prevents ATA rent drain (Solana), XRP reserve exhaustion, Tron energy drain, and fee storms. Format: `{"solana": "0.5", "xrp": "100", "ethereum": "0.01"}`.
+- **New:** `solana_ata_allowlist` (TEXT[]) on agents — restricts which Solana wallet addresses may have Associated Token Accounts created. Prevents ATA rent drain attacks by limiting recipients.
+- **New:** `agent_overhead_ledger` table (migration 127) — tracks per-chain overhead costs for budget enforcement.
+- **New:** `domain/overhead.rs` — per-chain overhead cost estimation module covering EVM (gas), Solana (rent + priority fees), Bitcoin (fee rate), XRP (reserves), Cardano (min-ADA), and Tron (energy).
+- **New:** Response fields `tx_count_today` and `tx_overhead_today_by_chain` in `GET /v1/agents/{id}` for dashboards and Shroud.
+- **New:** `per_chain_guardrails` extended with `max_per_day`, `overhead_budget`, and `max_ata_creates_per_day` fields.
+- **Shroud:** `AgentTxGuardrails` mirrors new fields; enforcement parity with Vault API.
+- **Dashboard:** Transaction Guardrails card gains Max Transactions Per Day, Overhead Budget (JSON), and Solana ATA Allowlist fields. Summary badges for active limits.
+- **Clients:** SDK (`tx_max_per_day`, `tx_overhead_budget`, `solana_ata_allowlist`, `tx_count_today`, `tx_overhead_today_by_chain`), CLI (`--tx-max-per-day`, `--tx-overhead-budget`, `--solana-ata-allowlist`), Python SDK, Go SDK, Mobile, and OpenAPI spec updated.
+
+---
+
+### v0.41.1 — TEE enforcement toggles (2026-07-13)
+
+#### Agent-level TEE enforcement (Pro+)
+- **New:** `intents_require_tee` boolean on agents — when enabled, transaction sign/submit requests to `api.1claw.xyz` are rejected with 403. Agents must route through `shroud.1claw.xyz` where signing happens inside the hardware enclave.
+- **New:** `execution_require_tee` boolean on agents — when enabled, execute requests to `api.1claw.xyz` are rejected AND all direct secret reads by the agent are blocked. Forces use of Execution Intents bindings through the TEE.
+- **New:** `X-1Claw-TEE-Origin` HMAC verification module (`vault/src/api/middleware/tee_origin.rs`) — Shroud sets this header on proxied requests; Vault validates using shared `ONECLAW_TEE_ORIGIN_SECRET`.
+- **Changed:** "Enable Intents API" toggle moved from the Overview tab to the Signing tab on agent detail page.
+- **Dashboard:** Two new TEE enforcement toggles on the Signing tab with Pro+ tier badge, disabled states (dependent on base flags), and confirmation dialog warning about breaking changes.
+- **Migration 133:** Adds `intents_require_tee BOOLEAN DEFAULT false` and `execution_require_tee BOOLEAN DEFAULT false` to `agents` table.
+- **JWT claims:** `intents_require_tee` and `execution_require_tee` included in agent JWTs when true.
+- **Clients:** SDK, CLI (`--intents-require-tee`, `--execution-require-tee`), Python SDK, Go SDK, and OpenAPI spec updated.
+
+---
+
+### v0.41.0 — Live-pointer credential references for Execution Intents (2026-07-12)
+
+#### Credential sources
+- **New:** `credential_source` field on `CreateBindingRequest` and `UpdateBindingRequest` — a tagged union supporting two modes:
+  - `{ type: "inline", value: {...} }` — legacy behavior, credential copied into `__agent-keys` vault
+  - `{ type: "vault_ref", vault_id: "...", path: "..." }` — **live pointer** to an existing vault secret. The executor resolves the secret at execution time, so rotations in the source vault are reflected automatically without manual credential rotation.
+- **New:** `BindingResponse` includes `credential_source_type` ("inline" | "vault_ref"), `credential_vault_id`, and `credential_path` so the UI can display how credentials are sourced.
+- **New:** Dashboard binding form has a **Manual / From Vault** toggle — selecting "From Vault" lets users pick an existing vault secret; the binding references it directly (no duplication).
+- **New:** Validation ensures the referenced vault belongs to the same org and the secret path exists.
+- **Migration 132:** Adds `credential_vault_id UUID` (FK to vaults, ON DELETE SET NULL) and `credential_path TEXT` columns to `agent_bindings`.
+
+#### Clients
+- **SDK:** `CredentialSource` type exported; `CreateBindingRequest` and `UpdateBindingRequest` accept `credential_source`. Version bumped to `@1claw/sdk@0.41.0`.
+- **CLI:** `agent binding create --vault-ref <vault-id>:<path>` flag. Version bumped to `@1claw/cli@0.41.0`.
+- **MCP:** `create_binding` tool accepts `credential_source` parameter. Version bumped to `@1claw/mcp@0.41.0`.
+- **OpenAPI:** `CredentialSource` schema added; binding request/response schemas updated. Version bumped to `@1claw/openapi-spec@0.41.0`.
+- **Python SDK:** `CredentialSource` model, `credential_source` field on binding requests.
+- **Go SDK:** `CredentialSource` struct, updated binding request/response types.
+
+---
 
 ### Execution Intents 2.0 — executor framework, real GraphQL, guardrail enforcement, credential lifecycle (2026-07-12)
 
@@ -16982,6 +18678,12 @@ To regenerate types after spec changes (when working from the monorepo): `npm ru
 
 The dashboard uses **fetch** and **TanStack Query** with the same base URL and JWT. There is no separate "human" SDK package; use `@1claw/sdk` or fetch with the [Human API](/docs/human-api/overview) docs.
 
+## Related
+
+- [Python SDK](/docs/sdks/python) — official `oneclaw` package on PyPI
+- [Go SDK](/docs/sdks/go)
+- [SDKs overview](/docs/sdks/overview)
+
 
 ---
 
@@ -16989,7 +18691,7 @@ The dashboard uses **fetch** and **TanStack Query** with the same base URL and J
 
 ---
 title: SDKs overview
-description: 1claw provides a TypeScript/JavaScript SDK (@1claw/sdk); curl and fetch examples work with any language.
+description: Official SDKs for TypeScript, Python, and Go; curl and fetch examples work with any language.
 sidebar_position: 0
 ---
 
@@ -16999,8 +18701,8 @@ import TabItem from '@theme/TabItem';
 # SDKs overview
 
 - **JavaScript/TypeScript** — Official `@1claw/sdk`. Built from the same OpenAPI 3.1 spec as the API; supports agent auth, secrets, billing, and optional x402. See [JavaScript SDK](/docs/sdks/javascript).
+- **Python** — Official `oneclaw` package on PyPI. Agent JWT auto-refresh, vaults, secrets, Intents API, Execution Intents, and more. See [Python SDK](/docs/sdks/python).
 - **Go** — Official `1claw-go-sdk`. Typed client with agent auth, secrets, billing, Intents API, and more. See [Go SDK](/docs/sdks/go).
-- **Python** — No official SDK yet; use [curl examples](/docs/sdks/curl-examples) or implement a thin client with `requests`/`httpx`. See [Python](/docs/sdks/python).
 - **elizaOS** — Official plugin `@1claw/plugin-elizaos`. Gives any elizaOS character vault secrets and multi-chain signing via 8 built-in actions. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
 - **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
 
@@ -17033,71 +18735,192 @@ console.log(secret.value);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(VAULT_ID, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 </Tabs>
 
 
 ---
 
-## Python
+## Python SDK
 
 ---
-title: Python
-description: Use requests or httpx with the 1claw REST API from Python; no official SDK yet; examples show agent auth and fetching a secret.
+title: Python SDK
+description: Official oneclaw package — agent auth, vaults, secrets, policies, Intents API, and billing with full API parity.
 sidebar_position: 2
 ---
 
-# Python
+# Python SDK
 
-There is no official Python SDK. Use **requests** or **httpx** with the same REST endpoints. Below: agent auth and fetch secret.
+The official Python SDK (`oneclaw` on PyPI) provides full API parity with the 1Claw REST API. It supports human and agent workflows, automatic JWT refresh for agent keys, and typed resource modules.
 
-## Agent: get token and fetch secret
+**Repository:** [github.com/1clawAI/1claw-python-sdk](https://github.com/1clawAI/1claw-python-sdk)
 
-```python
-import os
-import requests
+:::tip Try it out
+Run the **[Python SDK example](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk)** in the examples repo (`pip install oneclaw`, set `ONECLAW_API_KEY`, then `python main.py`).
+:::
 
-BASE = "https://api.1claw.xyz"
-AGENT_ID = os.environ["ONECLAW_AGENT_ID"]
-API_KEY = os.environ["ONECLAW_AGENT_API_KEY"]
+## Install
 
-# Get JWT
-r = requests.post(
-    f"{BASE}/v1/auth/agent-token",
-    json={"agent_id": AGENT_ID, "api_key": API_KEY},
-)
-r.raise_for_status()
-token = r.json()["access_token"]
-headers = {"Authorization": f"Bearer {token}"}
-
-# List secrets (metadata only)
-vault_id = "ae370174-9aee-4b02-ba7c-d1519930c709"
-r = requests.get(f"{BASE}/v1/vaults/{vault_id}/secrets", headers=headers)
-r.raise_for_status()
-for s in r.json()["secrets"]:
-    print(s["path"], s["type"])
-
-# Get secret value
-r = requests.get(
-    f"{BASE}/v1/vaults/{vault_id}/secrets/api-keys/openai",
-    headers=headers,
-)
-r.raise_for_status()
-value = r.json()["value"]
-# Use value only as needed; don't log or persist
+```bash
+pip install oneclaw
 ```
 
-## Human: email/password token
+Requires Python 3.10+.
+
+## Quick start
+
+### Human (API key or email/password)
 
 ```python
-r = requests.post(
-    f"{BASE}/v1/auth/token",
-    json={"email": "you@example.com", "password": "your-password"},
+from oneclaw import create_client
+
+# User API key (1ck_) — auto-exchanges for JWT
+client = create_client(api_key="1ck_your_user_key")
+
+# Or login with email/password
+client = create_client(base_url="https://api.1claw.xyz")
+client.auth.login("you@example.com", "your-password")
+
+# Create a vault and store a secret
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
+
+client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
 )
-r.raise_for_status()
-token = r.json()["access_token"]
+
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])  # use securely; don't log in production
 ```
 
-Then use `Authorization: Bearer <token>` for vaults, secrets, policies, and agents as in the [Human API](/docs/human-api/overview) docs.
+### Agent (API key)
+
+```python
+from oneclaw import create_client
+
+# Agent keys (ocv_) auto-exchange for JWTs and refresh before expiry
+client = create_client(api_key="ocv_your_agent_key")
+
+# Agent ID is auto-discovered from the token exchange
+print(client.resolved_agent_id)
+
+vault_id = "your-vault-id"
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
+```
+
+### Pre-authenticated JWT
+
+```python
+client = create_client(token="eyJ...")
+```
+
+## Authentication
+
+| Method | Usage |
+| ------ | ----- |
+| User API key (`1ck_`) | `create_client(api_key="1ck_...")` |
+| Agent API key (`ocv_`) | `create_client(api_key="ocv_...")` — `agent_id` optional (resolved via prefix) |
+| Email/password | `client.auth.login(email, password)` |
+| Existing JWT | `create_client(token="eyJ...")` |
+
+Environment variables (optional): `ONECLAW_API_KEY`, `ONECLAW_BASE_URL`, `ONECLAW_AGENT_ID`.
+
+## Resource modules
+
+| Module | Methods |
+| ------ | ------- |
+| `client.auth` | `login`, `signup`, `agent_token`, `forgot_password`, `reset_password` |
+| `client.vaults` | `create`, `list`, `get`, `delete` |
+| `client.secrets` | `set`, `get`, `list`, `delete`, `rotate_generate`, `list_versions` |
+| `client.agents` | `create`, `list`, `get`, `update`, `deactivate`, `enroll`, `submit_transaction`, `sign_intent` |
+| `client.policies` | `create`, `list`, `delete` |
+| `client.signing_keys` | `create`, `list`, `rotate`, `deactivate`, `balance` |
+| `client.sharing` | `create`, `list`, `accept`, `decline` |
+| `client.audit` | `list_events` |
+| `client.billing` | `subscription`, `credits_balance` |
+| `client.bindings` | `create`, `list`, `execute`, `test` (Execution Intents) |
+| `client.cards` | `order`, `list`, `get`, `reveal` (Payment Card Vault) |
+
+## Response envelope
+
+All methods return a `Response` object:
+
+```python
+resp = client.vaults.create("my-vault")
+if resp.error:
+    print(resp.error)
+else:
+    print(resp.data["id"])
+```
+
+## Intents API example
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+agent_id = client.resolved_agent_id
+
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"), resp.data.get("status"))
+```
+
+## Policies example
+
+```python
+client.policies.create(
+    vault_id,
+    principal_type="agent",
+    principal_id=agent_id,
+    secret_path_pattern="production/*",
+    permissions=["read"],
+)
+```
+
+## Async support
+
+```python
+from oneclaw import create_async_client
+
+async def main():
+    client = create_async_client(api_key="1ck_...")
+    resp = await client.vaults.list()
+    print(resp.data)
+
+# asyncio.run(main())
+```
+
+## Raw HTTP
+
+For endpoints not yet wrapped, use `client.request()` or fall back to [curl examples](/docs/sdks/curl-examples) with `httpx`/`requests`.
+
+## Related
+
+- [SDKs overview](/docs/sdks/overview)
+- [JavaScript SDK](/docs/sdks/javascript)
+- [Go SDK](/docs/sdks/go)
+- [curl examples](/docs/sdks/curl-examples)
 
 
 ---

@@ -88,19 +88,14 @@ const { data } = await client.agents.create({
 <TabItem value="python" label="Python">
 
 ```python
-import os
-import requests
+from oneclaw import create_client
 
-BASE = "https://api.1claw.xyz"
-headers = {"Authorization": f"Bearer {os.environ['ONECLAW_TOKEN']}"}
-r = requests.post(
-    f"{BASE}/v1/agents",
-    json={"name": "DeFi Bot", "intents_api_enabled": True},
-    headers=headers,
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "DeFi Bot",
+    intents_api_enabled=True,
 )
-r.raise_for_status()
-agent = r.json()
-agent_id = agent["id"]
+agent_id = resp.data["agent"]["id"]
 ```
 
 </TabItem>
@@ -152,20 +147,18 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 <TabItem value="python" label="Python">
 
 ```python
-r = requests.post(
-    f"{BASE}/v1/agents/{agent_id}/transactions",
-    json={
-        "chain": "ethereum",
-        "to": "0xRecipientAddress",
-        "value": "1.0",
-        "data": "0x",
-        "signing_key_path": "wallets/hot-wallet",
-    },
-    headers=headers,
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0xRecipientAddress",
+    value="1.0",
+    data="0x",
+    signing_key_path="wallets/hot-wallet",
 )
-r.raise_for_status()
-tx = r.json()
-print(tx["tx_hash"], tx["status"])
+print(resp.data.get("tx_hash"), resp.data.get("status"))
 ```
 
 </TabItem>
@@ -206,6 +199,18 @@ const { data: txList } = await client.agents.listTransactions(agentId);
 
 // Get transaction
 const { data: tx } = await client.agents.getTransaction(agentId, txId);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+agents = client.agents.list()
+for a in agents.data["agents"]:
+    print(a["name"], a["id"])
 ```
 
 </TabItem>
@@ -251,6 +256,22 @@ const { data: signedTx } = await client.agents.signTransaction(agentId, {
 // Broadcast yourself using ethers, viem, or raw RPC
 console.log(signedTx.signed_tx); // 0x02f8...
 console.log(signedTx.tx_hash);   // 0xabc123...
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -326,6 +347,22 @@ const { data: sim } = await client.agents.simulateTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 The response includes:
@@ -375,6 +412,22 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 ### Bundle simulation
@@ -406,6 +459,22 @@ const { data: bundle } = await client.agents.simulateBundle(agentId, {
     { chain: "base", to: "0xRouter", value: "0", data: "0xswap..." },
   ],
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -451,6 +520,22 @@ const { data: tx } = await client.agents.submitTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 ## Multi-chain signing keys {#signing-keys}
@@ -488,6 +573,17 @@ const { data: key } = await client.signingKeys.create(agentId, {
   chain: "ethereum",
 });
 console.log(key.public_key, key.address); // 0x04abc...  0x1234...
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.signing_keys.create(agent_id, chain="ethereum")
+print(resp.data["address"])
 ```
 
 </TabItem>
@@ -653,6 +749,22 @@ const { data: usdt } = await client.agents.signTransaction(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
+```
+
+</TabItem>
 </Tabs>
 
 The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, status }`. For non-EVM chains, the `value_wei` field contains the chain-native base unit (satoshis for Bitcoin, lamports for Solana, drops for XRP, lovelace for Cardano, sun for Tron), `signed_tx` contains the signed payload (hex or base64 depending on the chain), and `tx_hash` is the chain-native transaction id (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron). For sign-only responses, `chain_id` and `nonce` are `0` for non-EVM chains.
@@ -698,6 +810,22 @@ console.log(data.signature, data.message_hash, data.from);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ### EIP-712 typed data {#eip712}
@@ -738,6 +866,22 @@ const { data } = await client.agents.sign(agentId, {
   },
 });
 console.log(data.signature, data.typed_data_hash, data.from);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -1005,6 +1149,17 @@ const response = await fetch("https://api.1claw.xyz/v1/admin/chains", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+# See the curl / TypeScript tabs for the equivalent call.
+# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+```
+
+</TabItem>
 </Tabs>
 
 See the [Admin API reference](/docs/reference/api-reference#admin) for update and delete endpoints.
@@ -1057,6 +1212,16 @@ const { data: agent } = await client.agents.update(agentId, {
   tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
   tx_known_tokens_only: true,
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
 ```
 
 </TabItem>
@@ -1234,6 +1399,16 @@ const { data } = await client.agents.update(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 ### Creating a binding
@@ -1281,6 +1456,22 @@ const { data: binding } = await client.bindings.create(agentId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ### Vault-ref credentials (live pointers)
@@ -1307,6 +1498,22 @@ const { data: binding } = await client.bindings.create(agentId, {
 });
 // binding.credential_source_type === "vault_ref"
 // binding.credential_vault_id, binding.credential_path are set
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -1366,6 +1573,22 @@ const { data: result } = await client.bindings.execute(agentId, {
     path: "/v1/customers?limit=10",
   },
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>

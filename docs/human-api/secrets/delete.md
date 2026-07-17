@@ -32,6 +32,16 @@ await client.secrets.delete(vaultId, "api-keys/old-key");
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.secrets.delete(vault_id, "api-keys/openai")
+```
+
+</TabItem>
 </Tabs>
 
 ## Response

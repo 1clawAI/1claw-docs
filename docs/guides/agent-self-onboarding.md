@@ -74,6 +74,21 @@ console.log("Agent ID:", result.agent_id);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+resp = client.agents.enroll(
+    "my-agent",
+    "alice@example.com",
+    description="CI pipeline agent",
+)
+print(resp.data.get("agent_id"), resp.data.get("approval_url"))
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -141,6 +156,16 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 ## 4. Read and write secrets
@@ -174,6 +199,23 @@ await client.secrets.set(VAULT_ID, "credentials/db-password", "s3cret!", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## 5. Share secrets back to your human
@@ -203,6 +245,16 @@ const { data: share } = await client.sharing.create(secretId, {
   expires_at: "2026-12-31T00:00:00Z",
   max_access_count: 10,
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
 ```
 
 </TabItem>

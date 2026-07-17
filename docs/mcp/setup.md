@@ -56,6 +56,16 @@ console.log(data.access_token);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 Use the returned `access_token` as the Bearer value below. The token expires in about an hour; for long-lived use, your client may need to refresh it by calling the agent-token endpoint again.

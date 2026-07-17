@@ -54,6 +54,22 @@ await client.access.grantAgent(vaultId, agentId, ["read"], {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.create(
+    vault_id,
+    principal_type="agent",
+    principal_id=agent_id,
+    secret_path_pattern="production/*",
+    permissions=["read"],
+)
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (201)

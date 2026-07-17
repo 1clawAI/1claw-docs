@@ -62,6 +62,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (201 Created)

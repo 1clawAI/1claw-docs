@@ -43,6 +43,17 @@ console.log(key.public_key, key.address);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.signing_keys.create(agent_id, chain="ethereum")
+print(resp.data["address"])
+```
+
+</TabItem>
 <TabItem value="curl" label="curl">
 
 ```bash
@@ -153,6 +164,22 @@ const trx = await client.agents.submitTransaction(agentId, {
   to: "T...",
   value: "100",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_...")
+resp = client.agents.submit_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0x000000000000000000000000000000000000dEaD",
+    value="0",
+)
+print(resp.data.get("tx_hash"))
 ```
 
 </TabItem>

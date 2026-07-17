@@ -75,6 +75,23 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 ## Optional: limit exposure
@@ -109,6 +126,16 @@ console.log(data.version);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.secrets.rotate_generate(vault_id, "api-keys/openai", length=32, charset="base64")
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -139,6 +166,18 @@ curl "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/api-keys%2Fopena
 ```typescript
 const { data } = await client.secrets.listVersions(vaultId, "api-keys/openai");
 console.log(data.versions); // newest first; check is_disabled
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
 ```
 
 </TabItem>
@@ -176,6 +215,17 @@ console.log(data.value);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 <TabItem value="cli" label="CLI">
 
 ```bash
@@ -205,6 +255,17 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/api-keys%
 
 ```typescript
 await client.secrets.disableVersion(vaultId, "api-keys/openai", 2);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
 ```
 
 </TabItem>
@@ -238,6 +299,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/rotate-key" \
 ```typescript
 const { data } = await client.agents.rotateKey(agentId);
 console.log(data.api_key); // New key — store securely
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>

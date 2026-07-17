@@ -54,6 +54,16 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

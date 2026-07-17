@@ -35,6 +35,18 @@ for (const a of data.agents) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+agents = client.agents.list()
+for a in agents.data["agents"]:
+    print(a["name"], a["id"])
+```
+
+</TabItem>
 </Tabs>
 
 ## Example response (200)

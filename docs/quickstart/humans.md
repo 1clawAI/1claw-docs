@@ -48,6 +48,17 @@ await client.auth.login({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.auth.login("you@example.com", "your-password")
+# JWT is managed internally — use `client` for subsequent calls
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -87,6 +98,17 @@ const { data: vault } = await client.vault.create({
   description: "Secrets for my app",
 });
 console.log(vault.id); // ae370174-9aee-4b02-ba7c-d1519930c709
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
 ```
 
 </TabItem>
@@ -143,6 +165,23 @@ console.log(secret.path, `v${secret.version}`); // api-keys/openai v1
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.secrets.set(
+    vault_id,
+    "api-keys/openai",
+    "sk-proj-...",
+    type="api_key",
+    metadata={"tags": ["openai", "production"]},
+)
+print(resp.data["path"], f"v{resp.data['version']}")
+```
+
+</TabItem>
 </Tabs>
 
 **Response (201):**
@@ -179,6 +218,17 @@ console.log(secret.value); // sk-proj-... (use securely, don't log in production
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
+```
+
+</TabItem>
 </Tabs>
 
 **Response (200):** Includes decrypted `value` plus metadata. Keep this response secure.
@@ -201,6 +251,18 @@ const { data } = await client.secrets.list(vault.id);
 for (const s of data.secrets) {
   console.log(`${s.path} (${s.type}, v${s.version})`);
 }
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
 ```
 
 </TabItem>

@@ -57,6 +57,16 @@ const data = await res.json();
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client()
+client.agents.enroll("my-agent", "admin@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 **Name only (link-only enrollment):**
@@ -107,6 +117,16 @@ const client = createClient({
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -149,6 +169,18 @@ for (const s of data.secrets) {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+data = client.secrets.list(vault_id)
+for s in data.data["secrets"]:
+    print(f"{s['path']} ({s['type']}, v{s['version']})")
+```
+
+</TabItem>
 </Tabs>
 
 **Response:** `{ "secrets": [ { "id", "path", "type", "version", "metadata", "created_at", "expires_at" }, ... ] }`
@@ -172,6 +204,17 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
 const { data: secret } = await client.secrets.get(VAULT_ID, "api-keys/openai");
 // Use the value for the intended call — don't log or persist it
 console.log(`Retrieved ${secret.path} (${secret.type}, v${secret.version})`);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+secret = client.secrets.get(vault_id, "api-keys/openai")
+print(secret.data["value"])
 ```
 
 </TabItem>
@@ -203,6 +246,16 @@ await client.sharing.create(secretId, {
   recipient_type: "creator",
   expires_at: "2026-12-31T00:00:00Z",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
 ```
 
 </TabItem>

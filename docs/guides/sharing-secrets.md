@@ -62,6 +62,16 @@ const { data: share } = await client.sharing.create(secretId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 **Response:**
@@ -107,6 +117,16 @@ const { data: share } = await client.sharing.create(secretId, {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 The backend resolves the agent's `created_by` field to identify the human. No user UUID or email needed. The human sees the share in their **Inbound** shares and accepts it.
@@ -145,6 +165,16 @@ const { data: secret } = await client.sharing.access(shareId);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+```
+
+</TabItem>
 </Tabs>
 
 Returns the decrypted secret value if the share is still valid (not expired, under access limit).
@@ -166,6 +196,16 @@ curl -X DELETE https://api.1claw.xyz/v1/share/{share_id} \
 
 ```typescript
 await client.sharing.revoke(shareId);
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.delete(vault_id, policy_id)
 ```
 
 </TabItem>

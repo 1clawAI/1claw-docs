@@ -32,6 +32,16 @@ await client.agents.delete(agentId);
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
 </Tabs>
 
 **Response:** 204 No Content.
@@ -61,6 +71,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/ec7e0226-30f0-4dda-b169-f060a35026
 ```typescript
 const { data } = await client.agents.rotateKey(agentId);
 console.log(data.api_key); // Store new key
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>

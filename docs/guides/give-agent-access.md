@@ -62,6 +62,17 @@ await client.secrets.set(vault.id, "api-keys/openai", "sk-proj-...", {
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.vaults.create("My Vault", description="Secrets for my app")
+vault_id = resp.data["id"]
+```
+
+</TabItem>
 </Tabs>
 
 ## 2. Register an agent (human)
@@ -93,6 +104,22 @@ const apiKey = data.api_key; // Store securely — shown only once
 ```
 
 </TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
 </Tabs>
 
 ## 3. Create a policy (human)
@@ -121,6 +148,22 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 await client.access.grantAgent(vault.id, agentId, ["read"], {
   secretPathPattern: "**",
 });
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.policies.create(
+    vault_id,
+    principal_type="agent",
+    principal_id=agent_id,
+    secret_path_pattern="production/*",
+    permissions=["read"],
+)
 ```
 
 </TabItem>
@@ -159,6 +202,16 @@ const agentClient = createClient({
 
 const { data: secret } = await agentClient.secrets.get(VAULT_ID, "api-keys/openai");
 // Use secret.value — don't log or persist
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="ocv_your_agent_key")
+print(client.resolved_agent_id)
 ```
 
 </TabItem>
