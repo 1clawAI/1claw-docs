@@ -542,6 +542,149 @@ Returns `platform.*` audit events (app creation, user provisioning, bootstrap, t
 
 ---
 
+## Key Rotation
+
+Rotate your platform API key at any time. The old key is immediately invalidated.
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-key" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "api_key_expires_at": "2027-01-01T00:00:00Z" }'
+```
+
+Response:
+
+```json
+{
+  "api_key": "plt_NEW_KEY_HERE",
+  "api_key_prefix": "plt_aBcDeFgH",
+  "api_key_expires_at": "2027-01-01T00:00:00+00:00"
+}
+```
+
+The `api_key_expires_at` field is optional. Omit it for a key that never expires.
+
+---
+
+## Spend Policies (Embedded Wallets)
+
+If your platform offers treasury wallets to end-users, spend policies let you set guardrails on wallet sends and swaps.
+
+### Create an App-Level Default Policy
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/spend-policies" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "max_value_per_tx_eth": "0.5",
+    "daily_limit_eth": "2.0",
+    "allowed_chains": ["ethereum", "base"],
+    "max_transactions_per_day": 50
+  }'
+```
+
+### Per-User Override
+
+Override the app default for a specific connected user:
+
+```bash
+curl -X PUT "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/spend-policy" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "max_value_per_tx_eth": "1.0",
+    "daily_limit_eth": "5.0"
+  }'
+```
+
+### Check Effective Policy (User-Side)
+
+End-users can see what policy applies to them:
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets/spend-policy" \
+  -H "Authorization: Bearer USER_JWT"
+```
+
+### Available Policy Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `to_allowlist` | string[] | Only allow sends to these addresses |
+| `to_denylist` | string[] | Block sends to these addresses |
+| `max_value_per_tx_eth` | string | Max value per transaction (ETH) |
+| `daily_limit_eth` | string | Rolling 24h spend cap (ETH) |
+| `allowed_chains` | string[] | Restrict to these chains |
+| `allowed_tokens` | string[] | Restrict to these token contracts |
+| `max_transactions_per_day` | integer | Max sends per UTC day |
+
+---
+
+## Embedded Wallet Integration
+
+Platform apps can provide passwordless wallet experiences to end-users using Email OTP, social login, or passkeys.
+
+### Email OTP (Passwordless)
+
+```bash
+# 1. Send OTP
+curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "platform_app_id": "YOUR_APP_UUID"
+  }'
+
+# 2. Verify OTP → returns JWT + wallet address
+curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "code": "123456",
+    "platform_app_id": "YOUR_APP_UUID",
+    "auto_provision_chains": ["ethereum", "solana"]
+  }'
+# → { "token": "eyJ...", "user_id": "...", "wallet_address": "0x..." }
+```
+
+### Social Login
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/auth/social-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "google",
+    "id_token": "GOOGLE_ID_TOKEN",
+    "auto_provision_chains": ["ethereum"]
+  }'
+```
+
+Supported providers: `google`, `apple`, `discord`. Discord uses an authorization code flow (pass the code as `id_token` with `oauth_redirect_uri`).
+
+### React Widget
+
+For the fastest integration, use the `@1claw/wallet-react` package:
+
+```tsx
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
+
+function App() {
+  return (
+    <OneclawEmbeddedWallet
+      appId="your-slug"
+      theme="dark"
+      chains={["ethereum", "solana"]}
+      socialProviders={["google", "discord"]}
+      features={["send", "swap", "receive", "buy"]}
+    />
+  );
+}
+```
+
+---
+
 ## Current Limitations
 
 - **Delegated token exchange** (RFC 8693 `DelegatedTokenRequest`) is defined but not yet wired. Platform operators cannot issue delegated JWTs on behalf of connected users.
@@ -587,3 +730,85 @@ console.log("Claim URL:", result.data.claim_url);
 console.log("Agent ID:", result.data.summary.agent_id);
 console.log("Agent API Key:", result.data.summary.agent_api_key); // one-time — store securely
 ```
+
+### Python
+
+```python
+from oneclaw import OneclawClient
+
+client = OneclawClient(
+    base_url="https://api.1claw.xyz",
+    api_key="plt_YOUR_KEY",
+)
+
+# Create a template
+template = client.platform.create_template(app_id, {
+    "name": "default-template",
+    "spec": {
+        "vault": {"name": "user-vault"},
+        "agents": [{"name": "bot", "intents": {"enabled": True}}],
+        "signing_keys": [{"chain": "ethereum"}],
+        "policies": [{"principal_ref": "agents.primary", "vault_ref": "vault", "paths": ["**"]}],
+    },
+})
+
+# Provision + bootstrap a user
+user = client.platform.upsert_user({
+    "email": "user@example.com",
+    "external_subject": "tg:12345",
+})
+result = client.platform.bootstrap_user(user["connection_id"], {
+    "template_id": template["id"],
+})
+print("Claim URL:", result["claim_url"])
+print("Agent ID:", result["summary"]["agent_id"])
+print("Agent API Key:", result["summary"]["agent_api_key"])  # one-time — store securely
+print("Signing keys:", result["summary"]["signing_keys"])
+
+# Rotate platform key
+rotated = client.platform.rotate_key(app_id, {
+    "api_key_expires_at": "2027-01-01T00:00:00Z",
+})
+print("New key:", rotated["api_key"])
+
+# Create a spend policy
+policy = client.platform.create_spend_policy(app_id, {
+    "max_value_per_tx_eth": "0.5",
+    "daily_limit_eth": "2.0",
+    "allowed_chains": ["ethereum", "base"],
+})
+```
+
+---
+
+## Complete Endpoint Reference
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/v1/platform/apps` | User JWT | Register a platform app (returns `plt_` key one-time) |
+| GET | `/v1/platform/apps` | User JWT | List platform apps for org |
+| GET | `/v1/platform/apps/{id}` | User JWT | Get platform app details |
+| PATCH | `/v1/platform/apps/{id}` | User JWT | Update platform app |
+| DELETE | `/v1/platform/apps/{id}` | User JWT | Delete platform app |
+| POST | `/v1/platform/apps/{id}/rotate-key` | User JWT | Rotate `plt_` API key |
+| POST | `/v1/platform/apps/{id}/templates` | User JWT | Create bootstrap template |
+| GET | `/v1/platform/apps/{id}/templates` | User JWT | List templates |
+| PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Update template |
+| DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Delete template |
+| POST | `/v1/platform/users/upsert` | `plt_` key | Provision or find user |
+| POST | `/v1/platform/connections/{id}/bootstrap` | `plt_` key | Bootstrap resources from template |
+| POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
+| GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
+| POST | `/v1/platform/claim/{token}` | None (public) | Redeem claim token |
+| GET | `/v1/platform/apps/{id}/users` | `plt_` key | List connected users |
+| GET | `/v1/platform/apps/{id}/audit` | User JWT or `plt_` | Platform audit events |
+| GET | `/v1/platform/connected-apps` | User JWT | List apps connected to calling user |
+| DELETE | `/v1/platform/connected-apps/{id}` | User JWT | Disconnect from a platform app |
+| POST | `/v1/platform/connections/{id}/grant` | User JWT | Grant vault/agent access to app |
+| GET | `/v1/platform/connections/{id}/grants` | User JWT | List active grants |
+| DELETE | `/v1/platform/connections/{id}/grants/{gid}` | User JWT | Revoke a grant |
+| POST | `/v1/platform/apps/{id}/spend-policies` | User JWT | Create app-level spend policy |
+| GET | `/v1/platform/apps/{id}/spend-policies` | User JWT | List spend policies |
+| DELETE | `/v1/platform/apps/{id}/spend-policies/{pid}` | User JWT | Deactivate spend policy |
+| PUT | `/v1/platform/connections/{id}/spend-policy` | User JWT | Set per-user spend policy override |
+| GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |

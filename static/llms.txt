@@ -156,7 +156,62 @@ Per-delegation guardrails (spend caps, allowlists) override or intersect with ag
 **DB migrations:** 100 (treasury_signing_mode), 101 (treasury_signing_mode column), 102 (treasury_delegations), 103 (treasury_proposals + proposal_signatures), 104 (auto_approve_rules).
 
 ### Platform API (v0.20)
-For developers building applications on top of 1Claw. Platform apps (`plt_` API keys, `principal_type: "platform"`) provision users, vaults, agents, and policies on behalf of end-users via declarative bootstrap templates. OIDC user provisioning via `POST /v1/platform/users/upsert` (accepts `subject_token` JWT verified against platform JWKS, or email). Bootstrap: `POST /v1/platform/connections/{id}/bootstrap` creates resources from a template spec and returns a claim URL. **Claim flow**: `GET /v1/platform/claim/{token}` previews provisioned resources (public, no auth); `POST /v1/platform/claim/{token}` redeems the one-time claim (409 if reused, 410 if expired). Dashboard claim page at `/connect/{slug}/claim/{token}`. Bootstrap templates now support `signing_keys` arrays on agent entries — auto-provisions per-chain signing keys at bootstrap time (supported chains: ethereum, bitcoin, solana, xrp, cardano, tron). Bootstrap response includes `summary.agent_api_key` (one-time `ocv_` key) and `summary.signing_keys[]` (each with `chain`, `curve`, `public_key`, `address`). Three billing models: `platform_pays` (default), `user_pays`, `hybrid`. Three auth modes: `silent`, `user_signin`, `configurable`. `platform_locked` flag on vaults/agents prevents operator access to secret values. DB tables: `platform_apps`, `platform_templates`, `platform_user_connections`, `platform_user_grants`, `platform_claim_tokens`. New columns on `vaults` (platform_app_id, platform_locked, billed_to_type, billed_to_id), `agents` (platform_app_id, platform_locked). Dashboard at `/platform` with visual **Template Spec Builder** UI for building bootstrap templates without raw JSON editing. SDK: `client.platform.*`. List endpoints return wrapped JSON objects: `GET /v1/platform/apps` → `{ apps: [...] }`, `GET .../templates` → `{ templates: [...] }`, `GET .../users` → `{ users: [...] }`.
+For developers building applications on top of 1Claw. Platform apps (`plt_` API keys, `principal_type: "platform"`) provision users, vaults, agents, and policies on behalf of end-users via declarative bootstrap templates. Requires Pro or higher plan.
+
+**Core flow:** 1) Register app (`POST /v1/platform/apps`) → save the one-time `plt_` key. 2) Create a template (`POST /v1/platform/apps/{id}/templates`). 3) Upsert a user (`POST /v1/platform/users/upsert` with `email` or OIDC `subject_token`). 4) Bootstrap (`POST /v1/platform/connections/{id}/bootstrap` with `template_id`) → returns `claim_url`, `claim_token`, and `summary` (vault_id, agent_id, agent_api_key, signing_keys[]). 5) Share the claim URL with the end-user.
+
+**Authentication:** Platform endpoints accept `plt_` keys as Bearer tokens. The auth middleware resolves them to `CallerIdentity` with `principal_type: "platform"`. User-only endpoints (app CRUD, template management) accept the human user JWT. The `plt_` key is used for user upsert, bootstrap, reissue-claim, list connected users, spend policies, and key rotation.
+
+**Template spec structure:**
+```json
+{
+  "vault": { "name": "user-vault", "description": "..." },
+  "agents": [{ "name": "bot", "description": "...", "intents": { "enabled": true }, "shroud_enabled": true, "shroud_config": { "pii_policy": "redact" }, "signing_keys": [{ "chain": "ethereum" }, { "chain": "solana" }] }],
+  "policies": [{ "principal_ref": "agents.primary", "vault_ref": "vault", "paths": ["**"], "permissions": ["read", "write"] }]
+}
+```
+`signing_keys` can be top-level (applies to first agent) or inside each agent entry. Supported chains: ethereum, bitcoin, solana, xrp, cardano, tron. `provision_eoa: true` on an agent generates a standalone EVM EOA.
+
+**Key rotation:** `POST /v1/platform/apps/{id}/rotate-key` — generates new `plt_` key, invalidates old one. Accepts optional `api_key_expires_at`. Returns `{ api_key, api_key_prefix, api_key_expires_at }`.
+
+**Claim flow:** `GET /v1/platform/claim/{token}` previews provisioned resources (public, no auth) → `{ app_name, vault_ids, agent_ids, policy_count, expired, already_claimed }`. `POST /v1/platform/claim/{token}` redeems (public) → `{ status: "claimed", dashboard_url }`. 409 if reused, 410 if expired. Reissue expired claims: `POST /v1/platform/connections/{id}/reissue-claim` → fresh 10-min token without re-provisioning.
+
+**Cross-org user linking:** When `upsert` finds a user in a different org, returns 409 with `link_required.consent_url` (OAuth authorize URL). Redirect user there for consent.
+
+**Resource grants (user-side):** Users can share additional vaults/agents with a platform app. `POST /v1/platform/connections/{id}/grant` (user-only, validates ownership). `GET .../grants` lists active grants. `DELETE .../grants/{grant_id}` revokes. Dashboard: Settings → Connected Apps.
+
+**Spend policies (embedded wallets):** Per-app default policies and per-user overrides for wallet sends/swaps. `POST /v1/platform/apps/{id}/spend-policies` (create), `GET .../spend-policies` (list), `DELETE .../spend-policies/{pid}` (deactivate). `PUT /v1/platform/connections/{id}/spend-policy` (per-user override). Fields: `to_allowlist`, `to_denylist`, `max_value_per_tx_eth`, `daily_limit_eth`, `allowed_chains`, `allowed_tokens`, `max_transactions_per_day`. Enforcement runs before signing in treasury wallet send/swap handlers.
+
+**Embedded wallet integration:** Platform apps can offer passwordless login to end-users via Email OTP (`POST /v1/auth/email-otp/send` + `verify`) or social login (`POST /v1/auth/social-login` with Google/Apple/Discord). Both auto-provision treasury wallets. The `@1claw/wallet-react` package provides `<OneclawEmbeddedWallet />` (full social login + wallet UI) and `<OneclawTreasuryWidget />` (send/swap/receive) React components. Props: `appId` (your platform app slug), `theme`, `chains`, `features`, `socialProviders`.
+
+**"Sign in with 1Claw" (OAuth2):** Platform apps can implement OAuth consent flow. Register `redirect_uris` on the app. Redirect users to `https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=...&response_type=code&scope=link`. After consent, exchange the code via `POST /v1/oauth/token` for `access_token` + RS256 `id_token`. `GET /v1/oauth/userinfo` returns `sub`, `email`, `name`, `wallet_address`. PKCE (S256) supported.
+
+**Billing models:** `platform_pays` (all usage billed to platform — default), `user_pays` (each user billed individually), `hybrid` (platform base + user overages). **Auth modes:** `silent` (no user sign-in, best for bots), `user_signin` (requires 1Claw login), `configurable` (per-user). `platform_locked` on vaults/agents ensures operator cannot read secret values.
+
+**SDK:** `client.platform.createApp()`, `.listApps()`, `.getApp()`, `.updateApp()`, `.deleteApp()`, `.createTemplate()`, `.listTemplates()`, `.upsertUser()`, `.bootstrapUser()`, `.reissueClaim()`, `.listConnectedApps()`, `.claimPreview()`, `.claimRedeem()`, `.createSpendPolicy()`, `.listSpendPolicies()`, `.setUserSpendPolicy()`, `.deleteSpendPolicy()`, `.grantAccess()`, `.listGrants()`, `.revokeGrant()`.
+
+**Endpoints (full list):**
+- `POST /v1/platform/apps` — Register app (user JWT; returns one-time plt_ key)
+- `GET /v1/platform/apps` — List apps → `{ apps: [...] }`
+- `GET/PATCH/DELETE /v1/platform/apps/{id}` — Get/update/delete app
+- `POST /v1/platform/apps/{id}/rotate-key` — Rotate plt_ key (optional expiry)
+- `POST/GET /v1/platform/apps/{id}/templates` — Create/list templates → `{ templates: [...] }`
+- `PATCH/DELETE /v1/platform/apps/{id}/templates/{tid}` — Update/delete template
+- `POST /v1/platform/users/upsert` — Provision or find user (plt_ key; OIDC or email)
+- `POST /v1/platform/connections/{id}/bootstrap` — Bootstrap from template
+- `POST /v1/platform/connections/{id}/reissue-claim` — Reissue expired claim URL
+- `GET /v1/platform/claim/{token}` — Preview claim (public, no auth)
+- `POST /v1/platform/claim/{token}` — Redeem claim (public)
+- `GET /v1/platform/apps/{id}/users` — List connected users → `{ users: [...] }`
+- `GET /v1/platform/apps/{id}/audit` — Platform audit events
+- `GET /v1/platform/connected-apps` — List connected apps (user-only)
+- `DELETE /v1/platform/connected-apps/{connection_id}` — Disconnect
+- `POST /v1/platform/connections/{id}/grant` — Grant vault/agent access (user-only)
+- `GET /v1/platform/connections/{id}/grants` — List grants
+- `DELETE /v1/platform/connections/{id}/grants/{grant_id}` — Revoke grant
+- `POST/GET /v1/platform/apps/{id}/spend-policies` — Create/list spend policies
+- `PUT /v1/platform/connections/{id}/spend-policy` — Per-user spend policy override
+- `DELETE /v1/platform/apps/{id}/spend-policies/{pid}` — Deactivate policy
 
 ### Execution Intents (v0.39 / 2.0)
 Agents can make HTTP calls, GraphQL queries, and other external service interactions through pre-configured **bindings**. Credentials are stored server-side and never exposed to agents. Trait-based executor framework with shared `ExecutionContext` (SSRF, host/path allowlists, credential injection, timeouts). Real GraphQL executor (query/variables/operationName, surfaces `errors[]`). Binding types: HTTP, GraphQL (Pro tier), Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom (Team+ tier). TEE execution mode on Business+ (`execution_surface`: `vault`/`tee`). Per-binding `allowed_hosts`/`allowed_paths`; agent `execution_guardrails` (`allowed_hosts`, `allowed_binding_types`, `max_duration_ms`, `max_requests_per_minute`). Credential rotation: `POST .../rotate-credential`; `credential_set` on responses; delete purges credential. **Live-pointer credential references (v0.41):** `credential_source` field with `Inline` (default — credential copied at creation) and `VaultRef` (`{ type: "vault_ref", vault_id, path }` — credential resolved at execution time from the referenced vault secret; changes are automatically reflected without manual rotation). Only successful executions count toward monthly quota. Endpoints: CRUD under `/v1/agents/{id}/bindings`, `POST .../execute`, `POST .../bindings/{id}/test`. Agent field `execution_intents_enabled`. SDK: `client.bindings.*` (incl. `rotateCredential`). CLI: `1claw agent binding *`. MCP: `execute_http`, `execute_intent`, `list_bindings`, `create_binding`, `test_binding`, `list_executions`. Dashboard: Execution Intents card on agent detail (binding create/edit includes "From Vault" option for vault_ref credential source).
