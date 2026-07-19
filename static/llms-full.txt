@@ -11803,6 +11803,9 @@ Full wallet UI with login, dashboard, and transaction views.
 | `socialProviders` | `string[]` | `["email"]` | Login methods: `"email"`, `"google"`, `"apple"`, `"discord"` |
 | `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
 | `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color scheme |
+| `onLinkRequired` | `(url, slug) => void` | Auto-redirect | Custom handler for cross-org users (v0.4.1+) |
+| `onLogin` | `(user) => void` | — | Callback after successful login |
+| `onError` | `(error) => void` | — | Callback on errors |
 
 ### `<OneclawTreasuryWidget>`
 
@@ -11880,6 +11883,58 @@ await verifyEmailOtp("user@example.com", "123456", ["ethereum", "solana"]);
 // Social login
 await socialLogin({ provider: "google", id_token: googleIdToken });
 ```
+
+---
+
+## Handling existing 1Claw users (cross-org linking)
+
+When a user who already has a 1Claw account (in a different organization) tries to sign in through your app, the API returns a `409` response with a consent URL. The widget handles this automatically as of `v0.4.1` — the user is redirected to a consent page where they approve the connection, then redirected back to your app.
+
+### Default behavior
+
+No code needed. The widget detects the 409, extracts the `authorize_url`, and redirects. After the user approves on the 1Claw consent page, they're sent back to your `redirect_uri`.
+
+### Custom handling
+
+If you want to show a custom UI instead of a raw redirect (e.g., an in-app modal), use the `onLinkRequired` prop:
+
+```tsx
+<OneclawEmbeddedWallet
+  appId="plt_..."
+  onLinkRequired={(authorizeUrl, appSlug) => {
+    // Show a modal explaining the user needs to connect their account
+    showModal({
+      title: "Connect your 1Claw account",
+      message: "You already have a 1Claw account. Approve the connection to use your existing wallet.",
+      onConfirm: () => window.open(authorizeUrl, "_blank"),
+    });
+  }}
+/>
+```
+
+### Using the client directly
+
+If you're building a custom UI with `OneclawWalletClient`, catch the `LinkRequiredError`:
+
+```typescript
+import { OneclawWalletClient, LinkRequiredError } from "@1claw/wallet-react";
+
+try {
+  await client.verifyEmailOtp(email, code, ["ethereum"]);
+} catch (err) {
+  if (err instanceof LinkRequiredError) {
+    // err.authorizeUrl — the consent page URL
+    // err.appSlug — your app's slug
+    window.location.href = err.authorizeUrl;
+    return;
+  }
+  throw err;
+}
+```
+
+### What the user sees
+
+The consent page shows your app name, the permissions requested, and Approve/Deny buttons. After approval, the user's existing 1Claw wallet is connected to your app — no new wallet is created.
 
 ---
 
