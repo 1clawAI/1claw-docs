@@ -405,14 +405,23 @@ When you call `POST /v1/platform/users/upsert` and the user already exists in a 
 ```json
 {
   "link_required": {
-    "consent_url": "https://1claw.xyz/oauth/authorize?client_id=your-slug&scope=link&login_hint=user@example.com",
-    "user_email": "user@example.com",
-    "message": "User exists in a different organization. Redirect them to consent_url to link."
+    "status": "link_required",
+    "reason": "user_exists_in_other_org",
+    "authorize_url": "https://1claw.xyz/connect/cubeverse/link?login_hint=user@example.com&return_to=https://myapp.com/callback",
+    "app_slug": "cubeverse"
   }
 }
 ```
 
-Redirect the user to `consent_url`. After they consent, a cross-org connection is created and subsequent `upsert` calls will succeed.
+**Do not treat this as an error.** Redirect the user's browser to `link_required.authorize_url`. They sign in (if needed), approve the connection, and are sent back to your `return_to` URL with `?linked=true&connection_id=...`. Then retry `upsert` — it will succeed.
+
+:::tip Register redirect URIs first
+The link flow sends users back to your first registered `redirect_uri` unless you pass `return_to` on `upsert`. Add your callback URL under Platform → your app → Settings → Redirect URIs.
+:::
+
+:::warning Do not show a generic error for link_required
+If your app surfaces `cross_org_link_incomplete`, you are detecting the 409 but not redirecting. Send the user to `authorize_url` instead.
+:::
 
 ---
 
