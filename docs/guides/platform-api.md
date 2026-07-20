@@ -384,15 +384,31 @@ await client.platform.updateApp(appId, {
 Per [RFC 8252 §7.3](https://datatracker.ietf.org/doc/html/rfc8252#section-7.3), `http://localhost` (any port) is allowed for development. No HTTPS required for loopback addresses.
 :::
 
-### OAuth Flow
+### OAuth Flow (Sign in with 1Claw)
+
+For **sign-in** (OIDC tokens), use scopes like `openid profile email`:
 
 1. Your app redirects users to:
    ```
-   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=link&state=RANDOM
+   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=openid%20email&state=RANDOM&code_challenge=...&code_challenge_method=S256
    ```
 2. The user sees the 1Claw consent page and approves.
 3. 1Claw redirects back to your `redirect_uri` with an authorization `code`.
-4. Your backend exchanges the code for tokens via `POST /v1/oauth/token` (send `application/x-www-form-urlencoded` or JSON).
+4. Your backend exchanges the code for tokens via `POST /v1/oauth/token` (send `application/x-www-form-urlencoded` or JSON) with the matching `code_verifier`.
+
+:::warning PKCE is required for sign-in
+Standard OAuth code grants require S256 PKCE (`code_challenge` on authorize, `code_verifier` on token exchange).
+:::
+
+### OAuth `scope=link` (cross-org linking only)
+
+If you use `scope=link` on `/oauth/authorize`, 1Claw **does not issue an authorization code**. After consent, the redirect is:
+
+```
+https://myapp.com/callback?linked=true&connection_id=UUID&state=RANDOM
+```
+
+Retry `POST /v1/platform/users/upsert` — no token exchange step. Prefer the dashboard link URL from `link_required.authorize_url` (`/connect/{slug}/link`) for the same behavior without OAuth parameters.
 
 :::warning client_id is your app slug, not the UUID
 The `client_id` parameter must be your platform app's **slug** (e.g. `cubeverse`), not the app UUID. You set the slug when creating the app. If you pass the UUID, you'll get "Unknown client_id". Find your slug in the dashboard at Platform → your app → Details.
