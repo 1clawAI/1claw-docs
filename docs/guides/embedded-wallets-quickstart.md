@@ -1,6 +1,7 @@
 ---
 title: Embedded Wallets — 2-Minute Quickstart
 description: Add crypto wallets to your app in under 2 minutes with email login.
+sidebar_position: 16
 ---
 
 # Embedded Wallets — 2-Minute Quickstart
@@ -10,7 +11,7 @@ Get your users a wallet with just an email address. No browser extensions, no se
 ## Prerequisites
 
 - A 1Claw account with a Pro+ plan
-- A platform app (`plt_` API key) — [create one in the dashboard](https://app.1claw.xyz/platform)
+- A platform app (`plt_` API key) — [create one in the dashboard](https://1claw.xyz/platform)
 
 ## Install
 
@@ -123,6 +124,7 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 
 ## Next Steps
 
-- [Platform API docs](/docs/reference/api-reference) — full API reference
+- [Platform API guide](/docs/guides/platform-api) — full platform developer documentation
+- [@1claw/wallet-react](/docs/guides/wallet-react) — React component documentation
+- [API reference](/docs/reference/api-reference) — full API reference
 - [OpenAPI spec](https://github.com/1clawAI/1claw/tree/main/packages/openapi-spec) — OpenAPI 3.1 specification
-- [wallet-react README](https://github.com/1clawAI/wallet-react) — React component docs

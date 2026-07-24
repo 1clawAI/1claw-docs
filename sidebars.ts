@@ -184,6 +184,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/multi-chain-signing",
+                            label: "Multi-chain signing keys — per-agent keypairs",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/treasury",
                             label: "Treasury — Safe multisigs & access requests",
                         },
@@ -191,6 +196,16 @@ const sidebars: SidebarsConfig = {
                             type: "doc",
                             id: "guides/platform-api",
                             label: "Platform API — build products on 1Claw",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/embedded-wallets-quickstart",
+                            label: "Embedded wallets — 2-minute quickstart",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/wallet-react",
+                            label: "@1claw/wallet-react — embeddable React widget",
                         },
                     ],
                 },
