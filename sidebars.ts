@@ -31,6 +31,17 @@ const sidebars: SidebarsConfig = {
             items: [
                 {
                     type: "category",
+                    label: "Getting started",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/five-minute-walkthrough",
+                            label: "5-minute walkthrough — vault, key, transaction",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
                     label: "Access & policies",
                     items: [
                         {
@@ -79,6 +90,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/mpc",
                             label: "MPC — split keys across HSM providers",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/secret-rotation-bindings",
+                            label: "Rotation & bindings — rotate without redeploying",
+                        },
                     ],
                 },
                 {
@@ -99,6 +115,11 @@ const sidebars: SidebarsConfig = {
                             type: "doc",
                             id: "guides/oidc-federation",
                             label: "OIDC federation — Anthropic WIF, no static keys",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/approvals",
+                            label: "Human-in-the-loop — approvals for agent actions",
                         },
                     ],
                 },
@@ -150,6 +171,88 @@ const sidebars: SidebarsConfig = {
                 },
                 {
                     type: "category",
+                    label: "Wallet & key infra migrations",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/migrate-from-dynamic",
+                            label: "Dynamic — migration guide",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/migrate-from-privy",
+                            label: "Privy — side-by-side integration",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/coinbase-smart-wallet",
+                            label: "Coinbase Wallet / Smart Wallet",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/migrate-from-turnkey",
+                            label: "Turnkey — migration from API key infra",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/web3auth",
+                            label: "Web3Auth — social login + 1claw backend",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/thirdweb",
+                            label: "Thirdweb — replace Engine, keep frontend",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/magic",
+                            label: "Magic — auth wallets + 1claw agents",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/fireblocks",
+                            label: "Fireblocks — institutional custody complement",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/safe-multisig",
+                            label: "Safe — proposals, signing, auto-execute",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/account-abstraction",
+                            label: "ERC-4337 — smart accounts with 1claw signers",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/wagmi-rainbowkit",
+                            label: "wagmi + RainbowKit — frontend + 1claw backend",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "AI agent integrations",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/agent-frameworks",
+                            label: "Agent frameworks — Eliza, GOAT, LangChain, CrewAI",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/mcp-deep-dive",
+                            label: "MCP for AI tools — Cursor, Claude, VS Code, Zed",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/ai-sdk-integration",
+                            label: "Vercel AI SDK / OpenAI Agents SDK",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
                     label: "LLM, transactions & treasury",
                     items: [
                         {
@@ -196,6 +299,11 @@ const sidebars: SidebarsConfig = {
                             type: "doc",
                             id: "guides/platform-api",
                             label: "Platform API — build products on 1Claw",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/multi-tenant-platform",
+                            label: "Multi-tenant — bootstrap users with templates",
                         },
                         {
                             type: "doc",
