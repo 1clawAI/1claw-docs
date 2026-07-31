@@ -14,7 +14,7 @@ import TabItem from '@theme/TabItem';
 **Endpoint:** `DELETE /v1/agents/:agent_id`  
 **Authentication:** Bearer JWT
 
-Marks the agent as inactive. The agent can no longer exchange its API key for a token; existing JWTs may still be valid until expiry.
+**Permanently deletes** the agent and **immediately revokes** all active JWTs. The agent can no longer authenticate. To temporarily disable an agent without deleting it, use `PATCH /v1/agents/{agent_id}` with `{ "is_active": false }` instead.
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">

@@ -87,7 +87,7 @@ All API endpoints are organized into resource modules:
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
-| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `signIntent()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()` |
+| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()` |
 | `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`                                       |
 | `client.sharing`           | `create()`, `access()`, `revoke()`                                                                 |
 | `client.approvals`         | `request()`, `list()`, `get()`, `decide()`                                                         |

@@ -10,22 +10,22 @@ sidebar_position: 1
 
 ## Key hierarchy
 
-- **KEK (Key Encryption Key)** — One per vault. Created in the HSM when you create a vault. Used only to wrap/unwrap DEKs. In production this is a symmetric key in **Google Cloud KMS**.
-- **DEK (Data Encryption Key)** — Generated per secret (or per operation). Used with AES-256-GCM to encrypt the secret value. The DEK is wrapped with the vault’s KEK and stored alongside the ciphertext; it never exists in plain form outside the HSM boundary during wrap/unwrap.
+- **KEK (Key Encryption Key)** — One per organization. Used only to wrap/unwrap DEKs. In production this is a symmetric key in **Google Cloud KMS** with tier-based protection level (HSM for paid plans, SOFTWARE for free).
+- **DEK (Data Encryption Key)** — Generated per secret (or per operation). Used with AES-256-GCM to encrypt the secret value. The DEK is wrapped with the organization’s KEK and stored alongside the ciphertext; it never exists in plain form outside the HSM boundary during wrap/unwrap.
 - **JWT signing key** — A separate Ed25519 key in the same KMS key ring. Used to sign and verify JWTs for human and agent auth. Only the public part is used for verification; signing happens inside KMS.
 
 ## Flow (create secret)
 
 1. Client sends plaintext secret to the API with a vault ID and path.
 2. API generates a new DEK, encrypts the plaintext with AES-256-GCM using the DEK.
-3. API calls KMS to wrap the DEK with the vault’s KEK; the wrapped DEK is stored with the ciphertext, IV, and auth tag.
+3. API calls KMS to wrap the DEK with the organization’s KEK; the wrapped DEK is stored with the ciphertext, IV, and auth tag.
 4. Stored row: `vault_id`, `path`, `ciphertext`, `wrapped_dek`, `iv`, `auth_tag`, metadata, version, etc.
 
 ## Flow (read secret)
 
 1. Client requests secret by vault ID and path (with valid JWT and policy allowing read).
 2. API loads the latest version’s ciphertext and wrapped DEK.
-3. API calls KMS to unwrap the DEK with the vault’s KEK.
+3. API calls KMS to unwrap the DEK with the organization’s KEK.
 4. API decrypts the ciphertext with the DEK and returns the plaintext to the client.
 
 ## Production vs local

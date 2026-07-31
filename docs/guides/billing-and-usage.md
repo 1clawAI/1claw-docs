@@ -18,8 +18,8 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 
 | Tier           | Monthly Price | Annual (billed yearly) | Requests/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
-| **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 3          |
-| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 25        | 500       | 10        | 5          |
+| **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 1 (owner)  |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 5         | 500       | 10        | 5          |
 | **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 100       | 5,000     | 50        | 20         |
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 500,000     | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |

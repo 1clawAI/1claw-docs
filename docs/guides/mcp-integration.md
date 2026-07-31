@@ -42,7 +42,7 @@ If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"
 <details>
 <summary>Legacy: using a pre-minted JWT</summary>
 
-If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~1 hour) and you'll need to refresh them manually.
+If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~15 minutes by default) and you'll need to refresh them manually.
 
 ```bash
 curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \

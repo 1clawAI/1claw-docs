@@ -777,7 +777,7 @@ The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, stat
 
 ## Unified sign endpoint {#unified-sign}
 
-The unified `POST /v1/agents/{id}/sign` endpoint supports three intent types: EIP-191 message signing, EIP-712 typed data signing, and transaction signing across all EIP-2718 types.
+The unified `POST /v1/agents/{id}/sign` endpoint supports four intent types: EIP-191 message signing (`personal_sign`), EIP-712 typed data signing (`typed_data`), raw digest signing (`eip712_digest` / `digest`), and transaction signing across all EIP-2718 types.
 
 ### EIP-191 personal_sign {#eip191}
 

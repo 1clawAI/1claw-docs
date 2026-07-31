@@ -20,7 +20,7 @@ Agents authenticate by exchanging an **agent ID** and **API key** for a short-li
 
 | Field    | Type   | Required | Description                           |
 | -------- | ------ | -------- | ------------------------------------- |
-| agent_id | string | ✅       | UUID of the agent (from registration) |
+| agent_id | string | Optional | UUID of the agent (from registration). When omitted, the server auto-resolves the agent from the API key prefix. |
 | api_key  | string | ✅       | Agent API key (e.g. `ocv_...`)        |
 
 ## Example request
@@ -72,7 +72,7 @@ print(client.resolved_agent_id)
 {
     "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...",
     "token_type": "Bearer",
-    "expires_in": 3600
+    "expires_in": 900
 }
 ```
 

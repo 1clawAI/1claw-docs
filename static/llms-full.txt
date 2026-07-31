@@ -153,7 +153,7 @@ print(client.resolved_agent_id)
 {
     "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...",
     "token_type": "Bearer",
-    "expires_in": 3600
+    "expires_in": 900
 }
 ```
 
@@ -6531,7 +6531,7 @@ If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"
 <details>
 <summary>Legacy: using a pre-minted JWT</summary>
 
-If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~1 hour) and you'll need to refresh them manually.
+If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~15 minutes by default) and you'll need to refresh them manually.
 
 ```bash
 curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
@@ -14204,7 +14204,7 @@ Any client that supports HTTP streaming can connect:
 
 ## Option 2: Local server (stdio)
 
-Run the MCP server as a local process. Useful for development, air-gapped environments, or when you want full control. The server can use **agent ID + API key** (recommended; it exchanges them for a JWT and refreshes automatically) or a static **JWT** (expires in ~1 hour).
+Run the MCP server as a local process. Useful for development, air-gapped environments, or when you want full control. The server can use **agent ID + API key** (recommended; it exchanges them for a JWT and refreshes automatically) or a static **JWT** (expires in ~15 minutes by default).
 
 ### Install
 
@@ -15375,7 +15375,7 @@ print(client.resolved_agent_id)
 {
   "access_token": "eyJhbGciOiJFZERTQSIs...",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 900
 }
 ```
 

@@ -119,7 +119,7 @@ Any client that supports HTTP streaming can connect:
 
 ## Option 2: Local server (stdio)
 
-Run the MCP server as a local process. Useful for development, air-gapped environments, or when you want full control. The server can use **agent ID + API key** (recommended; it exchanges them for a JWT and refreshes automatically) or a static **JWT** (expires in ~1 hour).
+Run the MCP server as a local process. Useful for development, air-gapped environments, or when you want full control. The server can use **agent ID + API key** (recommended; it exchanges them for a JWT and refreshes automatically) or a static **JWT** (expires in ~15 minutes by default).
 
 ### Install
 

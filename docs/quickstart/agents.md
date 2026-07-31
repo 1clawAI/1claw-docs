@@ -135,7 +135,7 @@ print(client.resolved_agent_id)
 {
   "access_token": "eyJhbGciOiJFZERTQSIs...",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 900
 }
 ```
 

@@ -19,9 +19,12 @@ Patterns use glob rules: `*` matches one segment, `**` matches zero or more segm
 ## Permissions
 
 - **read** — Can GET secret value and list (metadata).
-- **write** — Can PUT (create/update) and DELETE secrets at matching paths.
+- **write** — Can PUT (create/update) secrets at matching paths.
+- **delete** — Can DELETE secrets at matching paths.
+- **rotate** — Can trigger server-side secret rotation.
+- **list** — Can list secret metadata.
 
-Grant only `read` unless the agent must create or update secrets.
+Grant only `read` unless the agent must create or update secrets. Note that `write` does **not** include delete — grant `delete` explicitly if needed.
 
 ## Example: agent for one key
 

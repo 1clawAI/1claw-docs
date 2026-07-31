@@ -479,7 +479,7 @@ Sign and broadcast a transaction. Optionally simulate first via Tenderly.
 | `value`            | string  | No       | Value in ETH (e.g. `"0.1"`)                                     |
 | `data`             | string  | No       | Calldata hex (e.g. `"0x"`)                                      |
 | `signing_key_path` | string  | No       | Vault path to signing key (default: `keys/{chain}-signer`)       |
-| `simulate_first`   | boolean | No       | Run Tenderly simulation before signing (default: false)          |
+| `simulate_first`   | boolean | No       | Run Tenderly simulation before signing (default: true)           |
 
 ### Example
 

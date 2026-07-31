@@ -1,6 +1,6 @@
 ---
 title: Rotate a secret
-description: The rotate endpoint may return 400 not yet implemented; for now create a new version with PUT to the same path.
+description: Rotate a secret to a new server-generated value or manually create a new version with PUT.
 sidebar_position: 4
 ---
 
@@ -9,10 +9,10 @@ import TabItem from '@theme/TabItem';
 
 # Rotate a secret
 
-**Endpoint:** `POST /v1/vaults/:vault_id/secrets/:path/rotate`  
+**Endpoint:** `POST /v1/vaults/{vault_id}/secret-rotate/{path}`
 **Authentication:** Bearer JWT
 
-<!-- TODO: verify --> The vault implementation may return **400 Bad Request** with a message that secret rotation is not yet implemented. When that is the case, "rotation" is achieved by creating a **new version** of the secret:
+Server-side rotation generates a cryptographically random value and creates a new version. You can also manually rotate by creating a **new version** of the secret:
 
 1. Generate a new value (e.g. new API key from the provider).
 2. **PUT** to the same path with the new value (see [Create](/docs/human-api/secrets/create) / [Update](/docs/human-api/secrets/update)).
@@ -61,6 +61,6 @@ print(resp.data["path"], f"v{resp.data['version']}")
 </TabItem>
 </Tabs>
 
-## Current behavior
+## Server-side generation
 
-If the server responds with **400** and a message like "Secret rotation not yet implemented", use **PUT** to the same path with the new value instead.
+Use `POST /v1/vaults/{vault_id}/secret-rotate/{path}` with an optional body `{ "length": 32, "charset": "hex", "type": "api_key" }` to generate a new random value server-side. Requires `rotate` or `write` permission. Alternatively, use **PUT** to the same path with a new value you provide.

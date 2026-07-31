@@ -10,8 +10,8 @@ sidebar_position: 0
 
 ## Core ideas
 
-- **Vaults** — A vault is a named container (e.g. "Production", "CI"). Each vault has its own KEK in the HSM. You create vaults, then store secrets inside them at paths like `api-keys/stripe` or `passwords/db`.
-- **Secrets** — Stored by path within a vault. Each secret has a type (e.g. `password`, `api_key`), optional metadata, optional expiry, and versioning. The secret value is encrypted with a DEK that is wrapped by the vault’s KEK.
+- **Vaults** — A vault is a named container (e.g. "Production", "CI"). You create vaults, then store secrets inside them at paths like `api-keys/stripe` or `passwords/db`.
+- **Secrets** — Stored by path within a vault. Each secret has a type (e.g. `password`, `api_key`), optional metadata, optional expiry, and versioning. The secret value is encrypted with a per-secret DEK that is wrapped by the organization’s shared KEK.
 - **Agents** — Registered identities that get an API key (`ocv_...`). They exchange the key for a JWT and then call the same REST API to list and fetch secrets they’re allowed to see.
 - **Policies (grants)** — Define who can do what: e.g. agent `X` can `read` secrets under `**` in vault `V`, or user `Y` can `read,write` paths matching `prod/*`. Policies can have conditions (IP, time window) and expiry.
 

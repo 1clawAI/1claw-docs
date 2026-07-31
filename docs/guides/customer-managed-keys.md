@@ -98,9 +98,8 @@ import {
 // Write: encrypt before sending
 const plaintext = new TextEncoder().encode("my-secret-value");
 const encrypted = await cmekEncrypt(plaintext, cmekKey);
-await client.secrets.put(vaultId, "api-keys/stripe", {
+await client.secrets.set(vaultId, "api-keys/stripe", toBase64(encrypted), {
   type: "api_key",
-  value: toBase64(encrypted),
 });
 
 // Read: decrypt after receiving
