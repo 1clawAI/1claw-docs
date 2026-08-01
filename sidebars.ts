@@ -319,6 +319,27 @@ const sidebars: SidebarsConfig = {
                 },
                 {
                     type: "category",
+                    label: "Automations, runtimes & memory",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/automations",
+                            label: "Automations — cron, webhooks, AI workflows",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/runtimes",
+                            label: "Cloud Runtimes — managed containers for agents",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/agent-memory",
+                            label: "Agent Memory — scratch, durable, semantic storage",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
                     label: "Billing, ops & compliance",
                     items: [
                         {
