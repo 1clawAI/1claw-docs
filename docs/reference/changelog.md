@@ -12,7 +12,29 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-07 (latest)
+## 2026-08 (latest)
+
+### v0.42.0 — Automations, Runtimes, Agent Memory, Discovery, and Platform enhancements (2026-08-01)
+
+#### Added
+- **Agent Memory** — Three-tier memory system (scratch, durable, semantic) for AI agents. Scratch is ephemeral and auto-cleared per session; durable persists across sessions; semantic enables vector similarity search via pgvector. All tiers encrypted at rest with envelope encryption. Endpoints: `POST/GET/DELETE /v1/agents/{id}/memory`, `POST /v1/agents/{id}/memory/search`. SDK `client.memory.*`, CLI `1claw memory`, MCP tools `memory_put`/`memory_get`/`memory_list`/`memory_search`/`delete_memory`. Dashboard: Memory card on agent detail with tier tabs and search UI.
+- **Automations** — Cron-scheduled, webhook-triggered, and event-driven automation workflows with multi-step pipelines and AI integration. Visual cron builder in the dashboard. Tier-gated: Free 2, Pro 10, Team 50, Business 200. Endpoints: `POST/GET /v1/automations`, `GET/PATCH/DELETE /v1/automations/{id}`, `POST /v1/automations/{id}/trigger`, `GET /v1/automations/{id}/runs`. SDK `client.automations.*`, CLI `1claw automation`, MCP `list_automations`/`trigger_automation`. Dashboard pages at `/automations`, `/automations/new`, `/automations/[id]`.
+- **Cloud Runtimes** — Deploy AI agents in managed containers with resource presets: small (0.5 vCPU/512MB), medium (1 vCPU/1GB), large (2 vCPU/4GB), large-cc (4 vCPU/8GB confidential compute). Public URL hosting, idle auto-stop, log streaming, health monitoring. Endpoints: `POST/GET /v1/runtimes`, `GET/PATCH/DELETE /v1/runtimes/{id}`, start/stop/logs sub-routes. SDK `client.runtimes.*`, CLI `1claw runtime`, MCP `list_runtimes`/`manage_runtime`/`runtime_status`/`runtime_logs`. Dashboard pages at `/runtimes`, `/runtimes/new`, `/runtimes/[id]`.
+- **Agent Discovery** — Public agent directory and platform marketplace. Agents can be made discoverable with capability cards showing A2A/MCP URLs, supported protocols, and pricing. Endpoints: `POST/GET /v1/discovery/agents`, `GET /v1/discovery/agents/{id}`, `POST /v1/agents/{id}/discovery`. SDK `client.discovery.*`, CLI `1claw directory`, MCP `search_directory`. Dashboard: `/directory` public page, discovery card on agent detail.
+- **Platform Delegation** — Platform apps can perform CRUD on connected user resources via `X-Platform-Connection` header. Scoped by `delegation_enabled` and `delegation_scopes` on platform apps. Operations attributed to the platform app in audit logs. DB: migration 151.
+- **OAuth2 Credential Bindings** — Execution Intents bindings support OAuth2 credential type with `authorization_code` and `client_credentials` grant flows. Automatic token refresh before execution. DB: migration 150.
+- **New agent columns:** `llm_default_provider`, `llm_default_model` (migration 143) for agent LLM defaults.
+- **New sidebar entries:** Automations, Runtimes, and Directory pages added to dashboard sidebar navigation.
+- **DB migrations:** 141 (automations), 142 (automation_runs), 143 (agent LLM defaults), 144 (runtimes), 145 (agent_memory_entries), 146 (agent_memory_vectors), 147 (runtime_hosting), 148 (agent_discovery), 149 (platform_listing), 150 (oauth2_credential_bindings), 151 (platform_delegation_scopes).
+
+#### Changed
+- Dashboard sidebar updated with new navigation items for Automations, Runtimes, and Directory.
+- SDK types extended with memory, automation, runtime, and discovery interfaces.
+- MCP server tool count increased from 50 to 62 tools.
+
+---
+
+## 2026-07
 
 ### Payment Card Vault — human-in-the-loop approval (2026-07-17)
 
