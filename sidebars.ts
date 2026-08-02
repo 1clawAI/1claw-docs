@@ -319,6 +319,17 @@ const sidebars: SidebarsConfig = {
                 },
                 {
                     type: "category",
+                    label: "Agent communication",
+                    items: [
+                        {
+                            type: "doc",
+                            id: "guides/agent-communication",
+                            label: "Chat & Channels — Telegram, WhatsApp, Discord",
+                        },
+                    ],
+                },
+                {
+                    type: "category",
                     label: "Automations, runtimes & memory",
                     items: [
                         {
