@@ -53,12 +53,12 @@ curl -X POST "https://api.1claw.xyz/v1/runtimes" \
 
 | Preset | vCPU | Memory | Monthly Cost | Notes |
 |---|---|---|---|---|
-| `small` | 0.5 | 512 MB | ~$5 | Good for lightweight bots |
-| `medium` | 1 | 1 GB | ~$15 | Recommended for most agents |
-| `large` | 2 | 4 GB | ~$40 | For memory-intensive workloads |
-| `small-cc` | 0.5 | 512 MB | ~$10 | Confidential compute (Business+) |
-| `medium-cc` | 1 | 2 GB | ~$30 | Confidential compute (Business+) |
-| `large-cc` | 4 | 8 GB | ~$80 | Confidential compute (Business+) |
+| `small` | 0.5 | 1 GB | $15/mo | Good for lightweight bots |
+| `medium` | 1 | 2 GB | $39/mo | Recommended for most agents |
+| `large` | 2 | 4 GB | $99/mo | For memory-intensive workloads |
+| `small-cc` | 0.5 | 1 GB | $35/mo | Confidential compute (TEE) |
+| `medium-cc` | 1 | 2 GB | $75/mo | Confidential compute (TEE) |
+| `large-cc` | 2 | 4 GB | $149/mo | Confidential compute (TEE) |
 
 Confidential compute (`-cc`) presets run on AMD SEV-SNP enclaves, providing hardware-level memory encryption. Secrets and signing keys are never exposed to the host OS.
 
