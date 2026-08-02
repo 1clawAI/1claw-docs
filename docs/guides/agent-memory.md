@@ -1,353 +1,218 @@
 ---
 title: Agent Memory
-description: Three-tier memory system for AI agents — scratch (ephemeral), durable (persistent), and semantic (vector-indexed) — encrypted at rest with envelope encryption.
-sidebar_position: 22
+description: Three-tier encrypted memory system for AI agents — scratch, durable, and semantic.
+sidebar_label: "Agent Memory — scratch, durable, semantic storage"
 ---
 
 # Agent Memory
 
-Agent Memory provides a three-tier storage system so your AI agents can remember context across sessions, store intermediate results, and perform similarity search over past interactions. All memory values are encrypted at rest using envelope encryption with your org's KEK.
+Agent Memory gives your AI agents persistent, encrypted storage across sessions. Three tiers serve different needs — from ephemeral scratch pads to vector-indexed knowledge bases.
 
-:::info Requirements
-Agent Memory is available on all tiers. Semantic search requires **Pro or higher**. See [Tier Limits](#tier-limits) below.
-:::
+## Three tiers
 
-## Overview
+| Tier | Persistence | Use case | Search |
+|------|-------------|----------|--------|
+| **Scratch** | TTL-based (auto-expires) | Working memory, temp calculations | Key lookup |
+| **Durable** | Permanent until deleted | Conversation history, user preferences | Key lookup |
+| **Semantic** | Permanent + vector-indexed | Knowledge base, RAG retrieval | Similarity search |
 
-| Tier | Persistence | Use Case | Indexing |
-|---|---|---|---|
-| **Scratch** | TTL-based (auto-expires) | Temporary state, session context, intermediate results | Key-value |
-| **Durable** | Permanent until deleted | Long-term facts, preferences, learned behaviors | Key-value |
-| **Semantic** | Permanent until deleted | Knowledge base, conversation history for RAG | Vector (1536-dim) |
+All tiers are encrypted at rest with the org's KEK via envelope encryption (AES-256-GCM).
 
----
+## Enable memory on an agent
 
-## Enabling Memory
+### Dashboard
 
-Memory must be enabled per-agent. Set `memory_enabled: true` when creating or updating an agent:
+1. Go to **Agents → [your agent] → Settings**
+2. Toggle **Agent Memory** on
+3. Optionally configure namespace allowlist
 
-```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/AGENT_UUID" \
-  -H "Authorization: Bearer YOUR_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "memory_enabled": true,
-    "memory_namespace_allowlist": ["session", "knowledge", "preferences"]
-  }'
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `memory_enabled` | boolean | `false` | Enable memory for this agent |
-| `memory_namespace_allowlist` | string[] | `[]` (unrestricted) | Limit namespaces the agent can use |
-
-:::tip Namespace allowlists
-When set, the agent can only read/write to the listed namespaces. Empty means unrestricted. Use allowlists for multi-tenant agents to prevent namespace collisions.
-:::
-
----
-
-## Namespaces
-
-Namespaces organize memory entries into logical groups. Think of them like folders or buckets.
-
-```
-agent-memory/
-├── session/          ← scratch: current conversation state
-├── preferences/      ← durable: user preferences, config
-├── knowledge/        ← semantic: indexed facts for RAG
-└── tool-outputs/     ← durable: cached tool results
-```
-
-### List namespaces
+### CLI
 
 ```bash
-curl "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory" \
-  -H "Authorization: Bearer AGENT_JWT"
+1claw agent update <agent-id> --memory-enabled true
 ```
 
-Response:
-
-```json
-{
-  "namespaces": [
-    { "name": "session", "entry_count": 12 },
-    { "name": "knowledge", "entry_count": 847 },
-    { "name": "preferences", "entry_count": 5 }
-  ]
-}
-```
-
----
-
-## CRUD Operations
-
-### Put (upsert) a memory entry
-
-```bash
-curl -X PUT "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/session/current-task" \
-  -H "Authorization: Bearer AGENT_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "value": "Researching ETH/USDC liquidity pools on Uniswap v3",
-    "tier": "scratch",
-    "ttl_seconds": 3600
-  }'
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `value` | string | required | Memory content (max 64 KB) |
-| `tier` | string | `"durable"` | `scratch`, `durable`, or `semantic` |
-| `ttl_seconds` | integer | `null` | Auto-delete after N seconds (scratch tier only) |
-
-### Get a memory entry
-
-```bash
-curl "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/session/current-task" \
-  -H "Authorization: Bearer AGENT_JWT"
-```
-
-Response:
-
-```json
-{
-  "namespace": "session",
-  "key": "current-task",
-  "value": "Researching ETH/USDC liquidity pools on Uniswap v3",
-  "tier": "scratch",
-  "ttl_expires_at": "2026-08-01T16:00:00Z",
-  "created_at": "2026-08-01T15:00:00Z",
-  "updated_at": "2026-08-01T15:00:00Z"
-}
-```
-
-### List entries in a namespace
-
-```bash
-curl "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/knowledge?limit=50" \
-  -H "Authorization: Bearer AGENT_JWT"
-```
-
-### Delete a memory entry
-
-```bash
-curl -X DELETE "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/session/current-task" \
-  -H "Authorization: Bearer AGENT_JWT"
-```
-
----
-
-## TTL (Scratch Tier)
-
-Scratch entries auto-expire after the specified TTL. Use them for:
-
-- Current conversation state
-- Intermediate computation results
-- Short-lived cache entries
-- Session tokens that should self-destruct
-
-The `memory_ttl_reaper` background worker runs every 60 seconds and deletes expired entries. If no `ttl_seconds` is provided for a scratch entry, it defaults to 1 hour.
+### SDK
 
 ```typescript
-// Store scratch memory that expires in 15 minutes
-await client.memory.put(agentId, "session", "context", {
-  value: JSON.stringify({ messages: lastFiveMessages }),
-  tier: "scratch",
-  ttl_seconds: 900,
+await client.agents.update(agentId, {
+  memory_enabled: true,
+  memory_namespace_allowlist: [], // empty = unrestricted
 });
 ```
 
----
-
-## Semantic Search
-
-Semantic-tier entries are automatically embedded into 1536-dimensional vectors (via pgvector) for similarity search. Use this for RAG, knowledge retrieval, and finding related past interactions.
-
-### Store a semantic entry
-
-```bash
-curl -X PUT "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/knowledge/eth-staking-101" \
-  -H "Authorization: Bearer AGENT_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "value": "Ethereum staking requires a minimum of 32 ETH. Validators earn rewards for proposing and attesting to blocks. Staking APY varies between 3-5% depending on network participation.",
-    "tier": "semantic"
-  }'
-```
-
-### Search by similarity
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/memory/search" \
-  -H "Authorization: Bearer AGENT_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "knowledge",
-    "query": "How much ETH do I need to stake?",
-    "top_k": 5
-  }'
-```
-
-Response:
-
-```json
-{
-  "results": [
-    {
-      "namespace": "knowledge",
-      "key": "eth-staking-101",
-      "value": "Ethereum staking requires a minimum of 32 ETH...",
-      "score": 0.92,
-      "created_at": "2026-07-15T10:00:00Z"
-    }
-  ]
-}
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `namespace` | string | required | Namespace to search within |
-| `query` | string | required | Natural language query |
-| `top_k` | integer | `10` | Max results to return |
-
----
-
-## Encryption
-
-All memory values are encrypted at rest using envelope encryption:
-
-1. A unique per-entry DEK (data encryption key) is generated
-2. The value is encrypted with AES-256-GCM using the DEK
-3. The DEK is wrapped (encrypted) with the org's shared KEK in Google Cloud KMS
-4. Both the wrapped DEK and encrypted value are stored in the database
-
-This means memory contents are never stored in plaintext, and the KMS key never leaves the HSM boundary.
-
----
-
-## API Reference
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/v1/agents/{id}/memory` | List namespaces |
-| GET | `/v1/agents/{id}/memory/{namespace}` | List entries in namespace |
-| PUT | `/v1/agents/{id}/memory/{namespace}/{key}` | Upsert entry |
-| GET | `/v1/agents/{id}/memory/{namespace}/{key}` | Get entry |
-| DELETE | `/v1/agents/{id}/memory/{namespace}/{key}` | Delete entry |
-| POST | `/v1/agents/{id}/memory/search` | Semantic search |
-
----
-
-## SDK
+## Use via SDK
 
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
 
 const client = new OneclawClient({
-  baseUrl: "https://api.1claw.xyz",
-  agentId: "AGENT_UUID",
-  apiKey: "ocv_AGENT_KEY",
+  agentId: "agent-uuid",
+  apiKey: "ocv_...",
 });
 
-// Store durable memory
-await client.memory.put(agentId, "preferences", "risk-tolerance", {
-  value: JSON.stringify({ maxSlippage: 0.5, maxGas: 50 }),
+// Write to durable memory
+await client.memory.put(agentId, "preferences", "theme", {
+  value: JSON.stringify({ darkMode: true, language: "en" }),
   tier: "durable",
 });
 
-// Store scratch memory with TTL
-await client.memory.put(agentId, "session", "current-task", {
-  value: "Monitoring ETH price for entry",
-  tier: "scratch",
-  ttl_seconds: 300,
+// Read
+const entry = await client.memory.get(agentId, "preferences", "theme");
+console.log(entry.value); // '{"darkMode":true,"language":"en"}'
+
+// List entries in a namespace
+const entries = await client.memory.list(agentId, "preferences");
+
+// Delete
+await client.memory.delete(agentId, "preferences", "theme");
+
+// Semantic search
+const results = await client.memory.search(agentId, {
+  namespace: "knowledge",
+  query: "How does envelope encryption work?",
+  top_k: 5,
+});
+```
+
+## Use via MCP
+
+The 1Claw MCP server provides memory tools:
+
+```
+put_memory     — Store a value
+get_memory     — Retrieve a value
+list_memory    — List entries in a namespace
+delete_memory  — Remove an entry
+search_memory  — Semantic similarity search
+```
+
+Example MCP usage (from an AI agent):
+
+```
+Use the put_memory tool to store this conversation summary
+in the "sessions" namespace with key "2024-01-15".
+```
+
+## Use via CLI
+
+```bash
+# Store a value
+1claw memory put <agent-id> conversations/session-1 \
+  --value "User asked about pricing" \
+  --tier durable
+
+# Retrieve
+1claw memory get <agent-id> conversations/session-1
+
+# List namespace
+1claw memory list <agent-id> conversations
+
+# Delete
+1claw memory delete <agent-id> conversations/session-1
+
+# Semantic search
+1claw memory search <agent-id> \
+  --namespace knowledge \
+  --query "encryption methods" \
+  --top-k 5
+```
+
+## Framework adapters
+
+Pre-built adapters for popular AI frameworks:
+
+| Framework | Adapter | Location |
+|-----------|---------|----------|
+| **LangChain** | `OneclawMemory` (BaseMemory) | `packages/agent-templates/adapters/langchain/` |
+| **CrewAI** | `OneclawStorage` | `packages/agent-templates/adapters/crewai/` |
+| **ElizaOS** | `OneclawMemoryAdapter` | `packages/agent-templates/adapters/elizaos/` |
+
+### LangChain example
+
+```python
+from oneclaw_langchain import OneclawMemory
+from langchain.chains import ConversationChain
+from langchain_openai import ChatOpenAI
+
+memory = OneclawMemory(namespace="conversations", tier="durable")
+chain = ConversationChain(llm=ChatOpenAI(), memory=memory)
+chain.invoke({"input": "Hello!"})
+```
+
+### CrewAI example
+
+```python
+from oneclaw_crewai import OneclawStorage
+
+storage = OneclawStorage(namespace="crew-research")
+storage.save("findings", {"papers_read": 42, "summary": "..."})
+```
+
+### ElizaOS example
+
+```typescript
+import { OneclawMemoryAdapter } from "./adapter";
+
+const memory = new OneclawMemoryAdapter({
+  namespace: "eliza-agent",
+  tier: "durable",
 });
 
-// Store semantic memory
-await client.memory.put(agentId, "knowledge", "defi-lesson-1", {
-  value: "Impermanent loss occurs when the price ratio of pooled tokens changes...",
+await memory.set("user-profile", { name: "Alice" });
+const profile = await memory.get("user-profile");
+```
+
+## Namespace management
+
+Namespaces organize memory entries (like folders). An agent can have up to 100 namespaces.
+
+```bash
+# List all namespaces
+1claw memory list <agent-id>
+
+# Restrict which namespaces an agent can write to
+1claw agent update <agent-id> \
+  --memory-namespace-allowlist "conversations,knowledge,scratch"
+```
+
+When `memory_namespace_allowlist` is empty (default), the agent can create any namespace. When non-empty, writes to unlisted namespaces return 403.
+
+## Semantic search
+
+The semantic tier uses `pgvector` with 1536-dimensional embeddings for similarity search. Embeddings are generated automatically when you write to a semantic-tier namespace.
+
+```typescript
+// Write knowledge
+await client.memory.put(agentId, "docs", "encryption", {
+  value: "1Claw uses AES-256-GCM envelope encryption with Cloud KMS",
   tier: "semantic",
 });
 
-// Retrieve
-const entry = await client.memory.get(agentId, "preferences", "risk-tolerance");
-
-// Search semantically
+// Search
 const results = await client.memory.search(agentId, {
-  namespace: "knowledge",
-  query: "What is impermanent loss?",
+  namespace: "docs",
+  query: "how are secrets encrypted?",
   top_k: 3,
 });
-
-// List namespaces
-const namespaces = await client.memory.listNamespaces(agentId);
-
-// List entries
-const entries = await client.memory.list(agentId, "session");
-
-// Delete
-await client.memory.delete(agentId, "session", "current-task");
+// [{ key: "encryption", value: "...", score: 0.94 }]
 ```
 
----
+## Quotas per tier
 
-## CLI
-
-```bash
-# Store a memory entry
-1claw memory put AGENT_ID session current-task \
-  --value "Processing batch job" --tier scratch --ttl 600
-
-# Get an entry
-1claw memory get AGENT_ID preferences risk-tolerance
-
-# List entries in a namespace
-1claw memory list AGENT_ID knowledge
-
-# Search semantically
-1claw memory search AGENT_ID --namespace knowledge \
-  --query "What is impermanent loss?" --top-k 5
-
-# Delete
-1claw memory delete AGENT_ID session current-task
-```
-
----
-
-## MCP Tools
-
-| Tool | Description |
-|---|---|
-| `put_memory` | Store or update a memory entry |
-| `get_memory` | Retrieve a memory entry by namespace and key |
-| `list_memory` | List entries in a namespace |
-| `delete_memory` | Delete a memory entry |
-| `search_memory` | Semantic similarity search |
-
----
-
-## Tier Limits
-
-| Tier | Max Entries / Agent | Namespaces | Semantic Search |
-|---|---|---|---|
-| Free | 1,000 | 10 | No |
+| Billing tier | Max entries/agent | Max namespaces | Semantic search |
+|-------------|-------------------|----------------|-----------------|
+| Free | 10,000 | 100 | No |
 | Pro | 10,000 | 100 | Yes |
 | Team | 10,000 | 100 | Yes |
 | Business | 10,000 | 100 | Yes |
 | Enterprise | Custom | Custom | Yes |
 
-Additional limits:
-- Max value size: 64 KB per entry
-- Max namespaces per agent: 100
-- Max entries per agent: 10,000
+- Maximum value size: 64 KB per entry
+- Scratch tier entries are reaped every 60 seconds after TTL expiry
 
----
+## Next steps
 
-## Best Practices
-
-1. **Use scratch for conversation state** — set short TTLs (5–15 min) so stale context auto-cleans.
-2. **Use durable for learned preferences** — facts about user behavior, configuration, calibration values.
-3. **Use semantic for knowledge bases** — store factual content that benefits from similarity retrieval.
-4. **Namespace by concern** — separate `session`, `knowledge`, `preferences`, and `tool-cache` to avoid key collisions.
-5. **Set namespace allowlists for multi-tenant agents** — prevent one user's data from leaking into another namespace.
-6. **Keep values under 10 KB for semantic tier** — embeddings work best on focused, single-topic content. Split long documents into paragraphs.
+- [Automations](/docs/guides/automations) — trigger memory operations on a schedule
+- [Cloud Runtimes](/docs/guides/runtimes) — deploy agents with memory enabled
+- [Framework adapters](#framework-adapters) — integrate with LangChain, CrewAI, ElizaOS

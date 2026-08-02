@@ -102,6 +102,7 @@ const config: Config = {
                 { to: "/docs/guides/intents-api", label: "Intents", position: "left" },
                 { to: "/docs/guides/automations", label: "Automations", position: "left" },
                 { to: "/docs/guides/runtimes", label: "Runtimes", position: "left" },
+                { to: "/docs/guides/hosting", label: "Hosting", position: "left" },
                 { to: "/docs/guides/treasury", label: "Treasury", position: "left" },
                 { type: "search", position: "right" },
                 {

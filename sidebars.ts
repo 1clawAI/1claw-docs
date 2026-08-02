@@ -344,6 +344,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/hosting",
+                            label: "Hosting — public URLs for agent runtimes",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/agent-memory",
                             label: "Agent Memory — scratch, durable, semantic storage",
                         },
