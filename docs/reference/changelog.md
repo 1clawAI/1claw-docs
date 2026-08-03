@@ -18,9 +18,10 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 #### Fixed / clarified
 - **Automations create contract** — `POST /v1/automations` requires `workflow_spec` (+ `agent_id`; `cron_expr` when trigger is cron). Dashboard maps legacy `action_type` UI fields onto `workflow_spec`. API accepts `trigger_type: "schedule"` as an alias for `cron`, and accepts workflow shapes as either a bare step array or `{ "steps": [...] }`.
-- **Clients synced** — OpenAPI 2.30.0 / `@1claw/openapi-spec@0.43.1`, `@1claw/sdk@0.43.1` (`runtimes.createShellSession`), Go SDK + Python SDK (`oneclaw@0.43.0`) updated off the old `/v1/agents/{id}/automations` + `action_type` shapes. CLI README examples use `--workflow` / `--cron`.
-- **Runtime interactive shell** — `POST /v1/runtimes/{id}/shell/session` (+ `/shell/passkey/begin`) documented in OpenAPI. Human-only step-up auth (password, TOTP, passkey, or `reauth_token`). Dashboard terminal uses binary PTY WebSocket; Vault can auto-repair Cloud Run invoker IAM and reconcile the shroud sidecar on connect. Enabling shell while a runtime is already running may still require stop/start for sidecar injection.
-- **Prod tests** — `scripts/test-automations-prod.sh` already exercises `workflow_spec`; `scripts/test-runtimes-prod.sh` adds shell session auth/enablement guards (full WS + invoker IAM repair deferred until Vault shell-repair deploy is verified).
+- **Clients synced** — OpenAPI 2.30.0 / `@1claw/openapi-spec@0.43.1`, `@1claw/sdk@0.43.1` (`runtimes.createShellSession`), Go SDK (`v0.43.0`), Python SDK (`oneclaw@0.43.3`), CLI `@1claw/cli@0.43.1`, MCP `@1claw/mcp@0.43.1` (`io.github.1clawAI/1claw-mcp`). Updated off the old `/v1/agents/{id}/automations` + `action_type` shapes. CLI README examples use `--workflow` / `--cron`.
+- **Runtime interactive shell** — `POST /v1/runtimes/{id}/shell/session` (+ `/shell/passkey/begin`) documented in OpenAPI. Human-only step-up auth (password, TOTP, passkey, or `reauth_token`). Dashboard terminal uses binary PTY WebSocket; Vault auto-repairs Cloud Run invoker IAM (non-blocking on Connect to avoid gateway 504). Hermes/runtime images must include `shroud-sidecar` — rebuild templates after base updates; enabling shell while running triggers background reconcile / may still need stop/start.
+- **Manual automations** — DB allows `trigger_type: "manual"`; create no longer 500s for manual workflows.
+- **Prod tests** — `scripts/test-automations-prod.sh` exercises `workflow_spec` + schedule→cron alias; `scripts/test-runtimes-prod.sh` adds shell session auth/enablement guards.
 
 ### v0.42.0 — Automations, Runtimes, Agent Memory, Discovery, and Platform enhancements (2026-08-01)
 
