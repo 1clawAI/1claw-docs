@@ -937,3 +937,45 @@ Get the status and details of a specific card (masked).
 :::warning
 Card **reveal** is intentionally NOT available as an MCP tool. Revealing a live PAN/CVV in the model's context window would defeat the security model. Use the dashboard, SDK, or CLI with password re-authentication instead.
 :::
+
+---
+
+## list_automations
+
+List automations in the current organization (requires human or agent token with org access).
+
+Returns automation id, name, `trigger_type`, and active status.
+
+---
+
+## trigger_automation
+
+Manually fire an automation by ID. Returns the queued run record.
+
+### Parameters
+
+| Name            | Type   | Required | Description        |
+| --------------- | ------ | -------- | ------------------ |
+| `automation_id` | string | Yes      | Automation UUID    |
+
+---
+
+## runtime_logs
+
+Fetch recent container logs for a runtime.
+
+### Parameters
+
+| Name         | Type   | Required | Description                              |
+| ------------ | ------ | -------- | ---------------------------------------- |
+| `runtime_id` | string | Yes      | Runtime UUID                             |
+| `tail`       | number | No       | Number of recent lines (default **50**)  |
+
+Response uses API shape `{ entries: [{ timestamp?, message, level? }] }`.
+
+---
+
+## runtime_status / list_runtimes / manage_runtime
+
+See [MCP overview](/docs/mcp/overview) for cloud runtime lifecycle tools (`list_runtimes`, `manage_runtime`, `runtime_status`).
+

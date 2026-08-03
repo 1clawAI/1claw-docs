@@ -26,6 +26,7 @@ A runtime is a managed container that runs your agent code. It includes:
 | **Node.js** | Node 22 + pnpm | TypeScript agents, ElizaOS |
 | **Hermes** | 1Claw Hermes runtime | Built-in MCP + Shroud integration |
 | **OpenClaw** | Rust-based minimal | High-performance agents |
+| **OpenClaude** | OpenClaude + 1Claw sidecar | Automations Assist, NL workflow authoring |
 | **Custom Docker** | Any Dockerfile | Full control |
 
 ## Create via dashboard
@@ -82,6 +83,20 @@ Runtimes support git-based deployment. Specify a repo URL and the runtime clones
 ```
 
 The container runs `pip install -r requirements.txt` (Python) or `npm install` (Node.js) then executes the entrypoint.
+
+### Agent pre-auth at start
+
+Runtime images accept **`ONECLAW_AGENT_TOKEN`** (or `ONECLAW_TOKEN`) at container start so the sidecar can authenticate without embedding long-lived API keys in your repo:
+
+```bash
+1claw runtime create \
+  --name "my-agent" \
+  --template openclaude \
+  --preset medium \
+  --env ONECLAW_AGENT_TOKEN=vault://agents/me/token
+```
+
+When the runtime starts, Vault injects the agent JWT into the environment. Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a short-lived human token when authoring workflows from OpenClaude.
 
 ## Hosting
 
@@ -152,7 +167,7 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 # Stream logs in real-time
 1claw runtime logs <id> --follow
 
-# Last 100 lines
+# Last 100 log lines (API returns `{ entries: [{ timestamp?, message }] }`)
 1claw runtime logs <id> --tail 100
 ```
 

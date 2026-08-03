@@ -14,6 +14,17 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.43.2 — Webhook automations, event triggers, runtime logs (2026-08-03)
+
+#### Added
+- **Webhook automations** — `trigger_type: webhook` returns one-time `webhook_url` + `whk_` token on create. Public trigger: `POST /v1/automations/{id}/webhook/{token}`. Human-only rotation: `POST /v1/automations/{id}/rotate-webhook-token`.
+- **Event-trigger wiring** — Automations with `trigger_type: event` and `event_filter.event_type` fire on `secret.created/updated/rotated/deleted` and `policy.created/updated/deleted`.
+- **Automations Assist** — `POST /v1/automations/assist/draft` and `/assist/session` documented in OpenAPI; dashboard Assist flow + OpenClaude runtime template.
+- **Runtime logs API** — `GET /v1/runtimes/{id}/logs?tail=N` returns `{ entries: [...] }` (replaces legacy `lines`/`since` query params). SDK `runtimes.logs()`, MCP `runtime_logs` use `tail`.
+
+#### Clients
+- OpenAPI **2.31.0** / `@1claw/openapi-spec@0.43.2`, `@1claw/sdk@0.43.2`, `@1claw/mcp@0.43.2`.
+
 ### v0.43.1 — Automations workflow_spec + runtime interactive shell (2026-08-03)
 
 #### Fixed / clarified
