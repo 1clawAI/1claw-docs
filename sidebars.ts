@@ -307,6 +307,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/principal-type-audit",
+                            label: "Principal-type audit — allowlist vs denylist",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/embedded-wallets-quickstart",
                             label: "Embedded wallets — 2-minute quickstart",
                         },
