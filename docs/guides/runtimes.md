@@ -129,6 +129,23 @@ https://{slug}.run.1claw.xyz
 | Business | 25 | 2,000 |
 | Enterprise | Custom | Custom |
 
+## Interactive shell
+
+Enable `shell_access_enabled` on the runtime (dashboard Terminal settings or API) to open an interactive PTY in the browser.
+
+```bash
+# API: create a short-lived shell session (human-only, step-up auth)
+curl -X POST "https://api.1claw.xyz/v1/runtimes/$RUNTIME_ID/shell/session" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"..."}'
+# → { "session_token", "ws_url", "expires_in", "max_session_minutes" }
+```
+
+Step-up options: account `password`, `totp_code`, WebAuthn `passkey_credential` (after `POST .../shell/passkey/begin`), or a `reauth_token` from `POST /v1/auth/reauth` with purpose `runtime_shell`.
+
+SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Terminal tab connects a binary WebSocket to `ws_url`. Vault may auto-repair Cloud Run invoker IAM and reconcile the shroud sidecar on connect; enabling shell while a runtime is already running may require stop/start so the sidecar is injected.
+
 ## Logs and monitoring
 
 ```bash
