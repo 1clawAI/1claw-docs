@@ -1,27 +1,42 @@
 ---
-title: Hosting
-description: Expose your agent runtime to the internet with a public URL and inbound authentication.
+title: Runtime Hosting
+description: Expose Cloud Runtimes to the internet with public URLs, slug-based routing, and inbound authentication.
 sidebar_label: "Hosting — public URLs for agent runtimes"
+sidebar_position: 21
 ---
 
-# Hosting
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-Hosting turns your Cloud Runtime into a public HTTP endpoint. Agents get a stable URL at `{slug}.run.1claw.xyz` with built-in authentication and inspection.
+# Runtime Hosting
 
-## How hosting works
+Runtime Hosting gives your Cloud Runtimes a public HTTP endpoint at `{slug}.run.1claw.xyz`. Use it to expose agent APIs, webhooks, or dashboards — no load balancer or DNS configuration needed.
 
-When you enable `expose_http` on a runtime, 1Claw:
-
-1. Assigns a public URL: `https://{slug}.run.1claw.xyz`
-2. Routes inbound traffic to your container's HTTP port (default: 8080)
-3. Enforces your chosen authentication mode
-4. Optionally proxies through Shroud for inbound inspection
+## How it works
 
 ```
-Client → slug.run.1claw.xyz → [Auth] → [Shroud?] → Container:8080
+Client                     1Claw Edge                    Your Runtime Container
+  │                            │                                │
+  │  GET https://my-bot.       │                                │
+  │    run.1claw.xyz/chat      │                                │
+  │  ──────────────────────►   │                                │
+  │                            │  1. Route by slug               │
+  │                            │  2. Verify inbound auth         │
+  │                            │  3. Forward to container  ───►  │
+  │                            │                                │
+  │  ◄──────────────────────── │  ◄──── Response                │
 ```
 
-## Quick start
+1. A request arrives at `{slug}.run.1claw.xyz`
+2. The edge resolves the slug to a running runtime
+3. Inbound auth is enforced (if configured)
+4. The request is forwarded to the container's HTTP port
+5. If the runtime is idle-stopped, it auto-starts (cold start ~2–5s)
+
+## Enable hosting
+
+<Tabs groupId="code-examples">
+<TabItem value="cli" label="CLI">
 
 ```bash
 # Create a runtime with hosting enabled
@@ -33,112 +48,174 @@ Client → slug.run.1claw.xyz → [Auth] → [Shroud?] → Container:8080
   --slug "my-api-agent" \
   --inbound-auth api_key
 
-# Your agent is live at:
-# https://my-api-agent.run.1claw.xyz
+# Enable hosting on an existing runtime
+1claw runtime update <id> --expose-http --slug "my-api-agent"
 ```
 
-## Inbound authentication modes
-
-| Mode | Header | Use case |
-|------|--------|----------|
-| `api_key` | `Authorization: Bearer <key>` | Service-to-service, CI/CD |
-| `jwt` | `Authorization: Bearer <1claw-jwt>` | 1Claw agents/users calling each other |
-| `public` | None required | Webhooks, public APIs (use with caution) |
-
-### API key mode
-
-When `inbound_auth: "api_key"`, 1Claw generates a key at runtime creation. Callers must include it:
+</TabItem>
+<TabItem value="curl" label="curl">
 
 ```bash
-curl https://my-api-agent.run.1claw.xyz/chat \
-  -H "Authorization: Bearer rt_abc123..." \
+curl -X POST "https://api.1claw.xyz/v1/runtimes" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello"}'
+  -d '{
+    "name": "my-api-agent",
+    "template": "node",
+    "preset": "medium",
+    "expose_http": true,
+    "slug": "my-api-agent",
+    "inbound_auth": "api_key"
+  }'
 ```
 
-### JWT mode
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
 
-Validates 1Claw JWTs (from `POST /v1/auth/agent-token` or user login). Useful for agent-to-agent communication within the same org.
+```typescript
+const { data: runtime } = await client.runtimes.create({
+  name: "my-api-agent",
+  template: "node",
+  preset: "medium",
+  expose_http: true,
+  slug: "my-api-agent",
+  inbound_auth: "api_key",
+});
+console.log(runtime.public_url); // https://my-api-agent.run.1claw.xyz
+```
 
-### Public mode
+</TabItem>
+</Tabs>
 
-No authentication — anyone can call the endpoint. Recommended only for webhook receivers or public-facing APIs with their own auth layer.
+## Public URL format
 
-## Slug validation
+```
+https://{slug}.run.1claw.xyz
+```
 
-Slugs must be:
-- 3–63 characters
-- Lowercase alphanumeric + hyphens
-- No leading/trailing hyphens
-- Not a reserved word (`api`, `admin`, `www`, `status`, `app`, etc.)
+All paths and query parameters are forwarded as-is to your container. The container must listen on the configured `http_port` (default: 8080).
 
-Released slugs have a **30-day cooldown** before reuse.
+## Inbound authentication
 
-Check availability:
+Control who can reach your runtime:
+
+| Mode | Header required | Use case |
+|------|----------------|----------|
+| `api_key` | `Authorization: Bearer <key>` | Private agent API |
+| `jwt` | `Authorization: Bearer <1claw-jwt>` | 1Claw agent/user auth |
+| `public` | None | Public webhooks, status pages |
+
+### API key auth
+
+When `inbound_auth: "api_key"`, the runtime gets an auto-generated inbound API key. Callers must include it as a Bearer token. The key is available from `GET /v1/runtimes/{id}` (human-only).
+
+### JWT auth
+
+When `inbound_auth: "jwt"`, the edge validates the incoming token as a 1Claw JWT (agent or user). The request is rejected with 401 if the token is invalid or expired.
+
+### Public
+
+No authentication. Use for:
+- Webhook receivers
+- Health check endpoints
+- Public-facing agent UIs
+
+:::warning
+Public endpoints are accessible to anyone on the internet. Rate limiting is applied at the edge, but you should implement application-level auth if the endpoint handles sensitive data.
+:::
+
+## Slug rules
+
+| Rule | Requirement |
+|------|-------------|
+| Length | 3–63 characters |
+| Characters | Lowercase alphanumeric + hyphens |
+| Start/end | Must not start or end with a hyphen |
+| Reserved | `api`, `admin`, `status`, `www`, `mail`, etc. |
+| Cooldown | 30-day cooldown after a slug is released |
+
+### Check availability
 
 ```bash
 1claw runtime slug-check my-agent-name
-# ✓ "my-agent-name" is available
 ```
-
-## A2A agent discovery
-
-Hosted runtimes automatically serve `/.well-known/agent.json` for [Agent-to-Agent (A2A)](https://google.github.io/A2A/) discovery:
-
-```json
-{
-  "name": "my-api-agent",
-  "description": "Research assistant with web search",
-  "url": "https://my-api-agent.run.1claw.xyz",
-  "capabilities": ["chat", "search"],
-  "authentication": {
-    "type": "bearer",
-    "scheme": "1claw-jwt"
-  }
-}
-```
-
-Configure the A2A card via the dashboard or `PATCH /v1/agents/{id}/discovery`.
-
-Combined with the [Agent Directory](/docs/guides/agent-directory), this enables agents to discover and communicate with each other.
-
-## Security: inbound inspection proxy
-
-For runtimes with Shroud enabled, inbound requests pass through an inspection layer:
-
-- **Secret detection** — blocks requests containing leaked credentials
-- **Injection scoring** — flags prompt injection attempts
-- **Rate limiting** — per-IP and per-key limits
-- **Body size limits** — 5 MB max request body
-
-Enable via the dashboard runtime settings or:
 
 ```bash
-1claw runtime update <id> --shroud-inbound true
+curl "https://api.1claw.xyz/v1/runtimes/slug-check/my-agent-name" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## Custom domains (coming soon)
+## Cold start behavior
 
-Custom domain support is on the roadmap. You'll be able to:
+If a runtime is stopped (idle timeout or manual stop), the first inbound request triggers an auto-start. During the cold start (~2–5s), the request is queued and forwarded once the container is ready.
+
+To avoid cold starts for latency-sensitive endpoints, disable idle timeout:
 
 ```bash
-1claw runtime update <id> --custom-domain api.mycompany.com
+1claw runtime update <id> --idle-timeout 0
 ```
 
-For now, use a CNAME or reverse proxy pointing to `{slug}.run.1claw.xyz`.
+## Custom port
 
-## Configuration reference
+By default, the edge forwards to port 8080. If your application listens on a different port:
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `expose_http` | `false` | Enable public URL |
-| `slug` | auto-generated | URL slug |
-| `http_port` | `8080` | Container port to route to |
-| `inbound_auth` | `api_key` | Authentication mode |
-| `idle_timeout_secs` | `300` (Free) / `900` (Pro+) | Auto-stop after inactivity |
+```bash
+1claw runtime update <id> --http-port 3000
+```
+
+## HTTPS and TLS
+
+All `*.run.1claw.xyz` subdomains are automatically covered by a wildcard TLS certificate. You don't need to manage certificates. All traffic is encrypted end-to-end.
+
+## API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/runtimes` | Create runtime (with hosting config) |
+| `PATCH` | `/v1/runtimes/{id}` | Update hosting settings |
+| `GET` | `/v1/runtimes/slug-check/{slug}` | Check slug availability |
+
+## Dashboard
+
+On the runtime detail page:
+1. Toggle **Expose HTTP** to enable/disable hosting
+2. Set the **Slug** (auto-checks availability)
+3. Choose **Inbound Auth** mode
+4. Copy the public URL
+
+## Example: expose a FastAPI agent
+
+```python
+# agent.py
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.post("/chat")
+async def chat(body: dict):
+    # Your agent logic here
+    return {"response": "Hello from the cloud!"}
+```
+
+```bash
+1claw runtime create \
+  --name "fastapi-agent" \
+  --template python \
+  --preset small \
+  --expose-http \
+  --slug "fastapi-agent" \
+  --inbound-auth public \
+  --env PORT=8080
+```
+
+Your agent is now live at `https://fastapi-agent.run.1claw.xyz/chat`.
 
 ## Next steps
 
-- [Cloud Runtimes](/docs/guides/runtimes) — full runtime configuration
-- [Agent Discovery](/docs/guides/agent-directory) — list your agent in the public directory
-- [Shroud](/docs/guides/shroud) — protect inbound and outbound traffic
+- [Cloud Runtimes](/docs/guides/runtimes) — compute presets and lifecycle management
+- [Automations](/docs/guides/automations) — trigger runtimes on a schedule
+- [Shroud](/docs/guides/shroud) — route runtime LLM traffic through the TEE proxy

@@ -352,6 +352,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/agent-memory",
                             label: "Agent Memory — scratch, durable, semantic storage",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/agent-discovery",
+                            label: "Agent Discovery — directory, A2A, MCP URLs",
+                        },
                     ],
                 },
                 {
