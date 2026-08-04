@@ -86,17 +86,11 @@ The container runs `pip install -r requirements.txt` (Python) or `npm install` (
 
 ### Agent pre-auth at start
 
-Runtime images accept **`ONECLAW_AGENT_TOKEN`** (or `ONECLAW_TOKEN`) at container start so the sidecar can authenticate without embedding long-lived API keys in your repo:
+When a runtime starts, Vault mints a short-lived agent JWT and mounts it into the container via **Secret Manager** (`secretKeyRef`) as `ONECLAW_AGENT_TOKEN` / `ONECLAW_TOKEN` — so CreateService audit logs never embed plaintext JWTs. Do not put long-lived API keys in `env_public`.
 
-```bash
-1claw runtime create \
-  --name "my-agent" \
-  --template openclaude \
-  --preset medium \
-  --env ONECLAW_AGENT_TOKEN=vault://agents/me/token
-```
+If the bound agent has **`shroud_enabled`**, Vault also enables the sidecar + sets `ONECLAW_SHROUD_*` and points common LLM base URLs at the in-container proxy (`127.0.0.1:8082`).
 
-When the runtime starts, Vault injects the agent JWT into the environment. Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a short-lived human token when authoring workflows from OpenClaude.
+Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a short-lived human token when authoring workflows from OpenClaude.
 
 ## Hosting
 
@@ -144,6 +138,19 @@ https://{slug}.run.1claw.xyz
 | Business | 25 | 2,000 |
 | Enterprise | Custom | Custom |
 
+## Runtime Chat (Hermes / OpenClaw / OpenClaude)
+
+On the runtime detail **Terminal** panel, **Chat** sits next to **Shell**. Messages go:
+
+`Dashboard → POST /v1/runtimes/{id}/chat` (Vault proxy, SSE) → in-container OpenAI-compatible bridge on `USER_PORT` → sidecar/Shroud LLM.
+
+```bash
+# SDK
+client.runtimes.chat(runtimeId, { message: "Reply with OK", stream: true })
+```
+
+Stop → Start (or Rebuild) after image updates so the chat-bridge process is present. Prefer `shroud_enabled` on the bound agent for in-container LLM routing.
+
 ## Interactive shell
 
 Enable `shell_access_enabled` on the runtime (dashboard Terminal settings or API) to open an interactive PTY in the browser.
@@ -171,7 +178,13 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 1claw runtime logs <id> --tail 100
 ```
 
-In the dashboard, the runtime detail page shows a live log viewer with search and severity filtering.
+**Security:**
+
+- GCP Cloud Audit entries are excluded / summarized — full CreateService specs (env vars) are never returned to clients.
+- JWTs, API keys, and secret-shaped assignments are redacted server-side (and again in the dashboard as defense-in-depth).
+- Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
+
+API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
 
 ## Idle auto-stop
 

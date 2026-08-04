@@ -65,7 +65,9 @@ Humans can draft automations without raw JSON:
 | `POST /v1/automations/assist/draft` | `{ "message": "rotate stripe key weekly" }` → reviewable draft + `workflow_spec` |
 | `POST /v1/automations/assist/session` | Mint a 15-minute user JWT for OpenClaude/CLI assist (`access_token`, optional `runtime_id`) |
 
-Dashboard: **Automations → Assist** (recommended path on the create page).
+Dashboard: **Automations → Assist** (recommended path on the create page). After draft, review a **structured step editor** (one card per step, type-specific fields and selectors for swap/http/wait/etc.) — not a raw JSON wall. Advanced JSON remains available collapsed. Confirm & create is disabled until fields validate.
+
+When the bound agent has **`shroud_enabled`**, swap / submit_transaction steps sign via Shroud (TEE) after Vault quote/guardrails.
 
 ## Quickstart
 

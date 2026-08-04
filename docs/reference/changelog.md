@@ -14,6 +14,21 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.43.3 — Runtime Chat, Assist step editor, log security (2026-08-04)
+
+#### Added
+- **Runtime Chat** — `POST /v1/runtimes/{id}/chat` (SSE); Chat tab next to Shell for hermes/openclaw/openclaude; OpenAI-compatible in-container bridge.
+- **Automations Assist step editor** — type-specific editable fields + selectors; Advanced JSON collapsed.
+- **Logs step-up unlock** — `POST /v1/runtimes/{id}/logs/unlock` (password or passkey reauth, purpose `runtime_logs`, 15 min grant).
+
+#### Security
+- Runtime logs exclude/summarize GCP audit payloads and redact JWTs/API keys server-side.
+- Agent JWTs mounted via Secret Manager `secretKeyRef` so CreateService audit logs do not embed plaintext tokens.
+- When `agent.shroud_enabled`, runtimes enable sidecar/Shroud LLM path; automation swap/submit route signing through Shroud.
+
+#### Clients
+- `@1claw/openapi-spec` / `@1claw/sdk` / `@1claw/cli` **0.43.3**; `@1claw/agentkit` **0.43.2**; `@1claw/plugin-elizaos` **0.2.1**.
+
 ### v0.43.2 — Webhook automations, event triggers, runtime logs (2026-08-03)
 
 #### Added
