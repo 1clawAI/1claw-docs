@@ -479,7 +479,7 @@ The MCP server at mcp.1claw.xyz provides **49 tools** (plus `vault://secrets` re
 - execute_http, execute_intent, list_bindings, create_binding, test_binding, list_executions
 - inspect_content (works without vault credentials; always available)
 
-Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.41.4`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
+Configure in Claude Desktop, Cursor, or any MCP-compatible client. Pin `@1claw/mcp@0.43.2`. Only `ONECLAW_AGENT_API_KEY` is required — agent ID and vault are auto-discovered.
 
 ## Containerized Agent Runtime (`1claw init --docker`, v0.36.0)
 

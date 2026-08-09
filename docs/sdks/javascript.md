@@ -169,7 +169,7 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) (27 runnable demos). Highlights:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 runnable demos). Highlights:
 
 | Example | What it demonstrates |
 | ------- | -------------------- |
@@ -188,6 +188,24 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (27 run
 | [x402-payments](https://github.com/1clawAI/1claw-examples/tree/main/x402-payments) | Real x402 micropayments against 1Claw endpoints |
 | [ampersend-x402](https://github.com/1clawAI/1claw-examples/tree/main/ampersend-x402) | Ampersend smart-account x402 + MCP/HTTP clients |
 | [anthropic-wif](https://github.com/1clawAI/1claw-examples/tree/main/anthropic-wif) | OIDC federation → Anthropic Workload Identity |
+| [non-evm-keys](https://github.com/1clawAI/1claw-examples/tree/main/non-evm-keys) | Non-EVM signing + broadcast (Bitcoin, Solana, XRP, Cardano, Tron) |
+| [intents-quick](https://github.com/1clawAI/1claw-examples/tree/main/intents-quick) | Quick-start Intents API transaction signing |
+| [intents-layers](https://github.com/1clawAI/1claw-examples/tree/main/intents-layers) | Layered Intents with guardrails and simulation |
+| [multichain-agent](https://github.com/1clawAI/1claw-examples/tree/main/multichain-agent) | Chat UI: bootstrap + fund testnets + transact via Intents |
+| [arc-stablecoin](https://github.com/1clawAI/1claw-examples/tree/main/arc-stablecoin) | USDC transfer on Arc Testnet (stablecoin-native L2) |
+| [mpc-vault](https://github.com/1clawAI/1claw-examples/tree/main/mpc-vault) | MPC 2-of-2 and 2-of-3 vault flows |
+| [bankr-key-vending](https://github.com/1clawAI/1claw-examples/tree/main/bankr-key-vending) | Dynamic short-lived Bankr key leasing |
+| [payment-cards](https://github.com/1clawAI/1claw-examples/tree/main/payment-cards) | Order prepaid/gift cards via x402 |
+| [execution-intents](https://github.com/1clawAI/1claw-examples/tree/main/execution-intents) | HTTP/GraphQL bindings with server-side credential injection |
+| [automations](https://github.com/1clawAI/1claw-examples/tree/main/automations) | Schedule agents on cron or webhook triggers |
+| [agent-memory](https://github.com/1clawAI/1claw-examples/tree/main/agent-memory) | Durable and scratch memory with TTL expiry |
+| [cloud-runtime](https://github.com/1clawAI/1claw-examples/tree/main/cloud-runtime) | Deploy agents to managed cloud runtimes |
+| [agent-discovery](https://github.com/1clawAI/1claw-examples/tree/main/agent-discovery) | Publish agents to the public directory |
+| [google-a2a](https://github.com/1clawAI/1claw-examples/tree/main/google-a2a) | Multi-agent communication with vault credentials |
+| [jwt-ttl-defense](https://github.com/1clawAI/1claw-examples/tree/main/jwt-ttl-defense) | Prompt-injection JWT theft contained by 3-second TTL |
+| [shroud-security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security) | Shroud threat detection filters |
+| [logos-chat](https://github.com/1clawAI/1claw-examples/tree/main/logos-chat) | E2E encrypted agent-to-agent chat over Logos/Waku |
+| [local-inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect) | Detect threats in LLM output locally — no account needed |
 | [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
 
 Full catalog and run instructions: [examples README](https://github.com/1clawAI/1claw-examples#readme). From the monorepo: `./examples/scripts/test-all-examples.sh`.

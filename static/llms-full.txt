@@ -18940,7 +18940,7 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) (27 runnable demos). Highlights:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 runnable demos). Highlights:
 
 | Example | What it demonstrates |
 | ------- | -------------------- |

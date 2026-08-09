@@ -135,11 +135,11 @@ print(client.resolved_agent_id)
 {
   "access_token": "eyJhbGciOiJFZERTQSIs...",
   "token_type": "Bearer",
-  "expires_in": 900
+  "expires_in": 3600
 }
 ```
 
-Use this as `Authorization: Bearer <access_token>` for subsequent requests. Token is short-lived (e.g. 1 hour).
+Use this as `Authorization: Bearer <access_token>` for subsequent requests. Token is short-lived (default 1 hour; agents with a custom `token_ttl_seconds` may differ — `expires_in` is the authoritative value).
 
 ## 2. List secrets you can access
 
