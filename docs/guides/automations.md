@@ -154,17 +154,20 @@ curl -X POST "https://api.1claw.xyz/v1/automations" \
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/v1/automations/presets` | List preset templates (public, no auth) |
 | `POST` | `/v1/automations` | Create automation |
-| `GET` | `/v1/automations` | List automations |
+| `GET` | `/v1/automations` | List automations (enriched with stats) |
 | `GET` | `/v1/automations/{id}` | Get automation detail |
 | `PATCH` | `/v1/automations/{id}` | Update automation |
 | `DELETE` | `/v1/automations/{id}` | Delete automation |
 | `POST` | `/v1/automations/{id}/trigger` | Manual trigger (authenticated) |
 | `POST` | `/v1/automations/webhook/{id}/{token}` | Public webhook trigger |
 | `POST` | `/v1/automations/{id}/rotate-webhook-token` | Rotate webhook token (human-only) |
-| `POST` | `/v1/automations/assist/draft` | NL → draft |
-| `POST` | `/v1/automations/assist/session` | Assist session JWT |
-| `GET` | `/v1/automations/{id}/runs` | List run history |
+| `POST` | `/v1/automations/assist/draft` | NL → draft (human-only) |
+| `POST` | `/v1/automations/assist/session` | Assist session JWT (human-only) |
+| `GET` | `/v1/automations/{id}/runs` | List run history (`limit`, `offset`) |
+| `GET` | `/v1/automations/{id}/runs/{run_id}` | Get run details |
+| `POST` | `/v1/automations/{id}/runs/{run_id}/cancel` | Cancel run (human-only) |
 
 ## Event triggers
 
@@ -184,16 +187,132 @@ Event payload is injected into the workflow as `_event` (`type` + `payload`).
 
 ## Workflow steps
 
-Steps run sequentially. Common step shapes:
+Steps run sequentially with context passing between them. Each step's output is available to subsequent steps via template variables.
 
-| `action` | Description |
-|----------|-------------|
-| `run_agent_task` | Invoke the linked agent with a prompt/message |
-| `execute_http` / `execute_intent` | HTTP or Execution Intent binding call |
-| `submit_transaction` | Intents API transaction (guardrails apply) |
-| `swap` | Scheduled DEX swap step (preset workflows) |
-| `rotate_generate` | Server-side secret rotation |
-| `notify` / `log` | Emit a notification or structured log step |
+### Step types reference
+
+| Type | Aliases | Description | Key params |
+|------|---------|-------------|------------|
+| `log` | `run_agent_task` | Log a message or invoke the agent | `message` or `params.prompt` |
+| `http` | `execute_http`, `http_request`, `webhook_alert`, `webhook_deliver` | HTTP request (SSRF-protected) | `url`, `method`, `headers`, `body` |
+| `wait` | — | Pause execution | `duration_secs` (max 30) |
+| `swap` | — | DEX token swap via 0x | `chain`, `token_in`, `token_out`, `amount_usd` or `sell_amount`, `dry_run?` |
+| `submit_transaction` | `sign_intent` | EVM transaction signing | `chain`, `to`, `value`, `data?`, `token_mint?`, `sign_only?`, `dry_run?` |
+| `execute_intent` | — | Execute via configured binding | `params.binding`, `params.params` |
+| `rotate_generate` | — | Server-side secret rotation | `params.vault_id`, `params.path`, `length` (8–1024), `charset` |
+| `ai_generate` | — | LLM text generation via Shroud or Vault | `prompt`, `system_prompt?`, `model?`, `provider?`, `max_tokens?` (max 16384) |
+| `memory_get` | — | Read agent memory | `namespace` (default `default`), `key` |
+| `memory_put` | — | Write agent memory | `namespace`, `key`, `value`, `tier`, `ttl_secs?` |
+| `memory_search` | — | Semantic search over agent memory | `namespace`, `query`, `top_k?` (max 50) |
+| `notify` | — | Send notifications | `channel` (`webhook`\|`slack`\|`email`), plus channel-specific params |
+| `approval_request` | — | Pause run for human approval | `action?`, `summary`, `reason?`, `risk_tier?` |
+| `condition` | — | Conditional branching | `expression`, `if_true[]`, `if_false[]` |
+
+:::tip
+Steps resolved by the `type` field in `workflow_spec`. Legacy `action` field is accepted as an alias.
+:::
+
+### Template variables
+
+Steps can reference outputs from previous steps and trigger payloads using `{{...}}` syntax. Variables are resolved recursively across the entire step JSON before execution.
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| `{{steps.<index>.<field>}}` | Output from a step by index | `{{steps.0.output}}` |
+| `{{steps.<name>.<field>}}` | Output from a step by name | `{{steps.dca_swap.output}}` |
+| `{{webhook_payload.<path>}}` | Webhook request body value | `{{webhook_payload.email}}` |
+| `{{trigger.<path>}}` | Alias for `webhook_payload` | `{{trigger.amount}}` |
+
+Nested JSON paths use dot-separated keys (e.g. `{{steps.balance.output.native_balance}}`). String values starting with `{` or `[` after substitution are parsed back as JSON.
+
+**Example — passing step output:**
+
+```json
+{
+  "steps": [
+    { "type": "http", "name": "fetch_price", "url": "https://api.example.com/price", "method": "GET" },
+    {
+      "type": "notify",
+      "params": {
+        "channel": "slack",
+        "url": "https://hooks.slack.com/...",
+        "text": "Current ETH price: {{steps.fetch_price.output}}"
+      }
+    }
+  ]
+}
+```
+
+### Conditional execution
+
+Two root-level fields on any step control whether it runs:
+
+| Field | Behavior |
+|-------|----------|
+| `skip_if` | Step is skipped when expression evaluates truthy |
+| `run_if` | Step only runs when expression evaluates truthy |
+
+**Operators:** `==`, `!=` (string equality), `contains` (substring), `>`, `<`, `>=`, `<=` (numeric), or bare truthy (non-empty, not `false`/`0`/`null`).
+
+```json
+{
+  "type": "notify",
+  "skip_if": "{{steps.check.http_status}} == 200",
+  "params": { "channel": "slack", "url": "...", "text": "Service is down!" }
+}
+```
+
+```json
+{
+  "type": "http",
+  "run_if": "{{webhook_payload.enabled}} == true",
+  "url": "https://api.example.com/deploy",
+  "method": "POST"
+}
+```
+
+The `condition` step type provides full if/else branching:
+
+```json
+{
+  "type": "condition",
+  "params": {
+    "expression": "{{steps.0.output}} contains error",
+    "if_true": [
+      { "type": "notify", "params": { "channel": "email", "to": "ops@example.com", "subject": "Error detected" } }
+    ],
+    "if_false": [
+      { "type": "log", "params": { "message": "All clear" } }
+    ]
+  }
+}
+```
+
+Sub-steps within `if_true`/`if_false` are limited to: `log`, `http`, `notify`, `ai_generate`, `memory_get`, `memory_put`.
+
+## Presets
+
+`GET /v1/automations/presets` (public, no auth) returns 10 marketing-ready templates you can use as starting points:
+
+| Preset | Trigger | Use case |
+|--------|---------|----------|
+| `rotate-api-keys-weekly` | cron | Security — rotate secrets on a schedule |
+| `daily-dca-buy` | cron | DeFi — dollar-cost averaging |
+| `health-check-alert` | cron | Monitoring — ping services, alert on failure |
+| `database-sync` | cron | Integration — sync data between systems |
+| `weekly-content-draft` | cron | Marketing — AI-generated content drafts |
+| `lead-nurture-email` | webhook | Marketing — trigger email sequences |
+| `competitor-watch` | cron | Intelligence — track competitor changes |
+| `sentiment-alert` | webhook | Monitoring — react to sentiment signals |
+| `campaign-report` | cron | Reporting — scheduled campaign summaries |
+| `monitor-balance` | cron | Monitoring — wallet balance alerts |
+
+Each preset includes `description`, `workflow_spec`, `default_cron`, `estimated_cost_per_run`, and optional `trigger_type`.
+
+```bash
+# Fetch presets via CLI
+curl https://api.1claw.xyz/v1/automations/presets | jq '.[].name'
+```
 
 ## Run history
 
@@ -205,11 +324,22 @@ Every trigger produces a **run** with status, duration, and output:
 
 | Status | Meaning |
 |--------|---------|
-| `pending` | Queued, not yet started |
 | `running` | Currently executing |
-| `completed` / `success` | Finished without error |
-| `failed` / `error` | Failed (see `error` field) |
-| `denied` | Guardrail / policy rejection |
+| `success` | Finished without error |
+| `failed` | Failed (see `error` field) |
+| `timed_out` | Exceeded 300-second timeout |
+| `cancelled` | Cancelled by a human user |
+| `awaiting_approval` | Paused on an `approval_request` step |
+
+### Cancel a run
+
+Human users can cancel in-progress or approval-waiting runs:
+
+```
+POST /v1/automations/{automation_id}/runs/{run_id}/cancel
+```
+
+Only runs with status `running` or `awaiting_approval` are cancellable. Agents receive 403 — only humans can cancel runs.
 
 ## MCP tools
 

@@ -14,6 +14,36 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.43.4 — Automations v2: Workflow Engine, SDK ESM fix, Python SDK (2026-08-10)
+
+#### Automations v2 — Workflow Engine
+- **New:** 7 new step types — `ai_generate` (LLM text generation via Shroud), `memory_get`, `memory_put`, `memory_search` (agent memory CRUD), `notify` (webhook/slack/email notifications), `approval_request` (human-in-the-loop gate), `condition` (if/else branching with sub-steps).
+- **New:** Template variable syntax — `{{steps.<index_or_name>.<field>}}` for referencing previous step outputs, `{{webhook_payload.<path>}}` for webhook trigger data. Applied recursively before step execution.
+- **New:** Conditional execution — `skip_if` and `run_if` string expressions on any step (operators: `==`, `!=`, `contains`, `>`, `<`, `>=`, `<=`, truthy).
+- **New:** Cancel run endpoint — `POST /v1/automations/{id}/runs/{run_id}/cancel` (human-only; cancels `running` and `awaiting_approval` runs).
+- **New:** Enriched list API — `GET /v1/automations` returns `last_run_status`, `total_runs` (30-day), `success_rate` (percentage), and `agent_name`.
+- **New:** 10 marketing-ready presets — `GET /v1/automations/presets` (public): rotate-api-keys-weekly, daily-dca-buy, health-check-alert, database-sync, weekly-content-draft, lead-nurture-email, competitor-watch, sentiment-alert, campaign-report, monitor-balance.
+- **New:** `context` JSONB column on `automation_runs` for step output persistence.
+- **DB:** Migration 165 (workflow engine v2 — `context` column + index on `automation_runs`).
+
+#### SDK 0.43.4 — ESM fix
+- **Fixed:** ESM module resolution corrected for bundler-free environments (Node.js `--conditions`, Deno, Bun). Named exports now work correctly with `import { createClient } from '@1claw/sdk'`.
+
+#### Runtime max_tokens fix
+- **Fixed:** `max_tokens` parameter now correctly passed through to LLM providers in runtime chat and automation `ai_generate` steps.
+
+#### Python SDK 0.43.4
+- **New:** `oneclaw` Python SDK updated to 0.43.4 — automation support (`client.automations.create/list/trigger`), memory CRUD (`client.memory.store/search/list`), runtime management, and discovery.
+
+#### Dashboard
+- **New:** Automation create wizard includes preset gallery with one-click deployment.
+- **New:** Enriched automation list shows last run status, success rate, and total runs.
+- **New:** Cancel button on running automation detail page.
+- **New:** Automations Assist page at `/automations/assist` with visual step editor.
+
+#### Clients
+- `@1claw/sdk@0.43.4`, `@1claw/cli@0.43.4`, `@1claw/mcp@0.43.4`, `@1claw/openapi-spec@0.43.4`, `oneclaw` (Python) `0.43.4`.
+
 ### v0.43.3 — Runtime Chat, Assist step editor, log security (2026-08-04)
 
 #### Added
