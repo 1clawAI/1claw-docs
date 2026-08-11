@@ -38,6 +38,10 @@ All endpoints are under **/v1**.
 | POST   | `/v1/auth/change-password`  | Change password                                     |
 | POST   | `/v1/auth/forgot-password`  | Request password reset email (returns `status`: `email_sent`, `no_account`, or `social_account`) |
 | POST   | `/v1/auth/reset-password`   | Complete password reset with email token             |
+| POST   | `/v1/auth/set-password`     | Set password for OIDC-provisioned users (no existing password) |
+| POST   | `/v1/auth/change-email`     | Initiate email change (sends verification code)     |
+| POST   | `/v1/auth/verify-email-change` | Complete email change with verification code     |
+| POST   | `/v1/auth/reauth`           | Step-up re-authentication (returns `reauth_token`)  |
 
 ## Account Management
 
@@ -241,6 +245,176 @@ Requires `intents_api_enabled: true` on the agent. When enabled, the agent is al
 | POST   | `/v1/agents/:agent_id/transactions/simulate-bundle` | Simulate a bundle of sequential transactions (approve + swap)  |
 | POST   | `/v1/agents/:agent_id/sign`                         | Unified sign: EIP-191, EIP-712, or transaction (types 0–4)    |
 
+## Secret Versioning & Rotation
+
+| Method | Path                                                           | Description                                     |
+| ------ | -------------------------------------------------------------- | ----------------------------------------------- |
+| GET    | `/v1/vaults/:vault_id/secret-versions/*path`                   | List all versions of a secret (newest first)    |
+| GET    | `/v1/vaults/:vault_id/secret-version/*path/:version`           | Get a specific version of a secret              |
+| POST   | `/v1/vaults/:vault_id/secret-version/*path/:version/disable`   | Disable a version (retained for audit, 410 on read) |
+| POST   | `/v1/vaults/:vault_id/secret-rotate/*path`                     | Server-side rotation (generate new random value) |
+
+## Agent Memory
+
+Three-tier memory: scratch (TTL-based), durable (persistent KV), and semantic (vector-indexed). Encrypted at rest. Requires `memory_enabled: true` on agent.
+
+| Method | Path                                                  | Description                                |
+| ------ | ----------------------------------------------------- | ------------------------------------------ |
+| GET    | `/v1/agents/:agent_id/memory`                         | List memory namespaces                     |
+| GET    | `/v1/agents/:agent_id/memory/:namespace`               | List entries in a namespace                |
+| PUT    | `/v1/agents/:agent_id/memory/:namespace/:key`          | Upsert a memory entry                     |
+| GET    | `/v1/agents/:agent_id/memory/:namespace/:key`          | Get a memory entry                         |
+| DELETE | `/v1/agents/:agent_id/memory/:namespace/:key`          | Delete a memory entry                      |
+| POST   | `/v1/agents/:agent_id/memory/search`                   | Semantic search (`{ namespace, query, top_k }`) |
+
+## Automations
+
+Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows. Multi-step pipelines with 14 step types.
+
+| Method | Path                                                                  | Description                                  |
+| ------ | --------------------------------------------------------------------- | -------------------------------------------- |
+| GET    | `/v1/automations/presets`                                             | List marketing-ready automation presets (public) |
+| POST   | `/v1/automations`                                                     | Create automation (requires `workflow_spec` + `agent_id`) |
+| GET    | `/v1/automations`                                                     | List automations (enriched with stats)       |
+| GET    | `/v1/automations/:id`                                                 | Get automation details                       |
+| PATCH  | `/v1/automations/:id`                                                 | Update automation                            |
+| DELETE | `/v1/automations/:id`                                                 | Delete automation                            |
+| POST   | `/v1/automations/:id/trigger`                                         | Manually trigger an automation               |
+| GET    | `/v1/automations/:id/runs`                                            | List automation runs                         |
+| GET    | `/v1/automations/:id/runs/:run_id`                                    | Get run details                              |
+| POST   | `/v1/automations/:id/runs/:run_id/cancel`                             | Cancel a running/awaiting run (human-only)   |
+| POST   | `/v1/automations/webhook/:id/:token`                                  | Public webhook trigger                       |
+| POST   | `/v1/automations/:id/rotate-webhook-token`                            | Rotate webhook token (human-only)            |
+| POST   | `/v1/automations/assist/draft`                                        | NL → workflow heuristic parser (human-only)  |
+| POST   | `/v1/automations/assist/session`                                      | Create 15-min assist session (human-only)    |
+
+## Cloud Runtimes
+
+Managed containers with lifecycle management, hosting, idle auto-stop, and interactive shell.
+
+| Method | Path                                            | Description                                  |
+| ------ | ----------------------------------------------- | -------------------------------------------- |
+| POST   | `/v1/runtimes`                                  | Create a runtime                             |
+| GET    | `/v1/runtimes`                                  | List runtimes                                |
+| GET    | `/v1/runtimes/:id`                              | Get runtime details                          |
+| PATCH  | `/v1/runtimes/:id`                              | Update runtime                               |
+| DELETE | `/v1/runtimes/:id`                              | Delete runtime                               |
+| POST   | `/v1/runtimes/:id/start`                        | Start a runtime                              |
+| POST   | `/v1/runtimes/:id/stop`                         | Stop a runtime                               |
+| GET    | `/v1/runtimes/:id/logs`                         | Get runtime logs                             |
+| GET    | `/v1/runtimes/slug-check/:slug`                 | Check slug availability for hosting          |
+| POST   | `/v1/runtimes/:id/shell/session`                | Create interactive shell session (human-only) |
+| POST   | `/v1/runtimes/:id/shell/passkey/begin`          | Begin passkey auth for shell access          |
+| POST   | `/v1/runtimes/:id/chat`                         | Chat with runtime agent (SSE streaming)      |
+| POST   | `/v1/runtimes/:id/chat/unlock`                  | Step-up auth to unlock runtime chat          |
+
+## Agent Chat
+
+Dashboard and API chat with agents via Shroud LLM proxy. Conversations persist across sessions.
+
+| Method | Path                                                              | Description                              |
+| ------ | ----------------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/chat`                                       | Send message (SSE streaming response)    |
+| POST   | `/v1/agents/:agent_id/chat/unlock`                                 | Step-up auth to unlock chat              |
+| GET    | `/v1/agents/:agent_id/chat/conversations`                          | List conversations                       |
+| GET    | `/v1/agents/:agent_id/chat/conversations/:id`                      | Get conversation with messages           |
+| DELETE | `/v1/agents/:agent_id/chat/conversations/:id`                      | Delete conversation                      |
+
+## Messaging Channels
+
+Connect agents to Telegram, WhatsApp, and Discord. Bi-directional messaging with auto-respond.
+
+| Method | Path                                                            | Description                              |
+| ------ | --------------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/channels`                                 | Create a channel                         |
+| GET    | `/v1/agents/:agent_id/channels`                                 | List agent's channels                    |
+| PATCH  | `/v1/agents/:agent_id/channels/:id`                              | Update channel                           |
+| DELETE | `/v1/agents/:agent_id/channels/:id`                              | Delete channel                           |
+| POST   | `/v1/agents/:agent_id/channels/:id/send`                         | Send outbound message                    |
+| POST   | `/v1/agents/:agent_id/channels/:id/test`                         | Test channel connectivity                |
+| POST   | `/v1/agents/:agent_id/channels/:id/refresh-webhook`              | Refresh/repair channel webhook           |
+| GET    | `/v1/agents/:agent_id/channels/:id/messages`                     | List channel messages                    |
+
+### Public channel webhook endpoints
+
+| Method | Path                                    | Description            |
+| ------ | --------------------------------------- | ---------------------- |
+| POST   | `/v1/webhooks/telegram/:webhook_path`   | Telegram inbound       |
+| GET/POST | `/v1/webhooks/whatsapp/:webhook_path` | WhatsApp inbound       |
+| POST   | `/v1/webhooks/discord/:webhook_path`    | Discord inbound        |
+
+## Agent Discovery
+
+Public agent directory and platform marketplace.
+
+| Method | Path                                       | Description                                  |
+| ------ | ------------------------------------------ | -------------------------------------------- |
+| GET    | `/v1/agents/directory`                     | Search public agent directory (no auth)      |
+| GET    | `/v1/agents/:agent_id/card`                | Get agent's public card (no auth)            |
+| PATCH  | `/v1/agents/:agent_id/discovery`           | Update discovery settings (human-only)       |
+| GET    | `/v1/platform/marketplace`                 | Browse platform app marketplace (no auth)    |
+
+## OAuth Connected Accounts
+
+Connect agents to external services via OAuth flows. Human-initiated, agent-consumed.
+
+| Method | Path                                                            | Description                              |
+| ------ | --------------------------------------------------------------- | ---------------------------------------- |
+| GET    | `/v1/oauth/providers`                                           | List available OAuth providers (public)  |
+| POST   | `/v1/agents/:agent_id/oauth/connect`                             | Initiate OAuth flow (human-only)         |
+| GET    | `/v1/agents/:agent_id/oauth/connections`                         | List agent's OAuth connections            |
+| POST   | `/v1/agents/:agent_id/oauth/disconnect/:binding_id`              | Revoke tokens and delete connection       |
+| POST   | `/v1/agents/:agent_id/oauth/app-credentials`                     | Save OAuth app credentials (human-only)  |
+| GET    | `/v1/agents/:agent_id/oauth/app-credentials`                     | List app credentials (secrets redacted)   |
+| DELETE | `/v1/agents/:agent_id/oauth/app-credentials/:provider_slug`     | Delete OAuth app credentials              |
+| GET    | `/v1/oauth/callback`                                             | OAuth provider callback (public)          |
+
+## Execution Intents (Bindings)
+
+Agent-to-service proxy with credential injection. Requires `execution_intents_enabled: true`.
+
+| Method | Path                                                               | Description                                  |
+| ------ | ------------------------------------------------------------------ | -------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/bindings`                                     | Create a binding (human-only)                |
+| GET    | `/v1/agents/:agent_id/bindings`                                     | List bindings                                |
+| GET    | `/v1/agents/:agent_id/bindings/:binding_id`                         | Get binding details                          |
+| PATCH  | `/v1/agents/:agent_id/bindings/:binding_id`                         | Update binding                               |
+| DELETE | `/v1/agents/:agent_id/bindings/:binding_id`                         | Delete binding                               |
+| POST   | `/v1/agents/:agent_id/bindings/:binding_id/test`                    | Test binding connectivity                    |
+| POST   | `/v1/agents/:agent_id/bindings/:binding_id/rotate-credential`       | Rotate binding credential (human-only)       |
+| POST   | `/v1/agents/:agent_id/execute`                                      | Execute via binding (credential injected)    |
+| GET    | `/v1/agents/:agent_id/executions`                                   | List execution events                        |
+
+## Payment Cards
+
+Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
+
+| Method | Path                                  | Description                                        |
+| ------ | ------------------------------------- | -------------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/cards/order`    | Order a card (Idempotency-Key required)            |
+| GET    | `/v1/cards`                           | List cards                                         |
+| GET    | `/v1/cards/:id`                       | Get card details (always masked)                   |
+| POST   | `/v1/cards/:id/reveal`                | Reveal full card details (human: re-auth; agent: policy) |
+| PATCH  | `/v1/cards/:id`                       | Update card (reveal policy, void_after)            |
+| POST   | `/v1/cards/:id/void`                  | Void a card                                        |
+| POST   | `/v1/cards/:id/refresh`               | Refresh card data from Laso                        |
+| POST   | `/v1/cards/import`                    | Import a card manually (human-only)                |
+| POST   | `/v1/cards/gift-cards/search`         | Search available gift cards                        |
+
+## Known Tokens Registry
+
+| Method | Path                            | Description                              |
+| ------ | ------------------------------- | ---------------------------------------- |
+| GET    | `/v1/tokens`                    | List known tokens (filterable by chain)  |
+| GET    | `/v1/chains/:chain/tokens`      | List tokens for a specific chain         |
+
+## Shroud Activity
+
+| Method | Path                   | Description                                    |
+| ------ | ---------------------- | ---------------------------------------------- |
+| GET    | `/v1/shroud/activity`  | List recent Shroud inspection events           |
+| POST   | `/v1/shroud/activity`  | Submit/query filtered Shroud activity          |
+
 ## Billing & Usage
 
 | Method | Path                  | Description                    |
@@ -436,6 +610,10 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | GET    | `/v1/platform/apps/:id/users`                 | List connected users                                             |
 | GET    | `/v1/platform/connected-apps`                 | List apps connected to calling user                              |
 | DELETE | `/v1/platform/connected-apps/:connection_id`  | Disconnect from platform app                                     |
+| POST   | `/v1/platform/connections/:id/grant`          | Grant platform app access to resources (user-only)               |
+| GET    | `/v1/platform/connections/:id/grants`         | List active resource grants for a connection                     |
+| DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
+| GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
 
 ---
 

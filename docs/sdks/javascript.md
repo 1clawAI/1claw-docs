@@ -106,6 +106,15 @@ All API endpoints are organized into resource modules:
 | `client.internalAccounts`  | `create()`, `list()`, `get()`, `transfer()`, `getLedger()`                                         |
 | `client.fiat`              | `createOnrampSession()`, `initiateOfframp()`                                                       |
 | `client.risk`              | `listEvents()`, `getVerdict()`, `listVerdicts()`, `createHoneytoken()`, `listHoneytokens()`, `deleteHoneytoken()` |
+| `client.memory`            | `put()`, `get()`, `list()`, `delete()`, `search()`, `listNamespaces()`                             |
+| `client.automations`       | `create()`, `list()`, `get()`, `update()`, `delete()`, `trigger()`, `rotateWebhookToken()`, `listRuns()`, `getRun()` |
+| `client.runtimes`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `start()`, `stop()`, `logs()`, `checkSlug()`, `createShellSession()`, `beginShellPasskey()` |
+| `client.discovery`         | `getAgentCard()`, `directory()`, `updateDiscovery()`, `marketplace()`                               |
+| `client.chat`              | `sendMessage()`, `sendMessageStream()`, `listConversations()`, `getConversation()`, `deleteConversation()` |
+| `client.oauthConnect`      | `listProviders()`, `listConnections()`, `connect()`, `disconnect()`, `saveAppCredentials()`, `listAppCredentials()`, `deleteAppCredentials()` |
+| `client.cards`             | `order()`, `list()`, `get()`, `reveal()`, `update()`, `void()`, `refresh()`, `import()`, `searchGiftCards()` |
+| `client.bindings`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `test()`, `execute()`, `rotateCredential()`, `listExecutions()` |
+| `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email
 

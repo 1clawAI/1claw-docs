@@ -975,7 +975,183 @@ Response uses API shape `{ entries: [{ timestamp?, message, level? }] }`.
 
 ---
 
-## runtime_status / list_runtimes / manage_runtime
+## runtime_status
 
-See [MCP overview](/docs/mcp/overview) for cloud runtime lifecycle tools (`list_runtimes`, `manage_runtime`, `runtime_status`).
+Get the current status of a cloud runtime.
+
+### Parameters
+
+| Name         | Type   | Required | Description    |
+| ------------ | ------ | -------- | -------------- |
+| `runtime_id` | string | Yes      | Runtime UUID   |
+
+---
+
+## list_runtimes
+
+List all cloud runtimes in the current organization.
+
+---
+
+## manage_runtime
+
+Start, stop, or delete a cloud runtime.
+
+### Parameters
+
+| Name         | Type   | Required | Description                            |
+| ------------ | ------ | -------- | -------------------------------------- |
+| `runtime_id` | string | Yes      | Runtime UUID                           |
+| `action`     | string | Yes      | `start`, `stop`, or `delete`           |
+
+---
+
+## put_memory
+
+Store a value in agent memory.
+
+### Parameters
+
+| Name        | Type   | Required | Description                                      |
+| ----------- | ------ | -------- | ------------------------------------------------ |
+| `namespace` | string | No       | Memory namespace (default `default`)             |
+| `key`       | string | Yes      | Memory key                                       |
+| `value`     | string | Yes      | Value to store (max 64KB)                        |
+| `tier`      | string | No       | `scratch` or `durable` (default `durable`)       |
+| `ttl_secs`  | number | No       | TTL in seconds (scratch tier only)               |
+
+---
+
+## get_memory
+
+Retrieve a value from agent memory.
+
+### Parameters
+
+| Name        | Type   | Required | Description                          |
+| ----------- | ------ | -------- | ------------------------------------ |
+| `namespace` | string | No       | Memory namespace (default `default`) |
+| `key`       | string | Yes      | Memory key                           |
+
+---
+
+## list_memory
+
+List memory entries in a namespace.
+
+### Parameters
+
+| Name        | Type   | Required | Description                          |
+| ----------- | ------ | -------- | ------------------------------------ |
+| `namespace` | string | No       | Memory namespace (default `default`) |
+
+---
+
+## delete_memory
+
+Delete a memory entry.
+
+### Parameters
+
+| Name        | Type   | Required | Description                          |
+| ----------- | ------ | -------- | ------------------------------------ |
+| `namespace` | string | No       | Memory namespace (default `default`) |
+| `key`       | string | Yes      | Memory key to delete                 |
+
+---
+
+## search_memory
+
+Semantic search over agent memory using vector similarity.
+
+### Parameters
+
+| Name        | Type   | Required | Description                          |
+| ----------- | ------ | -------- | ------------------------------------ |
+| `namespace` | string | No       | Memory namespace (default `default`) |
+| `query`     | string | Yes      | Natural language search query        |
+| `top_k`     | number | No       | Number of results (default 5, max 50)|
+
+---
+
+## send_chat_message
+
+Send a message to an agent and receive a response via Shroud LLM proxy.
+
+### Parameters
+
+| Name       | Type   | Required | Description                |
+| ---------- | ------ | -------- | -------------------------- |
+| `agent_id` | string | Yes      | Agent UUID                 |
+| `message`  | string | Yes      | Message content            |
+| `model`    | string | No       | LLM model override         |
+| `provider` | string | No       | LLM provider override      |
+
+---
+
+## list_chat_conversations
+
+List chat conversations for an agent.
+
+### Parameters
+
+| Name       | Type   | Required | Description    |
+| ---------- | ------ | -------- | -------------- |
+| `agent_id` | string | Yes      | Agent UUID     |
+
+---
+
+## create_channel
+
+Create a messaging channel (Telegram, WhatsApp, or Discord) for an agent.
+
+### Parameters
+
+| Name           | Type   | Required | Description                               |
+| -------------- | ------ | -------- | ----------------------------------------- |
+| `agent_id`     | string | Yes      | Agent UUID                                |
+| `channel_type` | string | Yes      | `telegram`, `whatsapp`, or `discord`      |
+| `channel_name` | string | Yes      | Display name for the channel              |
+| `metadata`     | object | No       | Channel-specific config (bot token, etc.) |
+
+---
+
+## list_channels
+
+List messaging channels for an agent.
+
+### Parameters
+
+| Name       | Type   | Required | Description    |
+| ---------- | ------ | -------- | -------------- |
+| `agent_id` | string | Yes      | Agent UUID     |
+
+---
+
+## send_channel_message
+
+Send an outbound message through a channel.
+
+### Parameters
+
+| Name         | Type   | Required | Description                   |
+| ------------ | ------ | -------- | ----------------------------- |
+| `agent_id`   | string | Yes      | Agent UUID                    |
+| `channel_id` | string | Yes      | Channel UUID                  |
+| `content`    | string | Yes      | Message content               |
+| `chat_id`    | string | No       | External chat/thread ID       |
+
+---
+
+## search_agent_directory
+
+Search the public agent directory.
+
+### Parameters
+
+| Name    | Type   | Required | Description                         |
+| ------- | ------ | -------- | ----------------------------------- |
+| `query` | string | No       | Search query                        |
+| `tags`  | string | No       | Comma-separated tag filter          |
+| `limit` | number | No       | Max results (default 20)            |
 
