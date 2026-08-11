@@ -204,7 +204,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions/sign" \
 
 ## Template Spec Reference
 
-The `spec` field is a JSON object with three top-level keys: `vault`, `agents`, and `policies`. All are optional — include only what you need.
+The `spec` field is a JSON object with five top-level keys: `vault`, `agents`, `policies`, `runtimes`, and `automations`. All are optional — include only what you need.
 
 ### `vault`
 
@@ -292,6 +292,60 @@ Array of access policies linking agents to vault paths.
   ]
 }
 ```
+
+### `runtimes` (v0.44+)
+
+Array of runtime definitions. Each entry creates a managed container for the agent.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | required | Runtime name |
+| `preset` | string | `"small"` | Compute preset: `small`, `medium`, `large`, `small-cc`, `medium-cc`, `large-cc` |
+| `image` | string | `""` | Container image |
+| `expose_http` | boolean | `false` | Enable public URL |
+
+```json
+{
+  "runtimes": [
+    {
+      "name": "trading-runtime",
+      "preset": "medium",
+      "image": "ghcr.io/myapp/agent:latest",
+      "expose_http": true
+    }
+  ]
+}
+```
+
+### `automations` (v0.44+)
+
+Array of automation definitions. Each entry creates a scheduled, webhook-triggered, or event-driven workflow.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | required | Automation name |
+| `trigger_type` | string | `"manual"` | `cron`, `webhook`, `event`, or `manual` |
+| `cron_expr` | string | — | Required for cron triggers |
+| `workflow_spec` | object | required | Workflow step definitions |
+
+```json
+{
+  "automations": [
+    {
+      "name": "nightly-rotate",
+      "trigger_type": "cron",
+      "cron_expr": "0 0 * * *",
+      "workflow_spec": {
+        "steps": [
+          { "type": "rotate_generate", "params": { "length": 32 } }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Bootstrapped runtime and automation IDs are tracked on the `platform_user_connections` record (`runtime_ids`, `automation_ids`).
 
 ---
 
@@ -710,10 +764,61 @@ function App() {
 
 ---
 
+## Delegation
+
+Platform apps can perform ongoing CRUD operations on connected user resources via **delegated access**. Users opt in per-connection; the platform's `plt_` key then acts on behalf of the user within scoped boundaries.
+
+### Enabling delegation
+
+Users toggle delegation for a specific platform app connection:
+
+```
+PATCH /v1/platform/connected-apps/{connectionId}
+{ "delegation_enabled": true, "delegation_scopes": ["secrets:read", "secrets:write"] }
+```
+
+### Using delegated access
+
+The platform sends the `X-Platform-Connection` header with its `plt_` key:
+
+```bash
+curl -X GET "https://api.1claw.xyz/v1/vaults" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "X-Platform-Connection: CONNECTION_ID"
+```
+
+Auth middleware resolves the caller as `principal_type: "platform_delegated"` with scoped permissions.
+
+### Available scopes
+
+| Scope | Access |
+|-------|--------|
+| `vaults:read` / `vaults:write` | Vault CRUD |
+| `agents:read` / `agents:write` | Agent CRUD |
+| `secrets:read` / `secrets:write` | Secret CRUD |
+| `automations:*` | Automation management |
+| `runtimes:*` | Runtime management |
+
+### Scope enforcement
+
+Delegation scopes are enforced on 4 handler groups: secrets, policies, bindings, and discovery. Disconnected connections (status `disconnected`) are rejected with 403.
+
+### SDK
+
+```typescript
+const scoped = client.platform.withConnection(connectionId);
+const vaults = await scoped.listVaults();
+```
+
+### Delegation log
+
+```
+GET /v1/platform/connected-apps/{connectionId}/delegation-log
+```
+
 ## Current Limitations
 
-- **Delegated token exchange** (RFC 8693 `DelegatedTokenRequest`) is defined but not yet wired. Platform operators cannot issue delegated JWTs on behalf of connected users.
-- **`plt_` keys** can see user metadata but cannot directly access user signing keys (`GET /v1/agents/{id}/signing-keys`). The org boundary prevents cross-org reads. Use the user's agent token or wait for delegated tokens.
+- **`plt_` keys** can see user metadata but cannot directly access user signing keys (`GET /v1/agents/{id}/signing-keys`). The org boundary prevents cross-org reads.
 
 ## Security
 

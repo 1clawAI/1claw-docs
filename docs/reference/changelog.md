@@ -14,6 +14,42 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.44.0 — Security fixes, platform delegation enforcement, channels, chat (2026-08-11)
+
+#### Security (C-1 Critical + 6 Medium + 8 Low)
+- **C-1 CRITICAL — Agent memory cross-org isolation** (migration 166): Shared memory entries could collide across orgs due to missing `org_id` in the unique index. Fixed by adding `org_id` to the constraint.
+- **M-2 — Automation runs status CHECK** (migration 167): Added `awaiting_approval` to the automation_runs status CHECK constraint.
+- **M-4 — Channel sender allowlist** (migration 168): Added `sender_allowlist` and `auto_respond_enabled` columns to agent channels for restricting which sender IDs can trigger auto-respond.
+- **M-5 — Telegram dedup** (migration 169): Track `last_telegram_update_id` per channel to prevent duplicate message processing.
+- **M-6 — Shared memory org validation**: Cross-org shared memory access prevented.
+- **Low**: Runtime chat rolling message cap, Cloud Run internal-only ingress, XFF bypass fix, agent token TTL reduced to 2h, step-up unlock prefix hardening, LLM billing gating improvements.
+
+#### Platform API
+- **Delegation scope enforcement**: `delegation_scopes` now enforced on 4 handler groups: secrets, policies, bindings, and discovery. Missing scope → 403.
+- **Disconnected connection rejection**: Operations on disconnected platform connections rejected with 403.
+- **Bootstrap runtimes & automations**: Template `spec` now supports `runtimes` and `automations` arrays. Bootstrap creates these resources and tracks IDs on the connection (`runtime_ids`, `automation_ids` — migration 170).
+- **Dashboard**: Platform audit page, key rotation UI, connected apps grant management with expandable panels.
+
+#### Agent Chat
+- **New**: Chat conversations between humans and agents via Shroud LLM proxy. Persistent conversation history with SSE streaming.
+- Endpoints: `POST /v1/agents/{id}/chat`, `POST .../chat/unlock`, `GET .../chat/conversations`, `GET/DELETE .../chat/conversations/{id}`.
+- SDK `client.chat.*`, MCP `send_chat_message`, `list_chat_conversations`.
+
+#### Messaging Channels
+- **New**: Connect agents to Telegram, WhatsApp, and Discord for bi-directional messaging with auto-respond.
+- Per-channel sender allowlists, WhatsApp HMAC verification, Telegram dedup.
+- Image generation delivery (DALL-E images delivered inline on Telegram and dashboard chat).
+- Endpoints: CRUD under `/v1/agents/{id}/channels`, webhook endpoints per platform.
+- MCP `create_channel`, `list_channels`, `send_channel_message`.
+
+#### Dashboard
+- Fixed: Automations detail page crash.
+- Improved: Assist NL mapping, automations wizard/assist UX, runtime chat code formatting.
+- Template Spec Builder supports runtime and automation entries.
+
+#### Clients
+- `@1claw/sdk`, `@1claw/cli`, `@1claw/mcp`, `@1claw/openapi-spec` updated.
+
 ### v0.43.4 — Automations v2: Workflow Engine, SDK ESM fix, Python SDK (2026-08-10)
 
 #### Automations v2 — Workflow Engine
