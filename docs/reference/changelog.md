@@ -16,6 +16,13 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ### v0.44.0 — Security fixes, platform delegation enforcement, channels, chat (2026-08-11)
 
+#### OAuth Connected Accounts
+- **New**: Universal OAuth integration for AI agents — connect agents to external services (Google, GitHub, X/Twitter, LinkedIn, Slack, Discord, Notion, Microsoft, Salesforce, HubSpot) via human-approved OAuth flows.
+- Provider registry seeded with 10 providers (migration 171). OAuth app credentials encrypted at rest (migration 172).
+- Endpoints: `GET /v1/oauth/providers`, `POST /v1/agents/{id}/oauth/connect`, `GET .../oauth/connections`, `POST .../oauth/disconnect/{bindingId}`, credential CRUD.
+- SDK `OAuthConnectResource`, MCP `list_oauth_providers`/`list_oauth_connections`, CLI `1claw oauth`.
+- Dashboard: `ConnectedAccountsCard` on agent detail page (Connections tab).
+
 #### Security (C-1 Critical + 6 Medium + 8 Low)
 - **C-1 CRITICAL — Agent memory cross-org isolation** (migration 166): Shared memory entries could collide across orgs due to missing `org_id` in the unique index. Fixed by adding `org_id` to the constraint.
 - **M-2 — Automation runs status CHECK** (migration 167): Added `awaiting_approval` to the automation_runs status CHECK constraint.
