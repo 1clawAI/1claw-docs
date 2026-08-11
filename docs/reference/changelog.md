@@ -14,6 +14,47 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.45.0 — Runtime Tool Registry, Sub-Agent Framework (2026-08-11)
+
+#### Runtime Tool Registry
+- **New:** 12 tool modules in `packages/runtime-base/templates/shared/tools/` provide runtime agents with structured capabilities:
+  - `image-gen.js` — DALL-E image generation (requires `shroud_enabled`)
+  - `web-search.js` — Web search via Brave/Tavily/SerpAPI
+  - `memory-tools.js` — Agent memory CRUD (requires `memory_enabled`)
+  - `file-handler.js` — Image analysis and URL reading
+  - `code-exec.js` — Sandboxed code execution
+  - `google-tools.js` — Google API integrations
+  - `github-tools.js` — GitHub API tools
+  - `slack-tools.js` — Slack messaging
+  - `social-tools.js` — Social media tools
+  - `vault-tools.js` — Direct vault secret access
+  - `notify-tools.js` — Multi-channel notifications
+  - `sub-agents.js` — Sub-agent framework (see below)
+- **New:** Per-template tool configs — each runtime template (hermes, openclaw, openclaude) has a `tools-config.js` that enables/disables specific tools based on the template's use case.
+- **Dashboard:** `RuntimeToolsCard` component on runtime detail page showing enabled/disabled tools per runtime.
+
+#### Sub-Agent Framework
+- **New:** 4 runtime-level tools for agent-to-agent collaboration:
+  - `discover_agents` — Search the public agent directory for agents by capability
+  - `delegate_task` — Send a task to another agent via chat and wait for response
+  - `list_my_sub_agents` — List agents in the same org (org-scoped directory)
+  - `create_sub_task` — Trigger automations on behalf of another agent
+- Agent-to-agent communication uses `POST /v1/agents/{id}/chat` — agents can now call this endpoint on other agents within the same org.
+- **Dashboard:** Sub-Agents tab on runtime detail page.
+
+#### New Endpoints
+- `GET /v1/agents/org-directory` — Authenticated org-scoped agent directory listing. Returns all agents in the caller's org with name, description, capabilities, and status. Used by the sub-agent `list_my_sub_agents` tool for agent discovery within an organization.
+
+#### Shroud
+- **DALL-E bypass:** Image generation requests routed through Shroud now bypass the Stripe AI Gateway. DALL-E has its own billing model and does not need metering through the gateway.
+
+#### Dashboard
+- `RuntimeToolsCard` component on runtime detail page — visual grid of enabled/disabled tools per runtime with tooltips showing requirements (e.g. "Requires shroud_enabled").
+- Sub-Agents tab on runtime detail page — shows connected agents, delegation history, and task status.
+
+#### Clients
+- `@1claw/sdk@0.45.0`, `@1claw/cli@0.45.0`, `@1claw/mcp@0.45.0`, `@1claw/openapi-spec@0.45.0` updated.
+
 ### v0.44.0 — Security fixes, platform delegation enforcement, channels, chat (2026-08-11)
 
 #### OAuth Connected Accounts

@@ -350,6 +350,7 @@ Public agent directory and platform marketplace.
 | Method | Path                                       | Description                                  |
 | ------ | ------------------------------------------ | -------------------------------------------- |
 | GET    | `/v1/agents/directory`                     | Search public agent directory (no auth)      |
+| GET    | `/v1/agents/org-directory`                 | List agents in caller's org (authenticated)  |
 | GET    | `/v1/agents/:agent_id/card`                | Get agent's public card (no auth)            |
 | PATCH  | `/v1/agents/:agent_id/discovery`           | Update discovery settings (human-only)       |
 | GET    | `/v1/platform/marketplace`                 | Browse platform app marketplace (no auth)    |
