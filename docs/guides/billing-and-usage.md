@@ -318,6 +318,10 @@ Organizations can opt into **LLM token billing** to automatically meter and bill
 
 Once enabled, LLM billing remains active until you disable it. Disabling cancels the subscription and stops metered billing for future requests.
 
+### Duplicate Subscription Detection
+
+If multiple LLM billing subscriptions are created for the same organization (e.g. due to a race condition or repeated checkout), the system automatically detects and cleans up duplicates. `POST /v1/billing/llm-token-billing/subscribe` returns the active subscription instead of creating a new one. The dashboard displays a warning banner when duplicate subscriptions are detected, and the backend consolidates them on the next subscribe or status check.
+
 ### Viewing Usage and Invoices
 
 - **Stripe Portal**: Click "View invoices in your Stripe portal" to see detailed usage, invoices, and payment history

@@ -25,11 +25,20 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps" \
     "slug": "my-defi",
     "description": "DeFi automation for end users",
     "billing_model": "platform_pays",
-    "auth_mode": "silent"
+    "auth_mode": "silent",
+    "max_connected_users": 1000,
+    "max_requests_per_minute": 120
   }'
 ```
 
 Save the returned `api_key` (prefixed `plt_`) — it won't be shown again. This key authenticates all subsequent Platform API calls.
+
+Optional fields on app creation:
+
+| Field | Type | Description |
+|---|---|---|
+| `max_connected_users` | integer | Cap on connected users (new connections rejected when reached) |
+| `max_requests_per_minute` | integer | Per-app rate limit for Platform API endpoints |
 
 :::tip Key expiration and rotation
 Set `api_key_expires_at` (ISO 8601) when creating the app to auto-expire the key. Rotate at any time with `POST /v1/platform/apps/{id}/rotate-key`, optionally setting a new expiry. Expired keys return 401.
@@ -259,6 +268,10 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 In the template spec, use `"intents": { "enabled": true }` (nested object). This is different from the direct agent creation API which uses `"intents_api_enabled": true` (flat boolean). The bootstrap engine translates between the two formats.
 :::
 
+:::note Multi-agent templates
+Templates with multiple agents in the `agents` array now correctly provision all agents. Earlier versions only created the first agent — this has been fixed.
+:::
+
 ### `policies`
 
 Array of access policies linking agents to vault paths.
@@ -454,6 +467,10 @@ For **sign-in** (OIDC tokens), use scopes like `openid profile email`:
 Standard OAuth code grants require S256 PKCE (`code_challenge` on authorize, `code_verifier` on token exchange).
 :::
 
+:::tip Complete working example
+See [`examples/sign-in-with-1claw/`](https://github.com/1clawAI/1claw/tree/main/examples/sign-in-with-1claw) for a minimal, copy-pasteable demo (plain HTML + vanilla JS, no build step) that implements this entire flow.
+:::
+
 ### OAuth `scope=link` (cross-org linking only)
 
 If you use `scope=link` on `/oauth/authorize`, 1Claw **does not issue an authorization code**. After consent, the redirect is:
@@ -646,6 +663,78 @@ The `api_key_expires_at` field is optional. Omit it for a key that never expires
 
 ---
 
+## Marketplace
+
+List approved platform apps in the public marketplace:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/marketplace"
+```
+
+Returns apps with `category`, `tags`, `screenshots`, and `pricing_summary`. No authentication required. The dashboard exposes this at `/marketplace`.
+
+---
+
+## App Stats
+
+Get connected user counts and bootstrap metrics for your app:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/stats" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+Returns `connected_user_count`, `bootstrap_count`, and `active_connections`.
+
+---
+
+## Platform Webhook Events
+
+Platform apps can subscribe to lifecycle events via [webhooks](/docs/guides/webhooks). The following platform-specific events are available:
+
+| Event | Description |
+|---|---|
+| `platform.user.connected` | A new user was connected to your app |
+| `platform.user.disconnected` | A user disconnected from your app |
+| `platform.bootstrap.completed` | Bootstrap finished for a connected user |
+| `platform.grant.created` | A user granted your app access to resources |
+| `platform.grant.revoked` | A user revoked a resource grant |
+| `platform.claim.redeemed` | A claim token was redeemed |
+
+### Webhook Secret Rotation
+
+Rotate the HMAC signing secret for any webhook:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+  -H "Authorization: Bearer YOUR_USER_JWT"
+```
+
+The new secret is returned once — store it securely. All subsequent deliveries use the new `X-Webhook-Signature` HMAC.
+
+---
+
+## Platform Rate Limiting
+
+Per-app rate limits are enforced on all Platform API endpoints. Set `max_requests_per_minute` when creating or updating your app:
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "max_requests_per_minute": 120 }'
+```
+
+Requests exceeding the limit return `429 Too Many Requests`.
+
+---
+
+## Platform Onboarding Wizard
+
+The dashboard includes a step-by-step onboarding wizard at **`/platform/wizard`** that walks you through creating a platform app, defining a bootstrap template, and provisioning your first user. This is the fastest way to get started if you prefer a guided UI over the API.
+
+---
+
 ## Spend Policies (Embedded Wallets)
 
 If your platform offers treasury wallets to end-users, spend policies let you set guardrails on wallet sends and swaps.
@@ -798,6 +887,8 @@ Auth middleware resolves the caller as `principal_type: "platform_delegated"` wi
 | `secrets:read` / `secrets:write` | Secret CRUD |
 | `automations:*` | Automation management |
 | `runtimes:*` | Runtime management |
+| `memory:read` / `memory:write` | Agent memory CRUD |
+| `chat:read` / `chat:write` | Agent chat conversations |
 
 ### Scope enforcement
 
@@ -942,3 +1033,6 @@ policy = client.platform.create_spend_policy(app_id, {
 | DELETE | `/v1/platform/apps/{id}/spend-policies/{pid}` | User JWT | Deactivate spend policy |
 | PUT | `/v1/platform/connections/{id}/spend-policy` | User JWT | Set per-user spend policy override |
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
+| GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
+| GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |
+| POST | `/v1/webhooks/{id}/rotate-secret` | User JWT | Rotate webhook HMAC signing secret |

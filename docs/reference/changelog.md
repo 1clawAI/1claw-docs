@@ -14,6 +14,73 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.46.0 — OAuth2 Refresh Tokens, Platform Marketplace, Security Hardening (2026-08-12)
+
+#### OAuth2 Authorization Server
+- **New:** Refresh token support — `POST /v1/oauth/token` returns `refresh_token` when `offline_access` scope is requested. Exchange via `grant_type=refresh_token`. DB: `oauth_refresh_tokens` table (migration 173).
+- **New:** Token revocation — `POST /v1/oauth/revoke` revokes access or refresh tokens (RFC 7009).
+- **New:** Consent revocation — `DELETE /v1/oauth/consent/{app_slug}` revokes all consent and tokens for an app (user-only).
+- **New:** Scope-filtered UserInfo — `GET /v1/oauth/userinfo` now respects granted scopes (e.g. `email` scope required for email field).
+- **New:** `<SignInWith1Claw />` React component in `@1claw/wallet-react` for one-click OAuth integration.
+
+#### Platform API
+- **New:** `max_connected_users` field on platform apps — enforced limit on connected users per app.
+- **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
+- **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
+- **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
+- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+- **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
+- **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.
+- **Fixed:** Multi-agent bootstrap — template specs with multiple agents now correctly provision all agents (was only creating the first).
+- **New:** Delegation scopes for memory/chat — `memory:read`, `memory:write`, `chat:read`, `chat:write` added to platform delegation scope enforcement.
+
+#### Runtime Chat
+- **Fixed:** Anthropic tool deduplication — duplicate tool definitions no longer sent to Anthropic models.
+- **Improved:** Graceful LLM fallback — runtime chat falls back to a simpler prompt when the model rejects the request.
+- **Improved:** BYOK UX — LLM API key configuration now shows auto-suggested provider based on key prefix.
+
+#### LLM Billing
+- **Fixed:** Duplicate subscription detection — `POST /v1/billing/llm-token-billing/subscribe` detects and cleans up duplicate Stripe subscriptions. Dashboard shows warning banner when duplicates are detected.
+
+#### wallet-react (v0.5.0)
+- **Fixed:** 8 auth bugs: token refresh race, social login popup handling, cross-origin message validation, email OTP retry logic, passkey credential caching, session expiry redirect, PKCE state cleanup, consent page deep-link.
+- **New:** Passwordless send via passkey — `sendWithPasskey()` method for transaction authorization without password.
+- **Improved:** Social login popups — better popup handling for Google/Apple/Discord providers.
+- **New:** CSS theming — `theme` prop accepts full CSS custom properties object for deep customization.
+- **New:** Toast notifications — built-in toast system for transaction status updates.
+- **New:** Skeleton loading — skeleton UI states for wallet and balance loading.
+
+#### SDK (v0.46.0)
+- **New:** `auth.generatePKCE()` — generates PKCE code verifier and challenge.
+- **New:** `auth.buildAuthorizeUrl()` — builds OAuth authorize URL with PKCE parameters.
+- **New:** `auth.getUserInfo()` — fetches UserInfo from OAuth access token.
+- **New:** `auth.revokeToken()` — revokes an OAuth access or refresh token.
+- **New:** `auth.revokeConsent()` — revokes OAuth consent for a specific app.
+- **New:** `platform.rotateWebhookSecret()` — rotates webhook HMAC secret.
+- **New:** `platform.getAppStats()` — fetches platform app statistics.
+- **New:** `platform.marketplace()` — lists marketplace apps.
+
+#### Security
+- **Fixed (TOCTOU):** OAuth authorization code exchange uses atomic `UPDATE ... RETURNING` to prevent time-of-check-to-time-of-use race.
+- **Fixed (Chat authZ):** `POST /v1/agents/{id}/chat` enforces org membership for users and same-org check for agent callers.
+- **Fixed (Discord replay):** Discord OAuth `state` parameter is single-use (consumed on callback) to prevent replay attacks.
+- **Fixed (OAuth atomic):** Authorization code creation and consent recording use a database transaction to prevent orphaned codes.
+- **Fixed (Channel allowlists):** `auto_respond_enabled` must be true AND sender must be in `sender_allowlist` for auto-respond to trigger.
+
+#### Dashboard
+- **Fixed:** Template spec builder edit round-trip — editing an existing template now correctly loads the current spec.
+- **Improved:** OAuth consent page UX — better error states, scope descriptions, app logo display.
+- **New:** Grant page auth gate — `/connect/{slug}/grant` requires authentication (redirects to login).
+- **Improved:** Mobile responsiveness — sidebar, tables, and cards responsive on mobile viewports.
+- **New:** Marketplace page at `/marketplace` — browse approved platform apps.
+
+#### Clients
+- `@1claw/sdk@0.46.0`, `@1claw/wallet-react@0.5.0`, `@1claw/mcp@0.46.0`, `@1claw/openapi-spec@0.46.0` updated.
+
+---
+
+## 2026-08
+
 ### v0.45.0 — Runtime Tool Registry, Sub-Agent Framework (2026-08-11)
 
 #### Runtime Tool Registry

@@ -8,6 +8,8 @@ sidebar_position: 15
 
 Drop-in React components that give your users a full crypto wallet experience — email login, social login, Send, Swap, Receive, and Buy — authenticated via your Platform API key. The widget handles authentication, key management, and transaction signing; you handle the UI placement.
 
+**Current version:** v0.5.0
+
 **Source:** [github.com/1clawAI/wallet-react](https://github.com/1clawAI/wallet-react) (MIT)
 
 ---
@@ -67,7 +69,7 @@ Full wallet UI with login, dashboard, and transaction views.
 | `features` | `string[]` | `["send", "swap", "receive", "buy"]` | Which views to show |
 | `socialProviders` | `string[]` | `["email"]` | Login methods: `"email"`, `"google"`, `"apple"`, `"discord"` |
 | `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
-| `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color scheme |
+| `theme` | `"light" \| "dark" \| "system" \| object` | `"system"` | Color scheme, or a CSS custom properties object for full theming (see [CSS theming](#css-theming)) |
 | `onLinkRequired` | `(url, slug) => void` | Auto-redirect | Custom handler for cross-org users (v0.4.1+) |
 | `onLogin` | `(user) => void` | — | Callback after successful login |
 | `onError` | `(error) => void` | — | Callback on errors |
@@ -117,6 +119,7 @@ function MyComponent() {
 | `balances` | `Record<string, Balance>` | Per-chain native + token balances (auto-refreshes every 30s) |
 | `send(params)` | `(SendParams) => Promise<SendResult>` | Send native or token transfer |
 | `swap(params)` | `(SwapParams) => Promise<SwapResult>` | Swap tokens via 0x DEX aggregator |
+| `sendWithPasskey(params)` | `(SendParams) => Promise<SendResult>` | Send with passkey tx authorization (challenge → sign → send) |
 | `refresh()` | `() => Promise<void>` | Force-refresh balances |
 
 ---
@@ -283,6 +286,90 @@ No additional configuration needed — the widget handles widget URLs and callba
 - A 1Claw account with a **Pro or higher** plan
 - A Platform App (`plt_` API key) — [create one in the dashboard](/docs/guides/platform-api)
 - React 18+ and a bundler (Next.js, Vite, etc.)
+
+---
+
+## "Sign in with 1Claw" (OAuth)
+
+The package also exports a `<SignInWith1Claw>` button component and a `handleSignInCallback()` helper for implementing OAuth 2.0 + PKCE sign-in flows:
+
+```tsx
+import { SignInWith1Claw, handleSignInCallback } from "@1claw/wallet-react";
+
+// Login page
+<SignInWith1Claw
+  clientId="your-app-slug"
+  redirectUri="http://localhost:3000/callback"
+  scopes={["openid", "profile", "email"]}
+  theme="dark"
+/>
+
+// Callback page
+const params = new URLSearchParams(window.location.search);
+const tokens = await handleSignInCallback({
+  code: params.get("code"),
+  state: params.get("state"),
+  clientId: "your-app-slug",
+  redirectUri: "http://localhost:3000/callback",
+});
+// tokens.id_token contains sub, email, name, wallet_address
+```
+
+See the [sign-in-with-1claw example](https://github.com/1clawAI/1claw/tree/main/examples/sign-in-with-1claw) for a complete working demo (plain HTML, no build step).
+
+---
+
+## CSS Theming
+
+As of v0.5.0, the `theme` prop accepts a full CSS custom properties object for fine-grained control over widget appearance:
+
+```tsx
+<OneclawEmbeddedWallet
+  theme={{
+    "--wallet-bg": "#1a1a2e",
+    "--wallet-text": "#eaeaea",
+    "--wallet-primary": "#e94560",
+    "--wallet-border-radius": "12px",
+    "--wallet-font-family": "'Inter', sans-serif",
+  }}
+/>
+```
+
+String values (`"light"`, `"dark"`, `"system"`) still work as before. When an object is passed, the custom properties are applied to the widget root element, overriding the built-in theme.
+
+---
+
+## Toast Notifications
+
+The widget includes a built-in toast notification system (v0.5.0+) that surfaces transaction status updates:
+
+- **Transaction submitted** — shown when a send or swap is broadcast
+- **Transaction confirmed** — shown on confirmation
+- **Transaction failed** — shown with an error summary on failure
+- **Policy violation** — shown when a spend policy blocks a transaction
+
+Toasts appear inside the widget container and auto-dismiss after 5 seconds. No configuration is required.
+
+---
+
+## Skeleton Loading States
+
+Wallet and balance components render skeleton placeholders (v0.5.0+) while data is loading, replacing the previous spinner. This provides a smoother perceived loading experience, especially on initial login when wallets are being provisioned.
+
+---
+
+## Auth Bug Fixes (v0.5.0)
+
+This release includes 8 authentication and session management fixes:
+
+1. **Token refresh race** — concurrent requests no longer trigger duplicate refresh calls
+2. **Social login popup handling** — improved popup lifecycle for Google/Apple/Discord
+3. **Cross-origin message validation** — stricter `postMessage` origin checks
+4. **Email OTP retry logic** — resend button respects server-side cooldown
+5. **Passkey credential caching** — credentials are cached per-session to avoid redundant assertions
+6. **Session expiry redirect** — expired sessions redirect to login instead of showing a blank state
+7. **PKCE state cleanup** — stale PKCE state is cleared after completion or timeout
+8. **Consent page deep-link** — OAuth consent redirects preserve the original app context
 
 ---
 
