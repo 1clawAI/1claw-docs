@@ -14,23 +14,27 @@ Everything that connects to 1Claw in one place. Each entry links to a demo repo,
 
 ### LangChain
 
-LangGraph ReAct agent where every LLM call is routed through Shroud — 20 layers of inspection, vault-managed provider keys, and tool secrets fetched at runtime so nothing enters the LLM context.
+Eleven LangChain tools for vault secrets, encrypted memory, signing, and automations. Install `langchain-1claw` on PyPI, pass an `ocv_` agent key, and call `get_all_tools()` in LangGraph or a tool-calling agent.
 
 | | |
 |---|---|
 | **Website** | [langchain.com](https://www.langchain.com/) |
-| **Demo repo** | [1clawAI/1claw-langchain-demo](https://github.com/1clawAI/1claw-langchain-demo) |
-| **What it shows** | `ChatOpenAI` / `ChatAnthropic` pointed at Shroud via `base_url`, vault-fetched tool secrets, `create_react_agent` loop |
+| **PyPI** | [langchain-1claw](https://pypi.org/project/langchain-1claw/) |
+| **Guide** | [LangChain integration](/docs/integrations/langchain) |
+| **GitHub** | [1clawAI/langchain-1claw](https://github.com/1clawAI/langchain-1claw) |
+| **Demo repo** | [1clawAI/1claw-langchain-demo](https://github.com/1clawAI/1claw-langchain-demo) (Shroud + LangGraph example) |
 
 ---
 
 ### CrewAI
 
-Secure secret fetching for CrewAI agents via 1Claw vaults. Credentials are retrieved at runtime using a scoped agent identity — never copied into prompts, repos, or long-lived agent memory.
+Eleven CrewAI tools backed by the same agent API: vault CRUD, memory, signing, and automation triggers. One client, one `get_all_tools()` call.
 
 | | |
 |---|---|
 | **Website** | [crewai.com](https://crewai.com/) |
+| **PyPI** | [1claw-crewai-tools](https://pypi.org/project/1claw-crewai-tools/) |
+| **Guide** | [CrewAI integration](/docs/integrations/crewai) |
 | **GitHub** | [1clawAI/1claw-crewai-tools](https://github.com/1clawAI/1claw-crewai-tools) |
 
 ---

@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 Official clients for calling the 1Claw REST API from your own code. Pick the language that matches your service; all three handle agent JWT exchange and refresh the same way.
 
 - **JavaScript/TypeScript** — `@1claw/sdk` for Node.js, Next.js, and browser apps. Types generated from the OpenAPI spec. See [JavaScript SDK](/docs/sdks/javascript).
-- **Python** — `oneclaw` on PyPI for scripts, backends, and custom agents. See [Python SDK](/docs/sdks/python). For LangChain or CrewAI, use [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) or [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) instead.
+- **Python** — `oneclaw` on PyPI for scripts, backends, and custom agents. See [Python SDK](/docs/sdks/python). For LangChain or CrewAI, use [langchain-1claw](/docs/integrations/langchain) or [1claw-crewai-tools](/docs/integrations/crewai) instead.
 - **Go** — `1claw-go-sdk` for services and infrastructure written in Go. See [Go SDK](/docs/sdks/go).
 - **elizaOS** — `@1claw/plugin-elizaos` adds vault and signing actions to elizaOS characters. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
 - **curl / HTTP** — Every endpoint is REST. See [curl examples](/docs/sdks/curl-examples).

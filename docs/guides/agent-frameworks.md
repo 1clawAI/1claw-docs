@@ -13,7 +13,7 @@ Most vault and key management products assume a human is clicking around a dashb
 
 This guide shows how to plug 1Claw into elizaOS, GOAT, LangChain, and CrewAI. The shape is the same in each case: a human registers an agent and grants policies once; the framework calls 1Claw at runtime for secrets, signing, and memory. The agent never holds raw private keys.
 
-For dedicated packages, see [`langchain-1claw`](https://pypi.org/project/langchain-1claw/), [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/), and the [ecosystem page](/docs/guides/ecosystem).
+For dedicated packages, see [LangChain integration](/docs/integrations/langchain), [CrewAI integration](/docs/integrations/crewai), and the [ecosystem page](/docs/guides/ecosystem).
 
 ## The pattern (same for every framework)
 
