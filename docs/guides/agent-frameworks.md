@@ -114,9 +114,11 @@ const signTransactionTool = {
 
 ## LangChain
 
-[LangChain](https://langchain.com) agents use tools for external actions. 1claw integrates as a set of custom tools or through MCP.
+[LangChain](https://langchain.com) agents use tools for external actions. For Python, start with the official package: [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) ([integration guide](/docs/integrations/langchain)). It ships eleven tools, encrypted chat history, and a memory retriever without hand-rolling HTTP.
 
-### MCP integration (simplest)
+You can also integrate through MCP or custom tools if you prefer.
+
+### MCP integration
 
 LangChain supports MCP tool servers. Configure the 1claw MCP server and LangChain auto-discovers all available tools.
 
@@ -218,7 +220,10 @@ agent = create_react_agent(
 
 ## CrewAI
 
-[CrewAI](https://crewai.com) uses a similar tool pattern. Define 1claw tools as CrewAI-compatible functions:
+[CrewAI](https://crewai.com) uses the same tool pattern. For Python, use [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) ([integration guide](/docs/integrations/crewai)): `get_all_tools(client)` returns vault, memory, signing, and automation tools ready for your crew.
+
+Or define tools manually:
+
 
 ```python
 from crewai import Agent, Task, Crew

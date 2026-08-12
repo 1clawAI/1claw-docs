@@ -235,6 +235,22 @@ const sidebars: SidebarsConfig = {
                     label: "AI agent integrations",
                     items: [
                         {
+                            type: "category",
+                            label: "Official packages",
+                            items: [
+                                {
+                                    type: "doc",
+                                    id: "integrations/langchain",
+                                    label: "LangChain — langchain-1claw on PyPI",
+                                },
+                                {
+                                    type: "doc",
+                                    id: "integrations/crewai",
+                                    label: "CrewAI — 1claw-crewai-tools on PyPI",
+                                },
+                            ],
+                        },
+                        {
                             type: "doc",
                             id: "guides/agent-frameworks",
                             label: "Agent frameworks — Eliza, GOAT, LangChain, CrewAI",
