@@ -24941,6 +24941,16 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - Endpoints: CRUD under `/v1/agents/{id}/channels`, webhook endpoints per platform.
 - MCP `create_channel`, `list_channels`, `send_channel_message`.
 
+#### Hermes-Native Channel Features (v0.45)
+- **Slash command router** — 12 built-in commands: /help, /new, /model, /personality, /retry, /undo, /compress, /stop, /status, /skills, /usage, /sethome. Enabled per-channel via `slash_commands_enabled`.
+- **Voice memo transcription** — Telegram voice messages auto-transcribed via Whisper API. Enable per-channel with `voice_transcription_enabled`.
+- **Cross-platform conversation continuity** — `unified_conversation_id` links channels to a shared conversation context, enabling seamless cross-platform agent interactions.
+- **Automation → channel delivery** — `notify` step supports `channel` type for delivering automation outputs to messaging channels.
+- **Context-aware interruption** — `auto_respond_in_progress` flag prevents duplicate responses during concurrent message processing.
+- **Platform presence** — `is_home_platform` marks a channel as the agent's primary interface. Set via /sethome slash command.
+- **Sub-agent chat** — Agents can chat with any agent in the same organization via `POST /v1/agents/{id}/chat` (not just self).
+- **Shroud image gen fallback** — DALL-E requests use OPENAI_API_KEY env var when no agent-specific key is configured.
+
 #### Dashboard
 - Fixed: Automations detail page crash.
 - Improved: Assist NL mapping, automations wizard/assist UX, runtime chat code formatting.

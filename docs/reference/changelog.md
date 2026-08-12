@@ -14,6 +14,23 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.45.0 — Hermes-Native Channel Features, Sub-Agent Chat Fix, Image Gen Fallback (2026-08-12)
+
+#### Added
+- **Hermes-Native Channel Features**: Slash command router (12 commands), voice memo transcription (Telegram/Whisper), cross-platform conversation continuity via `unified_conversation_id`, automation→channel delivery, context-aware interruption, platform presence (`is_home_platform`, `/sethome`)
+- **Sub-Agent Chat Fix**: Agents can now chat with any agent in the same organization (previously restricted to self-only)
+- **Shroud Image Gen Fallback**: DALL-E image generation uses `OPENAI_API_KEY` env var fallback for non-chat endpoints
+- **Runtime API Keys UX**: New dashboard component for configuring runtime API keys
+
+#### Fixed
+- **LLM Billing Duplicate Fix**: Subscription lookup now finds ALL non-cancelled subscriptions, preventing duplicate billing. Dashboard shows improved warning banner.
+
+#### Changed
+- DB migrations 174-175: New columns on `agent_channels` (slash_commands_enabled, voice_transcription_enabled, unified_conversation_id, auto_respond_in_progress, is_home_platform) and `channel_messages` (is_voice_message, voice_file_id, voice_duration_secs, transcription_status)
+- New domain modules: `slash_commands.rs`, `voice_transcription.rs`, `hermes_migration.rs`
+
+---
+
 ### v0.46.0 — OAuth2 Refresh Tokens, Platform Marketplace, Security Hardening (2026-08-12)
 
 #### OAuth2 Authorization Server
