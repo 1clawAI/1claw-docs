@@ -14,6 +14,56 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.46.0 — Agent Delegation Framework (2026-08-12)
+
+#### Agent-to-Agent Delegation
+- **New:** Human-controlled agent-to-agent delegation framework. Agents cannot delegate to other agents without an explicit `agent_delegations` record created by a human.
+- **New:** Three delegation modes: `caller` (delegate uses own credentials, default/most secure), `target` (delegate uses target agent's config), `both` (per-invocation choice).
+- **New:** Security guardrails: tool allowlists/blocklists per delegation, daily rate limits (`max_daily_delegations`), recursive depth limits (`max_depth` 1–10 via `X-Delegation-Depth` header), expiration, self-delegation blocked (400).
+- **New:** Chat enforcement — cross-agent `POST /v1/agents/{id}/chat` requires active, non-expired delegation from caller to target. Delegation engine validates tools, daily limits, and depth.
+- **New:** `agents.delegation_enabled` BOOLEAN field — agents must have this enabled to participate in delegation.
+
+#### Endpoints
+- `POST /v1/agents/{id}/delegations` — Create delegation (human-only). Body: `{ delegate_id, delegation_mode, allowed_tools?, blocked_tools?, max_daily_delegations?, max_depth?, guardrails?, expires_at? }`.
+- `GET /v1/agents/{id}/delegations` — List delegations (human sees all; agent sees own).
+- `GET /v1/agents/{id}/delegations/effective` — Agent-callable. Returns delegations where calling agent is the delegator (for runtime tool discovery).
+- `GET /v1/agents/{id}/delegations/{delegation_id}` — Get delegation details.
+- `PATCH /v1/agents/{id}/delegations/{delegation_id}` — Update delegation (human-only).
+- `DELETE /v1/agents/{id}/delegations/{delegation_id}` — Revoke delegation (human-only).
+
+#### Runtime Tools
+- **Updated:** `delegate_task` tool now enforces delegation authorization — delegation-specific 403 errors returned for unauthorized cross-agent communication.
+- **Updated:** `list_my_sub_agents` now includes delegation status per agent: `{ authorized, mode, allowed_tools, remaining_daily }`.
+- **New:** `get_delegation_status` tool — check which agents the caller is authorized to delegate to with tool/limit details.
+
+#### SDK / CLI / MCP
+- **SDK:** `client.agents.createDelegation()`, `.listDelegations()`, `.getDelegation()`, `.updateDelegation()`, `.revokeDelegation()`, `.getEffectiveDelegations()`.
+- **MCP:** `list_delegations`, `create_delegation`, `get_effective_delegations` tools.
+- **CLI:** `1claw agent delegation create|list|get|update|revoke <agent-id>`.
+
+#### Dashboard
+- **New:** Sub-agent creation wizard at `/agents/sub-agent-wizard` — 4-step flow with 6 role presets (Research, Image Gen, Treasury, Comms, Code, Custom). Configures capabilities, sets delegation rules with multi-parent support.
+- **New:** Delegations tab on agent detail page — outbound (this agent delegates TO others) and inbound (others delegate TO this agent) tables with create, edit, revoke dialogs.
+- **New:** Sub-Agents card on runtime detail page — "Create Sub-Agent" button, delegation status badges (green "Authorized" / gray "No Delegation"), "Authorize" quick-action.
+- **New:** Sub-agent tag indicators on agents list page, "Create Sub-Agent" button.
+
+#### Audit
+- New audit events: `agent.delegation.created`, `agent.delegation.updated`, `agent.delegation.revoked`, `agent.delegation.invoked`, `agent.delegation.blocked`.
+
+#### DB
+- Migration 176: `agent_delegations` table with partial unique index on `(delegator_id, delegate_id) WHERE is_active = true`. RLS enabled.
+- Migration 177: `delegation_events` table for daily rate limit tracking.
+- `agents.delegation_enabled` BOOLEAN DEFAULT false.
+
+#### Tests
+- `scripts/test-sub-agents-prod.sh` (~55 assertions) — CRUD, enforcement, depth limits, rate limits, tool blocklists, revocation.
+- `scripts/test-delegation-security-prod.sh` (~25 security assertions) — bidirectional isolation, expired delegations, self-delegation.
+
+#### Clients
+- `@1claw/sdk@0.46.0`, `@1claw/cli@0.46.0`, `@1claw/mcp@0.46.0` updated with delegation types and methods.
+
+---
+
 ### v0.45.0 — Hermes-Native Channel Features, Sub-Agent Chat Fix, Image Gen Fallback (2026-08-12)
 
 #### Added

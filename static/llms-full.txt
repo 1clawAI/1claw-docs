@@ -1421,6 +1421,166 @@ Chat and channel features are available on all tiers. LLM usage for auto-respons
 
 ---
 
+## Agent-to-Agent Delegation
+
+---
+title: Agent-to-Agent Delegation
+description: "Set up human-controlled delegation between agents: security model, delegation modes, tool restrictions, rate limits, and depth limits."
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Agent-to-Agent Delegation
+
+Delegation lets agents communicate with and assign tasks to other agents — with human-controlled authorization. An agent **cannot** delegate to another agent without an explicit delegation record created by a human. This ensures humans remain in control of inter-agent coordination.
+
+## Security model
+
+- **Human-only creation** — agents cannot create, modify, or revoke delegations (403).
+- **Self-delegation blocked** — an agent cannot delegate to itself (400).
+- **Tool restrictions** — per-delegation allowlists and blocklists control which tools the delegate can use.
+- **Rate limits** — `max_daily_delegations` caps how many times an agent can delegate per day.
+- **Depth limits** — `max_depth` (1–10) prevents recursive delegation chains. Tracked via `X-Delegation-Depth` header.
+- **Expiration** — delegations can have an `expires_at` timestamp; expired delegations are rejected.
+- **Audit trail** — all delegation operations are audit-logged: `agent.delegation.created`, `.updated`, `.revoked`, `.invoked`, `.blocked`.
+
+## Delegation modes
+
+| Mode | Behavior | Best for |
+|------|----------|----------|
+| `caller` (default) | Delegate executes with its own credentials and tools | Most secure; isolation between agents |
+| `target` | Delegate executes with the target agent's configuration | When the delegate needs access to the target's Shroud config or tools |
+| `both` | Either mode can be requested per invocation | Flexible orchestration patterns |
+
+## Creating a delegation
+
+Only human users can create delegations. The delegator is the agent that will send tasks; the delegate is the agent that will execute them.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -s -X POST "https://api.1claw.xyz/v1/agents/$DELEGATOR_ID/delegations" \
+  -H "Authorization: Bearer $HUMAN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "delegate_id": "'$DELEGATE_ID'",
+    "delegation_mode": "caller",
+    "allowed_tools": ["web_search", "memory_get", "memory_put"],
+    "max_daily_delegations": 50,
+    "max_depth": 2,
+    "expires_at": "2026-12-31T00:00:00Z"
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript SDK">
+
+```typescript
+import { createClient } from "@1claw/sdk";
+
+const client = createClient({
+  baseUrl: "https://api.1claw.xyz",
+  apiKey: process.env.ONECLAW_API_KEY, // human API key
+});
+
+const delegation = await client.agents.createDelegation(delegatorId, {
+  delegate_id: delegateId,
+  delegation_mode: "caller",
+  allowed_tools: ["web_search", "memory_get", "memory_put"],
+  max_daily_delegations: 50,
+  max_depth: 2,
+  expires_at: "2026-12-31T00:00:00Z",
+});
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent delegation create $DELEGATOR_ID \
+  --delegate $DELEGATE_ID \
+  --mode caller \
+  --allowed-tools "web_search,memory_get,memory_put" \
+  --max-daily 50 \
+  --max-depth 2
+```
+
+</TabItem>
+</Tabs>
+
+## Checking delegation status
+
+Agents can check their own effective delegations (which agents they're authorized to delegate to):
+
+```typescript
+const delegations = await client.agents.getEffectiveDelegations(agentId);
+for (const d of delegations.delegations) {
+  console.log(`Can delegate to ${d.delegate_id}: mode=${d.delegation_mode}, remaining=${d.max_daily_delegations - (d.delegations_today || 0)}`);
+}
+```
+
+## How delegation enforcement works
+
+When an agent calls `POST /v1/agents/{target_id}/chat`, the delegation engine:
+
+1. Checks if the caller and target are the same agent (self-chat always allowed).
+2. Looks up an active, non-expired delegation from the caller to the target.
+3. Validates the current depth against `max_depth`.
+4. Checks the daily delegation count against `max_daily_delegations`.
+5. Validates that the requested tool (if any) is in the allowlist and not in the blocklist.
+6. Records a `delegation_events` entry and emits an `agent.delegation.invoked` audit event.
+
+If any check fails, the request is rejected with 403 and a descriptive error.
+
+## Sub-agent creation wizard
+
+The dashboard provides a guided wizard at `/agents/sub-agent-wizard` for creating sub-agents with pre-configured delegation rules:
+
+1. **Choose a role preset** — Research, Image Gen, Treasury, Comms, Code, or Custom.
+2. **Configure capabilities** — name, description, Shroud config, Intents API settings.
+3. **Set delegation rules** — select parent agents, define tool restrictions, rate limits, and depth.
+4. **Review and create** — creates the agent and delegation records in one flow.
+
+## Managing delegations in the dashboard
+
+The agent detail page has a **Delegations** tab showing:
+
+- **Outbound delegations** — agents this agent delegates TO, with status, mode, and daily usage.
+- **Inbound delegations** — agents that delegate TO this agent.
+- Create, edit, and revoke dialogs for managing delegation records.
+
+## Runtime tool integration
+
+When agents run in Cloud Runtimes, the `sub-agents.js` tool module provides delegation-aware tools:
+
+| Tool | What it does |
+|------|-------------|
+| `delegate_task` | Sends a task to another agent; automatically tracks `X-Delegation-Depth` and returns delegation-specific 403 errors |
+| `list_my_sub_agents` | Lists org agents merged with delegation status: `{ authorized, mode, allowed_tools, remaining_daily }` |
+| `get_delegation_status` | Shows which agents the caller can delegate to, with remaining daily quota and tool details |
+
+## Security checklist
+
+- [ ] Enable `delegation_enabled` on agents that need to participate in delegation.
+- [ ] Use **tool allowlists** to restrict what delegates can do — prefer allowlists over blocklists.
+- [ ] Set **`max_daily_delegations`** to prevent runaway delegation loops.
+- [ ] Keep **`max_depth`** low (1–2) unless you have a clear need for deep chains.
+- [ ] Set **`expires_at`** on delegations for time-bounded tasks.
+- [ ] Review delegation audit events (`agent.delegation.*`) regularly.
+- [ ] Use `caller` mode by default — `target` mode grants more access.
+
+## Next steps
+
+- [Managing Agent Fleets](/docs/guides/agent-fleet-management) — Patterns for operating many agents at scale.
+- [Securing Agent Access](/docs/guides/securing-agent-access) — Deep dive on policy conditions and scoping.
+- [Audit and Compliance](/docs/guides/audit-and-compliance) — Tamper-proof audit log and compliance features.
+
+
+---
+
 ## Agent Discovery
 
 ---
@@ -1870,6 +2030,7 @@ Deactivated agents cannot exchange tokens or access secrets, but their records a
 
 ## Next steps
 
+- [Agent-to-Agent Delegation](/docs/guides/agent-delegation) — Set up human-controlled delegation between agents with security guardrails.
 - [Agent Self-Onboarding](/docs/guides/agent-self-onboarding) — The agent-first enrollment flow.
 - [Securing Agent Access](/docs/guides/securing-agent-access) — Deep dive on policy conditions and scoping.
 - [Audit and Compliance](/docs/guides/audit-and-compliance) — Tamper-proof audit log and compliance features.
@@ -4890,7 +5051,9 @@ Organizations can opt into **LLM token billing** to automatically meter and bill
 
 Once enabled, LLM billing remains active until you disable it. Disabling cancels the subscription and stops metered billing for future requests.
 
-**Duplicate subscription protection:** If you attempt to enable LLM billing when an active subscription already exists, the API detects the existing subscription and returns it instead of creating a duplicate. Orphaned or stale subscriptions are automatically cleaned up.
+### Duplicate Subscription Detection
+
+If multiple LLM billing subscriptions are created for the same organization (e.g. due to a race condition or repeated checkout), the system automatically detects and cleans up duplicates. `POST /v1/billing/llm-token-billing/subscribe` returns the active subscription instead of creating a new one. The dashboard displays a warning banner when duplicate subscriptions are detected, and the backend consolidates them on the next subscribe or status check.
 
 ### Viewing Usage and Invoices
 
@@ -5427,7 +5590,7 @@ Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Req
 1claw webhook delete <id>
 ```
 
-Supported events: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created`, `proposal.signed`, `proposal.executed`, `proposal.cancelled`, `agent.transaction.broadcast`, `agent.transaction.signed`, `signing_key.rotated`, `policy.created`, `policy.updated`, `policy.deleted`, `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+Supported events: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created`, `proposal.signed`, `proposal.executed`, `proposal.cancelled`, `agent.transaction.broadcast`, `agent.transaction.signed`, `signing_key.rotated`, `policy.created`, `policy.updated`, `policy.deleted`.
 
 ## Platform API
 
@@ -12846,11 +13009,20 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps" \
     "slug": "my-defi",
     "description": "DeFi automation for end users",
     "billing_model": "platform_pays",
-    "auth_mode": "silent"
+    "auth_mode": "silent",
+    "max_connected_users": 1000,
+    "max_requests_per_minute": 120
   }'
 ```
 
 Save the returned `api_key` (prefixed `plt_`) — it won't be shown again. This key authenticates all subsequent Platform API calls.
+
+Optional fields on app creation:
+
+| Field | Type | Description |
+|---|---|---|
+| `max_connected_users` | integer | Cap on connected users (new connections rejected when reached) |
+| `max_requests_per_minute` | integer | Per-app rate limit for Platform API endpoints |
 
 :::tip Key expiration and rotation
 Set `api_key_expires_at` (ISO 8601) when creating the app to auto-expire the key. Rotate at any time with `POST /v1/platform/apps/{id}/rotate-key`, optionally setting a new expiry. Expired keys return 401.
@@ -13080,6 +13252,10 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 In the template spec, use `"intents": { "enabled": true }` (nested object). This is different from the direct agent creation API which uses `"intents_api_enabled": true` (flat boolean). The bootstrap engine translates between the two formats.
 :::
 
+:::note Multi-agent templates
+Templates with multiple agents in the `agents` array now correctly provision all agents. Earlier versions only created the first agent — this has been fixed.
+:::
+
 ### `policies`
 
 Array of access policies linking agents to vault paths.
@@ -13275,6 +13451,10 @@ For **sign-in** (OIDC tokens), use scopes like `openid profile email`:
 Standard OAuth code grants require S256 PKCE (`code_challenge` on authorize, `code_verifier` on token exchange).
 :::
 
+:::tip Complete working example
+See [`examples/sign-in-with-1claw/`](https://github.com/1clawAI/1claw/tree/main/examples/sign-in-with-1claw) for a minimal, copy-pasteable demo (plain HTML + vanilla JS, no build step) that implements this entire flow.
+:::
+
 ### OAuth `scope=link` (cross-org linking only)
 
 If you use `scope=link` on `/oauth/authorize`, 1Claw **does not issue an authorization code**. After consent, the redirect is:
@@ -13467,6 +13647,78 @@ The `api_key_expires_at` field is optional. Omit it for a key that never expires
 
 ---
 
+## Marketplace
+
+List approved platform apps in the public marketplace:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/marketplace"
+```
+
+Returns apps with `category`, `tags`, `screenshots`, and `pricing_summary`. No authentication required. The dashboard exposes this at `/marketplace`.
+
+---
+
+## App Stats
+
+Get connected user counts and bootstrap metrics for your app:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/stats" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+Returns `connected_user_count`, `bootstrap_count`, and `active_connections`.
+
+---
+
+## Platform Webhook Events
+
+Platform apps can subscribe to lifecycle events via [webhooks](/docs/guides/webhooks). The following platform-specific events are available:
+
+| Event | Description |
+|---|---|
+| `platform.user.connected` | A new user was connected to your app |
+| `platform.user.disconnected` | A user disconnected from your app |
+| `platform.bootstrap.completed` | Bootstrap finished for a connected user |
+| `platform.grant.created` | A user granted your app access to resources |
+| `platform.grant.revoked` | A user revoked a resource grant |
+| `platform.claim.redeemed` | A claim token was redeemed |
+
+### Webhook Secret Rotation
+
+Rotate the HMAC signing secret for any webhook:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+  -H "Authorization: Bearer YOUR_USER_JWT"
+```
+
+The new secret is returned once — store it securely. All subsequent deliveries use the new `X-Webhook-Signature` HMAC.
+
+---
+
+## Platform Rate Limiting
+
+Per-app rate limits are enforced on all Platform API endpoints. Set `max_requests_per_minute` when creating or updating your app:
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "max_requests_per_minute": 120 }'
+```
+
+Requests exceeding the limit return `429 Too Many Requests`.
+
+---
+
+## Platform Onboarding Wizard
+
+The dashboard includes a step-by-step onboarding wizard at **`/platform/wizard`** that walks you through creating a platform app, defining a bootstrap template, and provisioning your first user. This is the fastest way to get started if you prefer a guided UI over the API.
+
+---
+
 ## Spend Policies (Embedded Wallets)
 
 If your platform offers treasury wallets to end-users, spend policies let you set guardrails on wallet sends and swaps.
@@ -13617,14 +13869,14 @@ Auth middleware resolves the caller as `principal_type: "platform_delegated"` wi
 | `vaults:read` / `vaults:write` | Vault CRUD |
 | `agents:read` / `agents:write` | Agent CRUD |
 | `secrets:read` / `secrets:write` | Secret CRUD |
-| `memory:read` / `memory:write` | Agent memory CRUD |
-| `chat:read` / `chat:write` | Agent chat operations |
 | `automations:*` | Automation management |
 | `runtimes:*` | Runtime management |
+| `memory:read` / `memory:write` | Agent memory CRUD |
+| `chat:read` / `chat:write` | Agent chat conversations |
 
 ### Scope enforcement
 
-Delegation scopes are enforced on 6 handler groups: secrets, policies, bindings, discovery, memory, and chat. Disconnected connections (status `disconnected`) are rejected with 403.
+Delegation scopes are enforced on 4 handler groups: secrets, policies, bindings, and discovery. Disconnected connections (status `disconnected`) are rejected with 403.
 
 ### SDK
 
@@ -13765,207 +14017,9 @@ policy = client.platform.create_spend_policy(app_id, {
 | DELETE | `/v1/platform/apps/{id}/spend-policies/{pid}` | User JWT | Deactivate spend policy |
 | PUT | `/v1/platform/connections/{id}/spend-policy` | User JWT | Set per-user spend policy override |
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
-| GET | `/v1/platform/apps/{id}/stats` | User JWT or `plt_` | Get app stats (connections, bootstraps, grants) |
-| POST | `/v1/platform/apps/{id}/rotate-webhook-secret` | User JWT | Rotate webhook signing secret |
-| GET | `/v1/platform/marketplace` | None (public) | Browse the public platform marketplace |
-
-### OAuth Endpoints (Sign in with 1Claw)
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/v1/oauth/authorize` | User JWT | Get consent info (app name, scopes) |
-| POST | `/v1/oauth/authorize` | User JWT | Approve or deny authorization request |
-| POST | `/v1/oauth/token` | None (public) | Exchange authorization code for tokens (supports PKCE + refresh_token grant) |
-| GET | `/v1/oauth/userinfo` | OAuth Bearer | Get user profile (sub, email, name, wallet_address) |
-| POST | `/v1/oauth/revoke` | None (public) | Revoke an access or refresh token (RFC 7009) |
-| DELETE | `/v1/oauth/consents/{app_id}` | User JWT | Revoke consent and all tokens for an app |
-
----
-
-## Sign in with 1Claw (OAuth2 / OIDC)
-
-1Claw acts as an OAuth2/OIDC authorization server. Third-party apps can implement "Sign in with 1Claw" flows using authorization code + PKCE.
-
-### How it works
-
-1. Your app generates a PKCE `code_verifier` / `code_challenge` pair (S256).
-2. Redirect the user to the 1Claw consent page with your app's `client_id` (slug), `redirect_uri`, scopes, state, and the `code_challenge`.
-3. The user approves on the 1Claw consent page.
-4. 1Claw redirects back with an authorization `code`.
-5. Your backend exchanges the code for `access_token` + `id_token` + `refresh_token` via `POST /v1/oauth/token`, sending the `code_verifier`.
-6. Use the `access_token` to call `GET /v1/oauth/userinfo` for the user's profile.
-
-### SDK helpers
-
-The SDK provides two helpers for PKCE and URL construction:
-
-```typescript
-import { generatePKCE, buildAuthorizeUrl } from "@1claw/sdk/resources/auth";
-
-// 1. Generate PKCE pair
-const { codeVerifier, codeChallenge } = await generatePKCE();
-
-// 2. Build the authorize URL
-const authorizeUrl = buildAuthorizeUrl("https://1claw.xyz", {
-  clientId: "my-app-slug",
-  redirectUri: "https://myapp.com/callback",
-  scopes: ["openid", "email", "profile"],
-  state: crypto.randomUUID(),
-  codeChallenge,
-});
-
-// 3. Redirect user to authorizeUrl...
-// 4. After callback, exchange the code:
-const tokens = await client.auth.exchangeOAuthCode({
-  code: callbackCode,
-  client_id: "my-app-slug",
-  redirect_uri: "https://myapp.com/callback",
-  code_verifier: codeVerifier,
-});
-
-// 5. Get user info
-const userInfo = await client.auth.getUserInfo(tokens.data.access_token);
-console.log(userInfo.data.email, userInfo.data.wallet_address);
-```
-
-### Token revocation (RFC 7009)
-
-Revoke access or refresh tokens at any time:
-
-```typescript
-// Revoke a specific token
-await client.auth.revokeToken({ token: "the-token-value" });
-
-// With type hint for faster processing
-await client.auth.revokeToken({
-  token: refreshToken,
-  token_type_hint: "refresh_token",
-});
-```
-
-Always returns 200 per RFC 7009, regardless of whether the token was valid.
-
-### Consent revocation
-
-Users can revoke all consent for a platform app, invalidating all active tokens:
-
-```typescript
-await client.auth.revokeConsent(appId);
-```
-
-### Refresh tokens
-
-Authorization code exchanges return a `refresh_token` (30-day expiry, single-use rotation). Exchange via:
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/oauth/token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "grant_type": "refresh_token",
-    "refresh_token": "REFRESH_TOKEN",
-    "client_id": "my-app-slug"
-  }'
-```
-
-Each refresh returns a new `refresh_token` (rotation) and a new `access_token`.
-
-### React component
-
-The `@1claw/wallet-react` package includes a `<SignInWith1Claw />` button component:
-
-```tsx
-import { SignInWith1Claw } from "@1claw/wallet-react";
-
-<SignInWith1Claw
-  appSlug="my-app-slug"
-  redirectUri="https://myapp.com/callback"
-  scopes={["openid", "email"]}
-  onSuccess={(tokens) => console.log(tokens)}
-/>
-```
-
----
-
-## Platform App Stats
-
-Get aggregate statistics for a platform app:
-
-```bash
-curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/stats" \
-  -H "Authorization: Bearer YOUR_JWT"
-```
-
-Response:
-
-```json
-{
-  "total_connections": 42,
-  "active_connections": 30,
-  "claimed_connections": 10,
-  "total_bootstraps": 25,
-  "total_grants": 15
-}
-```
-
-SDK:
-
-```typescript
-const stats = await client.platform.getAppStats(appId);
-console.log(`${stats.data.active_connections} active users`);
-```
-
----
-
-## Platform Webhook Secret Rotation
-
-Platform apps can configure a webhook URL to receive event notifications. The webhook secret is used to sign payloads with HMAC-SHA256 (delivered in the `X-Webhook-Signature` header).
-
-Rotate the secret at any time (human-only):
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
-  -H "Authorization: Bearer YOUR_USER_JWT"
-```
-
-Response:
-
-```json
-{
-  "webhook_secret": "whsec_..."
-}
-```
-
-Save the returned `webhook_secret` — it won't be shown again. The old secret is immediately invalidated.
-
-SDK:
-
-```typescript
-const { data } = await client.platform.rotateWebhookSecret(appId);
-console.log("New secret:", data.webhook_secret);
-```
-
-### Supported webhook events
-
-| Event | Description |
-|---|---|
-| `wallet.transfer.sent` | Treasury wallet outbound transfer |
-| `wallet.transfer.received` | Treasury wallet inbound transfer |
-| `proposal.created` | Multisig proposal created |
-| `proposal.signed` | Proposal received a signature |
-| `proposal.executed` | Proposal reached threshold and executed |
-| `proposal.cancelled` | Proposal cancelled |
-| `agent.transaction.broadcast` | Agent transaction broadcast to chain |
-| `agent.transaction.signed` | Agent transaction signed (sign-only) |
-| `signing_key.rotated` | Agent signing key rotated |
-| `policy.created` | Access policy created |
-| `policy.updated` | Access policy updated |
-| `policy.deleted` | Access policy deleted |
-| `card.ordered` | Payment card ordered |
-| `card.ready` | Payment card ready for use |
-| `card.revealed` | Payment card revealed |
-| `card.voided` | Payment card voided |
-| `card.depleted` | Payment card balance depleted |
-| `card.orphaned_payment` | Payment card stuck in ordering state |
+| GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
+| GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |
+| POST | `/v1/webhooks/{id}/rotate-secret` | User JWT | Rotate webhook HMAC signing secret |
 
 
 ---
@@ -18181,12 +18235,6 @@ You can register webhooks to receive real-time notifications for treasury and tr
 | `policy.created`              | Access policy was created                            |
 | `policy.updated`              | Access policy was updated                            |
 | `policy.deleted`              | Access policy was deleted                            |
-| `platform.user.connected`    | User connected to a platform app                     |
-| `platform.user.disconnected` | User disconnected from a platform app                |
-| `platform.bootstrap.completed` | Bootstrap completed for a connected user           |
-| `platform.grant.created`     | User granted resource access to a platform app       |
-| `platform.grant.revoked`     | User revoked a resource grant from a platform app    |
-| `platform.claim.redeemed`    | Claim token was redeemed by an end-user              |
 
 ### Registering a webhook
 
@@ -18588,6 +18636,8 @@ sidebar_position: 15
 
 Drop-in React components that give your users a full crypto wallet experience — email login, social login, Send, Swap, Receive, and Buy — authenticated via your Platform API key. The widget handles authentication, key management, and transaction signing; you handle the UI placement.
 
+**Current version:** v0.5.0
+
 **Source:** [github.com/1clawAI/wallet-react](https://github.com/1clawAI/wallet-react) (MIT)
 
 ---
@@ -18647,7 +18697,7 @@ Full wallet UI with login, dashboard, and transaction views.
 | `features` | `string[]` | `["send", "swap", "receive", "buy"]` | Which views to show |
 | `socialProviders` | `string[]` | `["email"]` | Login methods: `"email"`, `"google"`, `"apple"`, `"discord"` |
 | `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
-| `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color scheme |
+| `theme` | `"light" \| "dark" \| "system" \| object` | `"system"` | Color scheme, or a CSS custom properties object for full theming (see [CSS theming](#css-theming)) |
 | `onLinkRequired` | `(url, slug) => void` | Auto-redirect | Custom handler for cross-org users (v0.4.1+) |
 | `onLogin` | `(user) => void` | — | Callback after successful login |
 | `onError` | `(error) => void` | — | Callback on errors |
@@ -18697,6 +18747,7 @@ function MyComponent() {
 | `balances` | `Record<string, Balance>` | Per-chain native + token balances (auto-refreshes every 30s) |
 | `send(params)` | `(SendParams) => Promise<SendResult>` | Send native or token transfer |
 | `swap(params)` | `(SwapParams) => Promise<SwapResult>` | Swap tokens via 0x DEX aggregator |
+| `sendWithPasskey(params)` | `(SendParams) => Promise<SendResult>` | Send with passkey tx authorization (challenge → sign → send) |
 | `refresh()` | `() => Promise<void>` | Force-refresh balances |
 
 ---
@@ -18863,6 +18914,90 @@ No additional configuration needed — the widget handles widget URLs and callba
 - A 1Claw account with a **Pro or higher** plan
 - A Platform App (`plt_` API key) — [create one in the dashboard](/docs/guides/platform-api)
 - React 18+ and a bundler (Next.js, Vite, etc.)
+
+---
+
+## "Sign in with 1Claw" (OAuth)
+
+The package also exports a `<SignInWith1Claw>` button component and a `handleSignInCallback()` helper for implementing OAuth 2.0 + PKCE sign-in flows:
+
+```tsx
+import { SignInWith1Claw, handleSignInCallback } from "@1claw/wallet-react";
+
+// Login page
+<SignInWith1Claw
+  clientId="your-app-slug"
+  redirectUri="http://localhost:3000/callback"
+  scopes={["openid", "profile", "email"]}
+  theme="dark"
+/>
+
+// Callback page
+const params = new URLSearchParams(window.location.search);
+const tokens = await handleSignInCallback({
+  code: params.get("code"),
+  state: params.get("state"),
+  clientId: "your-app-slug",
+  redirectUri: "http://localhost:3000/callback",
+});
+// tokens.id_token contains sub, email, name, wallet_address
+```
+
+See the [sign-in-with-1claw example](https://github.com/1clawAI/1claw/tree/main/examples/sign-in-with-1claw) for a complete working demo (plain HTML, no build step).
+
+---
+
+## CSS Theming
+
+As of v0.5.0, the `theme` prop accepts a full CSS custom properties object for fine-grained control over widget appearance:
+
+```tsx
+<OneclawEmbeddedWallet
+  theme={{
+    "--wallet-bg": "#1a1a2e",
+    "--wallet-text": "#eaeaea",
+    "--wallet-primary": "#e94560",
+    "--wallet-border-radius": "12px",
+    "--wallet-font-family": "'Inter', sans-serif",
+  }}
+/>
+```
+
+String values (`"light"`, `"dark"`, `"system"`) still work as before. When an object is passed, the custom properties are applied to the widget root element, overriding the built-in theme.
+
+---
+
+## Toast Notifications
+
+The widget includes a built-in toast notification system (v0.5.0+) that surfaces transaction status updates:
+
+- **Transaction submitted** — shown when a send or swap is broadcast
+- **Transaction confirmed** — shown on confirmation
+- **Transaction failed** — shown with an error summary on failure
+- **Policy violation** — shown when a spend policy blocks a transaction
+
+Toasts appear inside the widget container and auto-dismiss after 5 seconds. No configuration is required.
+
+---
+
+## Skeleton Loading States
+
+Wallet and balance components render skeleton placeholders (v0.5.0+) while data is loading, replacing the previous spinner. This provides a smoother perceived loading experience, especially on initial login when wallets are being provisioned.
+
+---
+
+## Auth Bug Fixes (v0.5.0)
+
+This release includes 8 authentication and session management fixes:
+
+1. **Token refresh race** — concurrent requests no longer trigger duplicate refresh calls
+2. **Social login popup handling** — improved popup lifecycle for Google/Apple/Discord
+3. **Cross-origin message validation** — stricter `postMessage` origin checks
+4. **Email OTP retry logic** — resend button respects server-side cooldown
+5. **Passkey credential caching** — credentials are cached per-session to avoid redundant assertions
+6. **Session expiry redirect** — expired sessions redirect to login instead of showing a blank state
+7. **PKCE state cleanup** — stale PKCE state is cleared after completion or timeout
+8. **Consent page deep-link** — OAuth consent redirects preserve the original app context
 
 ---
 
@@ -22124,8 +22259,6 @@ Register a new platform app. Returns a `plt_` API key (one-time — it won't be 
 | `description`   | string | No       | Description of the platform app                                                             |
 | `billing_model` | string | No       | `platform_pays` (default), `user_pays`, or `hybrid`                                         |
 | `auth_mode`     | string | No       | `silent` (default), `user_signin`, or `configurable`                                        |
-| `max_connected_users` | integer | No  | Maximum number of connected users (enforced on upsert)                                     |
-| `max_requests_per_minute` | integer | No | Platform-level rate limit for API requests                                               |
 
 ### Example
 
@@ -24671,7 +24804,6 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | GET    | `/v1/webhooks/:id`    | Get webhook details                                   |
 | PATCH  | `/v1/webhooks/:id`    | Update webhook (URL, events, active)                  |
 | DELETE | `/v1/webhooks/:id`    | Delete webhook                                        |
-| POST   | `/v1/webhooks/:id/rotate-secret` | Rotate webhook signing secret                |
 
 ## OIDC Federation
 
@@ -24724,8 +24856,6 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | POST   | `/v1/oauth/authorize`        | Approve/deny authorization request                |
 | POST   | `/v1/oauth/token`            | Exchange authorization code for tokens            |
 | GET    | `/v1/oauth/userinfo`         | Get user profile (Bearer from code exchange)      |
-| POST   | `/v1/oauth/revoke`           | Revoke an access or refresh token (RFC 7009)      |
-| DELETE | `/v1/oauth/consent/{app_slug}` | Revoke all consent and tokens for an app        |
 
 ## Bankr Key Vending
 
@@ -24829,9 +24959,6 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | GET    | `/v1/platform/connections/:id/grants`         | List active resource grants for a connection                     |
 | DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
 | GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
-| GET    | `/v1/platform/apps/:id/stats`                 | Get app statistics (connections, bootstraps, grants)             |
-| GET    | `/v1/platform/marketplace`                    | Browse public platform marketplace (no auth)                     |
-| POST   | `/v1/webhooks/:id/rotate-secret`              | Rotate webhook signing secret                                    |
 
 ---
 
@@ -24864,6 +24991,140 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
 ## 2026-08 (latest)
+
+### v0.46.0 — Agent Delegation Framework (2026-08-12)
+
+#### Agent-to-Agent Delegation
+- **New:** Human-controlled agent-to-agent delegation framework. Agents cannot delegate to other agents without an explicit `agent_delegations` record created by a human.
+- **New:** Three delegation modes: `caller` (delegate uses own credentials, default/most secure), `target` (delegate uses target agent's config), `both` (per-invocation choice).
+- **New:** Security guardrails: tool allowlists/blocklists per delegation, daily rate limits (`max_daily_delegations`), recursive depth limits (`max_depth` 1–10 via `X-Delegation-Depth` header), expiration, self-delegation blocked (400).
+- **New:** Chat enforcement — cross-agent `POST /v1/agents/{id}/chat` requires active, non-expired delegation from caller to target. Delegation engine validates tools, daily limits, and depth.
+- **New:** `agents.delegation_enabled` BOOLEAN field — agents must have this enabled to participate in delegation.
+
+#### Endpoints
+- `POST /v1/agents/{id}/delegations` — Create delegation (human-only). Body: `{ delegate_id, delegation_mode, allowed_tools?, blocked_tools?, max_daily_delegations?, max_depth?, guardrails?, expires_at? }`.
+- `GET /v1/agents/{id}/delegations` — List delegations (human sees all; agent sees own).
+- `GET /v1/agents/{id}/delegations/effective` — Agent-callable. Returns delegations where calling agent is the delegator (for runtime tool discovery).
+- `GET /v1/agents/{id}/delegations/{delegation_id}` — Get delegation details.
+- `PATCH /v1/agents/{id}/delegations/{delegation_id}` — Update delegation (human-only).
+- `DELETE /v1/agents/{id}/delegations/{delegation_id}` — Revoke delegation (human-only).
+
+#### Runtime Tools
+- **Updated:** `delegate_task` tool now enforces delegation authorization — delegation-specific 403 errors returned for unauthorized cross-agent communication.
+- **Updated:** `list_my_sub_agents` now includes delegation status per agent: `{ authorized, mode, allowed_tools, remaining_daily }`.
+- **New:** `get_delegation_status` tool — check which agents the caller is authorized to delegate to with tool/limit details.
+
+#### SDK / CLI / MCP
+- **SDK:** `client.agents.createDelegation()`, `.listDelegations()`, `.getDelegation()`, `.updateDelegation()`, `.revokeDelegation()`, `.getEffectiveDelegations()`.
+- **MCP:** `list_delegations`, `create_delegation`, `get_effective_delegations` tools.
+- **CLI:** `1claw agent delegation create|list|get|update|revoke <agent-id>`.
+
+#### Dashboard
+- **New:** Sub-agent creation wizard at `/agents/sub-agent-wizard` — 4-step flow with 6 role presets (Research, Image Gen, Treasury, Comms, Code, Custom). Configures capabilities, sets delegation rules with multi-parent support.
+- **New:** Delegations tab on agent detail page — outbound (this agent delegates TO others) and inbound (others delegate TO this agent) tables with create, edit, revoke dialogs.
+- **New:** Sub-Agents card on runtime detail page — "Create Sub-Agent" button, delegation status badges (green "Authorized" / gray "No Delegation"), "Authorize" quick-action.
+- **New:** Sub-agent tag indicators on agents list page, "Create Sub-Agent" button.
+
+#### Audit
+- New audit events: `agent.delegation.created`, `agent.delegation.updated`, `agent.delegation.revoked`, `agent.delegation.invoked`, `agent.delegation.blocked`.
+
+#### DB
+- Migration 176: `agent_delegations` table with partial unique index on `(delegator_id, delegate_id) WHERE is_active = true`. RLS enabled.
+- Migration 177: `delegation_events` table for daily rate limit tracking.
+- `agents.delegation_enabled` BOOLEAN DEFAULT false.
+
+#### Tests
+- `scripts/test-sub-agents-prod.sh` (~55 assertions) — CRUD, enforcement, depth limits, rate limits, tool blocklists, revocation.
+- `scripts/test-delegation-security-prod.sh` (~25 security assertions) — bidirectional isolation, expired delegations, self-delegation.
+
+#### Clients
+- `@1claw/sdk@0.46.0`, `@1claw/cli@0.46.0`, `@1claw/mcp@0.46.0` updated with delegation types and methods.
+
+---
+
+### v0.45.0 — Hermes-Native Channel Features, Sub-Agent Chat Fix, Image Gen Fallback (2026-08-12)
+
+#### Added
+- **Hermes-Native Channel Features**: Slash command router (12 commands), voice memo transcription (Telegram/Whisper), cross-platform conversation continuity via `unified_conversation_id`, automation→channel delivery, context-aware interruption, platform presence (`is_home_platform`, `/sethome`)
+- **Sub-Agent Chat Fix**: Agents can now chat with any agent in the same organization (previously restricted to self-only)
+- **Shroud Image Gen Fallback**: DALL-E image generation uses `OPENAI_API_KEY` env var fallback for non-chat endpoints
+- **Runtime API Keys UX**: New dashboard component for configuring runtime API keys
+
+#### Fixed
+- **LLM Billing Duplicate Fix**: Subscription lookup now finds ALL non-cancelled subscriptions, preventing duplicate billing. Dashboard shows improved warning banner.
+
+#### Changed
+- DB migrations 174-175: New columns on `agent_channels` (slash_commands_enabled, voice_transcription_enabled, unified_conversation_id, auto_respond_in_progress, is_home_platform) and `channel_messages` (is_voice_message, voice_file_id, voice_duration_secs, transcription_status)
+- New domain modules: `slash_commands.rs`, `voice_transcription.rs`, `hermes_migration.rs`
+
+---
+
+### v0.46.0 — OAuth2 Refresh Tokens, Platform Marketplace, Security Hardening (2026-08-12)
+
+#### OAuth2 Authorization Server
+- **New:** Refresh token support — `POST /v1/oauth/token` returns `refresh_token` when `offline_access` scope is requested. Exchange via `grant_type=refresh_token`. DB: `oauth_refresh_tokens` table (migration 173).
+- **New:** Token revocation — `POST /v1/oauth/revoke` revokes access or refresh tokens (RFC 7009).
+- **New:** Consent revocation — `DELETE /v1/oauth/consent/{app_slug}` revokes all consent and tokens for an app (user-only).
+- **New:** Scope-filtered UserInfo — `GET /v1/oauth/userinfo` now respects granted scopes (e.g. `email` scope required for email field).
+- **New:** `<SignInWith1Claw />` React component in `@1claw/wallet-react` for one-click OAuth integration.
+
+#### Platform API
+- **New:** `max_connected_users` field on platform apps — enforced limit on connected users per app.
+- **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
+- **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
+- **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
+- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+- **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
+- **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.
+- **Fixed:** Multi-agent bootstrap — template specs with multiple agents now correctly provision all agents (was only creating the first).
+- **New:** Delegation scopes for memory/chat — `memory:read`, `memory:write`, `chat:read`, `chat:write` added to platform delegation scope enforcement.
+
+#### Runtime Chat
+- **Fixed:** Anthropic tool deduplication — duplicate tool definitions no longer sent to Anthropic models.
+- **Improved:** Graceful LLM fallback — runtime chat falls back to a simpler prompt when the model rejects the request.
+- **Improved:** BYOK UX — LLM API key configuration now shows auto-suggested provider based on key prefix.
+
+#### LLM Billing
+- **Fixed:** Duplicate subscription detection — `POST /v1/billing/llm-token-billing/subscribe` detects and cleans up duplicate Stripe subscriptions. Dashboard shows warning banner when duplicates are detected.
+
+#### wallet-react (v0.5.0)
+- **Fixed:** 8 auth bugs: token refresh race, social login popup handling, cross-origin message validation, email OTP retry logic, passkey credential caching, session expiry redirect, PKCE state cleanup, consent page deep-link.
+- **New:** Passwordless send via passkey — `sendWithPasskey()` method for transaction authorization without password.
+- **Improved:** Social login popups — better popup handling for Google/Apple/Discord providers.
+- **New:** CSS theming — `theme` prop accepts full CSS custom properties object for deep customization.
+- **New:** Toast notifications — built-in toast system for transaction status updates.
+- **New:** Skeleton loading — skeleton UI states for wallet and balance loading.
+
+#### SDK (v0.46.0)
+- **New:** `auth.generatePKCE()` — generates PKCE code verifier and challenge.
+- **New:** `auth.buildAuthorizeUrl()` — builds OAuth authorize URL with PKCE parameters.
+- **New:** `auth.getUserInfo()` — fetches UserInfo from OAuth access token.
+- **New:** `auth.revokeToken()` — revokes an OAuth access or refresh token.
+- **New:** `auth.revokeConsent()` — revokes OAuth consent for a specific app.
+- **New:** `platform.rotateWebhookSecret()` — rotates webhook HMAC secret.
+- **New:** `platform.getAppStats()` — fetches platform app statistics.
+- **New:** `platform.marketplace()` — lists marketplace apps.
+
+#### Security
+- **Fixed (TOCTOU):** OAuth authorization code exchange uses atomic `UPDATE ... RETURNING` to prevent time-of-check-to-time-of-use race.
+- **Fixed (Chat authZ):** `POST /v1/agents/{id}/chat` enforces org membership for users and same-org check for agent callers.
+- **Fixed (Discord replay):** Discord OAuth `state` parameter is single-use (consumed on callback) to prevent replay attacks.
+- **Fixed (OAuth atomic):** Authorization code creation and consent recording use a database transaction to prevent orphaned codes.
+- **Fixed (Channel allowlists):** `auto_respond_enabled` must be true AND sender must be in `sender_allowlist` for auto-respond to trigger.
+
+#### Dashboard
+- **Fixed:** Template spec builder edit round-trip — editing an existing template now correctly loads the current spec.
+- **Improved:** OAuth consent page UX — better error states, scope descriptions, app logo display.
+- **New:** Grant page auth gate — `/connect/{slug}/grant` requires authentication (redirects to login).
+- **Improved:** Mobile responsiveness — sidebar, tables, and cards responsive on mobile viewports.
+- **New:** Marketplace page at `/marketplace` — browse approved platform apps.
+
+#### Clients
+- `@1claw/sdk@0.46.0`, `@1claw/wallet-react@0.5.0`, `@1claw/mcp@0.46.0`, `@1claw/openapi-spec@0.46.0` updated.
+
+---
+
+## 2026-08
 
 ### v0.45.0 — Runtime Tool Registry, Sub-Agent Framework (2026-08-11)
 
@@ -24924,7 +25185,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **Low**: Runtime chat rolling message cap, Cloud Run internal-only ingress, XFF bypass fix, agent token TTL reduced to 2h, step-up unlock prefix hardening, LLM billing gating improvements.
 
 #### Platform API
-- **Delegation scope enforcement**: `delegation_scopes` now enforced on 6 handler groups: secrets, policies, bindings, discovery, memory, and chat. New scopes: `memory:read`/`memory:write`, `chat:read`/`chat:write`. Missing scope → 403.
+- **Delegation scope enforcement**: `delegation_scopes` now enforced on 4 handler groups: secrets, policies, bindings, and discovery. Missing scope → 403.
 - **Disconnected connection rejection**: Operations on disconnected platform connections rejected with 403.
 - **Bootstrap runtimes & automations**: Template `spec` now supports `runtimes` and `automations` arrays. Bootstrap creates these resources and tracks IDs on the connection (`runtime_ids`, `automation_ids` — migration 170).
 - **Dashboard**: Platform audit page, key rotation UI, connected apps grant management with expandable panels.
@@ -24941,16 +25202,6 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - Endpoints: CRUD under `/v1/agents/{id}/channels`, webhook endpoints per platform.
 - MCP `create_channel`, `list_channels`, `send_channel_message`.
 
-#### Hermes-Native Channel Features (v0.45)
-- **Slash command router** — 12 built-in commands: /help, /new, /model, /personality, /retry, /undo, /compress, /stop, /status, /skills, /usage, /sethome. Enabled per-channel via `slash_commands_enabled`.
-- **Voice memo transcription** — Telegram voice messages auto-transcribed via Whisper API. Enable per-channel with `voice_transcription_enabled`.
-- **Cross-platform conversation continuity** — `unified_conversation_id` links channels to a shared conversation context, enabling seamless cross-platform agent interactions.
-- **Automation → channel delivery** — `notify` step supports `channel` type for delivering automation outputs to messaging channels.
-- **Context-aware interruption** — `auto_respond_in_progress` flag prevents duplicate responses during concurrent message processing.
-- **Platform presence** — `is_home_platform` marks a channel as the agent's primary interface. Set via /sethome slash command.
-- **Sub-agent chat** — Agents can chat with any agent in the same organization via `POST /v1/agents/{id}/chat` (not just self).
-- **Shroud image gen fallback** — DALL-E requests use OPENAI_API_KEY env var when no agent-specific key is configured.
-
 #### Dashboard
 - Fixed: Automations detail page crash.
 - Improved: Assist NL mapping, automations wizard/assist UX, runtime chat code formatting.
@@ -24958,47 +25209,6 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 #### Clients
 - `@1claw/sdk`, `@1claw/cli`, `@1claw/mcp`, `@1claw/openapi-spec` updated.
-
-### v0.43.5 — OAuth2 Refresh Tokens, Platform Enhancements, Security Fixes (2026-08-12)
-
-#### OAuth2 Enhancements
-- **New:** Refresh tokens — `POST /v1/oauth/token` returns `refresh_token` when `offline_access` scope is granted. 30-day expiry, single-use rotation via `grant_type=refresh_token`. DB: `oauth_refresh_tokens` (migration 173).
-- **New:** Token revocation — `POST /v1/oauth/revoke` (RFC 7009). Revoke access or refresh tokens; always returns 200 per spec.
-- **New:** Consent revocation — `DELETE /v1/oauth/consent/{app_slug}` revokes all consent and active tokens for a platform app.
-- **New:** Scope-filtered UserInfo — `GET /v1/oauth/userinfo` respects granted scopes (only returns `email` if `email` scope was granted, etc.).
-
-#### Platform API
-- **New:** `max_connected_users` field on platform apps — enforced cap on connected user count.
-- **New:** `GET /v1/platform/marketplace` — public marketplace listing for platform apps.
-- **New:** `GET /v1/platform/apps/{id}/stats` — app statistics (active connections, bootstraps, grants).
-- **New:** `POST /v1/webhooks/{id}/rotate-secret` — rotate webhook signing secret.
-- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
-- **New:** Platform rate limiting — `max_requests_per_minute` per platform app.
-- **New:** Platform onboarding wizard at `/platform/wizard`.
-- **Fixed:** Multi-agent bootstrap — templates with multiple agents now correctly provision all agents and their signing keys.
-
-#### Security
-- **Fixed (TOCTOU):** OAuth authorization code exchange uses atomic SELECT-and-mark to prevent race-condition double-spend of authorization codes.
-- **Fixed:** Chat authorization — `POST /v1/agents/{id}/chat` now verifies the caller owns the agent (org-level isolation enforced).
-- **Fixed:** Discord OAuth replay prevention — authorization codes are single-use and time-bound.
-- **Fixed:** Channel sender allowlist enforcement — `auto_respond_enabled` and `sender_allowlist` are now enforced consistently across all channel types.
-
-#### LLM Billing
-- **Fixed:** Duplicate subscription detection — `POST /v1/billing/llm-token-billing/subscribe` detects existing active LLM subscriptions and returns the current subscription instead of creating a duplicate. Cleanup logic handles orphaned subscriptions.
-
-#### SDK
-- **New:** `generatePKCE()`, `buildAuthorizeUrl()` — PKCE helpers for OAuth2 flows.
-- **New:** `getUserInfo()`, `revokeToken()`, `revokeConsent()` — OAuth2 token lifecycle methods.
-- **New:** `rotateWebhookSecret()`, `getAppStats()`, `marketplace()` — platform methods.
-
-#### Delegation Scopes
-- **New:** `memory:read` / `memory:write` — platform delegation scopes for agent memory CRUD.
-- **New:** `chat:read` / `chat:write` — platform delegation scopes for agent chat operations.
-
-#### Clients
-- `@1claw/sdk@0.43.5`, `@1claw/cli@0.43.5`, `@1claw/mcp@0.43.5`, `@1claw/openapi-spec@0.43.5`.
-
----
 
 ### v0.43.4 — Automations v2: Workflow Engine, SDK ESM fix, Python SDK (2026-08-10)
 
@@ -25490,7 +25700,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 ### Embedded Wallets: Email OTP, OAuth2, Spend Policies (v0.33.0)
 
 - **New:** Email OTP login — Passwordless authentication for embedded wallet end-users via 6-digit email codes. `POST /v1/auth/email-otp/send` (rate-limited, 5-min expiry) and `POST /v1/auth/email-otp/verify` (returns JWT + auto-provisions treasury wallets on first login). Migration 113.
-- **New:** Sign in with 1Claw — Full OAuth2 authorization code flow with PKCE; 1Claw acts as an OIDC provider for third-party apps. Endpoints: `POST /v1/oauth/authorize` (code grant), `POST /v1/oauth/token` (code exchange for `access_token` + `id_token` + `refresh_token`), `GET /v1/oauth/userinfo` (scope-filtered), `POST /v1/oauth/revoke` (RFC 7009 token revocation), `DELETE /v1/oauth/consent/{app_slug}` (consent revocation). Refresh tokens: 30-day expiry, single-use rotation, requires `offline_access` scope. DB: `oauth_refresh_tokens` (migration 173). Dashboard consent page at `/oauth/authorize`. OIDC discovery updated to advertise `authorization_endpoint`, `userinfo_endpoint`, and PKCE (`S256`). Platform apps configure `redirect_uris` for OAuth client registration. Migration 114.
+- **New:** Sign in with 1Claw — Full OAuth2 authorization code flow with PKCE; 1Claw acts as an OIDC provider for third-party apps. Endpoints: `POST /v1/oauth/authorize` (code grant), `POST /v1/oauth/token` (code exchange), `GET /v1/oauth/userinfo`. Dashboard consent page at `/oauth/authorize`. OIDC discovery updated to advertise `authorization_endpoint`, `userinfo_endpoint`, and PKCE (`S256`). Platform apps configure `redirect_uris` for OAuth client registration. Migration 114.
 - **New:** Wallet spend policies — Per-app default and per-user override policies for treasury wallet sends and swaps. Controls: recipient `to_allowlist`, `max_value_eth` per-tx cap, `daily_limit_eth`, `allowed_chains`. Endpoints: `POST/GET/PATCH/DELETE /v1/spend-policies`. Enforced server-side before signing treasury wallet transactions. Migration 115.
 - **New:** Embedded Wallets marketing page — Landing page at `/embedded-wallets` showcasing the platform for developers (feature grid, code snippets, integration steps).
 - **New:** OAuth consent page — User consent UI at `/oauth/authorize` for third-party app authorization with scope display and approve/deny.
@@ -26642,7 +26852,7 @@ All API endpoints are organized into resource modules:
 
 | Module                     | Methods                                                                                            |
 | -------------------------- | -------------------------------------------------------------------------------------------------- |
-| `client.auth`              | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()`, `forgotPassword()`, `resetPassword()`, `sendEmailOtp()`, `verifyEmailOtp()`, `socialLogin()`, `exchangeOAuthCode()`, `exchangeFederatedToken()`, `generatePKCE()`, `buildAuthorizeUrl()`, `getUserInfo()`, `revokeToken()`, `revokeConsent()` |
+| `client.auth`              | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()`, `forgotPassword()`, `resetPassword()`, `sendEmailOtp()`, `verifyEmailOtp()`, `socialLogin()`, `exchangeOAuthCode()`, `exchangeFederatedToken()` |
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
@@ -26658,7 +26868,7 @@ All API endpoints are organized into resource modules:
 | `client.chains`            | `list()`, `get()`                                                                                  |
 | `client.treasury`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `addSigner()`, `removeSigner()`, `propose()`, `listProposals()`, `getProposal()`, `signProposal()`, `executeProposal()` |
 | `client.treasuryWallets`   | `generate()`, `list()`, `get()`, `balance()`, `send()`, `swap()`, `export()`, `rotate()`, `deactivate()`, `getEffectiveSpendPolicy()` |
-| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()`, `getAppStats()`, `marketplace()`, `rotateWebhookSecret()` |
+| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()` |
 | `client.devices`           | `list()`, `revoke()`                                                                               |
 | `client.passkeys`          | `list()`, `register()`, `delete()`                                                                 |
 | `client.depositDestinations` | `create()`, `list()`, `get()`, `update()`                                                        |
@@ -26673,7 +26883,7 @@ All API endpoints are organized into resource modules:
 | `client.oauthConnect`      | `listProviders()`, `listConnections()`, `connect()`, `disconnect()`, `saveAppCredentials()`, `listAppCredentials()`, `deleteAppCredentials()` |
 | `client.cards`             | `order()`, `list()`, `get()`, `reveal()`, `update()`, `void()`, `refresh()`, `import()`, `searchGiftCards()` |
 | `client.bindings`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `test()`, `execute()`, `rotateCredential()`, `listExecutions()` |
-| `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateSecret()`                            |
+| `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email
 

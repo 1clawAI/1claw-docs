@@ -256,6 +256,7 @@ Deactivated agents cannot exchange tokens or access secrets, but their records a
 
 ## Next steps
 
+- [Agent-to-Agent Delegation](/docs/guides/agent-delegation) — Set up human-controlled delegation between agents with security guardrails.
 - [Agent Self-Onboarding](/docs/guides/agent-self-onboarding) — The agent-first enrollment flow.
 - [Securing Agent Access](/docs/guides/securing-agent-access) — Deep dive on policy conditions and scoping.
 - [Audit and Compliance](/docs/guides/audit-and-compliance) — Tamper-proof audit log and compliance features.
