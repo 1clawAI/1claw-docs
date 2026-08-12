@@ -9,7 +9,11 @@ import TabItem from '@theme/TabItem';
 
 # Agent Frameworks
 
-1claw is built for agents. While most key management and vault platforms assume a human is driving, 1claw's auth model, policy engine, and signing infrastructure are designed for headless, autonomous processes. This guide covers how to integrate 1claw with four popular agent frameworks.
+Most vault and key management products assume a human is clicking around a dashboard. 1Claw is built for headless agents: scoped API keys, policy-gated secret paths, server-side signing, and audit logs for every fetch.
+
+This guide shows how to plug 1Claw into elizaOS, GOAT, LangChain, and CrewAI. The shape is the same in each case: a human registers an agent and grants policies once; the framework calls 1Claw at runtime for secrets, signing, and memory. The agent never holds raw private keys.
+
+For dedicated packages, see [`langchain-1claw`](https://pypi.org/project/langchain-1claw/), [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/), and the [ecosystem page](/docs/guides/ecosystem).
 
 ## The pattern (same for every framework)
 

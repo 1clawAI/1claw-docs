@@ -6,7 +6,11 @@ sidebar_position: 4
 
 # MCP Integration
 
-The 1claw MCP server gives AI agents (Claude, Cursor, GPT, and others) secure, just-in-time access to secrets stored in your vault via the [Model Context Protocol](https://modelcontextprotocol.io).
+The 1claw MCP server connects AI clients (Claude, Cursor, GPT, and others) to your vault through the [Model Context Protocol](https://modelcontextprotocol.io). Secrets are fetched at tool-call time, not pasted into system prompts or config files.
+
+This is the fastest path for IDE agents: register an agent in the dashboard, grant read access to the paths it needs, and point your MCP client at `mcp.1claw.xyz` with the agent API key. The server exchanges the key for a short-lived JWT, refreshes it automatically, and discovers the vault when the agent is bound to one.
+
+For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/guides/cli#local-vault--daemon) with `ONECLAW_LOCAL_VAULT=true`.
 
 :::tip Try it out
 Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (LangChain + 1Claw MCP tools).

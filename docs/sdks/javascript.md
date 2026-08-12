@@ -6,11 +6,15 @@ sidebar_position: 1
 
 # JavaScript / TypeScript SDK
 
-The official TypeScript SDK provides full API parity with the 1Claw REST API. It supports both human and agent workflows, x402 auto-payment, and an MCP tool layer for AI agents.
+The official TypeScript client for the 1Claw REST API. Use it in Node.js, Next.js, and browser apps when you need programmatic vault access, agent management, treasury operations, or Platform API bootstrap flows.
+
+Types are generated from the OpenAPI spec, so request and response shapes track the API. Agent keys auto-exchange for JWTs and refresh before expiry. x402 micropayment headers are supported for paid routes.
+
+Connecting an IDE agent to secrets? Use [@1claw/mcp](https://www.npmjs.com/package/@1claw/mcp) or `1claw setup` instead. This SDK is for apps and services you own.
 
 **Repository:** [github.com/1clawAI/1claw-sdk](https://github.com/1clawAI/1claw-sdk)
 
-**API contract:** The SDK is built against the **OpenAPI 3.1** spec. Request/response types are generated from it. The spec is published as [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec) (npm) for codegen or custom clients. See [API reference](/docs/reference/api-reference) for the endpoint list.
+**API contract:** Built against **OpenAPI 3.1**. The spec is [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec). See [API reference](/docs/reference/api-reference) for the endpoint list.
 
 :::tip Try it out
 Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing) and **[Next.js Agent Secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret)** (chat app with server-side vault access).

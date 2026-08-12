@@ -6,7 +6,11 @@ sidebar_position: 2
 
 # Python SDK
 
-The official Python SDK (`oneclaw` on PyPI) provides full API parity with the 1Claw REST API. It supports human and agent workflows, automatic JWT refresh for agent keys, and typed resource modules.
+The official Python client (`oneclaw` on PyPI) mirrors the 1Claw REST API. Use it for Python backends, cron jobs, data pipelines, and custom agents that call 1Claw over HTTP.
+
+Agent keys (`ocv_`) and user keys (`1ck_`) both auto-exchange for JWTs and refresh before expiry. Resource modules cover vaults, secrets, agents, policies, Intents API signing, execution bindings, billing, and the rest of the surface documented in the OpenAPI spec.
+
+Building with LangChain or CrewAI? Install [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) or [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) for ready-made tools. This package is the underlying client.
 
 **Repository:** [github.com/1clawAI/1claw-python-sdk](https://github.com/1clawAI/1claw-python-sdk)
 

@@ -6,12 +6,12 @@ sidebar_position: 8
 
 # 1claw OpenClaw Plugin
 
-The **@1claw/openclaw-plugin** is an official OpenClaw gateway plugin that adds native 1claw support inside your OpenClaw instance: agent tools, secret redaction, optional secret injection, Shroud TEE routing, key-rotation monitoring, and slash commands. It runs in-process with the gateway (no separate MCP process required for the tools it provides).
+The **@1claw/openclaw-plugin** runs inside your OpenClaw gateway. It adds native 1claw tools, secret redaction, optional secret injection, Shroud TEE routing, key-rotation monitoring, and slash commands. No separate MCP process is required for the tools this plugin provides.
+
+Use it when your agent lives in OpenClaw and you want vault access, signing, and LLM inspection in one install. For a lighter setup that only teaches the agent how to use 1claw via an external MCP server, see [Using 1claw with OpenClaw](/docs/guides/openclaw) (skill-only path).
 
 **Repository:** [github.com/1clawAI/1claw-openclaw-plugin](https://github.com/1clawAI/1claw-openclaw-plugin)  
 **npm:** [@1claw/openclaw-plugin](https://www.npmjs.com/package/@1claw/openclaw-plugin)
-
-For a lighter setup that only teaches your agent how to use 1claw (e.g. via an external MCP server), see [Using 1claw with OpenClaw](/docs/guides/openclaw) (skill-only path).
 
 ---
 

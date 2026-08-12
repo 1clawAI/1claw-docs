@@ -9,13 +9,17 @@ import TabItem from '@theme/TabItem';
 
 # SDKs overview
 
-- **JavaScript/TypeScript** — Official `@1claw/sdk`. Built from the same OpenAPI 3.1 spec as the API; supports agent auth, secrets, billing, and optional x402. See [JavaScript SDK](/docs/sdks/javascript).
-- **Python** — Official `oneclaw` package on PyPI. Agent JWT auto-refresh, vaults, secrets, Intents API, Execution Intents, and more. See [Python SDK](/docs/sdks/python).
-- **Go** — Official `1claw-go-sdk`. Typed client with agent auth, secrets, billing, Intents API, and more. See [Go SDK](/docs/sdks/go).
-- **elizaOS** — Official plugin `@1claw/plugin-elizaos`. Gives any elizaOS character vault secrets and multi-chain signing via 8 built-in actions. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
-- **curl / HTTP** — All endpoints are REST; you can use curl, fetch, or any HTTP client. See [curl examples](/docs/sdks/curl-examples).
+Official clients for calling the 1Claw REST API from your own code. Pick the language that matches your service; all three handle agent JWT exchange and refresh the same way.
 
-**API contract:** The canonical source of truth for the API is the **OpenAPI 3.1** spec. It is published as the npm package [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec) (YAML and JSON) and is used to generate the SDK's types and to validate requests. For a concise endpoint list, see [API reference](/docs/reference/api-reference).
+- **JavaScript/TypeScript** — `@1claw/sdk` for Node.js, Next.js, and browser apps. Types generated from the OpenAPI spec. See [JavaScript SDK](/docs/sdks/javascript).
+- **Python** — `oneclaw` on PyPI for scripts, backends, and custom agents. See [Python SDK](/docs/sdks/python). For LangChain or CrewAI, use [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) or [`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) instead.
+- **Go** — `1claw-go-sdk` for services and infrastructure written in Go. See [Go SDK](/docs/sdks/go).
+- **elizaOS** — `@1claw/plugin-elizaos` adds vault and signing actions to elizaOS characters. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
+- **curl / HTTP** — Every endpoint is REST. See [curl examples](/docs/sdks/curl-examples).
+
+If you're connecting Cursor or Claude Desktop to a vault, start with [MCP integration](/docs/guides/mcp-integration) instead of an SDK.
+
+**API contract:** The canonical source of truth is the **OpenAPI 3.1** spec, published as [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec).
 
 ## Quick example
 

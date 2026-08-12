@@ -6,7 +6,11 @@ sidebar_position: 3
 
 # Go SDK
 
-The official Go SDK provides a typed client for the 1claw Vault API. It covers secrets, vaults, agents, policies, billing, audit, and the Intents API.
+Typed Go client for the 1Claw Vault API. Built for microservices, operators, and CI jobs already written in Go.
+
+Covers vaults, secrets, agents, policies, billing, audit, treasury, Intents API signing, execution bindings, and platform apps. Agent API keys exchange for JWTs the same way as the TypeScript and Python SDKs.
+
+For AI agents in IDEs, use the [MCP server](/docs/guides/mcp-integration) instead of embedding this client in agent prompts.
 
 ## Installation
 
