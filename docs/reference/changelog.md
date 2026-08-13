@@ -14,6 +14,50 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.47.0 — Turnkey Parity Features (2026-08-13)
+
+#### Key Import (BYOK)
+- **New:** `POST /v1/agents/{id}/signing-keys/{chain}/import` — Import an existing private key as a signing key. Human-only, requires `X-Auth-Confirm` password re-authentication. Supports hex, base64, and WIF formats.
+- **New:** `POST /v1/treasury/wallets/{chain}/import` — Import an existing private key as a treasury wallet. Human-only, requires `X-Auth-Confirm`.
+
+#### Policy Engine v2 + Cedar + OPA
+- **New:** Existing access policies now support `effect` ("allow" or "deny"), `priority` (higher wins), and `attribute_conditions` fields for fine-grained policy evaluation.
+- **New:** Cedar policy engine (Team+ tier): `POST/GET /v1/org/cedar-policies` (CRUD), `POST /v1/org/cedar-policies/test` (dry-run evaluation). Declarative authorization via Cedar policy language.
+- **New:** OPA policy engine (Business+ tier): `POST/GET /v1/org/opa-policies` (CRUD), `POST /v1/org/opa-policies/test` (dry-run evaluation). Rego-based policy evaluation with custom data documents.
+- **DB:** Migration 179 (policy v2 columns: effect, priority, attribute_conditions + secret tags), migration 180 (cedar_policies and opa_policies tables).
+
+#### Non-EVM Treasury Send
+- **Updated:** `POST /v1/treasury/wallets/{chain}/send` now supports Bitcoin, Solana, XRP, Cardano, and Tron sends alongside EVM chains.
+- **Updated:** Request body extended with `token_mint`, `memo`, `destination_tag`, `fee_rate_sat_per_vbyte`, `xrpl_tx_json`, `fee_limit_sun`, `token_decimals`, `ttl` for non-EVM chain-specific parameters.
+- **Note:** `POST /v1/treasury/wallets/{chain}/swap` returns 400 for non-EVM chains (DEX aggregator is EVM-only).
+
+#### Sub-Organizations
+- **New:** Hierarchical organization management. Sub-orgs inherit or independently manage billing.
+- **New endpoints:** `POST/GET /v1/org/sub-orgs` (create, list), `GET/DELETE /v1/org/sub-orgs/{id}` (get, archive), `POST/DELETE /v1/org/sub-orgs/{id}/permissions` (grant, revoke), `POST /v1/org/sub-orgs/{id}/users` (add user), `POST /v1/org/sub-orgs/{id}/wallets/generate` (generate wallets).
+- **Platform API:** `create_sub_org: bool` on `upsert_user` enables platform apps to create sub-orgs for connected users.
+- **DB:** Migration 181.
+
+#### Portfolio
+- **New:** `GET /v1/portfolio` — Unified balance aggregator across all wallet types (treasury wallets, signing keys, smart accounts). Query params: `?chains=ethereum,solana`, `?include_tokens=true`. Returns per-wallet balances with USD estimates.
+
+#### Smart Account Import
+- **New:** `POST /v1/agents/{id}/smart-accounts/import` — Import an existing Safe smart account. Accepts `{ chain, chain_id, safe_address, verify? }`. Optionally verifies on-chain Safe ownership before import.
+
+#### SDK / CLI / MCP
+- **SDK:** `client.signingKeys.importKey()`, `client.treasuryWallets.importWallet()`, `client.cedarPolicies.*` (CRUD + test), `client.opaPolicies.*` (CRUD + test), `client.subOrgs.*` (full CRUD), `client.portfolio.get()`, `client.agents.importSmartAccount()`. Policy types updated with `effect`, `priority`, `attribute_conditions`.
+- **CLI:** `1claw cedar-policy create|list|get|delete|test`, `1claw opa-policy create|list|get|delete|test`, `1claw sub-org create|list|get|archive|grant|revoke|add-user|wallets`, `1claw portfolio`, `1claw agent keys import`, `1claw agent smart-account-import`, `1claw treasury wallet import`.
+- **MCP:** `import_signing_key`, `list_cedar_policies`, `test_cedar_policy`, `list_opa_policies`, `test_opa_policy`, `list_sub_orgs`, `create_sub_org`, `get_portfolio`, `import_smart_account` tools.
+
+#### Dashboard
+- **Updated:** Policy create/list pages now show effect (allow/deny badge) and priority fields.
+- **Updated:** Create policy form includes effect dropdown and priority input.
+
+#### Clients
+- `@1claw/sdk@0.47.0`, `@1claw/cli@0.47.0`, `@1claw/mcp@0.47.0`, `@1claw/openapi-spec@0.47.0`
+- Python SDK `oneclaw@0.47.0`, Go SDK `v0.47.0`
+
+---
+
 ### v0.46.0 — Agent Delegation Framework (2026-08-12)
 
 #### Agent-to-Agent Delegation
