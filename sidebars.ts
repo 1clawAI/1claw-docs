@@ -121,6 +121,11 @@ const sidebars: SidebarsConfig = {
                             id: "guides/approvals",
                             label: "Human-in-the-loop — approvals for agent actions",
                         },
+                        {
+                            type: "doc",
+                            id: "guides/agent-delegation",
+                            label: "Delegation — inter-agent task delegation",
+                        },
                     ],
                 },
                 {

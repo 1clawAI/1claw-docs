@@ -92,6 +92,19 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
   }'
 ```
 
+Set `create_sub_org: true` to auto-create a sub-organization for the connected user, giving them isolated resources under the parent org:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "external_subject": "telegram:123456789",
+    "create_sub_org": true
+  }'
+```
+
 ### 4. Bootstrap the User
 
 ```bash

@@ -91,8 +91,8 @@ All API endpoints are organized into resource modules:
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
-| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()` |
-| `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`                                       |
+| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()`, `importSmartAccount()` |
+| `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`, `importKey()`                         |
 | `client.sharing`           | `create()`, `access()`, `revoke()`                                                                 |
 | `client.approvals`         | `request()`, `list()`, `get()`, `decide()`                                                         |
 | `client.apiKeys`           | `create()`, `list()`, `revoke()`                                                                   |
@@ -118,6 +118,10 @@ All API endpoints are organized into resource modules:
 | `client.oauthConnect`      | `listProviders()`, `listConnections()`, `connect()`, `disconnect()`, `saveAppCredentials()`, `listAppCredentials()`, `deleteAppCredentials()` |
 | `client.cards`             | `order()`, `list()`, `get()`, `reveal()`, `update()`, `void()`, `refresh()`, `import()`, `searchGiftCards()` |
 | `client.bindings`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `test()`, `execute()`, `rotateCredential()`, `listExecutions()` |
+| `client.cedarPolicies`     | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
+| `client.opaPolicies`       | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
+| `client.subOrgs`           | `create()`, `list()`, `get()`, `archive()`, `grantPermission()`, `revokePermission()`, `addUser()`, `generateWallets()` |
+| `client.portfolio`         | `get()`                                                                                            |
 | `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email

@@ -190,6 +190,7 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/wallets/:chain/send`        | Send native/ERC-20 (requires X-Auth-Confirm)   |
 | POST   | `/v1/treasury/wallets/:chain/swap`        | Swap tokens via 0x (requires X-Auth-Confirm)   |
 | POST   | `/v1/treasury/wallets/:chain/export`      | Export wallet with private key (audit-logged)   |
+| POST   | `/v1/treasury/wallets/:chain/import`      | Import wallet (BYOK, requires X-Auth-Confirm)  |
 | POST   | `/v1/treasury/wallets/:chain/rotate`      | Rotate wallet keypair                          |
 | DELETE | `/v1/treasury/wallets/:chain`             | Deactivate wallet                              |
 
@@ -229,7 +230,16 @@ Per-agent, per-chain signing keys provisioned by humans. Keys are stored in the 
 | POST   | `/v1/agents/:agent_id/signing-keys/:chain/rotate`         | Rotate a chain's signing key             |
 | DELETE | `/v1/agents/:agent_id/signing-keys/:chain`                | Deactivate a chain's signing key         |
 | POST   | `/v1/agents/:agent_id/signing-keys/:chain/export`         | Export signing key (requires X-Auth-Confirm) |
+| POST   | `/v1/agents/:agent_id/signing-keys/:chain/import`         | Import signing key (BYOK, requires X-Auth-Confirm) |
 | GET    | `/v1/agents/:agent_id/signing-keys/:chain/balance`        | Get balance for signing key address      |
+
+## Agent Smart Accounts
+
+Import existing Gnosis Safe smart accounts for agents.
+
+| Method | Path                                                      | Description                              |
+| ------ | --------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/smart-accounts/import`              | Import an existing Safe (optional on-chain verification) |
 
 ## Transactions & Signing (Intents API)
 
@@ -615,6 +625,66 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | GET    | `/v1/platform/connections/:id/grants`         | List active resource grants for a connection                     |
 | DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
 | GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
+
+## Cedar Policies (Team+)
+
+Declarative AWS Cedar policy language for advanced authorization.
+
+| Method | Path                                  | Description                              |
+| ------ | ------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/cedar-policies`              | Create a Cedar policy                    |
+| GET    | `/v1/org/cedar-policies`              | List Cedar policies                      |
+| GET    | `/v1/org/cedar-policies/:id`          | Get Cedar policy details                 |
+| DELETE | `/v1/org/cedar-policies/:id`          | Delete a Cedar policy                    |
+| POST   | `/v1/org/cedar-policies/test`         | Dry-run a Cedar policy                   |
+
+## OPA Policies (Business+)
+
+Open Policy Agent Rego policies for advanced authorization.
+
+| Method | Path                                  | Description                              |
+| ------ | ------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/opa-policies`                | Create an OPA policy                     |
+| GET    | `/v1/org/opa-policies`                | List OPA policies                        |
+| GET    | `/v1/org/opa-policies/:id`            | Get OPA policy details                   |
+| DELETE | `/v1/org/opa-policies/:id`            | Delete an OPA policy                     |
+| POST   | `/v1/org/opa-policies/test`           | Dry-run an OPA policy                    |
+
+## Sub-Organizations (Enterprise)
+
+Hierarchical org management for enterprise customers.
+
+| Method | Path                                              | Description                              |
+| ------ | ------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/sub-orgs`                                | Create a sub-organization                |
+| GET    | `/v1/org/sub-orgs`                                | List sub-organizations                   |
+| GET    | `/v1/org/sub-orgs/:id`                            | Get sub-organization details             |
+| DELETE | `/v1/org/sub-orgs/:id`                            | Archive (soft-delete) a sub-org          |
+| POST   | `/v1/org/sub-orgs/:id/permissions`                | Grant permission to user/agent           |
+| DELETE | `/v1/org/sub-orgs/:id/permissions/:perm`          | Revoke permission                        |
+| POST   | `/v1/org/sub-orgs/:id/users`                      | Add user to sub-org                      |
+| POST   | `/v1/org/sub-orgs/:id/wallets/generate`           | Generate treasury wallets for sub-org    |
+
+## Portfolio
+
+Unified balance aggregator across all wallets (treasury wallets, signing keys, smart accounts).
+
+| Method | Path              | Description                              |
+| ------ | ----------------- | ---------------------------------------- |
+| GET    | `/v1/portfolio`   | Get aggregated balances across all wallets (filterable by `?chains=`, `?include_tokens=`) |
+
+## Agent Delegations
+
+Human-controlled inter-agent delegation authorization.
+
+| Method | Path                                                       | Description                              |
+| ------ | ---------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/delegations`                         | Create delegation (human-only)           |
+| GET    | `/v1/agents/:agent_id/delegations`                         | List delegations                         |
+| GET    | `/v1/agents/:agent_id/delegations/effective`               | Get effective delegations (agent-callable) |
+| GET    | `/v1/agents/:agent_id/delegations/:delegation_id`          | Get delegation details                   |
+| PATCH  | `/v1/agents/:agent_id/delegations/:delegation_id`          | Update delegation (human-only)           |
+| DELETE | `/v1/agents/:agent_id/delegations/:delegation_id`          | Revoke delegation (human-only)           |
 
 ---
 

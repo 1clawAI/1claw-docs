@@ -5494,6 +5494,7 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
 1claw agent delete <id>
 1claw agent token <id>                 # Generate agent JWT
 1claw agent enroll my-agent --email human@example.com   # Self-enroll (no auth)
+1claw agent smart-account-import <id> --chain ethereum --chain-id 1 --safe 0x...  # Import Safe
 ```
 
 ## Transactions (Intents API)
@@ -5522,9 +5523,12 @@ Manage per-agent signing keys. Keys are generated server-side and stored in the 
 1claw agent keys rotate <agent-id> --chain ethereum
 1claw agent keys delete <agent-id> --chain ethereum
 1claw agent export-signing-key <agent-id> --chain ethereum   # Requires password
+1claw agent keys import <agent-id> <chain> --key <key> --format hex  # BYOK import
 ```
 
 Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`.
+
+Import supports `--format hex` (default), `base64`, or `wif` (Bitcoin only). Human-only, requires password re-authentication.
 
 ## Unified signing (`agent sign`)
 
@@ -6145,6 +6149,47 @@ Package your customized agent into a portable image:
 ```
 
 In a standalone Cloud Run deploy there is no host daemon, so the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount. The entrypoint detects this automatically (no daemon socket mounted → require `ONECLAW_AGENT_API_KEY`). Review the generated Terraform before applying; `terraform validate` passes out of the box.
+
+## Cedar policies (Team+)
+
+```bash
+1claw cedar-policy create --name "deny-prod-writes" --policy-text '<cedar policy>'
+1claw cedar-policy list
+1claw cedar-policy get <id>
+1claw cedar-policy delete <id>
+1claw cedar-policy test --policy-text '<cedar policy>' --request '{"principal":"agent:...","action":"read","resource":"secrets/prod/*"}'
+```
+
+## OPA policies (Business+)
+
+```bash
+1claw opa-policy create --name "require-mfa" --policy-text '<rego policy>'
+1claw opa-policy list
+1claw opa-policy get <id>
+1claw opa-policy delete <id>
+1claw opa-policy test --policy-text '<rego policy>' --input '{"principal_type":"agent"}'
+```
+
+## Sub-organizations (Enterprise)
+
+```bash
+1claw sub-org create --name "Team Alpha"
+1claw sub-org list
+1claw sub-org get <id>
+1claw sub-org archive <id>
+1claw sub-org grant <id> --user <user-id> --permission admin
+1claw sub-org revoke <id> --permission <perm-id>
+1claw sub-org add-user <id> --user <user-id>
+1claw sub-org wallets <id> --chains ethereum,solana
+```
+
+## Portfolio
+
+```bash
+1claw portfolio                                    # All wallets
+1claw portfolio --chains ethereum,solana           # Filter by chain
+1claw portfolio --include-tokens                   # Include token balances
+```
 
 ## DPoP (Proof-of-Possession)
 
@@ -11606,8 +11651,52 @@ Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `t
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |
+| Import (BYOK) | `POST /v1/agents/{id}/signing-keys/{chain}/import` | `client.signingKeys.importKey(agentId, chain, { private_key, format })` |
 
-Only human users can provision, rotate, and export keys — agents receive 403.
+Only human users can provision, rotate, export, and import keys — agents receive 403.
+
+### Import (BYOK)
+
+Bring your own key: import an existing private key for a chain instead of generating one server-side. Human-only, requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `signing_key.import`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `private_key` | string | ✅ | The raw private key |
+| `format` | string | ❌ | `"hex"` (default), `"base64"`, or `"wif"` (Bitcoin only) |
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: key } = await client.signingKeys.importKey(agentId, "ethereum", {
+  private_key: "0xabc123...",
+  format: "hex",
+});
+console.log(key.address);
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{ "private_key": "0xabc123...", "format": "hex" }'
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent keys import $AGENT_ID ethereum --key 0xabc123... --format hex
+```
+
+</TabItem>
+</Tabs>
+
+The server derives the public key and address from the imported key, stores it in `__agent-keys`, and returns the same response shape as `create`.
 
 ---
 
@@ -13073,6 +13162,19 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
   -d '{
     "email": "user@example.com",
     "external_subject": "telegram:123456789"
+  }'
+```
+
+Set `create_sub_org: true` to auto-create a sub-organization for the connected user, giving them isolated resources under the parent org:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "external_subject": "telegram:123456789",
+    "create_sub_org": true
   }'
 ```
 
@@ -17878,6 +17980,7 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 | POST   | `/v1/treasury/wallets/{chain}/send`     | Send tokens (password re-auth)       |
 | POST   | `/v1/treasury/wallets/{chain}/swap`     | Swap tokens via DEX (password re-auth)|
 | POST   | `/v1/treasury/wallets/{chain}/export`   | Export wallet (password re-auth)     |
+| POST   | `/v1/treasury/wallets/{chain}/import`   | Import existing wallet (BYOK, password re-auth) |
 | POST   | `/v1/treasury/wallets/{chain}/rotate`   | Rotate keypair                       |
 | DELETE | `/v1/treasury/wallets/{chain}`          | Deactivate wallet                    |
 
@@ -18023,6 +18126,56 @@ Response:
 
 :::danger
 The private key is returned in plaintext. Treat it as you would any other secret — never log it, never commit it, and store it only in a secure location. Failed password attempts increment your account's lockout counter (locked after 10 failures for 15 minutes).
+:::
+
+### Import wallet (BYOK)
+
+Import an existing private key instead of generating one server-side. Human-only, requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.import`.
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "private_key": "0xabc123...",
+    "format": "hex"
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `private_key` | string | ✅ | The raw private key |
+| `format` | string | ❌ | `"hex"` (default), `"base64"`, or `"wif"` (Bitcoin only) |
+
+The server derives the public key and address, stores the key in `__treasury-keys`, and returns the wallet record.
+
+### Non-EVM send
+
+`POST /v1/treasury/wallets/{chain}/send` supports all six chains, not just EVM. For non-EVM sends, include chain-specific fields:
+
+| Field | Chain | Description |
+|-------|-------|-------------|
+| `token_mint` | Solana, Tron, Cardano, EVM | Token contract or mint for token transfers |
+| `token_decimals` | Solana, Tron | Token decimals (default 6) |
+| `memo` | Solana | On-chain memo (Memo Program v2) |
+| `destination_tag` | XRP | Destination tag for exchange deposits |
+| `fee_rate_sat_per_vbyte` | Bitcoin | Override the auto-fetched fee rate |
+| `fee_limit_sun` | Tron | TRC-20 energy fee limit |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON |
+| `ttl` | Cardano | Time-to-live in absolute slots |
+
+```bash
+# Send 0.001 BTC from treasury wallet
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/bitcoin/send" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{ "to": "bc1q...", "value": "0.001" }'
+```
+
+:::note Swap is EVM-only
+`POST /v1/treasury/wallets/{chain}/swap` only supports EVM chains. Non-EVM chains return 400.
 :::
 
 ### Rotate keypair
@@ -20039,6 +20192,43 @@ In the **dashboard** at [1claw.xyz](https://1claw.xyz), use **Vaults → [vault]
 | permissions         | array  | ✅       | e.g. `["read"]`, `["read","write"]`              |
 | conditions          | object | ❌       | Optional (e.g. ip_allowlist, time_window)        |
 | expires_at          | string | ❌       | ISO 8601; policy stops applying after this time  |
+| effect              | string | ❌       | `"allow"` (default) or `"deny"` — deny rules override allow rules at the same priority |
+| priority            | integer| ❌       | Higher priority wins on conflict within the same effect (default `0`) |
+| attribute_conditions| object | ❌       | Attribute-based conditions (see below)           |
+
+### Policy Engine v2 fields
+
+The `effect`, `priority`, and `attribute_conditions` fields enable advanced policy evaluation:
+
+- **`effect`**: Set to `"deny"` to create a deny policy. Deny policies with higher priority override allow policies.
+- **`priority`**: Integer. When multiple policies match, the highest priority wins within the same effect. A deny at priority 10 beats an allow at priority 5.
+- **`attribute_conditions`**: JSONB object with optional fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `required_tags` | string[] | Principal must have all listed tags |
+| `principal_role` | string | Required role (e.g. `"admin"`, `"operator"`) |
+| `auth_method` | string | Required auth method (`"api_key"`, `"mtls"`, `"oidc_client_credentials"`) |
+| `risk_verdict_max` | string | Maximum acceptable risk verdict (`"low"`, `"medium"`, `"high"`) |
+| `device_known` | boolean | Require a known/registered device |
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "secret_path_pattern": "keys/production/*",
+    "principal_type": "agent",
+    "principal_id": "ec7e0226-...",
+    "permissions": ["read"],
+    "effect": "deny",
+    "priority": 10,
+    "attribute_conditions": {
+      "risk_verdict_max": "low",
+      "auth_method": "api_key"
+    }
+  }'
+```
 
 ## Example request
 
@@ -22726,6 +22916,119 @@ Send an outbound message through a channel.
 
 ---
 
+## list_cedar_policies
+
+List Cedar policies for the organization. Requires Team+ tier.
+
+### Parameters
+
+None.
+
+---
+
+## test_cedar_policy
+
+Dry-run a Cedar policy against a simulated request.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                 |
+| --------- | ------ | -------- | ------------------------------------------- |
+| `policy`  | string | Yes      | Cedar policy text                           |
+| `request` | object | Yes      | Simulated authorization request to evaluate |
+
+---
+
+## list_opa_policies
+
+List OPA (Rego) policies for the organization. Requires Business+ tier.
+
+### Parameters
+
+None.
+
+---
+
+## test_opa_policy
+
+Dry-run an OPA policy against a simulated input.
+
+### Parameters
+
+| Name     | Type   | Required | Description                     |
+| -------- | ------ | -------- | ------------------------------- |
+| `policy` | string | Yes      | Rego policy text                |
+| `input`  | object | Yes      | Simulated input to evaluate     |
+
+---
+
+## list_sub_orgs
+
+List sub-organizations under the current org.
+
+### Parameters
+
+None.
+
+---
+
+## create_sub_org
+
+Create a sub-organization.
+
+### Parameters
+
+| Name          | Type   | Required | Description      |
+| ------------- | ------ | -------- | ---------------- |
+| `name`        | string | Yes      | Sub-org name     |
+| `description` | string | No       | Description      |
+
+---
+
+## get_portfolio
+
+Get unified portfolio balances across all wallets (treasury wallets, signing keys, smart accounts).
+
+### Parameters
+
+| Name             | Type    | Required | Description                                          |
+| ---------------- | ------- | -------- | ---------------------------------------------------- |
+| `chains`         | string  | No       | Comma-separated chain filter (e.g. `ethereum,solana`) |
+| `include_tokens` | boolean | No       | Include token balances (default false)               |
+
+---
+
+## import_smart_account
+
+Import an existing Gnosis Safe smart account for an agent.
+
+### Parameters
+
+| Name           | Type    | Required | Description                                    |
+| -------------- | ------- | -------- | ---------------------------------------------- |
+| `agent_id`     | string  | Yes      | Agent UUID                                     |
+| `chain`        | string  | Yes      | Chain name (e.g. `ethereum`)                   |
+| `chain_id`     | number  | Yes      | Numeric chain ID                               |
+| `safe_address` | string  | Yes      | Safe contract address                          |
+| `verify`       | boolean | No       | Verify on-chain Safe ownership (default false) |
+
+---
+
+## import_signing_key
+
+Import an existing private key as a signing key for an agent (BYOK). Human-only, requires `X-Auth-Confirm`.
+
+### Parameters
+
+| Name          | Type   | Required | Description                         |
+| ------------- | ------ | -------- | ----------------------------------- |
+| `agent_id`    | string | Yes      | Agent UUID                          |
+| `chain`       | string | Yes      | Chain name                          |
+| `private_key` | string | Yes      | The raw private key                 |
+| `format`      | string | No       | `hex` (default), `base64`, or `wif` |
+
+---
+
 ## search_agent_directory
 
 Search the public agent directory.
@@ -24534,6 +24837,7 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/wallets/:chain/send`        | Send native/ERC-20 (requires X-Auth-Confirm)   |
 | POST   | `/v1/treasury/wallets/:chain/swap`        | Swap tokens via 0x (requires X-Auth-Confirm)   |
 | POST   | `/v1/treasury/wallets/:chain/export`      | Export wallet with private key (audit-logged)   |
+| POST   | `/v1/treasury/wallets/:chain/import`      | Import wallet (BYOK, requires X-Auth-Confirm)  |
 | POST   | `/v1/treasury/wallets/:chain/rotate`      | Rotate wallet keypair                          |
 | DELETE | `/v1/treasury/wallets/:chain`             | Deactivate wallet                              |
 
@@ -24573,7 +24877,16 @@ Per-agent, per-chain signing keys provisioned by humans. Keys are stored in the 
 | POST   | `/v1/agents/:agent_id/signing-keys/:chain/rotate`         | Rotate a chain's signing key             |
 | DELETE | `/v1/agents/:agent_id/signing-keys/:chain`                | Deactivate a chain's signing key         |
 | POST   | `/v1/agents/:agent_id/signing-keys/:chain/export`         | Export signing key (requires X-Auth-Confirm) |
+| POST   | `/v1/agents/:agent_id/signing-keys/:chain/import`         | Import signing key (BYOK, requires X-Auth-Confirm) |
 | GET    | `/v1/agents/:agent_id/signing-keys/:chain/balance`        | Get balance for signing key address      |
+
+## Agent Smart Accounts
+
+Import existing Gnosis Safe smart accounts for agents.
+
+| Method | Path                                                      | Description                              |
+| ------ | --------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/smart-accounts/import`              | Import an existing Safe (optional on-chain verification) |
 
 ## Transactions & Signing (Intents API)
 
@@ -24960,6 +25273,66 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
 | GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
 
+## Cedar Policies (Team+)
+
+Declarative AWS Cedar policy language for advanced authorization.
+
+| Method | Path                                  | Description                              |
+| ------ | ------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/cedar-policies`              | Create a Cedar policy                    |
+| GET    | `/v1/org/cedar-policies`              | List Cedar policies                      |
+| GET    | `/v1/org/cedar-policies/:id`          | Get Cedar policy details                 |
+| DELETE | `/v1/org/cedar-policies/:id`          | Delete a Cedar policy                    |
+| POST   | `/v1/org/cedar-policies/test`         | Dry-run a Cedar policy                   |
+
+## OPA Policies (Business+)
+
+Open Policy Agent Rego policies for advanced authorization.
+
+| Method | Path                                  | Description                              |
+| ------ | ------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/opa-policies`                | Create an OPA policy                     |
+| GET    | `/v1/org/opa-policies`                | List OPA policies                        |
+| GET    | `/v1/org/opa-policies/:id`            | Get OPA policy details                   |
+| DELETE | `/v1/org/opa-policies/:id`            | Delete an OPA policy                     |
+| POST   | `/v1/org/opa-policies/test`           | Dry-run an OPA policy                    |
+
+## Sub-Organizations (Enterprise)
+
+Hierarchical org management for enterprise customers.
+
+| Method | Path                                              | Description                              |
+| ------ | ------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/org/sub-orgs`                                | Create a sub-organization                |
+| GET    | `/v1/org/sub-orgs`                                | List sub-organizations                   |
+| GET    | `/v1/org/sub-orgs/:id`                            | Get sub-organization details             |
+| DELETE | `/v1/org/sub-orgs/:id`                            | Archive (soft-delete) a sub-org          |
+| POST   | `/v1/org/sub-orgs/:id/permissions`                | Grant permission to user/agent           |
+| DELETE | `/v1/org/sub-orgs/:id/permissions/:perm`          | Revoke permission                        |
+| POST   | `/v1/org/sub-orgs/:id/users`                      | Add user to sub-org                      |
+| POST   | `/v1/org/sub-orgs/:id/wallets/generate`           | Generate treasury wallets for sub-org    |
+
+## Portfolio
+
+Unified balance aggregator across all wallets (treasury wallets, signing keys, smart accounts).
+
+| Method | Path              | Description                              |
+| ------ | ----------------- | ---------------------------------------- |
+| GET    | `/v1/portfolio`   | Get aggregated balances across all wallets (filterable by `?chains=`, `?include_tokens=`) |
+
+## Agent Delegations
+
+Human-controlled inter-agent delegation authorization.
+
+| Method | Path                                                       | Description                              |
+| ------ | ---------------------------------------------------------- | ---------------------------------------- |
+| POST   | `/v1/agents/:agent_id/delegations`                         | Create delegation (human-only)           |
+| GET    | `/v1/agents/:agent_id/delegations`                         | List delegations                         |
+| GET    | `/v1/agents/:agent_id/delegations/effective`               | Get effective delegations (agent-callable) |
+| GET    | `/v1/agents/:agent_id/delegations/:delegation_id`          | Get delegation details                   |
+| PATCH  | `/v1/agents/:agent_id/delegations/:delegation_id`          | Update delegation (human-only)           |
+| DELETE | `/v1/agents/:agent_id/delegations/:delegation_id`          | Revoke delegation (human-only)           |
+
 ---
 
 ## Notes
@@ -24991,6 +25364,50 @@ For detailed release history, see the [1clawAI GitHub](https://github.com/1clawA
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
 ## 2026-08 (latest)
+
+### v0.47.0 — Turnkey Parity Features (2026-08-13)
+
+#### Key Import (BYOK)
+- **New:** `POST /v1/agents/{id}/signing-keys/{chain}/import` — Import an existing private key as a signing key. Human-only, requires `X-Auth-Confirm` password re-authentication. Supports hex, base64, and WIF formats.
+- **New:** `POST /v1/treasury/wallets/{chain}/import` — Import an existing private key as a treasury wallet. Human-only, requires `X-Auth-Confirm`.
+
+#### Policy Engine v2 + Cedar + OPA
+- **New:** Existing access policies now support `effect` ("allow" or "deny"), `priority` (higher wins), and `attribute_conditions` fields for fine-grained policy evaluation.
+- **New:** Cedar policy engine (Team+ tier): `POST/GET /v1/org/cedar-policies` (CRUD), `POST /v1/org/cedar-policies/test` (dry-run evaluation). Declarative authorization via Cedar policy language.
+- **New:** OPA policy engine (Business+ tier): `POST/GET /v1/org/opa-policies` (CRUD), `POST /v1/org/opa-policies/test` (dry-run evaluation). Rego-based policy evaluation with custom data documents.
+- **DB:** Migration 179 (policy v2 columns: effect, priority, attribute_conditions + secret tags), migration 180 (cedar_policies and opa_policies tables).
+
+#### Non-EVM Treasury Send
+- **Updated:** `POST /v1/treasury/wallets/{chain}/send` now supports Bitcoin, Solana, XRP, Cardano, and Tron sends alongside EVM chains.
+- **Updated:** Request body extended with `token_mint`, `memo`, `destination_tag`, `fee_rate_sat_per_vbyte`, `xrpl_tx_json`, `fee_limit_sun`, `token_decimals`, `ttl` for non-EVM chain-specific parameters.
+- **Note:** `POST /v1/treasury/wallets/{chain}/swap` returns 400 for non-EVM chains (DEX aggregator is EVM-only).
+
+#### Sub-Organizations
+- **New:** Hierarchical organization management. Sub-orgs inherit or independently manage billing.
+- **New endpoints:** `POST/GET /v1/org/sub-orgs` (create, list), `GET/DELETE /v1/org/sub-orgs/{id}` (get, archive), `POST/DELETE /v1/org/sub-orgs/{id}/permissions` (grant, revoke), `POST /v1/org/sub-orgs/{id}/users` (add user), `POST /v1/org/sub-orgs/{id}/wallets/generate` (generate wallets).
+- **Platform API:** `create_sub_org: bool` on `upsert_user` enables platform apps to create sub-orgs for connected users.
+- **DB:** Migration 181.
+
+#### Portfolio
+- **New:** `GET /v1/portfolio` — Unified balance aggregator across all wallet types (treasury wallets, signing keys, smart accounts). Query params: `?chains=ethereum,solana`, `?include_tokens=true`. Returns per-wallet balances with USD estimates.
+
+#### Smart Account Import
+- **New:** `POST /v1/agents/{id}/smart-accounts/import` — Import an existing Safe smart account. Accepts `{ chain, chain_id, safe_address, verify? }`. Optionally verifies on-chain Safe ownership before import.
+
+#### SDK / CLI / MCP
+- **SDK:** `client.signingKeys.importKey()`, `client.treasuryWallets.importWallet()`, `client.cedarPolicies.*` (CRUD + test), `client.opaPolicies.*` (CRUD + test), `client.subOrgs.*` (full CRUD), `client.portfolio.get()`, `client.agents.importSmartAccount()`. Policy types updated with `effect`, `priority`, `attribute_conditions`.
+- **CLI:** `1claw cedar-policy create|list|get|delete|test`, `1claw opa-policy create|list|get|delete|test`, `1claw sub-org create|list|get|archive|grant|revoke|add-user|wallets`, `1claw portfolio`, `1claw agent keys import`, `1claw agent smart-account-import`, `1claw treasury wallet import`.
+- **MCP:** `import_signing_key`, `list_cedar_policies`, `test_cedar_policy`, `list_opa_policies`, `test_opa_policy`, `list_sub_orgs`, `create_sub_org`, `get_portfolio`, `import_smart_account` tools.
+
+#### Dashboard
+- **Updated:** Policy create/list pages now show effect (allow/deny badge) and priority fields.
+- **Updated:** Create policy form includes effect dropdown and priority input.
+
+#### Clients
+- `@1claw/sdk@0.47.0`, `@1claw/cli@0.47.0`, `@1claw/mcp@0.47.0`, `@1claw/openapi-spec@0.47.0`
+- Python SDK `oneclaw@0.47.0`, Go SDK `v0.47.0`
+
+---
 
 ### v0.46.0 — Agent Delegation Framework (2026-08-12)
 
@@ -26856,8 +27273,8 @@ All API endpoints are organized into resource modules:
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
-| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()` |
-| `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`                                       |
+| `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()`, `importSmartAccount()` |
+| `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`, `importKey()`                         |
 | `client.sharing`           | `create()`, `access()`, `revoke()`                                                                 |
 | `client.approvals`         | `request()`, `list()`, `get()`, `decide()`                                                         |
 | `client.apiKeys`           | `create()`, `list()`, `revoke()`                                                                   |
@@ -26883,6 +27300,10 @@ All API endpoints are organized into resource modules:
 | `client.oauthConnect`      | `listProviders()`, `listConnections()`, `connect()`, `disconnect()`, `saveAppCredentials()`, `listAppCredentials()`, `deleteAppCredentials()` |
 | `client.cards`             | `order()`, `list()`, `get()`, `reveal()`, `update()`, `void()`, `refresh()`, `import()`, `searchGiftCards()` |
 | `client.bindings`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `test()`, `execute()`, `rotateCredential()`, `listExecutions()` |
+| `client.cedarPolicies`     | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
+| `client.opaPolicies`       | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
+| `client.subOrgs`           | `create()`, `list()`, `get()`, `archive()`, `grantPermission()`, `revokePermission()`, `addUser()`, `generateWallets()` |
+| `client.portfolio`         | `get()`                                                                                            |
 | `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email

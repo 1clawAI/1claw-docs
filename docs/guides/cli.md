@@ -166,6 +166,7 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
 1claw agent delete <id>
 1claw agent token <id>                 # Generate agent JWT
 1claw agent enroll my-agent --email human@example.com   # Self-enroll (no auth)
+1claw agent smart-account-import <id> --chain ethereum --chain-id 1 --safe 0x...  # Import Safe
 ```
 
 ## Transactions (Intents API)
@@ -194,9 +195,12 @@ Manage per-agent signing keys. Keys are generated server-side and stored in the 
 1claw agent keys rotate <agent-id> --chain ethereum
 1claw agent keys delete <agent-id> --chain ethereum
 1claw agent export-signing-key <agent-id> --chain ethereum   # Requires password
+1claw agent keys import <agent-id> <chain> --key <key> --format hex  # BYOK import
 ```
 
 Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`.
+
+Import supports `--format hex` (default), `base64`, or `wif` (Bitcoin only). Human-only, requires password re-authentication.
 
 ## Unified signing (`agent sign`)
 
@@ -817,6 +821,47 @@ Package your customized agent into a portable image:
 ```
 
 In a standalone Cloud Run deploy there is no host daemon, so the container uses the agent key directly — injected from Secret Manager via the Cloud Run secret mount. The entrypoint detects this automatically (no daemon socket mounted → require `ONECLAW_AGENT_API_KEY`). Review the generated Terraform before applying; `terraform validate` passes out of the box.
+
+## Cedar policies (Team+)
+
+```bash
+1claw cedar-policy create --name "deny-prod-writes" --policy-text '<cedar policy>'
+1claw cedar-policy list
+1claw cedar-policy get <id>
+1claw cedar-policy delete <id>
+1claw cedar-policy test --policy-text '<cedar policy>' --request '{"principal":"agent:...","action":"read","resource":"secrets/prod/*"}'
+```
+
+## OPA policies (Business+)
+
+```bash
+1claw opa-policy create --name "require-mfa" --policy-text '<rego policy>'
+1claw opa-policy list
+1claw opa-policy get <id>
+1claw opa-policy delete <id>
+1claw opa-policy test --policy-text '<rego policy>' --input '{"principal_type":"agent"}'
+```
+
+## Sub-organizations (Enterprise)
+
+```bash
+1claw sub-org create --name "Team Alpha"
+1claw sub-org list
+1claw sub-org get <id>
+1claw sub-org archive <id>
+1claw sub-org grant <id> --user <user-id> --permission admin
+1claw sub-org revoke <id> --permission <perm-id>
+1claw sub-org add-user <id> --user <user-id>
+1claw sub-org wallets <id> --chains ethereum,solana
+```
+
+## Portfolio
+
+```bash
+1claw portfolio                                    # All wallets
+1claw portfolio --chains ethereum,solana           # Filter by chain
+1claw portfolio --include-tokens                   # Include token balances
+```
 
 ## DPoP (Proof-of-Possession)
 

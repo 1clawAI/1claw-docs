@@ -85,8 +85,52 @@ Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `t
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |
+| Import (BYOK) | `POST /v1/agents/{id}/signing-keys/{chain}/import` | `client.signingKeys.importKey(agentId, chain, { private_key, format })` |
 
-Only human users can provision, rotate, and export keys — agents receive 403.
+Only human users can provision, rotate, export, and import keys — agents receive 403.
+
+### Import (BYOK)
+
+Bring your own key: import an existing private key for a chain instead of generating one server-side. Human-only, requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `signing_key.import`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `private_key` | string | ✅ | The raw private key |
+| `format` | string | ❌ | `"hex"` (default), `"base64"`, or `"wif"` (Bitcoin only) |
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: key } = await client.signingKeys.importKey(agentId, "ethereum", {
+  private_key: "0xabc123...",
+  format: "hex",
+});
+console.log(key.address);
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{ "private_key": "0xabc123...", "format": "hex" }'
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw agent keys import $AGENT_ID ethereum --key 0xabc123... --format hex
+```
+
+</TabItem>
+</Tabs>
+
+The server derives the public key and address from the imported key, stores it in `__agent-keys`, and returns the same response shape as `create`.
 
 ---
 

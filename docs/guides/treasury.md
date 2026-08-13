@@ -56,6 +56,7 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 | POST   | `/v1/treasury/wallets/{chain}/send`     | Send tokens (password re-auth)       |
 | POST   | `/v1/treasury/wallets/{chain}/swap`     | Swap tokens via DEX (password re-auth)|
 | POST   | `/v1/treasury/wallets/{chain}/export`   | Export wallet (password re-auth)     |
+| POST   | `/v1/treasury/wallets/{chain}/import`   | Import existing wallet (BYOK, password re-auth) |
 | POST   | `/v1/treasury/wallets/{chain}/rotate`   | Rotate keypair                       |
 | DELETE | `/v1/treasury/wallets/{chain}`          | Deactivate wallet                    |
 
@@ -201,6 +202,56 @@ Response:
 
 :::danger
 The private key is returned in plaintext. Treat it as you would any other secret — never log it, never commit it, and store it only in a secure location. Failed password attempts increment your account's lockout counter (locked after 10 failures for 15 minutes).
+:::
+
+### Import wallet (BYOK)
+
+Import an existing private key instead of generating one server-side. Human-only, requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.import`.
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "private_key": "0xabc123...",
+    "format": "hex"
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `private_key` | string | ✅ | The raw private key |
+| `format` | string | ❌ | `"hex"` (default), `"base64"`, or `"wif"` (Bitcoin only) |
+
+The server derives the public key and address, stores the key in `__treasury-keys`, and returns the wallet record.
+
+### Non-EVM send
+
+`POST /v1/treasury/wallets/{chain}/send` supports all six chains, not just EVM. For non-EVM sends, include chain-specific fields:
+
+| Field | Chain | Description |
+|-------|-------|-------------|
+| `token_mint` | Solana, Tron, Cardano, EVM | Token contract or mint for token transfers |
+| `token_decimals` | Solana, Tron | Token decimals (default 6) |
+| `memo` | Solana | On-chain memo (Memo Program v2) |
+| `destination_tag` | XRP | Destination tag for exchange deposits |
+| `fee_rate_sat_per_vbyte` | Bitcoin | Override the auto-fetched fee rate |
+| `fee_limit_sun` | Tron | TRC-20 energy fee limit |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON |
+| `ttl` | Cardano | Time-to-live in absolute slots |
+
+```bash
+# Send 0.001 BTC from treasury wallet
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/bitcoin/send" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Auth-Confirm: your-account-password" \
+  -H "Content-Type: application/json" \
+  -d '{ "to": "bc1q...", "value": "0.001" }'
+```
+
+:::note Swap is EVM-only
+`POST /v1/treasury/wallets/{chain}/swap` only supports EVM chains. Non-EVM chains return 400.
 :::
 
 ### Rotate keypair

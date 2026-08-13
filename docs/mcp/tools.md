@@ -1143,6 +1143,119 @@ Send an outbound message through a channel.
 
 ---
 
+## list_cedar_policies
+
+List Cedar policies for the organization. Requires Team+ tier.
+
+### Parameters
+
+None.
+
+---
+
+## test_cedar_policy
+
+Dry-run a Cedar policy against a simulated request.
+
+### Parameters
+
+| Name      | Type   | Required | Description                                 |
+| --------- | ------ | -------- | ------------------------------------------- |
+| `policy`  | string | Yes      | Cedar policy text                           |
+| `request` | object | Yes      | Simulated authorization request to evaluate |
+
+---
+
+## list_opa_policies
+
+List OPA (Rego) policies for the organization. Requires Business+ tier.
+
+### Parameters
+
+None.
+
+---
+
+## test_opa_policy
+
+Dry-run an OPA policy against a simulated input.
+
+### Parameters
+
+| Name     | Type   | Required | Description                     |
+| -------- | ------ | -------- | ------------------------------- |
+| `policy` | string | Yes      | Rego policy text                |
+| `input`  | object | Yes      | Simulated input to evaluate     |
+
+---
+
+## list_sub_orgs
+
+List sub-organizations under the current org.
+
+### Parameters
+
+None.
+
+---
+
+## create_sub_org
+
+Create a sub-organization.
+
+### Parameters
+
+| Name          | Type   | Required | Description      |
+| ------------- | ------ | -------- | ---------------- |
+| `name`        | string | Yes      | Sub-org name     |
+| `description` | string | No       | Description      |
+
+---
+
+## get_portfolio
+
+Get unified portfolio balances across all wallets (treasury wallets, signing keys, smart accounts).
+
+### Parameters
+
+| Name             | Type    | Required | Description                                          |
+| ---------------- | ------- | -------- | ---------------------------------------------------- |
+| `chains`         | string  | No       | Comma-separated chain filter (e.g. `ethereum,solana`) |
+| `include_tokens` | boolean | No       | Include token balances (default false)               |
+
+---
+
+## import_smart_account
+
+Import an existing Gnosis Safe smart account for an agent.
+
+### Parameters
+
+| Name           | Type    | Required | Description                                    |
+| -------------- | ------- | -------- | ---------------------------------------------- |
+| `agent_id`     | string  | Yes      | Agent UUID                                     |
+| `chain`        | string  | Yes      | Chain name (e.g. `ethereum`)                   |
+| `chain_id`     | number  | Yes      | Numeric chain ID                               |
+| `safe_address` | string  | Yes      | Safe contract address                          |
+| `verify`       | boolean | No       | Verify on-chain Safe ownership (default false) |
+
+---
+
+## import_signing_key
+
+Import an existing private key as a signing key for an agent (BYOK). Human-only, requires `X-Auth-Confirm`.
+
+### Parameters
+
+| Name          | Type   | Required | Description                         |
+| ------------- | ------ | -------- | ----------------------------------- |
+| `agent_id`    | string | Yes      | Agent UUID                          |
+| `chain`       | string | Yes      | Chain name                          |
+| `private_key` | string | Yes      | The raw private key                 |
+| `format`      | string | No       | `hex` (default), `base64`, or `wif` |
+
+---
+
 ## search_agent_directory
 
 Search the public agent directory.
