@@ -14,6 +14,27 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.47.3 — Billing quotas: wallets, signatures, Free treasury (2026-08-13)
+
+#### Quotas
+- **Changed:** Dropped the 0.25% of transaction-value Intents fee. Signature overage is a flat per-signature charge (`proxy_transaction_submit` rates: Free $0.225, Pro $0.15, Team $0.075, Business $0.04) via prepaid credits or x402. Included signatures remain free up to the monthly quota.
+- **Changed:** Business API calls/month raised to **1,000,000** (was 500,000).
+- **New:** Unified **wallet quota** covering active treasury wallets, agent signing keys, smart accounts, and agents with an EOA. Free 10, Pro 10,000, Team 250,000, Business 1,000,000, Enterprise unlimited.
+- **New:** Monthly **signature quota** (Free 100, Pro 20,000, Team 200,000, Business 1,000,000). Over quota is billed, not hard-blocked.
+- **Changed:** Signing POSTs (`POST /v1/agents/{id}/sign`, `/transactions`, `/transactions/sign`) no longer consume the API Calls meter.
+
+#### Treasury wallets
+- **Changed:** Treasury wallet generate/import/rotate/send/swap are available on **all tiers** (no Pro+ gate). Counted against the wallet quota. Dashboard `/treasury` is no longer Pro-walled.
+
+#### API
+- **Changed:** `GET /v1/billing/subscription` `usage` now includes `wallets` (`{ used, limit }`) alongside `requests` and `intent_transactions`.
+
+#### Clients
+- `@1claw/sdk@0.47.3`, `@1claw/cli@0.47.2`, `@1claw/openapi-spec@0.47.3`
+- Python SDK `oneclaw@0.47.3`, Go SDK `v0.47.3`
+
+---
+
 ### v0.47.0 — Turnkey Parity Features (2026-08-13)
 
 #### Key Import (BYOK)

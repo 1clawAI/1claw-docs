@@ -179,7 +179,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](/docs/guides/treasury).
 
-### Treasury wallets (multi-chain, human-only, Pro+)
+### Treasury wallets (multi-chain, human-only)
 
 | Method | Path                                      | Description                                    |
 | ------ | ----------------------------------------- | ---------------------------------------------- |

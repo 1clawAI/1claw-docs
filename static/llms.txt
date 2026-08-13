@@ -135,10 +135,10 @@ Agents can order prepaid and gift cards through 1Claw and never see the card num
 - **SDK:** `client.cards.order()`, `.list()`, `.get()`, `.reveal({ password })`, `.update()`, `.void()`, `.refresh()`, `.import()`, `.searchGiftCards()`. **CLI:** `1claw card order|list|get|reveal|void|refresh|import`. **MCP:** `order_card`, `order_gift_card`, `search_gift_cards`, `list_cards`, `get_card_status` (reveal intentionally omitted from MCP to avoid context-window PAN exposure). **Dashboard:** Cards page (masked list, reveal dialog with password re-auth + disclaimer) and a "Card Ordering Guardrails" card on agent detail.
 
 ### Treasury
-Treasury Safe multisigs and native multi-chain wallets for human users. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` (requires Pro+ subscription) and per-treasury detail (`/treasury/[id]`) with native wallet card, safe list, deploy smart account, access requests.
+Treasury Safe multisigs and native multi-chain wallets for human users. Smart account deployment: ERC-4337 Safe 1.4.1 via permissionless.js + Pimlico. Access request flow: agents request access, humans approve/deny. Routes: `POST/GET /v1/treasury`, `GET/PATCH/DELETE /v1/treasury/{id}` (create requires `safe_address`), signers and access-request sub-routes; list access requests returns `requests[]`. Dashboard: `/treasury` (available on all tiers; wallets count toward wallet quota) and per-treasury detail (`/treasury/[id]`) with native wallet card, safe list, deploy smart account, access requests.
 
 ### Treasury Wallets (Native Multi-Chain)
-HSM-backed wallet generation for human users. Supported chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1). Requires Pro+ subscription. Human-only access (agents get 403). Private keys stored in a per-org `__treasury-keys` vault with MPC custody auto-configured per billing tier (XOR 2-of-2 for Pro/Team, Shamir 2-of-3 multi-HSM for Business/Enterprise). Direct API reads from `__treasury-keys` (and `__agent-keys`) are blocked with 403 — private keys are only accessible through designated export endpoints. Endpoints: `POST /v1/treasury/wallets/generate` (generate wallets for specified or all chains), `GET /v1/treasury/wallets` (list), `GET /v1/treasury/wallets/{chain}` (get by chain), `POST /v1/treasury/wallets/{chain}/export` (export with private key — **requires password re-authentication** via `X-Auth-Confirm` header; audit-logged), `POST /v1/treasury/wallets/{chain}/rotate` (rotate keypair), `DELETE /v1/treasury/wallets/{chain}` (deactivate). **Wallet import (v0.47, BYOK):** `POST /v1/treasury/wallets/{chain}/import` — import existing private key as a treasury wallet; human-only, requires `X-Auth-Confirm`; accepts `{ private_key, format?: "hex"|"base64"|"wif" }`. **Multi-chain send (v0.47):** `POST /v1/treasury/wallets/{chain}/send` now supports all 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron). Non-EVM sends accept chain-specific fields: `token_mint`, `memo`, `destination_tag` (XRP), `fee_rate_sat_per_vbyte` (Bitcoin), `xrpl_tx_json` (raw XRPL transaction), `fee_limit_sun` (Tron), `token_decimals`, `ttl` (Cardano). Swap (`POST .../swap`) remains EVM-only. **Gasless sends:** `POST /v1/treasury/wallets/{chain}/send` accepts `gasless: true` to wrap the send as an ERC-4337 UserOperation with Pimlico paymaster sponsorship (response includes `user_op_hash`; requires `PIMLICO_API_KEY`). Dashboard: `WalletChainCard` shows inline balance (30s auto-refresh), Send dialog (with gasless option), and Swap dialog per chain. Wizard UI with QR codes and key export.
+HSM-backed wallet generation for human users. Supported chains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519), Cardano (Ed25519), Tron (secp256k1). Available on all tiers (counts toward wallet quota). Human-only access (agents get 403). Private keys stored in a per-org `__treasury-keys` vault with MPC custody auto-configured per billing tier (XOR 2-of-2 for Pro/Team, Shamir 2-of-3 multi-HSM for Business/Enterprise). Direct API reads from `__treasury-keys` (and `__agent-keys`) are blocked with 403 — private keys are only accessible through designated export endpoints. Endpoints: `POST /v1/treasury/wallets/generate` (generate wallets for specified or all chains), `GET /v1/treasury/wallets` (list), `GET /v1/treasury/wallets/{chain}` (get by chain), `POST /v1/treasury/wallets/{chain}/export` (export with private key — **requires password re-authentication** via `X-Auth-Confirm` header; audit-logged), `POST /v1/treasury/wallets/{chain}/rotate` (rotate keypair), `DELETE /v1/treasury/wallets/{chain}` (deactivate). **Wallet import (v0.47, BYOK):** `POST /v1/treasury/wallets/{chain}/import` — import existing private key as a treasury wallet; human-only, requires `X-Auth-Confirm`; accepts `{ private_key, format?: "hex"|"base64"|"wif" }`. **Multi-chain send (v0.47):** `POST /v1/treasury/wallets/{chain}/send` now supports all 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron). Non-EVM sends accept chain-specific fields: `token_mint`, `memo`, `destination_tag` (XRP), `fee_rate_sat_per_vbyte` (Bitcoin), `xrpl_tx_json` (raw XRPL transaction), `fee_limit_sun` (Tron), `token_decimals`, `ttl` (Cardano). Swap (`POST .../swap`) remains EVM-only. **Gasless sends:** `POST /v1/treasury/wallets/{chain}/send` accepts `gasless: true` to wrap the send as an ERC-4337 UserOperation with Pimlico paymaster sponsorship (response includes `user_op_hash`; requires `PIMLICO_API_KEY`). Dashboard: `WalletChainCard` shows inline balance (30s auto-refresh), Send dialog (with gasless option), and Swap dialog per chain. Wizard UI with QR codes and key export.
 
 ### Smart Account Import (v0.47)
 `POST /v1/agents/{id}/smart-accounts/import` — Import an existing Gnosis Safe smart account. Accepts `{ chain, chain_id, safe_address, verify?: bool }`. When `verify` is true (default), verifies on-chain Safe ownership before importing. SDK: `client.agents.importSmartAccount()`. CLI: `1claw agent smart-account-import`. MCP: `import_smart_account`.
@@ -303,7 +303,7 @@ Key endpoints:
 - `GET /v1/vaults/{id}/secret-version/{path}/{version}` — Get specific version
 - `POST /v1/vaults/{id}/secret-version-disable/{path}/{version}` — Disable a secret version
 - `POST /v1/vaults/{id}/secret-rotate/{path}` — Server-side secret rotation
-- `POST /v1/agents/{id}/transactions` — Submit transaction (over quota: 0.25% of tx value, 402 if unpaid)
+- `POST /v1/agents/{id}/transactions` — Submit transaction (over signature quota: flat per-signature overage, 402 if unpaid)
 - `POST /v1/agents/{id}/transactions/sign` — Sign transaction without broadcasting (returns signed_tx + tx_hash)
 - `POST /v1/agents/{id}/sign` — Unified signing intent (personal_sign, typed_data, eip712_digest, or transaction with tx_type 0–4)
 - `POST/GET /v1/agents/{id}/signing-keys` — Create/list multi-chain signing keys
@@ -325,7 +325,7 @@ Key endpoints:
 - `GET /v1/chains` — Supported blockchains
 - `GET/POST /v1/treasury` — List/create treasuries
 - `GET /v1/treasury/{id}` — Get treasury (signers, access-request sub-routes)
-- `POST /v1/treasury/wallets/generate` — Generate multi-chain treasury wallets (human-only, Pro+)
+- `POST /v1/treasury/wallets/generate` — Generate multi-chain treasury wallets (human-only; wallet quota)
 - `GET /v1/treasury/wallets` — List user's treasury wallets
 - `GET /v1/treasury/wallets/{chain}` — Get wallet by chain
 - `POST /v1/treasury/wallets/{chain}/export` — Export wallet with private key (requires `X-Auth-Confirm` password header)
@@ -481,13 +481,13 @@ For operating dozens or hundreds of agents:
 
 ## Billing
 
-- Free: 1,000 req/mo, 3 vaults, 50 secrets, 2 agents
-- Pro ($29/mo): 20,000 req/mo, 5 vaults, 500 secrets, 10 agents, Platform API
-- Team ($299/mo): 200,000 req/mo, 100 vaults, 5,000 secrets, 50 agents, SSO, Platform API
-- Business ($999/mo): 500,000 req/mo, unlimited vaults/secrets, 200 agents, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
+- Free: 1,000 API calls/mo, 10 wallets, 100 signatures
+- Pro ($29/mo): 20,000 API calls, 10,000 wallets, 20,000 signatures, Platform API
+- Team ($299/mo): 200,000 API calls, 250,000 wallets, 200,000 signatures, SSO, Platform API
+- Business ($999/mo): 1,000,000 API calls, wallets, and signatures, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
 - Enterprise: Custom, unlimited, KMS delegation, BAA
 
-Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Intents API submit when over quota: 0.25% of transaction value (USD), no cap; config ONECLAW_ETH_USD_PRICE (default 2500). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
+Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Signature overage after the included monthly quota is a flat per-signature rate (not a % of tx value). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
 
 ## Scaling & Performance (v0.17)
 

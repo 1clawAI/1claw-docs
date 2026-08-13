@@ -79,7 +79,7 @@ metadata:
 - You want to manage or deploy agent EVM addresses and Safe smart accounts (ERC-4337, one per chain; `POST /v1/agents/{id}/smart-accounts` to add a Safe)
 - You want to propose, sign, or execute multisig treasury proposals (Safe transactions requiring threshold signatures)
 - You want to set up agent delegation for treasury signing (owner mode or delegated mode with per-delegation guardrails)
-- You want to generate native multi-chain treasury wallets (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) — human-only, Pro+ tier
+- You want to generate native multi-chain treasury wallets (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) — human-only, counts toward wallet quota
 - You are building a platform integration on 1Claw (register a `plt_` platform app, create bootstrap templates, provision users via OIDC or email)
 - You want to approve or reject pending agent actions from the mobile app (approval queue with risk tiers)
 - You are working with the 1Claw mobile companion app (Expo, React Native, passkey/biometric auth)
@@ -888,7 +888,7 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 - **Delegated mode**: Agent signs using the treasury wallet key via Intents API; key never leaves `__treasury-keys` vault.
 - **Auto-approve rules**: `treasury_delegations.auto_approve_rules` JSONB — when a proposal matches a rule, the agent's signature is auto-inserted; if threshold is met, auto-execute fires immediately.
 
-### Treasury Wallets (native multi-chain, human-only, Pro+)
+### Treasury Wallets (native multi-chain, human-only)
 
 | Method   | Path                                     | Description                                               |
 | -------- | ---------------------------------------- | --------------------------------------------------------- |
@@ -1028,7 +1028,7 @@ All methods return `Promise<OneclawResponse<T>>`. Access via `client.<resource>.
 | `treasury`| `getProposal(treasuryId, proposalId)`                                                                        | Get proposal + signatures             |
 | `treasury`| `signProposal(treasuryId, proposalId, { decision? })`                                                        | Sign proposal (approve/reject)        |
 | `treasury`| `executeProposal(treasuryId, proposalId)`                                                                    | Force-execute if threshold met        |
-| `treasuryWallets`| `generate({ chains? })`                                                                               | Generate multi-chain wallets (human-only, Pro+) |
+| `treasuryWallets`| `generate({ chains? })`                                                                               | Generate multi-chain wallets (human-only) |
 | `treasuryWallets`| `list()`                                                                                              | List active treasury wallets           |
 | `treasuryWallets`| `get(chain)`                                                                                          | Get wallet by chain                    |
 | `treasuryWallets`| `export(chain, { password })`                                                                         | Export wallet with private key (requires password re-auth via `X-Auth-Confirm`) |
@@ -1475,7 +1475,7 @@ When many agents operate in the same organization:
 | ---- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 400  | Bad request                                                | Check request body format                                                                                                                                                                         |
 | 401  | Not authenticated                                          | Token expired — re-authenticate                                                                                                                                                                   |
-| 402  | Quota exhausted / payment required                         | Body may include `required_usd`, `message`. Intents submit over quota: 0.25% of tx value; top up credits or send X-PAYMENT for required amount. Otherwise upgrade at `1claw.xyz/settings/billing` |
+| 402  | Quota exhausted / payment required                         | Body may include `required_usd`, `message`. Signature overage is a flat per-signature rate; top up credits or send X-PAYMENT. Otherwise upgrade at `1claw.xyz/settings/billing` |
 | 403  | No permission                                              | Ask user to grant access via a policy. Or: guardrail violation (check error detail)                                                                                                               |
 | 403  | Resource limit reached (`type: "resource_limit_exceeded"`) | Tier limit on vaults/secrets/agents hit — ask user to upgrade at `1claw.xyz/settings/billing`                                                                                                     |
 | 404  | Not found                                                  | Check path with `list_secrets`                                                                                                                                                                    |
@@ -1507,15 +1507,15 @@ All error responses include a `detail` field with a human-readable message.
 
 ## Billing Tiers
 
-| Tier       | Requests/mo | Vaults    | Secrets   | Agents    | Price                                        |
-| ---------- | ----------- | --------- | --------- | --------- | -------------------------------------------- |
-| Free       | 1,000       | 3         | 50        | 2         | $0                                           |
-| Pro        | 20,000      | 25        | 500       | 10        | $29/mo                                       |
-| Team       | 200,000     | 100       | 5,000     | 50        | $299/mo (SSO, Platform API)                  |
-| Business   | 500,000     | Unlimited | Unlimited | 200       | $999/mo (+ CMEK, Intents, Shroud Enterprise, Treasury Wallets) |
-| Enterprise | Custom      | Unlimited | Unlimited | Unlimited | Contact                                      |
+| Tier       | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Price                                        |
+| ---------- | ------------ | --------- | ------------- | --------- | --------- | --------- | -------------------------------------------- |
+| Free       | 1,000        | 10        | 100           | 3         | 50        | 2         | $0                                           |
+| Pro        | 20,000       | 10,000    | 20,000        | 5         | 500       | 10        | $29/mo                                       |
+| Team       | 200,000      | 250,000   | 200,000       | 100       | 5,000     | 50        | $299/mo (SSO, Platform API)                  |
+| Business   | 1,000,000    | 1,000,000 | 1,000,000     | Unlimited | Unlimited | 200       | $999/mo (+ CMEK, Intents, Shroud Enterprise, Treasury Wallets) |
+| Enterprise | Unlimited    | Unlimited | Unlimited     | Unlimited | Unlimited | Unlimited | Contact                                      |
 
-Overage methods: **prepaid credits** (top up via Stripe, deducted per request) or **x402 micropayments** (per-query on-chain payments on Base).
+Overage methods: **prepaid credits** (top up via Stripe, deducted per request) or **x402 micropayments** (per-query on-chain payments on Base). Signature overage is a flat per-signature charge (not a percent of transaction value). Signing POSTs do not consume the API Calls meter. Treasury wallets are available on all tiers and count toward wallet quota.
 
 Audit, org, security, chain, billing, and auth endpoints are **free and never consume quota**.
 

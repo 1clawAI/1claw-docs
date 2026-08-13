@@ -239,7 +239,7 @@ Multi-chain wallet generation for human users.
 1claw treasury deactivate <chain>
 ```
 
-Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Requires Pro or higher billing tier.
+Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Available on all tiers (counts toward wallet quota).
 
 ## Treasury proposals (multisig)
 

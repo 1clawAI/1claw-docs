@@ -4749,13 +4749,13 @@ Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI
 
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:
 
-| Tier           | Monthly Price | Annual (billed yearly) | Requests/mo | Vaults    | Secrets   | Agents    | Team seats |
+| Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
-| **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 1 (owner)  |
-| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 5         | 500       | 10        | 5          |
-| **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 100       | 5,000     | 50        | 20         |
-| **Business**   | $999          | $9,990 (~$832.50/mo)   | 500,000     | Unlimited | Unlimited | 200       | 50         |
-| **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
+| **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 5          |
+| **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
+| **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
+| **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
 
@@ -4810,7 +4810,7 @@ Included plan requests are covered by your subscription and do not incur per-req
 | Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
 | Other API requests | $0.001 | $0.0005 | $0.0002 | $0.0001 |
 
-Intents API transaction submit is billed at **0.25% of transaction value (USD)**, with no cap (minimum $0.01). Simulation endpoints use the proxy transaction rate above.
+Signature overage (after the included monthly quota) is a **flat per-signature rate** — Free $0.225, Pro $0.15, Team $0.075, Business $0.04. There is no percentage of transaction value. Simulation endpoints use the proxy transaction rate above.
 
 Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 
@@ -5567,7 +5567,7 @@ Multi-chain wallet generation for human users.
 1claw treasury deactivate <chain>
 ```
 
-Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Requires Pro or higher billing tier.
+Supported chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. Available on all tiers (counts toward wallet quota).
 
 ## Treasury proposals (multisig)
 
@@ -17933,7 +17933,7 @@ sidebar_position: 16
 Treasury wallets give human users native, HSM-backed wallets across six blockchains — no external wallet provider, no browser extension. Private keys are generated server-side inside the HSM, stored in a dedicated per-org `__treasury-keys` vault with MPC custody, and never leave the secure enclave unless explicitly exported.
 
 :::info Requirements
-Treasury wallets require a **Pro or higher** subscription. Free-tier users receive a 403.
+Treasury wallets are available on all tiers and count toward the org wallet quota (Free 10, Pro 10,000, Team 250,000, Business 1,000,000).
 Platform admins bypass the tier check.
 :::
 
@@ -24826,7 +24826,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](/docs/guides/treasury).
 
-### Treasury wallets (multi-chain, human-only, Pro+)
+### Treasury wallets (multi-chain, human-only)
 
 | Method | Path                                      | Description                                    |
 | ------ | ----------------------------------------- | ---------------------------------------------- |
@@ -26320,7 +26320,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** Dashboard wizard UI with QR codes for public addresses and key export.
 - **New:** SDK — `client.treasury.generateWallets()`, `.listWallets()`, `.getWallet()`, `.exportWallet()`, `.rotateWallet()`, `.deactivateWallet()`.
 - **New:** CLI — `1claw treasury generate`, `list`, `get`, `export`, `rotate`, `deactivate`.
-- **Changed:** Treasury page no longer requires beta access — requires Pro+ subscription.
+- **Changed:** Treasury page no longer requires beta access; treasury wallets are available on all tiers and count toward wallet quota.
 - **Removed:** Coinbase CDP embedded wallets replaced by native wallet generation.
 
 ### Multi-chain signing keys (v0.18)

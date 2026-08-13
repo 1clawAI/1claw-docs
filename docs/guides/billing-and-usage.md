@@ -16,13 +16,13 @@ Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI
 
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:
 
-| Tier           | Monthly Price | Annual (billed yearly) | Requests/mo | Vaults    | Secrets   | Agents    | Team seats |
-| -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
-| **Free**       | $0            | —                      | 1,000       | 3         | 50        | 2         | 1 (owner)  |
-| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 5         | 500       | 10        | 5          |
-| **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 100       | 5,000     | 50        | 20         |
-| **Business**   | $999          | $9,990 (~$832.50/mo)   | 500,000     | Unlimited | Unlimited | 200       | 50         |
-| **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
+| Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
+| -------------- | ------------- | ---------------------- | ------------ | --------- | ------------- | --------- | --------- | --------- | ---------- |
+| **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 5          |
+| **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
+| **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
+| **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
 
@@ -76,8 +76,10 @@ Included plan requests are covered by your subscription and do not incur per-req
 | Access shared secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
 | Other API requests | $0.001 | $0.0005 | $0.0002 | $0.0001 |
+| Transaction simulate | $0.225 | $0.15 | $0.075 | $0.04 |
+| Signature (overage) | $0.225 | $0.15 | $0.075 | $0.04 |
 
-Intents API transaction submit is billed at **0.25% of transaction value (USD)**, with no cap (minimum $0.01). Simulation endpoints use the proxy transaction rate above.
+Signature overage (after the included monthly quota) is a **flat per-signature rate** — not a percentage of transaction value. Simulation endpoints use the same rate as the table above.
 
 Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 

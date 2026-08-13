@@ -9,8 +9,8 @@ sidebar_position: 16
 Treasury wallets give human users native, HSM-backed wallets across six blockchains — no external wallet provider, no browser extension. Private keys are generated server-side inside the HSM, stored in a dedicated per-org `__treasury-keys` vault with MPC custody, and never leave the secure enclave unless explicitly exported.
 
 :::info Requirements
-Treasury wallets require a **Pro or higher** subscription. Free-tier users receive a 403.
-Platform admins bypass the tier check.
+Treasury wallets are available on **all tiers** and count toward your org **wallet quota** (Free 10, Pro 10,000, Team 250,000, Business 1,000,000, Enterprise unlimited).
+Platform admins are unlimited via `effective_billing_tier_for_limits`.
 :::
 
 ## Supported chains
