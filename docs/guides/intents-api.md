@@ -12,6 +12,21 @@ import TabItem from '@theme/TabItem';
 
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
+## On this page
+
+- [Quickstart](#quickstart-your-first-transaction-5-min)
+- [How it works](#how-it-works)
+- [Submitting a transaction](#submitting-a-transaction)
+- [Sign-only mode](#sign-only)
+- [Transaction simulation](#simulation)
+- [Multi-chain signing keys](#signing-keys)
+- [Non-EVM signing](#non-evm)
+- [Unified sign endpoint](#unified-sign)
+- [Transaction guardrails](#transaction-guardrails)
+- [Execution Intents](#execution-intents)
+- [Best practices](#best-practices)
+- [Next steps](#next-steps)
+
 :::tip Try it out
 Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
 :::
@@ -1694,3 +1709,11 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 - **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
 - **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
 - **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
+
+## Next steps
+
+- [Multi-chain signing keys](/docs/guides/multi-chain-signing) — provision per-chain keypairs for agents
+- [Shroud TEE signing](/docs/guides/shroud) — route signing through the confidential enclave
+- [Treasury](/docs/guides/treasury) — Safe multisigs and delegated agent signing
+- [Transaction guardrails](/docs/guides/intents-api#transaction-guardrails) — per-agent spend caps and allowlists
+- [Error codes](/docs/reference/error-codes) — Intents API error reference

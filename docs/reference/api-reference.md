@@ -6,7 +6,9 @@ sidebar_position: 0
 
 # API reference
 
-The canonical API spec is the **OpenAPI 3.1** document shipped with the project. It defines all paths, request/response schemas, and error shapes.
+The **canonical API spec** is the OpenAPI 3.1 document shipped as [`@1claw/openapi-spec`](https://www.npmjs.com/package/@1claw/openapi-spec) (`openapi.yaml`). It defines all paths, request/response schemas, and error shapes with full type detail. Use it to generate clients in any language.
+
+This page is a **human-readable endpoint index** grouped by domain. When in doubt, trust the OpenAPI spec over this summary.
 
 ## Base URL
 

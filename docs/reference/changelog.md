@@ -8,11 +8,17 @@ sidebar_position: 3
 
 For detailed release history, see the [1clawAI GitHub](https://github.com/1clawAI) repositories.
 
+## Jump to year {#changelog-nav}
+
+- [2026 (latest)](#2026)
+
 ## API stability
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-08 (latest)
+## 2026 {#2026}
+
+### 2026-08 (latest)
 
 ### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
 

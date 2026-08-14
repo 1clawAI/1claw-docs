@@ -11,6 +11,20 @@ tags: [shroud, security, threat-detection, tee, pipeline]
 
 Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
 
+## On this page
+
+- [Per-Agent Configuration](#per-agent-configuration-shroud_config)
+- [Security Features](#security-features)
+- [Using the LLM Proxy](#using-the-llm-proxy)
+- [IDE Integration](#ide-integration-1claw-proxy)
+- [Threat Detection Filters](#threat-detection-filters)
+- [Global Settings](#global-settings)
+- [Configuration Examples](#configuration-examples)
+- [Use Case Tuning](#use-case-tuning)
+- [Shroud Activity & Live Inspector](#shroud-activity--live-inspector)
+- [Best Practices](#best-practices)
+- [Next steps](#next-steps)
+
 :::tip Try it out
 Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
 :::
@@ -1649,3 +1663,11 @@ Set up alerts for:
 - Spike in blocked requests (possible attack in progress)
 - New threat patterns from specific agents (compromised agent?)
 - High false positive rates (tuning needed)
+
+## Next steps
+
+- [IDE Shroud setup](/docs/guides/ide-shroud-setup) — route Cursor, Copilot, and Claude Code through Shroud
+- [Intents API](/docs/guides/intents-api) — sign transactions inside the TEE
+- [Billing & Usage](/docs/guides/billing-and-usage) — LLM token billing add-on via Stripe AI Gateway
+- [Shroud supported models](/docs/reference/shroud-supported-models) — provider and model reference
+- [Security — Zero trust](/docs/security/zero-trust) — defense-in-depth model
