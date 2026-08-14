@@ -1,6 +1,7 @@
 ---
 title: Introduction
 description: 1claw is a cloud HSM secrets manager that lets humans grant AI agents scoped, audited, revocable access to secrets without exposing raw credentials.
+keywords: [1claw, HSM, secrets manager, AI agents, vault, zero trust, cloud HSM]
 sidebar_position: 0
 ---
 

@@ -1,6 +1,7 @@
 ---
 title: Quickstart
 description: Get started with 1Claw in minutes — CLI setup, human and agent flows, and integration paths.
+keywords: [1claw quickstart, CLI setup, agent onboarding, vault tutorial]
 slug: /quickstart
 ---
 

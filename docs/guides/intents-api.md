@@ -1,6 +1,7 @@
 ---
 title: Intents API
-description: Let agents sign and broadcast blockchain transactions without ever seeing private keys. Includes the full list of supported chains.
+description: Let agents sign and broadcast blockchain transactions without ever seeing private keys. EVM and multi-chain support with guardrails.
+keywords: [Intents API, transaction signing, blockchain agents, EVM, multi-chain]
 sidebar_position: 3
 ---
 

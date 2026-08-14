@@ -1,6 +1,7 @@
 ---
 title: MCP Server Overview
 description: The 1claw MCP server gives AI agents secure, just-in-time access to secrets via the Model Context Protocol. Available as a hosted service or local stdio process.
+keywords: [MCP, Model Context Protocol, Claude Desktop, Cursor, agent secrets]
 sidebar_position: 0
 ---
 

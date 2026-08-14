@@ -1,6 +1,7 @@
 ---
 title: Shroud
-description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, detects exfiltration, and enforces per-agent policies before forwarding to OpenAI, Anthropic, Google (Gemini), and others.
+description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, and enforces per-agent policies before forwarding to LLM providers.
+keywords: [Shroud, LLM proxy, prompt injection, TEE, secret redaction, threat detection]
 sidebar_label: Shroud
 sidebar_position: 0
 tags: [shroud, security, threat-detection, tee, pipeline]

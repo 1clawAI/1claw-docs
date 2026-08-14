@@ -1,5 +1,6 @@
 ---
 title: Crypto Transaction Proxy (moved)
+description: The Crypto Transaction Proxy was renamed to the Intents API. This page redirects to the current guide.
 sidebar_position: 3
 ---
 
