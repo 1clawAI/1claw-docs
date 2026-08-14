@@ -14,6 +14,29 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
+
+#### Policy backend
+- **New:** `GET/PATCH /v1/org/settings/policy-backend` — configure Cedar/OPA backend (`builtin`, `cedar`, `opa`, `builtin+cedar`, `builtin+opa`), mode (`shadow` default or `enforce`), scope actions, and circuit breaker (`fail_closed` default).
+- **New:** `GET /v1/org/policy-shadow-report` — divergence report when running advanced backends in shadow mode.
+
+#### Contract ABIs
+- **New:** `POST/GET/DELETE /v1/org/contract-abis`, `GET /v1/org/contract-abis/{id}` — org-scoped ABI registry for transaction decoding in policy evaluation.
+
+#### Consensus / pending approvals
+- **New:** `consensus_trigger` on access policies — structured conditions (value, chain, address, function selector, ERC-20 amount, intent type, always).
+- **New:** `POST/GET /v1/pending-approvals`, approve/execute/cancel endpoints — multi-party approval workflow; sign/transactions return **202** when consensus matches.
+- **New webhook events:** `pending_approval.*`, `policy_backend.circuit_breaker_*`.
+
+#### Cedar/OPA
+- **Changed:** Cedar and OPA policy responses include dynamic `enforcement_status` (`shadow`, `enforce`, `inactive`) from org backend config.
+
+#### Clients
+- `@1claw/sdk@0.48.0`, `@1claw/cli@0.48.0`, `@1claw/mcp@0.48.0`, `@1claw/openapi-spec@0.48.0`
+- Python SDK `oneclaw@0.48.0`, Go SDK `v0.48.0`
+
+---
+
 ### v0.47.3 — Billing quotas: wallets, signatures, Free treasury (2026-08-13)
 
 #### Quotas
