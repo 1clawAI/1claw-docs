@@ -8357,6 +8357,21 @@ import TabItem from '@theme/TabItem';
 
 The Intents API lets an agent submit on-chain transactions — transfers, swaps, contract calls — while **never having access to the raw private key**. The server signs the transaction using keys stored in the vault and broadcasts it through a dedicated RPC for the target chain.
 
+## On this page
+
+- [Quickstart](#quickstart-your-first-transaction-5-min)
+- [How it works](#how-it-works)
+- [Submitting a transaction](#submitting-a-transaction)
+- [Sign-only mode](#sign-only)
+- [Transaction simulation](#simulation)
+- [Multi-chain signing keys](#signing-keys)
+- [Non-EVM signing](#non-evm)
+- [Unified sign endpoint](#unified-sign)
+- [Transaction guardrails](#transaction-guardrails)
+- [Execution Intents](#execution-intents)
+- [Best practices](#best-practices)
+- [Next steps](#next-steps)
+
 :::tip Try it out
 Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
 :::
@@ -10039,6 +10054,14 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 - **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
 - **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
 - **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
+
+## Next steps
+
+- [Multi-chain signing keys](/docs/guides/multi-chain-signing) — provision per-chain keypairs for agents
+- [Shroud TEE signing](/docs/guides/shroud) — route signing through the confidential enclave
+- [Treasury](/docs/guides/treasury) — Safe multisigs and delegated agent signing
+- [Transaction guardrails](/docs/guides/intents-api#transaction-guardrails) — per-agent spend caps and allowlists
+- [Error codes](/docs/reference/error-codes) — Intents API error reference
 
 
 ---
@@ -16042,6 +16065,20 @@ tags: [shroud, security, threat-detection, tee, pipeline]
 
 Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
 
+## On this page
+
+- [Per-Agent Configuration](#per-agent-configuration-shroud_config)
+- [Security Features](#security-features)
+- [Using the LLM Proxy](#using-the-llm-proxy)
+- [IDE Integration](#ide-integration-1claw-proxy)
+- [Threat Detection Filters](#threat-detection-filters)
+- [Global Settings](#global-settings)
+- [Configuration Examples](#configuration-examples)
+- [Use Case Tuning](#use-case-tuning)
+- [Shroud Activity & Live Inspector](#shroud-activity--live-inspector)
+- [Best Practices](#best-practices)
+- [Next steps](#next-steps)
+
 :::tip Try it out
 Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
 :::
@@ -17680,6 +17717,14 @@ Set up alerts for:
 - Spike in blocked requests (possible attack in progress)
 - New threat patterns from specific agents (compromised agent?)
 - High false positive rates (tuning needed)
+
+## Next steps
+
+- [IDE Shroud setup](/docs/guides/ide-shroud-setup) — route Cursor, Copilot, and Claude Code through Shroud
+- [Intents API](/docs/guides/intents-api) — sign transactions inside the TEE
+- [Billing & Usage](/docs/guides/billing-and-usage) — LLM token billing add-on via Stripe AI Gateway
+- [Shroud supported models](/docs/reference/shroud-supported-models) — provider and model reference
+- [Security — Zero trust](/docs/security/zero-trust) — defense-in-depth model
 
 
 ---
@@ -20046,9 +20091,11 @@ await client.auth.google({
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+client = create_client()
+resp = client.request("POST", "/v1/auth/google", json={"id_token": "<google-id-token>"})
+if resp.error:
+    raise RuntimeError(resp.error)
+# resp.data contains access_token, token_type, expires_in
 ```
 
 </TabItem>
@@ -20096,9 +20143,10 @@ const client = createClient({
 ```python
 from oneclaw import create_client
 
+# API key auto-exchanges for a JWT on first request
 client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+vaults = client.vaults.list()
+print(vaults.data)
 ```
 
 </TabItem>
@@ -20138,9 +20186,11 @@ await client.auth.logout();
 ```python
 from oneclaw import create_client
 
-client = create_client()
-client.auth.login("you@example.com", "your-password")
-# JWT is managed internally — use `client` for subsequent calls
+client = create_client(api_key="1ck_...")
+resp = client.request("DELETE", "/v1/auth/token")
+if resp.error:
+    raise RuntimeError(resp.error)
+# 204 No Content on success
 ```
 
 </TabItem>
@@ -20188,8 +20238,14 @@ await client.auth.changePassword({
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+resp = client.request(
+    "POST",
+    "/v1/auth/change-password",
+    json={"current_password": "...", "new_password": "..."},
+)
+if resp.error:
+    raise RuntimeError(resp.error)
+print(resp.data)  # {"message": "Password changed successfully"}
 ```
 
 </TabItem>
@@ -24796,7 +24852,9 @@ sidebar_position: 0
 
 # API reference
 
-The canonical API spec is the **OpenAPI 3.1** document shipped with the project. It defines all paths, request/response schemas, and error shapes.
+The **canonical API spec** is the OpenAPI 3.1 document shipped as [`@1claw/openapi-spec`](https://www.npmjs.com/package/@1claw/openapi-spec) (`openapi.yaml`). It defines all paths, request/response schemas, and error shapes with full type detail. Use it to generate clients in any language.
+
+This page is a **human-readable endpoint index** grouped by domain. When in doubt, trust the OpenAPI spec over this summary.
 
 ## Base URL
 
@@ -25502,11 +25560,17 @@ sidebar_position: 3
 
 For detailed release history, see the [1clawAI GitHub](https://github.com/1clawAI) repositories.
 
+## Jump to year {#changelog-nav}
+
+- [2026 (latest)](#2026)
+
 ## API stability
 
 The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
-## 2026-08 (latest)
+## 2026 {#2026}
+
+### 2026-08 (latest)
 
 ### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
 
@@ -26876,7 +26940,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Envelope encryption** — The pattern 1claw uses: encrypt the secret with a DEK, then encrypt (wrap) the DEK with a KEK that lives in the HSM. The database only stores ciphertext and the wrapped DEK, so a DB compromise does not expose secrets without HSM access.
 
-**Grant** — See **Policy**. In the API and docs, “grant” and “policy” are used interchangeably for the rule that grants a principal access to secret paths.
+**Grant** — Same as **Policy** below. In the API and dashboard sidebar, “grant” and “policy” refer to the same access-control rule: a principal (user or agent) gets read/write permission on secret path patterns in a vault. Human API endpoints live under `/v1/vaults/{id}/policies`; the sidebar label is **Grants (Policies)**. See [Create a policy](/docs/human-api/grants/create-grant).
 
 **HSM (Hardware Security Module)** — A secure vault for keys. In 1claw, production uses Google Cloud KMS; keys never leave the HSM. Used for KEKs and JWT signing. See [HSM architecture](/docs/concepts/hsm-architecture).
 
@@ -26888,7 +26952,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Path** — A slash-separated identifier for a secret inside a vault (e.g. `api-keys/stripe`, `config/prod/db`). Used in policies as glob patterns (e.g. `**`, `prod/*`). See [Secrets model](/docs/concepts/secrets-model).
 
-**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window) and an expiry. Created and managed per vault. See [Create a policy](/docs/human-api/grants/create-grant) and [Scoped permissions](/docs/guides/scoped-permissions).
+**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/human-api/grants/create-grant) and [Scoped permissions](/docs/guides/scoped-permissions).
 
 **Principal** — The identity that a policy applies to: a **user** (by user ID) or an **agent** (by agent ID). The principal must match the caller for the policy to apply.
 
