@@ -177,6 +177,7 @@ const config: Config = {
     ],
     plugins: [
         "docusaurus-plugin-copy-page-button",
+        require("./src/plugins/json-ld-postbuild.js"),
         function excludeNodeModulesMdx() {
             return {
                 name: "exclude-node-modules-mdx",
