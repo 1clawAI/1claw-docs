@@ -196,7 +196,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
 - **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
 - **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
-- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.user.claimed`.
 - **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
 - **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.
 - **Fixed:** Multi-agent bootstrap — template specs with multiple agents now correctly provision all agents (was only creating the first).

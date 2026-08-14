@@ -712,7 +712,7 @@ Platform apps can subscribe to lifecycle events via [webhooks](/docs/guides/webh
 | `platform.bootstrap.completed` | Bootstrap finished for a connected user |
 | `platform.grant.created` | A user granted your app access to resources |
 | `platform.grant.revoked` | A user revoked a resource grant |
-| `platform.claim.redeemed` | A claim token was redeemed |
+| `platform.user.claimed` | User claimed bootstrapped resources |
 
 ### Webhook Secret Rotation
 

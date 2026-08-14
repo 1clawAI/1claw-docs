@@ -1348,7 +1348,7 @@ for (const msg of history.messages) {
 
 ## Billing
 
-Chat and channel features are available on all tiers. LLM usage for auto-responses follows your agent's Shroud LLM billing configuration (see [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing)).
+Chat and channel features are available on all tiers. LLM usage for auto-responses follows your agent's Shroud LLM billing configuration (see [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on)).
 
 
 ---
@@ -10458,7 +10458,7 @@ The 1claw MCP server connects AI clients (Claude, Cursor, GPT, and others) to yo
 
 This is the fastest path for IDE agents: register an agent in the dashboard, grant read access to the paths it needs, and point your MCP client at `mcp.1claw.xyz` with the agent API key. The server exchanges the key for a short-lived JWT, refreshes it automatically, and discovers the vault when the agent is bound to one.
 
-For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/guides/cli#local-vault--daemon) with `ONECLAW_LOCAL_VAULT=true`.
+For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/guides/cli#local-daemon-secret-proxy) with `ONECLAW_LOCAL_VAULT=true`.
 
 :::tip Try it out
 Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (LangChain + 1Claw MCP tools).
@@ -10556,7 +10556,7 @@ For fully offline use where the model should never see secret values:
 }
 ```
 
-Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/guides/cli#local-vault) for setup.
+Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/guides/cli#local-vault-offline-encrypted) for setup.
 
 ## Available tools
 
@@ -13759,7 +13759,7 @@ Platform apps can subscribe to lifecycle events via [webhooks](/docs/guides/webh
 | `platform.bootstrap.completed` | Bootstrap finished for a connected user |
 | `platform.grant.created` | A user granted your app access to resources |
 | `platform.grant.revoked` | A user revoked a resource grant |
-| `platform.claim.redeemed` | A claim token was redeemed |
+| `platform.user.claimed` | User claimed bootstrapped resources |
 
 ### Webhook Secret Rotation
 
@@ -18369,22 +18369,7 @@ await client.treasury.executeProposal(treasuryId, proposalId);
 
 You can register webhooks to receive real-time notifications for treasury and transaction events. Webhooks deliver events via HTTP POST with an HMAC-SHA256 signature for verification.
 
-### Supported events
-
-| Event                         | Description                                          |
-|-------------------------------|------------------------------------------------------|
-| `wallet.transfer.sent`        | Outgoing transfer from a treasury wallet             |
-| `wallet.transfer.received`    | Incoming transfer to a treasury wallet               |
-| `proposal.created`            | New multisig proposal created                        |
-| `proposal.signed`             | Proposal received a signature                        |
-| `proposal.executed`           | Proposal was executed on-chain                       |
-| `proposal.cancelled`          | Proposal was cancelled                               |
-| `agent.transaction.broadcast` | Agent transaction was broadcast                      |
-| `agent.transaction.signed`    | Agent transaction was signed (sign-only mode)        |
-| `signing_key.rotated`         | Agent signing key was rotated                        |
-| `policy.created`              | Access policy was created                            |
-| `policy.updated`              | Access policy was updated                            |
-| `policy.deleted`              | Access policy was deleted                            |
+Treasury-relevant events include `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.*`, `agent.transaction.*`, and `signing_key.rotated`. The full event catalog (40+ types, including deposits, cards, platform lifecycle, and policy backend events) is in **[Webhooks](./webhooks.md)**.
 
 ### Registering a webhook
 
@@ -25748,7 +25733,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
 - **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
 - **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
-- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+- **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.user.claimed`.
 - **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
 - **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.
 - **Fixed:** Multi-agent bootstrap — template specs with multiple agents now correctly provision all agents (was only creating the first).

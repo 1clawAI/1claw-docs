@@ -19,17 +19,20 @@ Phase 2 implementation (2026-08-14). Seven commits on `main`.
 - **Pinned `@docusaurus/*` to 3.9.2** — accidental `pnpm add @docusaurus/plugin-client-redirects` upgraded core to 3.10.2 via monorepo hoisting and broke SSG (`path_to_regexp` error). Docs installs must use `pnpm install --ignore-workspace` in the submodule.
 - **`@docusaurus/plugin-client-redirects` not added** — incompatible with current install path; duplicates consolidated via unlisted stub pages with prominent move links instead.
 
-## Deferred / flagged (not fixed)
+## Follow-up fixes (2026-08-14)
 
-### Broken anchors (pre-existing, build warns)
+### Broken anchors (fixed)
 
-- `/docs/guides/agent-communication` → `#llm-token-billing` on billing-and-usage (anchor missing)
-- `/docs/guides/mcp-integration` → `#local-vault--daemon` and `#local-vault` on cli guide (anchors missing)
+- `/docs/guides/agent-communication` → updated link to `#llm-token-billing-optional-add-on` on billing-and-usage
+- `/docs/guides/mcp-integration` → updated links to `#local-daemon-secret-proxy` and `#local-vault-offline-encrypted` on cli guide
 
-### Factual doc discrepancies (flagged, not changed per constraint)
+### Factual doc discrepancies (fixed)
 
-- **`guides/treasury.md` webhook events** — lists 12 events; vault `VALID_WEBHOOK_EVENTS` has 40+ including platform, card, approval, and deposit events. New `guides/webhooks.md` is canonical.
-- **`guides/platform-api.md`** — documents `platform.claim.redeemed`; vault emits `platform.user.claimed`. Not corrected to avoid changing API behavior docs without product confirmation.
+- **`guides/treasury.md` webhook events** — replaced stale 12-event table with pointer to canonical `guides/webhooks.md`
+- **`guides/platform-api.md`** and **`reference/changelog.md`** — corrected `platform.claim.redeemed` → `platform.user.claimed` to match vault `VALID_WEBHOOK_EVENTS`
+
+### Still flagged (not fixed)
+
 - **Glossary Scope default** — says `["*"]` when no policies; workspace rules say scopes default to `[]` (zero access). Flagged only.
 
 ### OG image
@@ -55,7 +58,7 @@ Phase 2 implementation (2026-08-14). Seven commits on `main`.
 cd docs && pnpm install --ignore-workspace && pnpm run build
 ```
 
-Expected: `[SUCCESS] Generated static files in "build"`. Broken **links** = 0. Broken **anchors** = 3 (pre-existing).
+Expected: `[SUCCESS] Generated static files in "build"`. Broken **links** = 0. Broken **anchors** = 0.
 
 ## JSON-LD approach
 

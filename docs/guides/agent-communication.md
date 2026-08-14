@@ -243,4 +243,4 @@ for (const msg of history.messages) {
 
 ## Billing
 
-Chat and channel features are available on all tiers. LLM usage for auto-responses follows your agent's Shroud LLM billing configuration (see [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing)).
+Chat and channel features are available on all tiers. LLM usage for auto-responses follows your agent's Shroud LLM billing configuration (see [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on)).

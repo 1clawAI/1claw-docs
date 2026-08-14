@@ -448,22 +448,7 @@ await client.treasury.executeProposal(treasuryId, proposalId);
 
 You can register webhooks to receive real-time notifications for treasury and transaction events. Webhooks deliver events via HTTP POST with an HMAC-SHA256 signature for verification.
 
-### Supported events
-
-| Event                         | Description                                          |
-|-------------------------------|------------------------------------------------------|
-| `wallet.transfer.sent`        | Outgoing transfer from a treasury wallet             |
-| `wallet.transfer.received`    | Incoming transfer to a treasury wallet               |
-| `proposal.created`            | New multisig proposal created                        |
-| `proposal.signed`             | Proposal received a signature                        |
-| `proposal.executed`           | Proposal was executed on-chain                       |
-| `proposal.cancelled`          | Proposal was cancelled                               |
-| `agent.transaction.broadcast` | Agent transaction was broadcast                      |
-| `agent.transaction.signed`    | Agent transaction was signed (sign-only mode)        |
-| `signing_key.rotated`         | Agent signing key was rotated                        |
-| `policy.created`              | Access policy was created                            |
-| `policy.updated`              | Access policy was updated                            |
-| `policy.deleted`              | Access policy was deleted                            |
+Treasury-relevant events include `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.*`, `agent.transaction.*`, and `signing_key.rotated`. The full event catalog (40+ types, including deposits, cards, platform lifecycle, and policy backend events) is in **[Webhooks](./webhooks.md)**.
 
 ### Registering a webhook
 

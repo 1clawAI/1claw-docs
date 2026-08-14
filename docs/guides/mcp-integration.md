@@ -10,7 +10,7 @@ The 1claw MCP server connects AI clients (Claude, Cursor, GPT, and others) to yo
 
 This is the fastest path for IDE agents: register an agent in the dashboard, grant read access to the paths it needs, and point your MCP client at `mcp.1claw.xyz` with the agent API key. The server exchanges the key for a short-lived JWT, refreshes it automatically, and discovers the vault when the agent is bound to one.
 
-For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/guides/cli#local-vault--daemon) with `ONECLAW_LOCAL_VAULT=true`.
+For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/guides/cli#local-daemon-secret-proxy) with `ONECLAW_LOCAL_VAULT=true`.
 
 :::tip Try it out
 Try out the examples in this repo: **[FastMCP Tool Server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server)** (custom MCP server with domain tools) and **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (LangChain + 1Claw MCP tools).
@@ -108,7 +108,7 @@ For fully offline use where the model should never see secret values:
 }
 ```
 
-Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/guides/cli#local-vault) for setup.
+Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/guides/cli#local-vault-offline-encrypted) for setup.
 
 ## Available tools
 
