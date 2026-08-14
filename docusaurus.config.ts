@@ -89,6 +89,12 @@ const config: Config = {
     ],
     themeConfig: {
         image: "img/og-docs.png",
+        docs: {
+            sidebar: {
+                hideable: true,
+                autoCollapseCategories: true,
+            },
+        },
         navbar: {
             title: "1claw",
             logo: {
@@ -99,10 +105,32 @@ const config: Config = {
                 { to: "/docs/intro", label: "Docs", position: "left" },
                 { to: "/docs/vaults/overview", label: "Vaults", position: "left" },
                 { to: "/docs/agents/overview", label: "Agents", position: "left" },
-                { to: "/docs/automations/overview", label: "Automations", position: "left" },
-                { to: "/docs/runtimes/overview", label: "Runtimes", position: "left" },
-                { to: "/docs/treasury/overview", label: "Treasury", position: "left" },
-                { to: "/docs/platform-api/overview", label: "Platform", position: "left" },
+                {
+                    type: "dropdown",
+                    label: "Build",
+                    position: "left",
+                    items: [
+                        { to: "/docs/automations/overview", label: "Automations" },
+                        { to: "/docs/runtimes/overview", label: "Runtimes" },
+                        { to: "/docs/cards/overview", label: "Cards" },
+                        { to: "/docs/treasury/overview", label: "Treasury" },
+                        { to: "/docs/sharing/overview", label: "Sharing" },
+                        { to: "/docs/risk-engine/overview", label: "Risk Engine" },
+                    ],
+                },
+                {
+                    type: "dropdown",
+                    label: "Developers",
+                    position: "left",
+                    items: [
+                        { to: "/docs/platform-api/overview", label: "Platform API" },
+                        { to: "/docs/dashboard/overview", label: "Dashboard" },
+                        { to: "/docs/sdks/overview", label: "SDKs" },
+                        { to: "/docs/integrations/overview", label: "Integrations" },
+                        { to: "/docs/category/guides", label: "Guides" },
+                        { to: "/docs/reference/api-reference", label: "API Reference" },
+                    ],
+                },
                 { type: "search", position: "right" },
                 {
                     href: "https://github.com/1clawAI",

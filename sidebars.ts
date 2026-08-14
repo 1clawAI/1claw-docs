@@ -1,7 +1,8 @@
 import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 /**
- * Product-centric IA: Introduction → Quickstart → Concepts → product areas → Guides → SDKs → Integrations → Security → Reference
+ * Product-centric IA. Sidebar defaults: categories collapsed unless active
+ * (see themeConfig.docs.sidebar.autoCollapseCategories).
  */
 const sidebars: SidebarsConfig = {
     docs: [
@@ -10,12 +11,14 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Quickstart",
             link: { type: "doc", id: "quickstart/index" },
+            collapsed: true,
             items: ["quickstart/humans", "quickstart/agents"],
         },
         {
             type: "category",
             label: "Concepts",
             link: { type: "doc", id: "concepts/what-is-1claw" },
+            collapsed: true,
             items: [
                 "concepts/parts-of-1claw",
                 "concepts/hsm-architecture",
@@ -29,25 +32,45 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Vaults",
             link: { type: "doc", id: "vaults/overview" },
-            collapsed: false,
+            collapsed: true,
             items: [
-                "vaults/golden-path",
-                "vaults/securing-access",
-                "vaults/scoped-permissions",
-                "vaults/revoking-access",
-                "vaults/rotating-secrets",
-                "vaults/rotation-bindings",
-                "vaults/cmek",
-                "vaults/mpc",
+                {
+                    type: "category",
+                    label: "Access & policies",
+                    collapsed: true,
+                    items: [
+                        "vaults/golden-path",
+                        "vaults/securing-access",
+                        "vaults/scoped-permissions",
+                        "vaults/revoking-access",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Secrets lifecycle",
+                    collapsed: true,
+                    items: [
+                        "vaults/rotating-secrets",
+                        "vaults/rotation-bindings",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Encryption",
+                    collapsed: true,
+                    items: ["vaults/cmek", "vaults/mpc"],
+                },
                 {
                     type: "category",
                     label: "Human API",
                     link: { type: "doc", id: "vaults/human-api/overview" },
+                    collapsed: true,
                     items: [
                         "vaults/human-api/authentication",
                         {
                             type: "category",
                             label: "Secrets",
+                            collapsed: true,
                             items: [
                                 "vaults/human-api/secrets/create",
                                 "vaults/human-api/secrets/read",
@@ -59,6 +82,7 @@ const sidebars: SidebarsConfig = {
                         {
                             type: "category",
                             label: "Grants (Policies)",
+                            collapsed: true,
                             items: [
                                 "vaults/human-api/grants/create-grant",
                                 "vaults/human-api/grants/revoke-grant",
@@ -68,6 +92,7 @@ const sidebars: SidebarsConfig = {
                         {
                             type: "category",
                             label: "Agents",
+                            collapsed: true,
                             items: [
                                 "vaults/human-api/agents/register-agent",
                                 "vaults/human-api/agents/list-agents",
@@ -81,6 +106,7 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "MCP Server",
                     link: { type: "doc", id: "vaults/mcp/overview" },
+                    collapsed: true,
                     items: [
                         "vaults/mcp/setup",
                         "vaults/mcp/tools",
@@ -94,21 +120,36 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Agents",
             link: { type: "doc", id: "agents/overview" },
-            collapsed: false,
+            collapsed: true,
             items: [
-                "agents/self-enrollment",
-                "agents/fleet-management",
-                "agents/delegation",
-                "agents/discovery",
-                "agents/memory",
-                "agents/communication",
-                "agents/channels",
-                "agents/bankr-keys",
-                "agents/oidc-federation",
+                {
+                    type: "category",
+                    label: "Lifecycle & ops",
+                    collapsed: true,
+                    items: [
+                        "agents/self-enrollment",
+                        "agents/fleet-management",
+                        "agents/delegation",
+                        "agents/discovery",
+                        "agents/oidc-federation",
+                        "agents/bankr-keys",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Memory & channels",
+                    collapsed: true,
+                    items: [
+                        "agents/memory",
+                        "agents/communication",
+                        "agents/channels",
+                    ],
+                },
                 {
                     type: "category",
                     label: "Shroud (LLM proxy)",
                     link: { type: "doc", id: "agents/shroud/overview" },
+                    collapsed: true,
                     items: [
                         "agents/shroud/threat-detection",
                         "agents/shroud/configuration",
@@ -119,6 +160,7 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Intents (signing)",
                     link: { type: "doc", id: "agents/intents/overview" },
+                    collapsed: true,
                     items: [
                         "agents/intents/signing",
                         "agents/intents/guardrails",
@@ -130,6 +172,7 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Agent API",
                     link: { type: "doc", id: "agents/api/overview" },
+                    collapsed: true,
                     items: [
                         "agents/api/authentication",
                         "agents/api/fetch-secret",
@@ -140,54 +183,47 @@ const sidebars: SidebarsConfig = {
                 },
             ],
         },
-        {
-            type: "category",
-            label: "Automations",
-            link: { type: "doc", id: "automations/overview" },
-            items: [],
-        },
+        "automations/overview",
         {
             type: "category",
             label: "Runtimes",
             link: { type: "doc", id: "runtimes/overview" },
+            collapsed: true,
             items: ["runtimes/hosting"],
         },
-        {
-            type: "category",
-            label: "Cards",
-            link: { type: "doc", id: "cards/overview" },
-            items: [],
-        },
+        "cards/overview",
         {
             type: "category",
             label: "Treasury",
             link: { type: "doc", id: "treasury/overview" },
-            collapsed: false,
+            collapsed: true,
             items: [
-                "treasury/embedded-wallets",
-                "treasury/wallet-react",
-                "treasury/safe-multisig",
-                "treasury/account-abstraction",
-                "treasury/approvals",
-                "treasury/policy-engine",
+                {
+                    type: "category",
+                    label: "Wallets & embedded",
+                    collapsed: true,
+                    items: [
+                        "treasury/embedded-wallets",
+                        "treasury/wallet-react",
+                        "treasury/safe-multisig",
+                        "treasury/account-abstraction",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Policy & approvals",
+                    collapsed: true,
+                    items: ["treasury/approvals", "treasury/policy-engine"],
+                },
             ],
         },
-        {
-            type: "category",
-            label: "Sharing",
-            link: { type: "doc", id: "sharing/overview" },
-            items: [],
-        },
-        {
-            type: "category",
-            label: "Risk Engine",
-            link: { type: "doc", id: "risk-engine/overview" },
-            items: [],
-        },
+        "sharing/overview",
+        "risk-engine/overview",
         {
             type: "category",
             label: "Platform API",
             link: { type: "doc", id: "platform-api/overview" },
+            collapsed: true,
             items: [
                 "platform-api/multi-tenant",
                 "platform-api/webhooks",
@@ -198,6 +234,7 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Dashboard",
             link: { type: "doc", id: "dashboard/overview" },
+            collapsed: true,
             items: [
                 "dashboard/vaults-secrets",
                 "dashboard/agents-policies",
@@ -215,6 +252,7 @@ const sidebars: SidebarsConfig = {
                 description: "Cross-cutting workflows: setup, billing, compliance, troubleshooting.",
                 slug: "/category/guides",
             },
+            collapsed: true,
             items: [
                 "guides/setup-by-client",
                 "guides/five-minute-walkthrough",
@@ -231,34 +269,45 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "SDKs",
             link: { type: "doc", id: "sdks/overview" },
+            collapsed: true,
             items: ["sdks/javascript", "sdks/python", "sdks/go", "sdks/curl-examples"],
         },
         {
             type: "category",
             label: "Integrations",
             link: { type: "doc", id: "integrations/overview" },
+            collapsed: true,
             items: [
                 {
                     type: "category",
                     label: "Official packages",
+                    collapsed: true,
                     items: ["integrations/langchain", "integrations/crewai"],
                 },
-                "integrations/mcp-integration",
-                "integrations/mcp-deep-dive",
-                "integrations/cli",
-                "integrations/agent-frameworks",
-                "integrations/ai-sdk-integration",
-                "integrations/openclaw",
-                "integrations/openclaw-plugin",
-                "integrations/elizaos",
-                "integrations/scaffold-agent",
-                "integrations/base-mcp-secure",
-                "integrations/claude-code",
-                "integrations/agent-templates",
-                "integrations/ecosystem",
+                {
+                    type: "category",
+                    label: "Clients & frameworks",
+                    collapsed: true,
+                    items: [
+                        "integrations/mcp-integration",
+                        "integrations/mcp-deep-dive",
+                        "integrations/cli",
+                        "integrations/agent-frameworks",
+                        "integrations/ai-sdk-integration",
+                        "integrations/openclaw",
+                        "integrations/openclaw-plugin",
+                        "integrations/elizaos",
+                        "integrations/scaffold-agent",
+                        "integrations/base-mcp-secure",
+                        "integrations/claude-code",
+                        "integrations/agent-templates",
+                        "integrations/ecosystem",
+                    ],
+                },
                 {
                     type: "category",
                     label: "Wallet & key migrations",
+                    collapsed: true,
                     items: [
                         "integrations/migrate-from-dynamic",
                         "integrations/migrate-from-privy",
@@ -276,8 +325,9 @@ const sidebars: SidebarsConfig = {
         {
             type: "category",
             label: "Security",
+            link: { type: "doc", id: "security/hsm-overview" },
+            collapsed: true,
             items: [
-                "security/hsm-overview",
                 "security/key-hierarchy",
                 "security/agent-keys",
                 "security/zero-trust",
@@ -288,8 +338,9 @@ const sidebars: SidebarsConfig = {
         {
             type: "category",
             label: "Reference",
+            link: { type: "doc", id: "reference/api-reference" },
+            collapsed: true,
             items: [
-                "reference/api-reference",
                 "reference/request-pipeline",
                 "reference/shroud-supported-models",
                 "reference/api-mcp-testing",

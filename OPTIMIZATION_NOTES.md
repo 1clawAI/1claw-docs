@@ -99,3 +99,13 @@ Introduction → Quickstart → Concepts → **Vaults → Agents → Automations
 - **Navbar** aligned: Vaults, Agents, Automations, Runtimes, Treasury, Platform
 - Build: 143 pages, 0 broken links
 
+### Phase 4b — Sidebar & navbar polish (2026-08-14)
+
+- **`autoCollapseCategories: true`** — only the active category branch stays expanded (fixes multiple sections stuck open)
+- Removed explicit `collapsed: false` on Vaults, Agents, Treasury
+- Sidebar sub-grouping: Vaults (Access / Lifecycle / Encryption / API), Agents (Lifecycle / Channels / Shroud / Intents / API), Treasury (Wallets / Policy)
+- Single-page sections (Automations, Cards, Sharing, Risk Engine) as flat doc links — no empty chevrons
+- Integrations split into Official / Clients & frameworks / Migrations
+- **Navbar:** Docs · Vaults · Agents · **Build** ▼ · **Developers** ▼ · Search · GitHub (was 7 flat product links)
+- Sidebar hideable toggle enabled
+
