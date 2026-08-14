@@ -253,8 +253,17 @@ const { data: share } = await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-12-31T00:00:00Z",
+        "max_access_count": 10,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -300,7 +309,7 @@ await client.secrets.set(VAULT_ID, "credentials/session-key", newSessionKey, {
 });
 
 // Share it back to the human
-const { data: secretMeta } = await client.secrets.describe(VAULT_ID, "credentials/session-key");
+const { data: secretMeta } = await client.secrets.get(VAULT_ID, "credentials/session-key");
 await client.sharing.create(secretMeta.id, {
   recipient_type: "creator",
   expires_at: "2026-06-01T00:00:00Z",

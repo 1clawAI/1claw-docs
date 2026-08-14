@@ -20,13 +20,16 @@ Connect your 1Claw agents to external messaging platforms so they can receive an
 
 ```bash
 # Via CLI
-1claw agent channel create <agent-id> --type telegram --name "Support Bot"
+1claw channel create <agent-id> \
+  --type telegram \
+  --name "Support Bot" \
+  --config '{"bot_token":"..."}'
 
 # Via SDK
-const channel = await client.agents.createChannel(agentId, {
+const { data: channel } = await client.channels.create(agentId, {
   channel_type: "telegram",
   channel_name: "Support Bot",
-  metadata: { bot_token: "..." }
+  config: { bot_token: "..." },
 });
 ```
 

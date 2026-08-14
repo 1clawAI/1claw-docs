@@ -254,8 +254,16 @@ await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-12-31T00:00:00Z",
+    },
+)
+share = resp.data
 ```
 
 </TabItem>

@@ -97,7 +97,7 @@ Environment variables (optional): `ONECLAW_API_KEY`, `ONECLAW_BASE_URL`, `ONECLA
 | `client.auth` | `login`, `signup`, `agent_token`, `forgot_password`, `reset_password` |
 | `client.vaults` | `create`, `list`, `get`, `delete` |
 | `client.secrets` | `set`, `get`, `list`, `delete`, `rotate_generate`, `list_versions` |
-| `client.agents` | `create`, `list`, `get`, `update`, `deactivate`, `enroll`, `submit_transaction`, `sign_intent` |
+| `client.agents` | `create`, `list`, `get`, `update`, `delete`, `enroll`, `submit_transaction`, `sign_intent` |
 | `client.policies` | `create`, `list`, `delete` |
 | `client.signing_keys` | `create`, `list`, `rotate`, `deactivate`, `balance` |
 | `client.sharing` | `create`, `list`, `accept`, `decline` |

@@ -65,7 +65,13 @@ const { data: agent } = await client.agents.update(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.update(
+    agent_id,
+    tx_allowed_chains=["ethereum", "base"],
+    tx_to_allowlist=["0xSafeAddress1", "0xSafeAddress2"],
+    tx_max_value_eth="0.5",
+    tx_daily_limit_eth="5.0",
+)
 ```
 
 </TabItem>
@@ -249,7 +255,7 @@ const { data } = await client.agents.update(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.update(agent_id, execution_intents_enabled=True)
 ```
 
 </TabItem>

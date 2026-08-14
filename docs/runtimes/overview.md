@@ -59,7 +59,7 @@ A runtime is a managed container that runs your agent code. It includes:
   --inbound-auth api_key
 
 # Shorthand: deploy to cloud
-1claw deploy --cloud
+1claw deploy --google-cloud
 
 # Manage lifecycle
 1claw runtime start <id>

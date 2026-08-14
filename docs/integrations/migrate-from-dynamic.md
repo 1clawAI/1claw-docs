@@ -56,7 +56,7 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/rpc/ethereum-main
 Or bulk-import from a `.env` file using the CLI:
 
 ```bash
-1claw import .env.production --vault-id $VAULT_ID --prefix config/
+1claw import .env.production -v $VAULT_ID --prefix config/
 ```
 
 ### 2. Replace server wallets with signing keys

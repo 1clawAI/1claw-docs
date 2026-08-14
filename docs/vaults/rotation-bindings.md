@@ -47,7 +47,7 @@ await client.secrets.put(vaultId, "apis/stripe-key", {
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw secret put --vault $VAULT_ID --path apis/stripe-key --value "sk_live_new_key_value"
+1claw secret set apis/stripe-key "sk_live_new_key_value" -v $VAULT_ID
 ```
 
 </TabItem>
@@ -88,7 +88,7 @@ console.log("New version:", rotated.data.version);
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw secret rotate --generate --vault $VAULT_ID --path db/password -l 32 -c alphanumeric
+1claw secret rotate db/password --generate -v $VAULT_ID -l 32 -c alphanumeric
 ```
 
 </TabItem>
@@ -121,7 +121,7 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/apis/stripe-k
 Disable old versions to prevent rollback reads:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/apis/stripe-key/2/disable" \
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/apis/stripe-key/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -279,16 +279,17 @@ Here is a complete rotation workflow for a database password:
 
 ```bash
 # 1. Generate a new password in the vault
-1claw secret rotate --generate --vault $VAULT_ID --path db/postgres-password -l 32 -c alphanumeric
+1claw secret rotate db/postgres-password --generate -v $VAULT_ID -l 32 -c alphanumeric
 
 # 2. Read the new password (human only, for updating the database)
-NEW_PASS=$(1claw secret get --vault $VAULT_ID --path db/postgres-password --raw)
+NEW_PASS=$(1claw secret get db/postgres-password -v $VAULT_ID --quiet)
 
 # 3. Update the database user password
 psql -h db.example.com -U admin -c "ALTER USER app_user PASSWORD '$NEW_PASS'"
 
-# 4. Disable the old version
-1claw secret disable --vault $VAULT_ID --path db/postgres-password --version 1
+# 4. Disable the old version (REST API or SDK — no CLI subcommand yet)
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/db/postgres-password/1" \
+  -H "Authorization: Bearer $TOKEN"
 
 # 5. Any agent with a vault_ref binding picks up the new password automatically
 # No code changes, no redeployment
@@ -300,9 +301,8 @@ psql -h db.example.com -U admin -c "ALTER USER app_user PASSWORD '$NEW_PASS'"
 
 ```bash
 # In a GitHub Action or cron
-0 0 1 * * /usr/local/bin/1claw secret rotate --generate \
-  --vault $VAULT_ID \
-  --path db/postgres-password \
+0 0 1 * * /usr/local/bin/1claw secret rotate db/postgres-password --generate \
+  -v $VAULT_ID \
   -l 32 -c alphanumeric
 ```
 

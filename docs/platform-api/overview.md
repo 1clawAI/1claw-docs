@@ -714,12 +714,12 @@ Platform apps can subscribe to lifecycle events via [webhooks](/docs/platform-ap
 | `platform.grant.revoked` | A user revoked a resource grant |
 | `platform.user.claimed` | User claimed bootstrapped resources |
 
-### Webhook Secret Rotation
+### Webhook signing secrets
 
-Rotate the HMAC signing secret for any webhook:
+Org webhook HMAC secrets are returned once at create time. Rotate by recreating the webhook, or use `POST /v1/platform/apps/{app_id}/rotate-webhook-secret` for platform app delivery secrets.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer YOUR_USER_JWT"
 ```
 
@@ -1048,4 +1048,4 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
 | GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
 | GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |
-| POST | `/v1/webhooks/{id}/rotate-secret` | User JWT | Rotate webhook HMAC signing secret |
+| POST | `/v1/platform/apps/{id}/rotate-webhook-secret` | User JWT | Rotate platform app webhook HMAC secret |

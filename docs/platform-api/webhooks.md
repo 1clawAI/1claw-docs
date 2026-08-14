@@ -36,7 +36,10 @@ The response includes a one-time `secret` — store it securely. All subsequent 
 | GET | `/v1/webhooks/{id}` | Get webhook details |
 | PATCH | `/v1/webhooks/{id}` | Update URL, events, active status, or description |
 | DELETE | `/v1/webhooks/{id}` | Delete a webhook |
-| POST | `/v1/webhooks/{id}/rotate-secret` | Rotate the HMAC signing secret (returns new secret once) |
+
+:::note Signing secret rotation
+Org webhook HMAC secrets are returned **once** at create time. There is no org-level rotate endpoint today — delete and recreate the webhook, or store the secret in your own rotation workflow. **Platform apps** can rotate delivery secrets via `POST /v1/platform/apps/{app_id}/rotate-webhook-secret`.
+:::
 
 ## Verifying signatures
 
@@ -136,12 +139,18 @@ Subscribe to one or more event types when creating or updating a webhook:
 | `policy_backend.circuit_breaker_opened` | Advanced policy backend circuit breaker opened |
 | `policy_backend.circuit_breaker_closed` | Advanced policy backend circuit breaker closed |
 
-## Secret rotation
+## Signing secret rotation
 
-Rotate the HMAC signing secret without deleting the webhook:
+Org webhook signing secrets are shown **once** when you create the webhook. To rotate:
+
+1. Register a new webhook (or delete and recreate the existing one).
+2. Update your verification logic with the new secret.
+3. Delete the old webhook when deliveries have switched over.
+
+**Platform app webhooks** support in-place rotation:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 

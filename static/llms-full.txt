@@ -526,9 +526,9 @@ await client.agents.revokeBankrKey(agentId, leaseId);
 **CLI:**
 
 ```bash
-1claw agent bankr-key lease --ttl 600
-1claw agent bankr-key list
-1claw agent bankr-key revoke LEASE_ID
+1claw agent bankr-key lease <agent-id> --ttl 600
+1claw agent bankr-key list <agent-id>
+1claw agent bankr-key revoke <agent-id> LEASE_ID
 ```
 
 ## Lifecycle
@@ -571,13 +571,16 @@ Connect your 1Claw agents to external messaging platforms so they can receive an
 
 ```bash
 # Via CLI
-1claw agent channel create <agent-id> --type telegram --name "Support Bot"
+1claw channel create <agent-id> \
+  --type telegram \
+  --name "Support Bot" \
+  --config '{"bot_token":"..."}'
 
 # Via SDK
-const channel = await client.agents.createChannel(agentId, {
+const { data: channel } = await client.channels.create(agentId, {
   channel_type: "telegram",
   channel_name: "Support Bot",
-  metadata: { bot_token: "..." }
+  config: { bot_token: "..." },
 });
 ```
 
@@ -1609,7 +1612,13 @@ const { data: agent } = await client.agents.update(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.update(
+    agent_id,
+    tx_allowed_chains=["ethereum", "base"],
+    tx_to_allowlist=["0xSafeAddress1", "0xSafeAddress2"],
+    tx_max_value_eth="0.5",
+    tx_daily_limit_eth="5.0",
+)
 ```
 
 </TabItem>
@@ -1793,7 +1802,7 @@ const { data } = await client.agents.update(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.update(agent_id, execution_intents_enabled=True)
 ```
 
 </TabItem>
@@ -2158,7 +2167,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw agent signing-keys create $AGENT_ID --chain ethereum
+1claw agent keys create $AGENT_ID --chain ethereum
 ```
 
 </TabItem>
@@ -3092,7 +3101,7 @@ print(resp.data["address"])
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw agent signing-keys create $AGENT_ID --chain ethereum
+1claw agent keys create $AGENT_ID --chain ethereum
 ```
 
 </TabItem>
@@ -3722,9 +3731,7 @@ await client.agents.update(agentId, { memory_enabled: true });
 </TabItem>
 <TabItem value="cli" label="CLI">
 
-```bash
-1claw agent update <agent-id> --memory-enabled true
-```
+Use the REST API or dashboard — there is no `agent update --memory-enabled` flag yet.
 
 </TabItem>
 </Tabs>
@@ -3743,28 +3750,19 @@ const client = createClient({
 });
 
 // Write scratch memory (auto-expires in 1 hour)
-await client.memory.put(agentId, {
-  namespace: "session",
-  key: "last-query",
+await client.memory.put(agentId, "session", "last-query", {
   value: "What is the weather in NYC?",
-  tier: "scratch",
   ttl_seconds: 3600,
 });
 
 // Write durable memory
-await client.memory.put(agentId, {
-  namespace: "preferences",
-  key: "timezone",
+await client.memory.put(agentId, "preferences", "timezone", {
   value: "America/New_York",
-  tier: "durable",
 });
 
 // Write semantic memory (auto-embedded for vector search)
-await client.memory.put(agentId, {
-  namespace: "knowledge",
-  key: "api-limits",
+await client.memory.put(agentId, "knowledge", "api-limits", {
   value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
-  tier: "semantic",
 });
 
 // Read
@@ -3856,12 +3854,9 @@ Scratch entries auto-expire after their TTL. Use for:
 - Rate-limit tracking or cooldown flags
 
 ```typescript
-await client.memory.put(agentId, {
-  namespace: "session",
-  key: "conversation-context",
+await client.memory.put(agentId, "session", "conversation-context", {
   value: JSON.stringify({ topic: "refactoring", files: ["main.ts"] }),
-  tier: "scratch",
-  ttl_seconds: 1800, // 30 minutes
+  ttl_seconds: 1800, // scratch tier defaults when ttl is set
 });
 ```
 
@@ -4414,8 +4409,17 @@ const { data: share } = await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-12-31T00:00:00Z",
+        "max_access_count": 10,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -4461,7 +4465,7 @@ await client.secrets.set(VAULT_ID, "credentials/session-key", newSessionKey, {
 });
 
 // Share it back to the human
-const { data: secretMeta } = await client.secrets.describe(VAULT_ID, "credentials/session-key");
+const { data: secretMeta } = await client.secrets.get(VAULT_ID, "credentials/session-key");
 await client.sharing.create(secretMeta.id, {
   recipient_type: "creator",
   expires_at: "2026-06-01T00:00:00Z",
@@ -8245,12 +8249,12 @@ const client = createClient({
   apiKey: process.env.ONECLAW_API_KEY!,
 });
 
-const vault = await client.vaults.create({
+const { data: vault } = await client.vault.create({
   name: "Quickstart",
   description: "Five-minute walkthrough",
 });
 
-const vaultId = vault.data.id;
+const vaultId = vault.id;
 console.log("Vault ID:", vaultId);
 ```
 
@@ -8350,11 +8354,8 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.createPolicy(vaultId, {
-  principal_type: "agent",
-  principal_id: agentId,
-  secret_path_pattern: "demo/*",
-  permissions: ["read"],
+await client.access.grantAgent(vaultId, agentId, ["read"], {
+  secretPathPattern: "demo/*",
 });
 ```
 
@@ -9956,23 +9957,23 @@ At the end it prints the agent API key and a ready-to-paste MCP config.
 npm install -g @1claw/cli
 1claw login
 
-1claw secret put agentkit/seed-phrase \
+1claw secret set agentkit/seed-phrase \
   --vault YOUR_VAULT_ID \
   --value "your twelve word seed phrase goes here"
 
-1claw secret put agentkit/alchemy-api-key \
+1claw secret set agentkit/alchemy-api-key \
   --vault YOUR_VAULT_ID \
   --value "alchemy_key_here"
 
-1claw secret put agentkit/coinbase-api-private-key \
+1claw secret set agentkit/coinbase-api-private-key \
   --vault YOUR_VAULT_ID \
   --value "coinbase_private_key_here"
 
-1claw secret put agentkit/openrouter-api-key \
+1claw secret set agentkit/openrouter-api-key \
   --vault YOUR_VAULT_ID \
   --value "openrouter_key_here"
 
-1claw secret put agentkit/neynar-api-key \
+1claw secret set agentkit/neynar-api-key \
   --vault YOUR_VAULT_ID \
   --value "neynar_key_here"
 ```
@@ -12734,7 +12735,7 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/rpc/ethereum-main
 Or bulk-import from a `.env` file using the CLI:
 
 ```bash
-1claw import .env.production --vault-id $VAULT_ID --prefix config/
+1claw import .env.production -v $VAULT_ID --prefix config/
 ```
 
 ### 2. Replace server wallets with signing keys
@@ -14966,10 +14967,11 @@ await client.oauthConnect.saveAppCredentials(agentId, {
 });
 
 // Initiate connection
-const { authorization_url } = await client.oauthConnect.connect(agentId, {
-  provider_slug: 'slack',
-  scopes: ['channels:read', 'chat:write'],
+const { data } = await client.oauthConnect.connect(agentId, {
+  provider_slug: "slack",
+  scopes: ["channels:read", "chat:write"],
 });
+const authorizationUrl = data.authorization_url;
 
 // List connections
 const connections = await client.oauthConnect.listConnections(agentId);
@@ -15811,12 +15813,12 @@ Platform apps can subscribe to lifecycle events via [webhooks](/docs/platform-ap
 | `platform.grant.revoked` | A user revoked a resource grant |
 | `platform.user.claimed` | User claimed bootstrapped resources |
 
-### Webhook Secret Rotation
+### Webhook signing secrets
 
-Rotate the HMAC signing secret for any webhook:
+Org webhook HMAC secrets are returned once at create time. Rotate by recreating the webhook, or use `POST /v1/platform/apps/{app_id}/rotate-webhook-secret` for platform app delivery secrets.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer YOUR_USER_JWT"
 ```
 
@@ -16145,7 +16147,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
 | GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
 | GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |
-| POST | `/v1/webhooks/{id}/rotate-secret` | User JWT | Rotate webhook HMAC signing secret |
+| POST | `/v1/platform/apps/{id}/rotate-webhook-secret` | User JWT | Rotate platform app webhook HMAC secret |
 
 
 ---
@@ -16190,7 +16192,10 @@ The response includes a one-time `secret` — store it securely. All subsequent 
 | GET | `/v1/webhooks/{id}` | Get webhook details |
 | PATCH | `/v1/webhooks/{id}` | Update URL, events, active status, or description |
 | DELETE | `/v1/webhooks/{id}` | Delete a webhook |
-| POST | `/v1/webhooks/{id}/rotate-secret` | Rotate the HMAC signing secret (returns new secret once) |
+
+:::note Signing secret rotation
+Org webhook HMAC secrets are returned **once** at create time. There is no org-level rotate endpoint today — delete and recreate the webhook, or store the secret in your own rotation workflow. **Platform apps** can rotate delivery secrets via `POST /v1/platform/apps/{app_id}/rotate-webhook-secret`.
+:::
 
 ## Verifying signatures
 
@@ -16290,12 +16295,18 @@ Subscribe to one or more event types when creating or updating a webhook:
 | `policy_backend.circuit_breaker_opened` | Advanced policy backend circuit breaker opened |
 | `policy_backend.circuit_breaker_closed` | Advanced policy backend circuit breaker closed |
 
-## Secret rotation
+## Signing secret rotation
 
-Rotate the HMAC signing secret without deleting the webhook:
+Org webhook signing secrets are shown **once** when you create the webhook. To rotate:
+
+1. Register a new webhook (or delete and recreate the existing one).
+2. Update your verification logic with the new secret.
+3. Delete the old webhook when deliveries have switched over.
+
+**Platform app webhooks** support in-place rotation:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -16597,8 +16608,16 @@ await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-12-31T00:00:00Z",
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -18205,7 +18224,7 @@ Requires `intents_api_enabled: true` on the agent. When enabled, the agent is al
 | ------ | -------------------------------------------------------------- | ----------------------------------------------- |
 | GET    | `/v1/vaults/:vault_id/secret-versions/*path`                   | List all versions of a secret (newest first)    |
 | GET    | `/v1/vaults/:vault_id/secret-version/*path/:version`           | Get a specific version of a secret              |
-| POST   | `/v1/vaults/:vault_id/secret-version/*path/:version/disable`   | Disable a version (retained for audit, 410 on read) |
+| POST   | `/v1/vaults/:vault_id/secret-version-disable/*path/:version`   | Disable a version (retained for audit, 410 on read) |
 | POST   | `/v1/vaults/:vault_id/secret-rotate/*path`                     | Server-side rotation (generate new random value) |
 
 ## Agent Memory
@@ -18831,7 +18850,7 @@ sidebar_label: "2026"
 - **New:** `max_connected_users` field on platform apps — enforced limit on connected users per app.
 - **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
 - **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
-- **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
+- **New:** Platform webhook secret rotation — `POST /v1/platform/apps/{id}/rotate-webhook-secret` rotates the platform app delivery HMAC secret.
 - **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.user.claimed`.
 - **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
 - **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.
@@ -20792,7 +20811,7 @@ A runtime is a managed container that runs your agent code. It includes:
   --inbound-auth api_key
 
 # Shorthand: deploy to cloud
-1claw deploy --cloud
+1claw deploy --google-cloud
 
 # Manage lifecycle
 1claw runtime start <id>
@@ -21622,7 +21641,7 @@ Environment variables (optional): `ONECLAW_API_KEY`, `ONECLAW_BASE_URL`, `ONECLA
 | `client.auth` | `login`, `signup`, `agent_token`, `forgot_password`, `reset_password` |
 | `client.vaults` | `create`, `list`, `get`, `delete` |
 | `client.secrets` | `set`, `get`, `list`, `delete`, `rotate_generate`, `list_versions` |
-| `client.agents` | `create`, `list`, `get`, `update`, `deactivate`, `enroll`, `submit_transaction`, `sign_intent` |
+| `client.agents` | `create`, `list`, `get`, `update`, `delete`, `enroll`, `submit_transaction`, `sign_intent` |
 | `client.policies` | `create`, `list`, `delete` |
 | `client.signing_keys` | `create`, `list`, `rotate`, `deactivate`, `balance` |
 | `client.sharing` | `create`, `list`, `accept`, `decline` |
@@ -22145,7 +22164,20 @@ const { data: share } = await client.sharing.create(secretId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+# Resolve secret UUID from vault metadata, then call the REST share endpoint.
+listed = client.secrets.list(vault_id, prefix="api-keys/")
+secret_id = next(s["id"] for s in listed.data["secrets"] if s["path"] == "api-keys/openai")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "external_email",
+        "email": "peer@example.com",
+        "expires_at": "2026-03-15T00:00:00Z",
+        "max_access_count": 5,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -22199,8 +22231,17 @@ const { data: share } = await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-03-15T00:00:00Z",
+        "max_access_count": 5,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -22248,7 +22289,7 @@ const { data: secret } = await client.sharing.access(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+secret = client.sharing.access(share_id).data
 ```
 
 </TabItem>
@@ -22282,7 +22323,7 @@ await client.sharing.revoke(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.policies.delete(vault_id, policy_id)
+client.sharing.delete(share_id)
 ```
 
 </TabItem>
@@ -24870,7 +24911,7 @@ await client.agents.delete(agentId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.delete(agent_id)
 ```
 
 </TabItem>
@@ -26167,36 +26208,36 @@ import TabItem from '@theme/TabItem';
 
 # Rotate a secret
 
-**Endpoint:** `POST /v1/vaults/{vault_id}/secret-rotate/{path}`
+**Endpoint:** `POST /v1/vaults/{vault_id}/secret-rotate/{path}`  
 **Authentication:** Bearer JWT
 
-Server-side rotation generates a cryptographically random value and creates a new version. You can also manually rotate by creating a **new version** of the secret:
+You can rotate in two ways:
 
-1. Generate a new value (e.g. new API key from the provider).
-2. **PUT** to the same path with the new value (see [Create](/docs/vaults/human-api/secrets/create) / [Update](/docs/vaults/human-api/secrets/update)).
-3. Optionally revoke or expire the old key at the provider.
+1. **Server-generated value** — `POST /v1/vaults/{vault_id}/secret-rotate/{path}` with optional `{ "length": 32, "charset": "hex", "type": "api_key" }`. Requires `rotate` or `write` permission.
+2. **Client-supplied value** — **PUT** to the same path with a new value (see [Create](/docs/vaults/human-api/secrets/create) / [Update](/docs/vaults/human-api/secrets/update)). Creates a new version while preserving history.
 
-Once rotation is implemented, this endpoint may accept an optional body (e.g. `new_value` or trigger provider rotation) and return the new secret metadata. Check the [API reference](/docs/reference/api-reference) or OpenAPI spec for the current contract.
-
-## Example (when implemented)
+## Server-side generation
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai/rotate" \
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-rotate/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"new_value":"sk-proj-..."}'
+  -d '{"length": 32, "charset": "alphanumeric", "type": "api_key"}'
 ```
 
 </TabItem>
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
+const { data } = await client.secrets.rotateGenerate(vaultId, "api-keys/openai", {
+  length: 32,
+  charset: "alphanumeric",
   type: "api_key",
-}); // Creates a new version
+});
+console.log(data.version);
 ```
 
 </TabItem>
@@ -26206,22 +26247,58 @@ await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.secrets.set(
+resp = client.secrets.rotate_generate(
     vault_id,
     "api-keys/openai",
-    "sk-proj-...",
+    length=32,
+    charset="alphanumeric",
     type="api_key",
-    metadata={"tags": ["openai", "production"]},
 )
-print(resp.data["path"], f"v{resp.data['version']}")
+print(resp.data["version"])
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+1claw secret rotate api-keys/openai --generate -v $VAULT_ID -l 32 -c alphanumeric
 ```
 
 </TabItem>
 </Tabs>
 
-## Server-side generation
+## Manual rotation (new version via PUT)
 
-Use `POST /v1/vaults/{vault_id}/secret-rotate/{path}` with an optional body `{ "length": 32, "charset": "hex", "type": "api_key" }` to generate a new random value server-side. Requires `rotate` or `write` permission. Alternatively, use **PUT** to the same path with a new value you provide.
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"api_key","value":"sk-proj-NEW..."}'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+await client.secrets.set(vaultId, "api-keys/openai", "sk-proj-NEW...", {
+  type: "api_key",
+});
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+client.secrets.set(vault_id, "api-keys/openai", "sk-proj-NEW...", type="api_key")
+```
+
+</TabItem>
+</Tabs>
+
+After rotation, optionally disable older versions with `POST /v1/vaults/{vault_id}/secret-version-disable/{path}/{version}`.
 
 
 ---
@@ -26294,7 +26371,7 @@ To read a **specific** version, use the versioned endpoint if your deployment su
 ## Related
 
 - [Create a secret](/docs/vaults/human-api/secrets/create) — Full request/response.
-- [Rotate a secret](/docs/vaults/human-api/secrets/rotate) — Rotation endpoint (may return 400 "not yet implemented").
+- [Rotate a secret](/docs/vaults/human-api/secrets/rotate) — Server-generated or manual rotation.
 
 
 ---
@@ -28475,7 +28552,7 @@ Returns the decrypted value and metadata for that **version number**. The usual 
 
 ## Disabling old versions
 
-**`POST /v1/vaults/{vault_id}/secret-version/{path}/{version}/disable`**
+**`POST /v1/vaults/{vault_id}/secret-version-disable/{path}/{version}`**
 
 Disables that version. The row is **kept for audit**, but any read of that version returns **410 Gone**.
 
@@ -28677,7 +28754,7 @@ Tool **`get_secret`** always loads the latest readable version. For an explicit 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/api-keys%2Fopenai/2/disable" \
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/api-keys%2Fopenai/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -28695,8 +28772,7 @@ await client.secrets.disableVersion(vaultId, "api-keys/openai", 2);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.vaults.create("My Vault", description="Secrets for my app")
-vault_id = resp.data["id"]
+client.secrets.disable_version(vault_id, "api-keys/openai", 2)
 ```
 
 </TabItem>
@@ -28805,7 +28881,7 @@ await client.secrets.put(vaultId, "apis/stripe-key", {
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw secret put --vault $VAULT_ID --path apis/stripe-key --value "sk_live_new_key_value"
+1claw secret set apis/stripe-key "sk_live_new_key_value" -v $VAULT_ID
 ```
 
 </TabItem>
@@ -28846,7 +28922,7 @@ console.log("New version:", rotated.data.version);
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw secret rotate --generate --vault $VAULT_ID --path db/password -l 32 -c alphanumeric
+1claw secret rotate db/password --generate -v $VAULT_ID -l 32 -c alphanumeric
 ```
 
 </TabItem>
@@ -28879,7 +28955,7 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/apis/stripe-k
 Disable old versions to prevent rollback reads:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/apis/stripe-key/2/disable" \
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/apis/stripe-key/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -29037,16 +29113,17 @@ Here is a complete rotation workflow for a database password:
 
 ```bash
 # 1. Generate a new password in the vault
-1claw secret rotate --generate --vault $VAULT_ID --path db/postgres-password -l 32 -c alphanumeric
+1claw secret rotate db/postgres-password --generate -v $VAULT_ID -l 32 -c alphanumeric
 
 # 2. Read the new password (human only, for updating the database)
-NEW_PASS=$(1claw secret get --vault $VAULT_ID --path db/postgres-password --raw)
+NEW_PASS=$(1claw secret get db/postgres-password -v $VAULT_ID --quiet)
 
 # 3. Update the database user password
 psql -h db.example.com -U admin -c "ALTER USER app_user PASSWORD '$NEW_PASS'"
 
-# 4. Disable the old version
-1claw secret disable --vault $VAULT_ID --path db/postgres-password --version 1
+# 4. Disable the old version (REST API or SDK — no CLI subcommand yet)
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/db/postgres-password/1" \
+  -H "Authorization: Bearer $TOKEN"
 
 # 5. Any agent with a vault_ref binding picks up the new password automatically
 # No code changes, no redeployment
@@ -29058,9 +29135,8 @@ psql -h db.example.com -U admin -c "ALTER USER app_user PASSWORD '$NEW_PASS'"
 
 ```bash
 # In a GitHub Action or cron
-0 0 1 * * /usr/local/bin/1claw secret rotate --generate \
-  --vault $VAULT_ID \
-  --path db/postgres-password \
+0 0 1 * * /usr/local/bin/1claw secret rotate db/postgres-password --generate \
+  -v $VAULT_ID \
   -l 32 -c alphanumeric
 ```
 

@@ -68,7 +68,20 @@ const { data: share } = await client.sharing.create(secretId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+# Resolve secret UUID from vault metadata, then call the REST share endpoint.
+listed = client.secrets.list(vault_id, prefix="api-keys/")
+secret_id = next(s["id"] for s in listed.data["secrets"] if s["path"] == "api-keys/openai")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "external_email",
+        "email": "peer@example.com",
+        "expires_at": "2026-03-15T00:00:00Z",
+        "max_access_count": 5,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -122,8 +135,17 @@ const { data: share } = await client.sharing.create(secretId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+client = create_client(api_key="ocv_...")
+resp = client._http.request(
+    "POST",
+    f"/v1/secrets/{secret_id}/share",
+    body={
+        "recipient_type": "creator",
+        "expires_at": "2026-03-15T00:00:00Z",
+        "max_access_count": 5,
+    },
+)
+share = resp.data
 ```
 
 </TabItem>
@@ -171,7 +193,7 @@ const { data: secret } = await client.sharing.access(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.sharing.create(vault_id, "api-keys/openai", recipient_type="external_email", recipient_email="peer@example.com")
+secret = client.sharing.access(share_id).data
 ```
 
 </TabItem>
@@ -205,7 +227,7 @@ await client.sharing.revoke(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.policies.delete(vault_id, policy_id)
+client.sharing.delete(share_id)
 ```
 
 </TabItem>

@@ -38,7 +38,7 @@ await client.agents.delete(agentId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
+client.agents.delete(agent_id)
 ```
 
 </TabItem>

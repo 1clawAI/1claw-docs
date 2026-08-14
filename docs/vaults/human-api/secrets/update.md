@@ -64,4 +64,4 @@ To read a **specific** version, use the versioned endpoint if your deployment su
 ## Related
 
 - [Create a secret](/docs/vaults/human-api/secrets/create) — Full request/response.
-- [Rotate a secret](/docs/vaults/human-api/secrets/rotate) — Rotation endpoint (may return 400 "not yet implemented").
+- [Rotate a secret](/docs/vaults/human-api/secrets/rotate) — Server-generated or manual rotation.

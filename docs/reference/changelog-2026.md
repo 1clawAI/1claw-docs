@@ -183,7 +183,7 @@ sidebar_label: "2026"
 - **New:** `max_connected_users` field on platform apps — enforced limit on connected users per app.
 - **New:** Platform marketplace — `GET /v1/platform/marketplace` lists approved apps with category, tags, screenshots. Dashboard at `/marketplace`.
 - **New:** App stats — `GET /v1/platform/apps/{id}/stats` returns connected user count, bootstrap count, active connections.
-- **New:** Webhook secret rotation — `POST /v1/webhooks/{id}/rotate-secret` rotates the HMAC signing secret.
+- **New:** Platform webhook secret rotation — `POST /v1/platform/apps/{id}/rotate-webhook-secret` rotates the platform app delivery HMAC secret.
 - **New:** 6 platform webhook events: `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.user.claimed`.
 - **New:** Platform rate limiting — per-app configurable `max_requests_per_minute` on platform API endpoints.
 - **New:** Platform onboarding wizard — step-by-step flow at `/platform/wizard` for creating an app, template, and first user.

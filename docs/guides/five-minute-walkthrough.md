@@ -54,12 +54,12 @@ const client = createClient({
   apiKey: process.env.ONECLAW_API_KEY!,
 });
 
-const vault = await client.vaults.create({
+const { data: vault } = await client.vault.create({
   name: "Quickstart",
   description: "Five-minute walkthrough",
 });
 
-const vaultId = vault.data.id;
+const vaultId = vault.id;
 console.log("Vault ID:", vaultId);
 ```
 
@@ -159,11 +159,8 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.access.createPolicy(vaultId, {
-  principal_type: "agent",
-  principal_id: agentId,
-  secret_path_pattern: "demo/*",
-  permissions: ["read"],
+await client.access.grantAgent(vaultId, agentId, ["read"], {
+  secretPathPattern: "demo/*",
 });
 ```
 

@@ -72,23 +72,23 @@ At the end it prints the agent API key and a ready-to-paste MCP config.
 npm install -g @1claw/cli
 1claw login
 
-1claw secret put agentkit/seed-phrase \
+1claw secret set agentkit/seed-phrase \
   --vault YOUR_VAULT_ID \
   --value "your twelve word seed phrase goes here"
 
-1claw secret put agentkit/alchemy-api-key \
+1claw secret set agentkit/alchemy-api-key \
   --vault YOUR_VAULT_ID \
   --value "alchemy_key_here"
 
-1claw secret put agentkit/coinbase-api-private-key \
+1claw secret set agentkit/coinbase-api-private-key \
   --vault YOUR_VAULT_ID \
   --value "coinbase_private_key_here"
 
-1claw secret put agentkit/openrouter-api-key \
+1claw secret set agentkit/openrouter-api-key \
   --vault YOUR_VAULT_ID \
   --value "openrouter_key_here"
 
-1claw secret put agentkit/neynar-api-key \
+1claw secret set agentkit/neynar-api-key \
   --vault YOUR_VAULT_ID \
   --value "neynar_key_here"
 ```

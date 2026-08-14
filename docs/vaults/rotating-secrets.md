@@ -44,7 +44,7 @@ Returns the decrypted value and metadata for that **version number**. The usual 
 
 ## Disabling old versions
 
-**`POST /v1/vaults/{vault_id}/secret-version/{path}/{version}/disable`**
+**`POST /v1/vaults/{vault_id}/secret-version-disable/{path}/{version}`**
 
 Disables that version. The row is **kept for audit**, but any read of that version returns **410 Gone**.
 
@@ -246,7 +246,7 @@ Tool **`get_secret`** always loads the latest readable version. For an explicit 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/api-keys%2Fopenai/2/disable" \
+curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/api-keys%2Fopenai/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -264,8 +264,7 @@ await client.secrets.disableVersion(vaultId, "api-keys/openai", 2);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.vaults.create("My Vault", description="Secrets for my app")
-vault_id = resp.data["id"]
+client.secrets.disable_version(vault_id, "api-keys/openai", 2)
 ```
 
 </TabItem>

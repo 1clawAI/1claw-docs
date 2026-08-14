@@ -46,9 +46,7 @@ await client.agents.update(agentId, { memory_enabled: true });
 </TabItem>
 <TabItem value="cli" label="CLI">
 
-```bash
-1claw agent update <agent-id> --memory-enabled true
-```
+Use the REST API or dashboard — there is no `agent update --memory-enabled` flag yet.
 
 </TabItem>
 </Tabs>
@@ -67,28 +65,19 @@ const client = createClient({
 });
 
 // Write scratch memory (auto-expires in 1 hour)
-await client.memory.put(agentId, {
-  namespace: "session",
-  key: "last-query",
+await client.memory.put(agentId, "session", "last-query", {
   value: "What is the weather in NYC?",
-  tier: "scratch",
   ttl_seconds: 3600,
 });
 
 // Write durable memory
-await client.memory.put(agentId, {
-  namespace: "preferences",
-  key: "timezone",
+await client.memory.put(agentId, "preferences", "timezone", {
   value: "America/New_York",
-  tier: "durable",
 });
 
 // Write semantic memory (auto-embedded for vector search)
-await client.memory.put(agentId, {
-  namespace: "knowledge",
-  key: "api-limits",
+await client.memory.put(agentId, "knowledge", "api-limits", {
   value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
-  tier: "semantic",
 });
 
 // Read
@@ -180,12 +169,9 @@ Scratch entries auto-expire after their TTL. Use for:
 - Rate-limit tracking or cooldown flags
 
 ```typescript
-await client.memory.put(agentId, {
-  namespace: "session",
-  key: "conversation-context",
+await client.memory.put(agentId, "session", "conversation-context", {
   value: JSON.stringify({ topic: "refactoring", files: ["main.ts"] }),
-  tier: "scratch",
-  ttl_seconds: 1800, // 30 minutes
+  ttl_seconds: 1800, // scratch tier defaults when ttl is set
 });
 ```
 

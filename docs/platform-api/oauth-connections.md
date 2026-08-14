@@ -113,10 +113,11 @@ await client.oauthConnect.saveAppCredentials(agentId, {
 });
 
 // Initiate connection
-const { authorization_url } = await client.oauthConnect.connect(agentId, {
-  provider_slug: 'slack',
-  scopes: ['channels:read', 'chat:write'],
+const { data } = await client.oauthConnect.connect(agentId, {
+  provider_slug: "slack",
+  scopes: ["channels:read", "chat:write"],
 });
+const authorizationUrl = data.authorization_url;
 
 // List connections
 const connections = await client.oauthConnect.listConnections(agentId);

@@ -67,7 +67,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw agent signing-keys create $AGENT_ID --chain ethereum
+1claw agent keys create $AGENT_ID --chain ethereum
 ```
 
 </TabItem>

@@ -263,7 +263,7 @@ Requires `intents_api_enabled: true` on the agent. When enabled, the agent is al
 | ------ | -------------------------------------------------------------- | ----------------------------------------------- |
 | GET    | `/v1/vaults/:vault_id/secret-versions/*path`                   | List all versions of a secret (newest first)    |
 | GET    | `/v1/vaults/:vault_id/secret-version/*path/:version`           | Get a specific version of a secret              |
-| POST   | `/v1/vaults/:vault_id/secret-version/*path/:version/disable`   | Disable a version (retained for audit, 410 on read) |
+| POST   | `/v1/vaults/:vault_id/secret-version-disable/*path/:version`   | Disable a version (retained for audit, 410 on read) |
 | POST   | `/v1/vaults/:vault_id/secret-rotate/*path`                     | Server-side rotation (generate new random value) |
 
 ## Agent Memory

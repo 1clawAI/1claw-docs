@@ -121,9 +121,9 @@ await client.agents.revokeBankrKey(agentId, leaseId);
 **CLI:**
 
 ```bash
-1claw agent bankr-key lease --ttl 600
-1claw agent bankr-key list
-1claw agent bankr-key revoke LEASE_ID
+1claw agent bankr-key lease <agent-id> --ttl 600
+1claw agent bankr-key list <agent-id>
+1claw agent bankr-key revoke <agent-id> LEASE_ID
 ```
 
 ## Lifecycle
