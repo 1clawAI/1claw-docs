@@ -116,9 +116,11 @@ await client.auth.google({
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+client = create_client()
+resp = client.request("POST", "/v1/auth/google", json={"id_token": "<google-id-token>"})
+if resp.error:
+    raise RuntimeError(resp.error)
+# resp.data contains access_token, token_type, expires_in
 ```
 
 </TabItem>
@@ -166,9 +168,10 @@ const client = createClient({
 ```python
 from oneclaw import create_client
 
+# API key auto-exchanges for a JWT on first request
 client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+vaults = client.vaults.list()
+print(vaults.data)
 ```
 
 </TabItem>
@@ -208,9 +211,11 @@ await client.auth.logout();
 ```python
 from oneclaw import create_client
 
-client = create_client()
-client.auth.login("you@example.com", "your-password")
-# JWT is managed internally — use `client` for subsequent calls
+client = create_client(api_key="1ck_...")
+resp = client.request("DELETE", "/v1/auth/token")
+if resp.error:
+    raise RuntimeError(resp.error)
+# 204 No Content on success
 ```
 
 </TabItem>
@@ -258,8 +263,14 @@ await client.auth.changePassword({
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-# See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+resp = client.request(
+    "POST",
+    "/v1/auth/change-password",
+    json={"current_password": "...", "new_password": "..."},
+)
+if resp.error:
+    raise RuntimeError(resp.error)
+print(resp.data)  # {"message": "Password changed successfully"}
 ```
 
 </TabItem>

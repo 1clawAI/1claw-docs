@@ -18,7 +18,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Envelope encryption** — The pattern 1claw uses: encrypt the secret with a DEK, then encrypt (wrap) the DEK with a KEK that lives in the HSM. The database only stores ciphertext and the wrapped DEK, so a DB compromise does not expose secrets without HSM access.
 
-**Grant** — See **Policy**. In the API and docs, “grant” and “policy” are used interchangeably for the rule that grants a principal access to secret paths.
+**Grant** — Same as **Policy** below. In the API and dashboard sidebar, “grant” and “policy” refer to the same access-control rule: a principal (user or agent) gets read/write permission on secret path patterns in a vault. Human API endpoints live under `/v1/vaults/{id}/policies`; the sidebar label is **Grants (Policies)**. See [Create a policy](/docs/human-api/grants/create-grant).
 
 **HSM (Hardware Security Module)** — A secure vault for keys. In 1claw, production uses Google Cloud KMS; keys never leave the HSM. Used for KEKs and JWT signing. See [HSM architecture](/docs/concepts/hsm-architecture).
 
@@ -30,7 +30,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Path** — A slash-separated identifier for a secret inside a vault (e.g. `api-keys/stripe`, `config/prod/db`). Used in policies as glob patterns (e.g. `**`, `prod/*`). See [Secrets model](/docs/concepts/secrets-model).
 
-**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window) and an expiry. Created and managed per vault. See [Create a policy](/docs/human-api/grants/create-grant) and [Scoped permissions](/docs/guides/scoped-permissions).
+**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/human-api/grants/create-grant) and [Scoped permissions](/docs/guides/scoped-permissions).
 
 **Principal** — The identity that a policy applies to: a **user** (by user ID) or an **agent** (by agent ID). The principal must match the caller for the policy to apply.
 
