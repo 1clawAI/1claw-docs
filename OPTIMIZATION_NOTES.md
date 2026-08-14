@@ -1,56 +1,40 @@
 # docs.1claw.xyz Optimization Notes
 
-Phase 2 implementation (2026-08-14). Seven commits on `main`.
+Phase 2 implementation (2026-08-14). Follow-up completion (2026-08-14).
 
 ## Summary of changes
 
-| Commit | Focus | Key changes |
-| ------ | ----- | ----------- |
-| 1 | Build blocker | Created `guides/webhooks.md` with vault-verified event list |
-| 2 | Navigation | Quickstart top-level sidebar, orphans (Go SDK, x402, OAuth, setup-by-client, webhooks), licensing in Concepts, agent-chat/principal-type-audit stubs |
-| 3 | SEO | Keywords frontmatter, `showLastUpdateTime: true`, crypto-proxy description |
-| 4 | Structured data | Post-build JSON-LD plugin (`TechArticle` + `BreadcrumbList` per doc page) |
-| 5 | LLM discoverability | Categorized 128-page index in `llms.txt`; generator updates both files |
-| 6 | Content | Changelog year nav, Shroud/Intents TOCs + next steps, OpenAPI canonical note on api-reference |
-| 7 | Journey polish | Real Python auth examples, grant/policy glossary cross-links |
+| Phase | Focus | Key changes |
+| ----- | ----- | ----------- |
+| 2a | Build blocker | `guides/webhooks.md`, shadow report, JSON-LD plugin |
+| 2b | Navigation | Quickstart promoted, orphans added to sidebar |
+| 2c | Anchor/webhook fixes | Scope default `[]`, platform event name, treasury webhooks |
+| **3 (deferred completion)** | All remaining items | See below |
+
+### Phase 3 — deferred items completed
+
+| Item | Status |
+| ---- | ------ |
+| Glossary scope default | **Fixed** — `[]` (zero access), not `["*"]` |
+| Client redirects plugin | **Added** — `@docusaurus/plugin-client-redirects@3.9.2` with agent-chat + principal-type-audit redirects |
+| Static OG image | **Added** — `static/img/og-docs.png` (1200×630, from 1claw.xyz OG API) |
+| Content splits | **Done** — Shroud → 3 pages; Intents → 3 pages; Changelog hub + `changelog-2026` |
+| Cedar/OPA guide | **Added** — `guides/policy-engine.md` |
+| Broken anchors | **0** — all cross-links updated after splits |
+
+## New pages
+
+- `guides/policy-engine.md` — Cedar, OPA, shadow/enforce, ABIs, consensus, pending approvals
+- `guides/shroud-threat-detection.md` — threat filter deep dive (split from shroud.md)
+- `guides/shroud-configuration.md` — config, activity, monitoring (split from shroud.md)
+- `guides/intents-signing.md` — multi-chain keys, non-EVM, unified sign (split from intents-api.md)
+- `guides/intents-guardrails.md` — guardrails, Execution Intents (split from intents-api.md)
+- `reference/changelog-2026.md` — 2026 release notes (split from changelog.md)
 
 ## Dependencies
 
-- **Pinned `@docusaurus/*` to 3.9.2** — accidental `pnpm add @docusaurus/plugin-client-redirects` upgraded core to 3.10.2 via monorepo hoisting and broke SSG (`path_to_regexp` error). Docs installs must use `pnpm install --ignore-workspace` in the submodule.
-- **`@docusaurus/plugin-client-redirects` not added** — incompatible with current install path; duplicates consolidated via unlisted stub pages with prominent move links instead.
-
-## Follow-up fixes (2026-08-14)
-
-### Broken anchors (fixed)
-
-- `/docs/guides/agent-communication` → updated link to `#llm-token-billing-optional-add-on` on billing-and-usage
-- `/docs/guides/mcp-integration` → updated links to `#local-daemon-secret-proxy` and `#local-vault-offline-encrypted` on cli guide
-
-### Factual doc discrepancies (fixed)
-
-- **`guides/treasury.md` webhook events** — replaced stale 12-event table with pointer to canonical `guides/webhooks.md`
-- **`guides/platform-api.md`** and **`reference/changelog.md`** — corrected `platform.claim.redeemed` → `platform.user.claimed` to match vault `VALID_WEBHOOK_EVENTS`
-
-### Still flagged (not fixed)
-
-- **Glossary Scope default** — says `["*"]` when no policies; workspace rules say scopes default to `[]` (zero access). Flagged only.
-
-### OG image
-
-- **Static og-image not added.** Site uses dynamic OG URLs via `1claw.xyz/api/og?title=...` in `docusaurus.config.ts` `themeConfig.metadata`. A static `static/img/og-docs.png` would duplicate this; dynamic endpoint supports per-page titles if extended later.
-
-### Client redirects plugin
-
-- Revisit when docs submodule has isolated `node_modules` on Docusaurus 3.10+ or when `@docusaurus/plugin-client-redirects` path_to_regexp issue is resolved. Stub pages preserve URLs without auto-HTTP-redirect.
-
-### Content splits (future)
-
-- `guides/shroud.md` (~1,650 lines) and `guides/intents-api.md` (~1,700 lines) received in-page TOCs only; full subpage splits deferred.
-- Changelog remains single file with year anchor; no `changelog/2026.md` split.
-
-### Cedar/OPA v2
-
-- Already documented in `reference/changelog.md` v0.48.0 entry (policy backend settings, contract ABIs, pending approvals, consensus triggers). No separate guide added — handlers verified in vault; detailed guide deferred to internal runbook parity.
+- **`@docusaurus/plugin-client-redirects@3.9.2`** — HTTP redirects for consolidated pages. Install with `pnpm install --ignore-workspace` in the docs submodule (avoids monorepo hoisting to Docusaurus 3.10).
+- **Pinned `@docusaurus/*` at 3.9.2** — do not upgrade via workspace root without isolated docs `node_modules`.
 
 ## Build verification
 
@@ -58,14 +42,44 @@ Phase 2 implementation (2026-08-14). Seven commits on `main`.
 cd docs && pnpm install --ignore-workspace && pnpm run build
 ```
 
-Expected: `[SUCCESS] Generated static files in "build"`. Broken **links** = 0. Broken **anchors** = 0.
-
-## JSON-LD approach
-
-- **Site-wide:** `Organization` + `WebSite` in `docusaurus.config.ts` `headTags`
-- **Per-page:** `src/plugins/json-ld-postbuild.js` injects `TechArticle` + `BreadcrumbList` into each doc HTML file's `<head>` at `postBuild`
-- Chose post-build injection over DocItem swizzle because `@docusaurus/theme-common/internal` and `@docusaurus/plugin-content-docs/client` failed to resolve in the client bundle on Docusaurus 3.9.2
+Expected: `[SUCCESS]`, broken **links** = 0, broken **anchors** = 0.
 
 ## Lighthouse
 
-Not run in this pass (no local serve + Lighthouse CI configured). Recommend running against `pnpm run serve` preview post-deploy on Vercel.
+Run post-deploy (or locally):
+
+```bash
+cd docs && pnpm run build && pnpm run serve -- --port 3456
+npx lighthouse http://localhost:3456/ --only-categories=performance,seo --quiet
+npx lighthouse http://localhost:3456/docs/quickstart/humans --only-categories=performance,seo --quiet
+npx lighthouse http://localhost:3456/docs/human-api/overview --only-categories=performance,seo --quiet
+```
+
+Target: ≥ 90 performance and SEO on homepage, quickstart, and one API reference page.
+
+**Local Lighthouse (2026-08-14, static `serve build`):**
+
+| Page | Performance | SEO |
+| ---- | ----------- | --- |
+| Homepage (`/`) | 82 | 100 |
+| Quickstart (`/docs/quickstart/humans`) | 81 | 100 |
+| Human API (`/docs/human-api/overview`) | 83 | 100 |
+
+SEO target met. Performance is below 90 on local static serve (large JS bundles + search index); Vercel CDN and production caching may score higher. Main lever: code-split search/Mermaid on doc pages only.
+
+## JSON-LD
+
+- **Site-wide:** Organization + WebSite in `docusaurus.config.ts`
+- **Per-page:** `src/plugins/json-ld-postbuild.js` — TechArticle + BreadcrumbList
+
+## LLM discoverability
+
+- `static/llms.txt` — categorized index of all doc pages (build-time generator)
+- `static/llms-full.txt` — full concatenated docs (~1.1 MB)
+- Raw `.md` per-page endpoints: not implemented (llms-full covers full corpus)
+
+## Still flagged (not fixed)
+
+- **Changelog pre-2026** — only 2026 split; no 2025 archive page (all content was 2026-only)
+- **Per-page dynamic OG titles** — static `og-docs.png` used; dynamic `1claw.xyz/api/og` available for future per-route meta
+- **Hand-maintained `api-reference.md`** — still points to `@1claw/openapi-spec` as canonical; auto-codegen deferred

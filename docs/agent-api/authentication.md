@@ -80,7 +80,7 @@ Use `access_token` in the `Authorization` header for all subsequent API calls. W
 
 ## JWT scopes
 
-The issued JWT includes a `scopes` claim. If the agent record has scopes set (e.g. from creation or PATCH), those are used. If the agent has no scopes set, the backend derives scopes from the agent's **access policies**: the path patterns from all active policies for that agent become the JWT scopes, so the token reflects current policy-based access. If there are no policies either, scopes default to `["*"]`.
+The issued JWT includes a `scopes` claim. If the agent record has scopes set (e.g. from creation or PATCH), those are used. If the agent has no scopes set, the backend derives scopes from the agent's **access policies**: the path patterns from all active policies for that agent become the JWT scopes, so the token reflects current policy-based access. If there are no policies either, scopes default to `[]` (zero access — the agent cannot read or write secrets until a human grants a policy).
 
 ## Error responses
 

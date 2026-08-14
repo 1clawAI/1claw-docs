@@ -88,7 +88,7 @@ const config: Config = {
         },
     ],
     themeConfig: {
-        image: "img/logo.svg",
+        image: "img/og-docs.png",
         navbar: {
             title: "1claw",
             logo: {
@@ -146,13 +146,13 @@ const config: Config = {
             },
             { name: "llms-txt", content: "https://docs.1claw.xyz/llms.txt" },
             { property: "og:type", content: "website" },
-            { property: "og:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
+            { property: "og:image", content: "https://docs.1claw.xyz/img/og-docs.png" },
             { property: "og:image:width", content: "1200" },
             { property: "og:image:height", content: "630" },
             { property: "og:site_name", content: "1claw Docs" },
             { property: "og:locale", content: "en_US" },
             { name: "twitter:card", content: "summary_large_image" },
-            { name: "twitter:image", content: "https://1claw.xyz/api/og?title=1claw%20Documentation&subtitle=Human%20API%20%C2%B7%20Agent%20API%20%C2%B7%20MCP%20Server%20%C2%B7%20SDKs%20%C2%B7%20Guides" },
+            { name: "twitter:image", content: "https://docs.1claw.xyz/img/og-docs.png" },
         ],
         // Sitemap is configured in the preset above; themeConfig.sitemap is also read by the plugin.
         sitemap: {
@@ -176,6 +176,21 @@ const config: Config = {
         ],
     ],
     plugins: [
+        [
+            "@docusaurus/plugin-client-redirects",
+            {
+                redirects: [
+                    {
+                        from: "/docs/guides/agent-chat",
+                        to: "/docs/guides/agent-communication",
+                    },
+                    {
+                        from: "/docs/security/principal-type-audit",
+                        to: "/docs/guides/principal-type-audit",
+                    },
+                ],
+            },
+        ],
         "docusaurus-plugin-copy-page-button",
         require("./src/plugins/json-ld-postbuild.js"),
         function excludeNodeModulesMdx() {

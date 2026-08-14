@@ -162,7 +162,7 @@ The `chain` field determines which signing module is used. 1Claw automatically f
 | `token_mint` | Solana, Tron, Cardano, EVM | Token contract/mint for token transfers |
 | `token_decimals` | Solana, Tron | Token decimals (default 6) |
 | `ttl` | Cardano | Time-to-live in absolute slots (default: current + 7200) |
-| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-api#xrpl-tx-types) |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-guardrails#xrpl-tx-types) |
 | `memo` | Solana | On-chain memo (Memo Program v2) |
 
 ---

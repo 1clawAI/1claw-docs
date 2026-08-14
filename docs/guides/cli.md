@@ -323,7 +323,7 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 1claw agent binding delete <agent-id> <binding-id>
 ```
 
-See [Intents API — Execution Intents](/docs/guides/intents-api#execution-intents) for tier gating, guardrails, and TEE mode.
+See [Intents API — Execution Intents](/docs/guides/intents-guardrails#execution-intents) for tier gating, guardrails, and TEE mode.
 
 ## Bankr dynamic key vending
 

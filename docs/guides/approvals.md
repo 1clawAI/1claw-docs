@@ -253,6 +253,6 @@ curl -X POST https://api.1claw.xyz/v1/webhooks \
 ## Further reading
 
 - [Safe integration](/docs/guides/safe-multisig) for multisig treasury proposals
-- [Transaction guardrails](/docs/guides/intents-api#transaction-guardrails) for programmatic limits
+- [Transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails) for programmatic limits
 - [Agent self-enrollment](/docs/guides/agent-self-onboarding) for the self-onboarding flow
 - [Securing agent access](/docs/guides/securing-agent-access) for reducing blast radius

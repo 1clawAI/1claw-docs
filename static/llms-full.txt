@@ -161,7 +161,7 @@ Use `access_token` in the `Authorization` header for all subsequent API calls. W
 
 ## JWT scopes
 
-The issued JWT includes a `scopes` claim. If the agent record has scopes set (e.g. from creation or PATCH), those are used. If the agent has no scopes set, the backend derives scopes from the agent's **access policies**: the path patterns from all active policies for that agent become the JWT scopes, so the token reflects current policy-based access. If there are no policies either, scopes default to `["*"]`.
+The issued JWT includes a `scopes` claim. If the agent record has scopes set (e.g. from creation or PATCH), those are used. If the agent has no scopes set, the backend derives scopes from the agent's **access policies**: the path patterns from all active policies for that agent become the JWT scopes, so the token reflects current policy-based access. If there are no policies either, scopes default to `[]` (zero access — the agent cannot read or write secrets until a human grants a policy).
 
 ## Error responses
 
@@ -3748,7 +3748,7 @@ curl -X POST https://api.1claw.xyz/v1/webhooks \
 ## Further reading
 
 - [Safe integration](/docs/guides/safe-multisig) for multisig treasury proposals
-- [Transaction guardrails](/docs/guides/intents-api#transaction-guardrails) for programmatic limits
+- [Transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails) for programmatic limits
 - [Agent self-enrollment](/docs/guides/agent-self-onboarding) for the self-onboarding flow
 - [Securing agent access](/docs/guides/securing-agent-access) for reducing blast radius
 
@@ -5600,7 +5600,7 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 1claw agent binding delete <agent-id> <binding-id>
 ```
 
-See [Intents API — Execution Intents](/docs/guides/intents-api#execution-intents) for tier gating, guardrails, and TEE mode.
+See [Intents API — Execution Intents](/docs/guides/intents-guardrails#execution-intents) for tier gating, guardrails, and TEE mode.
 
 ## Bankr dynamic key vending
 
@@ -7731,7 +7731,7 @@ The response includes the `tx_hash` you can look up on [Sepolia Etherscan](https
 
 ## Next steps
 
-- Add [transaction guardrails](/docs/guides/intents-api#transaction-guardrails) (allowlists, daily spend caps, per-tx limits)
+- Add [transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails) (allowlists, daily spend caps, per-tx limits)
 - Enable [Shroud](/docs/guides/shroud) to inspect and redact LLM traffic
 - Connect via [MCP](/docs/guides/mcp-integration) so your AI coding tools call 1claw directly
 - Set up [human-in-the-loop approvals](/docs/guides/approvals) for high-value operations
@@ -8364,12 +8364,12 @@ The Intents API lets an agent submit on-chain transactions — transfers, swaps,
 - [Submitting a transaction](#submitting-a-transaction)
 - [Sign-only mode](#sign-only)
 - [Transaction simulation](#simulation)
-- [Multi-chain signing keys](#signing-keys)
-- [Non-EVM signing](#non-evm)
-- [Unified sign endpoint](#unified-sign)
-- [Transaction guardrails](#transaction-guardrails)
-- [Execution Intents](#execution-intents)
-- [Best practices](#best-practices)
+- [Multi-chain signing keys](/docs/guides/intents-signing#signing-keys)
+- [Non-EVM signing](/docs/guides/intents-signing#non-evm)
+- [Unified sign endpoint](/docs/guides/intents-signing#unified-sign)
+- [Transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails)
+- [Execution Intents](/docs/guides/intents-guardrails#execution-intents)
+- [Best practices](/docs/guides/intents-guardrails#best-practices)
 - [Next steps](#next-steps)
 
 :::tip Try it out
@@ -8899,6 +8899,586 @@ print(resp.data.get("tx_hash"))
 </TabItem>
 </Tabs>
 
+
+---
+
+## Split guides
+
+- **[Signing & chains](/docs/guides/intents-signing)** — multi-chain keys, non-EVM, unified sign, MCP tools, supported chains
+- **[Guardrails & security](/docs/guides/intents-guardrails)** — transaction guardrails, TEE signing, Execution Intents, best practices
+
+## Next steps
+
+- [Multi-chain signing keys](/docs/guides/multi-chain-signing) — provision per-chain keypairs for agents
+- [Shroud TEE signing](/docs/guides/shroud) — route signing through the confidential enclave
+- [Treasury](/docs/guides/treasury) — Safe multisigs and delegated agent signing
+- [Transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails) — per-agent spend caps and allowlists
+- [Error codes](/docs/reference/error-codes) — Intents API error reference
+
+
+---
+
+## Intents API — Guardrails & Security
+
+---
+title: Intents API — Guardrails & Security
+description: Transaction guardrails, Shroud TEE signing, security model, replay protection, Execution Intents, and best practices.
+keywords: [Intents API, guardrails, Execution Intents, TEE]
+sidebar_label: Guardrails & security
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Part of the [Intents API](/docs/guides/intents-api) guide.
+
+## Transaction guardrails
+
+Per-agent controls can be set when registering or updating an agent to limit what transactions the proxy will sign:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
+| `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
+| `tx_max_value` | `string` | Maximum value per transaction in **native major units** for the chain family (e.g. `"0.01"` = 0.01 BTC on Bitcoin, 0.5 ETH on EVM, 2 SOL on Solana). Null = no per-tx limit. |
+| `tx_daily_limit` | `string` | Rolling 24-hour spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
+| `tx_max_value_eth` | `string` | **Deprecated.** Alias for `tx_max_value` (same unit semantics). |
+| `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
+| `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
+| `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
+| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
+| `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tx_allowed_chains": ["ethereum", "base"],
+    "tx_to_allowlist": ["0xSafeAddress1", "0xSafeAddress2"],
+    "tx_max_value": "0.5",
+    "tx_daily_limit": "5.0",
+    "tx_token_allowlist": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+    "tx_known_tokens_only": true
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: agent } = await client.agents.update(agentId, {
+  tx_allowed_chains: ["ethereum", "base"],
+  tx_to_allowlist: ["0xSafeAddress1", "0xSafeAddress2"],
+  tx_max_value: "0.5",
+  tx_daily_limit: "5.0",
+  tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+  tx_known_tokens_only: true,
+});
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
+</Tabs>
+
+When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
+
+### Token guardrails {#token-guardrails}
+
+Two complementary controls restrict which tokens an agent can transfer:
+
+**Token allowlist** (`tx_token_allowlist`): An explicit list of token contract addresses or mints the agent may interact with. Applied to `token_mint` on non-EVM chains and the ERC-20 contract address on EVM token transfers. Case-insensitive. When empty, all tokens are permitted.
+
+**Known tokens only** (`tx_known_tokens_only`): When enabled, the agent can only transact with tokens present in the [known tokens registry](#token-registry). This is useful for restricting agents to verified, well-known tokens without maintaining a per-agent allowlist.
+
+Both guardrails can be used together — the token must pass **both** checks (allowlist AND known registry) when both are set.
+
+### Per-chain guardrails {#per-chain-guardrails}
+
+Override global guardrails on a per-chain basis using `per_chain_guardrails`. This is useful when an agent operates across multiple chains with different risk profiles — for example, a higher spend limit on a testnet than on mainnet.
+
+```json
+{
+  "per_chain_guardrails": {
+    "ethereum": {
+      "max_value": "1.0",
+      "to_allowlist": ["0xSafeContract"],
+      "token_allowlist": ["0xUSDC"]
+    },
+    "solana": {
+      "max_value": "100"
+    }
+  }
+}
+```
+
+Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist` (legacy `*_eth` keys accepted). Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins. Daily limits compare against **that chain family's** spend today (`tx_spent_today_by_chain`), not a cross-chain total.
+
+### XRP transaction type allowlist {#xrpl-tx-types}
+
+When using `xrpl_tx_json` for advanced XRP transactions, you can restrict which transaction types are permitted:
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "xrpl_allowed_tx_types": ["Payment", "TrustSet", "OfferCreate"] }'
+```
+
+If the agent submits an `xrpl_tx_json` with a `TransactionType` not in the allowlist, the request is rejected with 403.
+
+### Known tokens registry {#token-registry}
+
+A curated registry of verified token contracts. Use `GET /v1/tokens` (filterable by `?chain=`) or `GET /v1/chains/{chain}/tokens` to query it.
+
+Admins can manage the registry via `POST /v1/admin/tokens` (add) and `DELETE /v1/admin/tokens/{id}` (remove). Each entry includes `chain`, `contract_address`, `symbol`, `name`, `decimals`, and an optional `logo_url`.
+
+### Extended token balance {#token-balance}
+
+The signing key balance endpoint now supports querying specific token balances alongside native balance:
+
+```bash
+# Query native + specific ERC-20 token balances
+curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The `?tokens=` parameter accepts comma-separated contract addresses or mints. Works across all chains: ERC-20 (EVM), SPL (Solana), TRC-20 (Tron).
+
+### Per-chain daily spend tracking {#per-chain-spend}
+
+`GET /v1/agents/{id}` returns `tx_spent_today_by_chain` (keys: `evm`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`) and `tx_spent_today` (cross-family sum). Daily limits (`tx_daily_limit`) compare against **that chain family's** spend from `tx_spent_today_by_chain`, not the cross-chain total. Legacy `tx_spent_today_eth` is a deprecated alias for `tx_spent_today`.
+
+---
+
+## Shroud TEE signing (optional)
+
+When [Shroud](/docs/guides/shroud) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.xyz` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
+
+Both `api.1claw.xyz` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
+
+| Surface | Submit | List/Get/Simulate | Key isolation |
+| --- | --- | --- | --- |
+| `api.1claw.xyz` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
+| `shroud.1claw.xyz` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
+| `intents.1claw.xyz` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
+
+`intents.1claw.xyz` is an alias for the same GKE backend as `shroud.1claw.xyz` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/guides/shroud).
+
+## Security model
+
+- **Keys never leave the HSM boundary** — the vault decrypts the key, signs the transaction, and zeroes the memory. The plaintext key is never returned to the caller.
+- **Full audit trail** — every transaction is logged with the agent ID, chain, recipient, value, and resulting `tx_hash`.
+- **Policy enforcement** — the agent still needs a policy granting access to the vault path that holds the signing key. The proxy doesn't bypass access control.
+- **Transaction guardrails** — per-agent chain allowlists, recipient allowlists, per-tx caps, and daily spend limits enforced server-side before signing.
+- **Rate limiting** — standard rate limits apply to transaction endpoints.
+
+## Replay protection
+
+### Idempotency-Key header
+
+Submit an `Idempotency-Key` header (e.g. a UUID) with `POST /v1/agents/:id/transactions` to prevent duplicate submissions. If the same key is sent within 24 hours, the server returns the cached transaction response instead of signing and broadcasting again.
+
+The SDK and MCP server auto-generate an idempotency key on every `submitTransaction` call. You can override with your own key for explicit retry control.
+
+| Scenario | Response |
+| --- | --- |
+| First request with key | `201 Created` (normal flow) |
+| Duplicate request (completed) | `200 OK` (cached response) |
+| Duplicate request (in progress) | `409 Conflict` (retry later) |
+| No header | No idempotency enforcement |
+
+### Server-side nonce management
+
+When the `nonce` field is omitted, the server atomically reserves the next nonce per agent+chain+address combination. This prevents nonce collisions when multiple transactions are submitted concurrently. The server tracks the highest nonce used and takes the maximum of its tracked value and the on-chain pending nonce.
+
+### Response field gating
+
+By default, the `signed_tx` field (raw signed transaction hex) is **omitted** from GET responses to reduce exfiltration risk. Pass `?include_signed_tx=true` to include it:
+
+```bash
+curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions?include_signed_tx=true" \
+  -H "Authorization: Bearer $AGENT_TOKEN"
+```
+
+The initial POST submission always returns `signed_tx` for the originating caller.
+
+## Best practices
+
+1. **One key per agent** — give each agent its own signing key in its own vault path so you can revoke independently.
+2. **Set `expires_at`** — register agents with an expiry so leaked API keys have a bounded blast radius.
+3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
+4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
+5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](/docs/guides/intents-signing#non-evm-networks) for faucet links.
+
+---
+
+## Execution Intents (Pro+) {#execution-intents}
+
+Execution Intents extend the Intents API beyond blockchain transactions. Agents can make **HTTP calls, database queries, and external service interactions** through pre-configured **bindings** — without ever seeing the underlying credentials.
+
+:::info Tier requirements
+- **Pro:** HTTP and GraphQL binding types
+- **Team+:** All binding types (Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- **Business+:** TEE execution mode (requests execute inside Shroud's confidential enclave)
+:::
+
+### How it works
+
+1. A **human** creates a binding on the agent — a named credential handle (e.g. `stripe-api`, `analytics-db`) with connection details and authentication.
+2. The agent calls `POST /v1/agents/:id/execute` with the binding name and request parameters.
+3. The server injects credentials server-side, executes the request, and returns the response — the agent never sees API keys, database passwords, or tokens.
+
+### Enabling Execution Intents
+
+Set `execution_intents_enabled: true` when creating or updating an agent:
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "execution_intents_enabled": true }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data } = await client.agents.update(agentId, {
+  execution_intents_enabled: true,
+});
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+client.agents.deactivate(agent_id)
+```
+
+</TabItem>
+</Tabs>
+
+### Creating a binding
+
+Bindings are human-only — agents cannot create or modify their own bindings.
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "credential": "sk_live_...",
+    "config": {
+      "base_url": "https://api.stripe.com",
+      "auth_type": "bearer",
+      "allowed_hosts": ["api.stripe.com"],
+      "allowed_paths": ["/v1/*"],
+      "timeout_ms": 10000
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  credential: "sk_live_...",
+  config: {
+    base_url: "https://api.stripe.com",
+    auth_type: "bearer",
+    allowed_hosts: ["api.stripe.com"],
+    allowed_paths: ["/v1/*"],
+    timeout_ms: 10000,
+  },
+});
+// binding.credential_set === true; credential value is never returned
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
+</Tabs>
+
+### Vault-ref credentials (live pointers)
+
+Instead of copying a credential into the binding, you can **reference an existing vault secret**. The server resolves the secret at execution time — if you rotate the upstream secret, every binding referencing it picks up the new value automatically.
+
+<Tabs groupId="code-examples">
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { CredentialSource } from "@1claw/sdk";
+
+const vaultRef: CredentialSource = {
+  type: "vault_ref",
+  vault_id: "550e8400-e29b-41d4-a716-446655440000",
+  path: "integrations/stripe-key",
+};
+
+const { data: binding } = await client.bindings.create(agentId, {
+  name: "stripe-api",
+  binding_type: "http",
+  config: { base_url: "https://api.stripe.com", auth_type: "bearer" },
+  credential_source: vaultRef,
+});
+// binding.credential_source_type === "vault_ref"
+// binding.credential_vault_id, binding.credential_path are set
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "stripe-api",
+    "binding_type": "http",
+    "config": { "base_url": "https://api.stripe.com", "auth_type": "bearer" },
+    "credential_source": {
+      "type": "vault_ref",
+      "vault_id": "550e8400-e29b-41d4-a716-446655440000",
+      "path": "integrations/stripe-key"
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+:::tip
+Use vault-ref credentials when multiple bindings share the same upstream API key, or when you have an existing secret rotation workflow. Changes to the vault secret are reflected immediately — no manual credential rotation needed.
+:::
+
+### Executing a request
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "stripe-api",
+    "intent_type": "http",
+    "params": {
+      "method": "GET",
+      "path": "/v1/customers?limit=10"
+    }
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+const { data: result } = await client.bindings.execute(agentId, {
+  binding: "stripe-api",
+  intent_type: "http",
+  params: {
+    method: "GET",
+    path: "/v1/customers?limit=10",
+  },
+});
+```
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+```python
+from oneclaw import create_client
+
+client = create_client(api_key="1ck_...")
+resp = client.agents.create(
+    "my-agent",
+    description="CI/CD bot",
+    intents_api_enabled=True,
+)
+agent = resp.data["agent"]
+api_key = resp.data.get("api_key")  # shown once
+```
+
+</TabItem>
+</Tabs>
+
+### Binding types
+
+| Type | Tier | Description |
+| --- | --- | --- |
+| `http` | Pro | REST API calls with credential injection |
+| `graphql` | Pro | GraphQL queries/mutations |
+| `postgres` | Team+ | PostgreSQL queries |
+| `mysql` | Team+ | MySQL queries |
+| `redis` | Team+ | Redis commands |
+| `grpc` | Team+ | gRPC calls |
+| `smtp` | Team+ | Email sending |
+| `cloud_sdk` | Team+ | Cloud provider SDK calls |
+| `s3` | Team+ | S3-compatible storage operations |
+| `custom` | Team+ | Custom integrations |
+
+### Binding lifecycle
+
+| Operation | Endpoint | SDK |
+| --- | --- | --- |
+| Create | `POST /v1/agents/{id}/bindings` | `client.bindings.create(agentId, data)` |
+| List | `GET /v1/agents/{id}/bindings` | `client.bindings.list(agentId)` |
+| Get | `GET /v1/agents/{id}/bindings/{bid}` | `client.bindings.get(agentId, bindingId)` |
+| Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
+| Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
+| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
+| Rotate credential | `POST /v1/agents/{id}/bindings/{bid}/rotate-credential` | `client.bindings.rotateCredential(agentId, bindingId, { credential })` |
+| Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
+| List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
+
+Binding responses include **`credential_set`** (boolean) so you can confirm a credential is stored without ever exposing the value. Deleting a binding **purges** the stored credential.
+
+### GraphQL example
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "github-graphql",
+    "intent_type": "graphql",
+    "params": {
+      "query": "query { viewer { login } }"
+    }
+  }'
+```
+
+The GraphQL executor POSTs `{ query, variables, operationName }`, surfaces `errors[]` from the upstream API, and uses introspection for connectivity tests.
+
+### Agent execution guardrails
+
+Set per-agent limits with `execution_guardrails` (JSON) on create/update:
+
+```json
+{
+  "allowed_hosts": ["api.stripe.com"],
+  "allowed_binding_types": ["http", "graphql"],
+  "max_duration_ms": 15000,
+  "max_requests_per_minute": 30
+}
+```
+
+At execute time the server enforces the **strictest** of binding-level and agent-level guardrails. Violations are recorded as `denied` in `execution_events`.
+
+### MCP tools
+
+| Tool | Description |
+| --- | --- |
+| `execute_http` | HTTP request through a binding (`binding`, `method`, `path`, optional `body`/`headers`) |
+| `execute_intent` | Generic execute (`binding`, `intent_type`, `params`) — HTTP, GraphQL, etc. |
+| `list_bindings` | List bindings for the current agent |
+| `create_binding` | Create a binding (human-only; privileged) |
+| `test_binding` | Connectivity test (same SSRF/allowlist checks as execute) |
+| `list_executions` | Recent execution events for the agent |
+
+### CLI
+
+```bash
+1claw agent binding create <agent-id> --name stripe-api --type http \
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"]}' \
+  --credential sk_live_...
+1claw agent binding list <agent-id>
+1claw agent binding test <agent-id> <binding-id>
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding execute <agent-id> --binding stripe-api --intent-type http \
+  --params '{"method":"GET","path":"/v1/customers?limit=5"}'
+1claw agent binding executions <agent-id>
+```
+
+Enable on the agent: `1claw agent update <id> --execution-intents true --execution-guardrails '{"max_requests_per_minute":30}'`
+
+### Security model
+
+- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly. Responses use `credential_set`, not the secret value.
+- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames. Connectivity tests use the same checks as execute.
+- **Host and path allowlists:** Each binding defines `allowed_hosts` and optional `allowed_paths` (trailing-`*` wildcard). Agent `execution_guardrails.allowed_hosts` can further restrict destinations.
+- **Binding type gating:** Agent `execution_guardrails.allowed_binding_types` is enforced at execute time, not only at create.
+- **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
+- **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
+- **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
+
+## Next steps
+
+
+---
+
+## Intents API — Signing
+
+---
+title: Intents API — Signing
+description: Multi-chain signing keys, non-EVM transactions, unified sign endpoint (EIP-191, EIP-712, raw digest), MCP tools, and supported chains.
+keywords: [Intents API, signing keys, EIP-712, multi-chain, Solana, Bitcoin]
+sidebar_label: Signing & chains
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Part of the [Intents API](/docs/guides/intents-api) guide.
+
 ## Multi-chain signing keys {#signing-keys}
 
 Instead of manually storing a raw private key in a vault, you can provision HSM-backed signing keys directly on the agent. 1claw generates the keypair inside the HSM and stores the private key in the org's `__agent-keys` vault — the key never leaves hardware.
@@ -9010,7 +9590,7 @@ All fields are optional and ignored on chains where they don't apply:
 | `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
 | `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
 | `ttl` | number | Cardano | Time-to-live (absolute slot; default: current slot + 7200) |
-| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for [30+ transaction types](#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Overrides `to`/`value`/`destination_tag` when present. |
+| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-guardrails#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Overrides `to`/`value`/`destination_tag` when present. |
 
 For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
 
@@ -9527,541 +10107,6 @@ See the [Admin API reference](/docs/reference/api-reference#admin) for update an
 
 ---
 
-## Transaction guardrails
-
-Per-agent controls can be set when registering or updating an agent to limit what transactions the proxy will sign:
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
-| `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
-| `tx_max_value` | `string` | Maximum value per transaction in **native major units** for the chain family (e.g. `"0.01"` = 0.01 BTC on Bitcoin, 0.5 ETH on EVM, 2 SOL on Solana). Null = no per-tx limit. |
-| `tx_daily_limit` | `string` | Rolling 24-hour spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
-| `tx_max_value_eth` | `string` | **Deprecated.** Alias for `tx_max_value` (same unit semantics). |
-| `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
-| `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
-| `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
-| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
-| `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
-
-<Tabs groupId="code-examples">
-<TabItem value="curl" label="curl">
-
-```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tx_allowed_chains": ["ethereum", "base"],
-    "tx_to_allowlist": ["0xSafeAddress1", "0xSafeAddress2"],
-    "tx_max_value": "0.5",
-    "tx_daily_limit": "5.0",
-    "tx_token_allowlist": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
-    "tx_known_tokens_only": true
-  }'
-```
-
-</TabItem>
-<TabItem value="typescript" label="TypeScript">
-
-```typescript
-const { data: agent } = await client.agents.update(agentId, {
-  tx_allowed_chains: ["ethereum", "base"],
-  tx_to_allowlist: ["0xSafeAddress1", "0xSafeAddress2"],
-  tx_max_value: "0.5",
-  tx_daily_limit: "5.0",
-  tx_token_allowlist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
-  tx_known_tokens_only: true,
-});
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
-```
-
-</TabItem>
-</Tabs>
-
-When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
-
-### Token guardrails {#token-guardrails}
-
-Two complementary controls restrict which tokens an agent can transfer:
-
-**Token allowlist** (`tx_token_allowlist`): An explicit list of token contract addresses or mints the agent may interact with. Applied to `token_mint` on non-EVM chains and the ERC-20 contract address on EVM token transfers. Case-insensitive. When empty, all tokens are permitted.
-
-**Known tokens only** (`tx_known_tokens_only`): When enabled, the agent can only transact with tokens present in the [known tokens registry](#token-registry). This is useful for restricting agents to verified, well-known tokens without maintaining a per-agent allowlist.
-
-Both guardrails can be used together — the token must pass **both** checks (allowlist AND known registry) when both are set.
-
-### Per-chain guardrails {#per-chain-guardrails}
-
-Override global guardrails on a per-chain basis using `per_chain_guardrails`. This is useful when an agent operates across multiple chains with different risk profiles — for example, a higher spend limit on a testnet than on mainnet.
-
-```json
-{
-  "per_chain_guardrails": {
-    "ethereum": {
-      "max_value": "1.0",
-      "to_allowlist": ["0xSafeContract"],
-      "token_allowlist": ["0xUSDC"]
-    },
-    "solana": {
-      "max_value": "100"
-    }
-  }
-}
-```
-
-Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist` (legacy `*_eth` keys accepted). Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins. Daily limits compare against **that chain family's** spend today (`tx_spent_today_by_chain`), not a cross-chain total.
-
-### XRP transaction type allowlist {#xrpl-tx-types}
-
-When using `xrpl_tx_json` for advanced XRP transactions, you can restrict which transaction types are permitted:
-
-```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "xrpl_allowed_tx_types": ["Payment", "TrustSet", "OfferCreate"] }'
-```
-
-If the agent submits an `xrpl_tx_json` with a `TransactionType` not in the allowlist, the request is rejected with 403.
-
-### Known tokens registry {#token-registry}
-
-A curated registry of verified token contracts. Use `GET /v1/tokens` (filterable by `?chain=`) or `GET /v1/chains/{chain}/tokens` to query it.
-
-Admins can manage the registry via `POST /v1/admin/tokens` (add) and `DELETE /v1/admin/tokens/{id}` (remove). Each entry includes `chain`, `contract_address`, `symbol`, `name`, `decimals`, and an optional `logo_url`.
-
-### Extended token balance {#token-balance}
-
-The signing key balance endpoint now supports querying specific token balances alongside native balance:
-
-```bash
-# Query native + specific ERC-20 token balances
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-The `?tokens=` parameter accepts comma-separated contract addresses or mints. Works across all chains: ERC-20 (EVM), SPL (Solana), TRC-20 (Tron).
-
-### Per-chain daily spend tracking {#per-chain-spend}
-
-`GET /v1/agents/{id}` returns `tx_spent_today_by_chain` (keys: `evm`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`) and `tx_spent_today` (cross-family sum). Daily limits (`tx_daily_limit`) compare against **that chain family's** spend from `tx_spent_today_by_chain`, not the cross-chain total. Legacy `tx_spent_today_eth` is a deprecated alias for `tx_spent_today`.
-
----
-
-## Shroud TEE signing (optional)
-
-When [Shroud](/docs/guides/shroud) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.xyz` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
-
-Both `api.1claw.xyz` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
-
-| Surface | Submit | List/Get/Simulate | Key isolation |
-| --- | --- | --- | --- |
-| `api.1claw.xyz` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
-| `shroud.1claw.xyz` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
-| `intents.1claw.xyz` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
-
-`intents.1claw.xyz` is an alias for the same GKE backend as `shroud.1claw.xyz` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/guides/shroud).
-
-## Security model
-
-- **Keys never leave the HSM boundary** — the vault decrypts the key, signs the transaction, and zeroes the memory. The plaintext key is never returned to the caller.
-- **Full audit trail** — every transaction is logged with the agent ID, chain, recipient, value, and resulting `tx_hash`.
-- **Policy enforcement** — the agent still needs a policy granting access to the vault path that holds the signing key. The proxy doesn't bypass access control.
-- **Transaction guardrails** — per-agent chain allowlists, recipient allowlists, per-tx caps, and daily spend limits enforced server-side before signing.
-- **Rate limiting** — standard rate limits apply to transaction endpoints.
-
-## Replay protection
-
-### Idempotency-Key header
-
-Submit an `Idempotency-Key` header (e.g. a UUID) with `POST /v1/agents/:id/transactions` to prevent duplicate submissions. If the same key is sent within 24 hours, the server returns the cached transaction response instead of signing and broadcasting again.
-
-The SDK and MCP server auto-generate an idempotency key on every `submitTransaction` call. You can override with your own key for explicit retry control.
-
-| Scenario | Response |
-| --- | --- |
-| First request with key | `201 Created` (normal flow) |
-| Duplicate request (completed) | `200 OK` (cached response) |
-| Duplicate request (in progress) | `409 Conflict` (retry later) |
-| No header | No idempotency enforcement |
-
-### Server-side nonce management
-
-When the `nonce` field is omitted, the server atomically reserves the next nonce per agent+chain+address combination. This prevents nonce collisions when multiple transactions are submitted concurrently. The server tracks the highest nonce used and takes the maximum of its tracked value and the on-chain pending nonce.
-
-### Response field gating
-
-By default, the `signed_tx` field (raw signed transaction hex) is **omitted** from GET responses to reduce exfiltration risk. Pass `?include_signed_tx=true` to include it:
-
-```bash
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions?include_signed_tx=true" \
-  -H "Authorization: Bearer $AGENT_TOKEN"
-```
-
-The initial POST submission always returns `signed_tx` for the originating caller.
-
-## Best practices
-
-1. **One key per agent** — give each agent its own signing key in its own vault path so you can revoke independently.
-2. **Set `expires_at`** — register agents with an expiry so leaked API keys have a bounded blast radius.
-3. **Use scoped policies** — grant the agent access only to the specific vault path containing its signing key, not the entire vault.
-4. **Monitor transactions** — query `GET /v1/agents/:id/transactions` regularly or set up audit webhooks.
-5. **Use testnets first** — use testnets to verify the flow before moving to mainnet. For EVM: Sepolia, Base Sepolia. For non-EVM: Bitcoin Signet, Solana Devnet, XRP Testnet, Cardano Preprod, Tron Shasta. See [Non-EVM networks](#non-evm-networks) for faucet links.
-
----
-
-## Execution Intents (Pro+) {#execution-intents}
-
-Execution Intents extend the Intents API beyond blockchain transactions. Agents can make **HTTP calls, database queries, and external service interactions** through pre-configured **bindings** — without ever seeing the underlying credentials.
-
-:::info Tier requirements
-- **Pro:** HTTP and GraphQL binding types
-- **Team+:** All binding types (Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
-- **Business+:** TEE execution mode (requests execute inside Shroud's confidential enclave)
-:::
-
-### How it works
-
-1. A **human** creates a binding on the agent — a named credential handle (e.g. `stripe-api`, `analytics-db`) with connection details and authentication.
-2. The agent calls `POST /v1/agents/:id/execute` with the binding name and request parameters.
-3. The server injects credentials server-side, executes the request, and returns the response — the agent never sees API keys, database passwords, or tokens.
-
-### Enabling Execution Intents
-
-Set `execution_intents_enabled: true` when creating or updating an agent:
-
-<Tabs groupId="code-examples">
-<TabItem value="curl" label="curl">
-
-```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "execution_intents_enabled": true }'
-```
-
-</TabItem>
-<TabItem value="typescript" label="TypeScript">
-
-```typescript
-const { data } = await client.agents.update(agentId, {
-  execution_intents_enabled: true,
-});
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-client.agents.deactivate(agent_id)
-```
-
-</TabItem>
-</Tabs>
-
-### Creating a binding
-
-Bindings are human-only — agents cannot create or modify their own bindings.
-
-<Tabs groupId="code-examples">
-<TabItem value="curl" label="curl">
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "stripe-api",
-    "binding_type": "http",
-    "credential": "sk_live_...",
-    "config": {
-      "base_url": "https://api.stripe.com",
-      "auth_type": "bearer",
-      "allowed_hosts": ["api.stripe.com"],
-      "allowed_paths": ["/v1/*"],
-      "timeout_ms": 10000
-    }
-  }'
-```
-
-</TabItem>
-<TabItem value="typescript" label="TypeScript">
-
-```typescript
-const { data: binding } = await client.bindings.create(agentId, {
-  name: "stripe-api",
-  binding_type: "http",
-  credential: "sk_live_...",
-  config: {
-    base_url: "https://api.stripe.com",
-    auth_type: "bearer",
-    allowed_hosts: ["api.stripe.com"],
-    allowed_paths: ["/v1/*"],
-    timeout_ms: 10000,
-  },
-});
-// binding.credential_set === true; credential value is never returned
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
-```
-
-</TabItem>
-</Tabs>
-
-### Vault-ref credentials (live pointers)
-
-Instead of copying a credential into the binding, you can **reference an existing vault secret**. The server resolves the secret at execution time — if you rotate the upstream secret, every binding referencing it picks up the new value automatically.
-
-<Tabs groupId="code-examples">
-<TabItem value="typescript" label="TypeScript">
-
-```typescript
-import { CredentialSource } from "@1claw/sdk";
-
-const vaultRef: CredentialSource = {
-  type: "vault_ref",
-  vault_id: "550e8400-e29b-41d4-a716-446655440000",
-  path: "integrations/stripe-key",
-};
-
-const { data: binding } = await client.bindings.create(agentId, {
-  name: "stripe-api",
-  binding_type: "http",
-  config: { base_url: "https://api.stripe.com", auth_type: "bearer" },
-  credential_source: vaultRef,
-});
-// binding.credential_source_type === "vault_ref"
-// binding.credential_vault_id, binding.credential_path are set
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
-```
-
-</TabItem>
-<TabItem value="curl" label="curl">
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "stripe-api",
-    "binding_type": "http",
-    "config": { "base_url": "https://api.stripe.com", "auth_type": "bearer" },
-    "credential_source": {
-      "type": "vault_ref",
-      "vault_id": "550e8400-e29b-41d4-a716-446655440000",
-      "path": "integrations/stripe-key"
-    }
-  }'
-```
-
-</TabItem>
-</Tabs>
-
-:::tip
-Use vault-ref credentials when multiple bindings share the same upstream API key, or when you have an existing secret rotation workflow. Changes to the vault secret are reflected immediately — no manual credential rotation needed.
-:::
-
-### Executing a request
-
-<Tabs groupId="code-examples">
-<TabItem value="curl" label="curl">
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
-  -H "Authorization: Bearer $AGENT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "binding": "stripe-api",
-    "intent_type": "http",
-    "params": {
-      "method": "GET",
-      "path": "/v1/customers?limit=10"
-    }
-  }'
-```
-
-</TabItem>
-<TabItem value="typescript" label="TypeScript">
-
-```typescript
-const { data: result } = await client.bindings.execute(agentId, {
-  binding: "stripe-api",
-  intent_type: "http",
-  params: {
-    method: "GET",
-    path: "/v1/customers?limit=10",
-  },
-});
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
-```
-
-</TabItem>
-</Tabs>
-
-### Binding types
-
-| Type | Tier | Description |
-| --- | --- | --- |
-| `http` | Pro | REST API calls with credential injection |
-| `graphql` | Pro | GraphQL queries/mutations |
-| `postgres` | Team+ | PostgreSQL queries |
-| `mysql` | Team+ | MySQL queries |
-| `redis` | Team+ | Redis commands |
-| `grpc` | Team+ | gRPC calls |
-| `smtp` | Team+ | Email sending |
-| `cloud_sdk` | Team+ | Cloud provider SDK calls |
-| `s3` | Team+ | S3-compatible storage operations |
-| `custom` | Team+ | Custom integrations |
-
-### Binding lifecycle
-
-| Operation | Endpoint | SDK |
-| --- | --- | --- |
-| Create | `POST /v1/agents/{id}/bindings` | `client.bindings.create(agentId, data)` |
-| List | `GET /v1/agents/{id}/bindings` | `client.bindings.list(agentId)` |
-| Get | `GET /v1/agents/{id}/bindings/{bid}` | `client.bindings.get(agentId, bindingId)` |
-| Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
-| Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
-| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
-| Rotate credential | `POST /v1/agents/{id}/bindings/{bid}/rotate-credential` | `client.bindings.rotateCredential(agentId, bindingId, { credential })` |
-| Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
-| List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
-
-Binding responses include **`credential_set`** (boolean) so you can confirm a credential is stored without ever exposing the value. Deleting a binding **purges** the stored credential.
-
-### GraphQL example
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
-  -H "Authorization: Bearer $AGENT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "binding": "github-graphql",
-    "intent_type": "graphql",
-    "params": {
-      "query": "query { viewer { login } }"
-    }
-  }'
-```
-
-The GraphQL executor POSTs `{ query, variables, operationName }`, surfaces `errors[]` from the upstream API, and uses introspection for connectivity tests.
-
-### Agent execution guardrails
-
-Set per-agent limits with `execution_guardrails` (JSON) on create/update:
-
-```json
-{
-  "allowed_hosts": ["api.stripe.com"],
-  "allowed_binding_types": ["http", "graphql"],
-  "max_duration_ms": 15000,
-  "max_requests_per_minute": 30
-}
-```
-
-At execute time the server enforces the **strictest** of binding-level and agent-level guardrails. Violations are recorded as `denied` in `execution_events`.
-
-### MCP tools
-
-| Tool | Description |
-| --- | --- |
-| `execute_http` | HTTP request through a binding (`binding`, `method`, `path`, optional `body`/`headers`) |
-| `execute_intent` | Generic execute (`binding`, `intent_type`, `params`) — HTTP, GraphQL, etc. |
-| `list_bindings` | List bindings for the current agent |
-| `create_binding` | Create a binding (human-only; privileged) |
-| `test_binding` | Connectivity test (same SSRF/allowlist checks as execute) |
-| `list_executions` | Recent execution events for the agent |
-
-### CLI
-
-```bash
-1claw agent binding create <agent-id> --name stripe-api --type http \
-  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"]}' \
-  --credential sk_live_...
-1claw agent binding list <agent-id>
-1claw agent binding test <agent-id> <binding-id>
-1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
-1claw agent binding execute <agent-id> --binding stripe-api --intent-type http \
-  --params '{"method":"GET","path":"/v1/customers?limit=5"}'
-1claw agent binding executions <agent-id>
-```
-
-Enable on the agent: `1claw agent update <id> --execution-intents true --execution-guardrails '{"max_requests_per_minute":30}'`
-
-### Security model
-
-- **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly. Responses use `credential_set`, not the secret value.
-- **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames. Connectivity tests use the same checks as execute.
-- **Host and path allowlists:** Each binding defines `allowed_hosts` and optional `allowed_paths` (trailing-`*` wildcard). Agent `execution_guardrails.allowed_hosts` can further restrict destinations.
-- **Binding type gating:** Agent `execution_guardrails.allowed_binding_types` is enforced at execute time, not only at create.
-- **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
-- **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
-- **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
-
-## Next steps
-
-- [Multi-chain signing keys](/docs/guides/multi-chain-signing) — provision per-chain keypairs for agents
-- [Shroud TEE signing](/docs/guides/shroud) — route signing through the confidential enclave
-- [Treasury](/docs/guides/treasury) — Safe multisigs and delegated agent signing
-- [Transaction guardrails](/docs/guides/intents-api#transaction-guardrails) — per-agent spend caps and allowlists
-- [Error codes](/docs/reference/error-codes) — Intents API error reference
 
 
 ---
@@ -11702,7 +11747,7 @@ The `chain` field determines which signing module is used. 1Claw automatically f
 | `token_mint` | Solana, Tron, Cardano, EVM | Token contract/mint for token transfers |
 | `token_decimals` | Solana, Tron | Token decimals (default 6) |
 | `ttl` | Cardano | Time-to-live in absolute slots (default: current + 7200) |
-| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-api#xrpl-tx-types) |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/guides/intents-guardrails#xrpl-tx-types) |
 | `memo` | Solana | On-chain memo (Memo Program v2) |
 
 ---
@@ -14100,6 +14145,197 @@ policy = client.platform.create_spend_policy(app_id, {
 
 ---
 
+## Policy Engine — Cedar, OPA & Consensus
+
+---
+title: Policy Engine — Cedar, OPA & Consensus
+description: Configure Cedar and OPA policy backends, shadow mode, contract ABIs, consensus triggers, and pending approvals for agent signing workflows.
+keywords: [policy engine, Cedar, OPA, consensus, pending approvals, contract ABI]
+---
+
+# Policy Engine — Cedar, OPA & Consensus
+
+1claw ships a **built-in policy engine** (glob paths, permissions, conditions, priority, deny/allow) on every tier. **Team+** orgs can add **Cedar** policies; **Business+** orgs can add **OPA (Rego/WASM)** policies. **v0.48.0** wires Cedar/OPA into live enforcement with **shadow mode** (observe-only) and **consensus triggers** (human approval before signing).
+
+:::info Tier gating
+- **Cedar:** Team, Business, Enterprise
+- **OPA:** Business, Enterprise
+- **Built-in policies:** all tiers
+:::
+
+## Architecture
+
+| Layer | Role |
+| ----- | ---- |
+| **Built-in** | Glob path patterns, permissions, IP/time conditions, effect + priority |
+| **Cedar / OPA** | Declarative rules evaluated alongside built-in (AND logic in enforce mode) |
+| **Transaction introspection** | ABI-decoded calldata, normalized ERC-20 fields, EIP-712 typed data in policy context |
+| **Consensus** | Structured triggers on access policies → pending approval before sign/submit |
+
+**Default for new orgs:** backend `builtin`, advanced backends opt-in via org settings. Cedar/OPA start in **`shadow`** mode — they evaluate live traffic and log divergence without blocking until you switch to **`enforce`**.
+
+## Org policy backend settings
+
+Human owners/admins configure the backend via API or dashboard (**Settings → Policy Engine**).
+
+```bash
+# Read current config
+curl -s https://api.1claw.xyz/v1/org/settings/policy-backend \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
+
+# Enable Cedar in shadow mode for signing actions
+curl -s -X PATCH https://api.1claw.xyz/v1/org/settings/policy-backend \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "backend": "builtin+cedar",
+    "mode": "shadow",
+    "scope": ["sign"],
+    "breaker_behavior": "fail_closed"
+  }'
+```
+
+| Field | Values | Default |
+| ----- | -------- | ------- |
+| `backend` | `builtin`, `cedar`, `opa`, `builtin+cedar`, `builtin+opa` | `builtin` |
+| `mode` | `shadow`, `enforce` | `shadow` |
+| `scope` | `sign`, `read`, `write`, `delete` (actions Cedar/OPA apply to) | `["sign"]` |
+| `breaker_behavior` | `fail_closed`, `fail_open_builtin` | `fail_closed` |
+
+### Shadow mode
+
+In **shadow**, Cedar/OPA run on every matching request. Decisions are logged; **built-in enforcement is unchanged**. Use the divergence report before flipping to enforce:
+
+```bash
+curl -s https://api.1claw.xyz/v1/org/policy-shadow-report \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
+```
+
+### Circuit breaker
+
+If Cedar/OPA fail repeatedly (timeouts, WASM errors), the **circuit breaker** trips. Default **`fail_closed`** denies requests with a policy-backend-unavailable error — security does not silently degrade. Optional **`fail_open_builtin`** falls back to built-in only (explicit opt-in).
+
+Webhook events: `policy_backend.circuit_breaker_opened`, `policy_backend.circuit_breaker_closed`.
+
+## Cedar policies
+
+CRUD at `/v1/org/cedar-policies`. Dry-run at `POST /v1/org/cedar-policies/test`.
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/org/cedar-policies \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "deny-large-eth-transfer",
+    "policy_text": "forbid(principal, action, resource) when { resource has chain && resource.value_gwei > 1000000000 };"
+  }'
+```
+
+**Cedar numeric fields:** use `value_gwei` (i64) and `value_overflow` — not raw `value_wei` strings. Always guard optional attributes with `has`:
+
+```cedar
+permit(principal, action, resource)
+when { resource has function_name && resource.function_name == "transfer" };
+```
+
+Policy responses include dynamic **`enforcement_status`**: `shadow`, `enforce`, or `inactive`.
+
+## OPA policies
+
+CRUD at `/v1/org/opa-policies`. Upload Rego compiled to WASM. Dry-run at `POST /v1/org/opa-policies/test`.
+
+Enforcement-path evaluation timeout is **100 ms** (5 s on `/test` only). Fuel limits apply to WASM execution.
+
+## Contract ABI registry
+
+Upload ABIs so policies can inspect decoded calldata (`function_name`, normalized `erc20_transfer_*` fields, `decode_failed` flag).
+
+```bash
+curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chain": "ethereum",
+    "contract_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "name": "USDC",
+    "token_decimals": 6,
+    "abi_json": [ ... ]
+  }'
+```
+
+:::warning Nested calls
+ABI introspection sees **outermost calldata only**. Multicall, Safe `execTransaction`, and ERC-4337 `handleOps` can hide inner transfers. Prefer **allowlist known selectors on known contracts** over forbid-single-function rules.
+:::
+
+## Consensus & pending approvals
+
+Attach a **`consensus_trigger`** JSON object to an access policy. When a sign/submit request matches, the API returns **202** with a `pending_approval_id` instead of signing immediately.
+
+### Structured trigger (no expression parser)
+
+```json
+{
+  "conditions": [
+    { "type": "value_above", "threshold_gwei": 1000000000 },
+    { "type": "chain_in", "chains": ["ethereum", "base"] }
+  ],
+  "approval": {
+    "min_approvals": 2,
+    "required_roles": ["admin"]
+  },
+  "expiry_secs": 86400,
+  "self_approval_allowed": false
+}
+```
+
+Condition types: `value_above`, `chain_in`, `to_address_in`, `function_selector_in`, `erc20_amount_above`, `intent_type_in`, `always`.
+
+### Workflow
+
+1. Agent submits sign/transaction → **202** with `pending_approval_id`
+2. Humans approve via `POST /v1/pending-approvals/{id}/approve` (payload hash binding prevents TOCTOU)
+3. Execute via `POST /v1/pending-approvals/{id}/execute` — guardrails and policies **re-run at execution time**
+
+Webhook events: `pending_approval.created`, `.approved`, `.rejected`, `.executed`, `.expired`.
+
+```bash
+# List pending approvals
+curl -s "https://api.1claw.xyz/v1/pending-approvals?status=pending" \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
+```
+
+## SDK & CLI
+
+```typescript
+// Policy backend settings
+await client.org.getPolicyBackendSettings();
+await client.org.updatePolicyBackendSettings({
+  backend: "builtin+cedar",
+  mode: "shadow",
+  scope: ["sign"],
+});
+
+// Pending approvals
+await client.pendingApprovals.list({ status: "pending" });
+await client.pendingApprovals.approve(id, { decision: "approve", payload_hash });
+```
+
+```bash
+1claw policy-backend get
+1claw policy-backend set --backend builtin+cedar --mode shadow
+1claw pending-approval list --status pending
+```
+
+## Next steps
+
+- [Scoped permissions](/docs/guides/scoped-permissions) — built-in glob policies
+- [Intents API guardrails](/docs/guides/intents-guardrails) — per-agent tx caps and allowlists
+- [Webhooks](/docs/guides/webhooks) — `pending_approval.*` and circuit breaker events
+- [Cedar policies API](/docs/reference/api-reference) — full endpoint list in OpenAPI spec (`@1claw/openapi-spec`)
+
+
+---
+
 ## Principal-Type Audit
 
 ---
@@ -15593,7 +15829,7 @@ Combine with your database user rotation script to complete the workflow.
 
 - [Rotating secrets](/docs/guides/rotating-secrets) for the core rotation guide
 - [Intents API](/docs/guides/intents-api) for transaction signing
-- [Execution Intents](/docs/guides/intents-api#execution-intents) for the full bindings reference
+- [Execution Intents](/docs/guides/intents-guardrails#execution-intents) for the full bindings reference
 - [Securing agent access](/docs/guides/securing-agent-access) for policy best practices
 
 
@@ -16050,411 +16286,379 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/guides
 
 ---
 
-## Shroud
+## Shroud Configuration & Operations
 
 ---
-title: Shroud
-description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, and enforces per-agent policies before forwarding to LLM providers.
-keywords: [Shroud, LLM proxy, prompt injection, TEE, secret redaction, threat detection]
-sidebar_label: Shroud
-sidebar_position: 0
-tags: [shroud, security, threat-detection, tee, pipeline]
+title: Shroud Configuration & Operations
+description: Global Shroud settings, configuration examples, use-case tuning, Shroud Activity dashboard, monitoring, and best practices.
+keywords: [Shroud, configuration, monitoring, Shroud Activity]
+sidebar_label: Configuration & ops
 ---
 
-# Shroud
+## Global Settings
 
-Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
+### Sanitization Mode
 
-## On this page
+Controls what happens when threats are detected:
 
-- [Per-Agent Configuration](#per-agent-configuration-shroud_config)
-- [Security Features](#security-features)
-- [Using the LLM Proxy](#using-the-llm-proxy)
-- [IDE Integration](#ide-integration-1claw-proxy)
-- [Threat Detection Filters](#threat-detection-filters)
-- [Global Settings](#global-settings)
-- [Configuration Examples](#configuration-examples)
-- [Use Case Tuning](#use-case-tuning)
-- [Shroud Activity & Live Inspector](#shroud-activity--live-inspector)
-- [Best Practices](#best-practices)
-- [Next steps](#next-steps)
+| Mode | Behavior |
+|------|----------|
+| `block` | Reject the entire request with 403 |
+| `surgical` | Remove only the malicious content, continue processing |
+| `log_only` | Allow the request but audit the threat |
 
-:::tip Try it out
-Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
-:::
-
----
-
-## Per-Agent Configuration (shroud_config)
-
-Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
-
-### Basic settings
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
-| `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
-| `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
-| `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
-| `allowed_models` | string[] | Models the agent may use (empty = all) |
-| `denied_models` | string[] | Models explicitly blocked |
-| `max_tokens_per_request` | number | Token cap per LLM request |
-| `max_requests_per_minute` | number | Per-minute rate limit |
-| `max_requests_per_day` | number | Per-day rate limit |
-| `daily_budget_usd` | number | Daily LLM spend cap in USD |
-| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
-| `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
-
-### Threat detection (per detector)
-
-Nested objects (e.g. `social_engineering_detection`, `network_detection`, `encoding_detection`, `command_injection_detection`, `filesystem_detection`, `unicode_normalization`) include `enabled` and an **`action`** where applicable: **`block`** (HTTP 403 when the pipeline detected a match), **`warn`** / **`log`** (allow through but log), or encoder-specific values like **`decode`** for `encoding_detection`.
-
-### How settings are enforced (pipeline + JWT)
-
-1. **Inspection pipeline** — Shroud applies server-wide filters (secret redaction, PII, injection scoring, threat pattern matching). Many filters default to **record + warn** so the request body can still be analyzed.
-2. **PolicyEngine** — Runs **after** the pipeline on each LLM request. It reads per-agent rules from the **agent JWT**: when the agent has Shroud enabled, Vault includes a **`shroud_config`** claim (same JSON as `GET /v1/agents/{id}`). That drives injection/context thresholds, provider/model allowlists, rate limits, budget caps, and **block** vs **warn** for threat categories.
-3. **Refresh JWT** — After you change `shroud_config` in the dashboard or API, have the client **re-exchange** the agent API key for a new JWT (or restart Shroud Bridge) so Shroud sees the update.
-
-User (human) JWTs do not carry `shroud_config`.
-
-### Operational limits
-
-- **Request body size:** 5MB maximum. Requests exceeding this return **413 Payload Too Large**.
-- **Header filtering:** Shroud strips sensitive headers (authorization, `X-Shroud-Agent-Key`, `X-Shroud-Api-Key`, cookies, IP headers) before forwarding to upstream LLM providers. This prevents credential leakage through proxied requests.
-
-## Security Features
-
-Shroud includes **20 inspection layers** covering threat detection, secret protection, input sanitization, response filtering, and policy enforcement. All features are configurable on a per-agent basis via the Dashboard, SDK, or API. The layers span both request and response pipelines, with the policy engine acting as the final gate.
-
-## Using the LLM Proxy
-
-Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
-
-Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.xyz` and `shroud.1claw.xyz` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
-
-### Endpoint
-
-| Method | Path | Notes |
-|--------|------|--------|
-| POST   | `https://shroud.1claw.xyz/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
-
-Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes by provider.
-
-### Required headers
-
-| Header | Description |
-|--------|-------------|
-| `X-Shroud-Agent-Key` | **Required.** Agent credentials in the form `agent_id:api_key` (e.g. `550e8400-e29b-41d4-a716-446655440000:ocv_...`). The API key is the agent’s `ocv_` key from 1Claw. |
-| `X-Shroud-Provider` | **Required.** Provider identifier. Must match a [supported provider](#supported-providers) name (e.g. `openai`, `anthropic`, `google`, `gemini`). |
-| `Content-Type` | `application/json` for request body. |
-
-### Optional headers
-
-| Header | Description |
-|--------|-------------|
-| `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
-| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.5-flash`). Can also be set in the request body for some providers. See [Shroud supported models](/docs/reference/shroud-supported-models). |
-
-### Auth format: `X-Shroud-Agent-Key`
-
-The value must be exactly:
-
-```text
-agent_id:api_key
-```
-
-- `agent_id`: the agent’s UUID from 1Claw (e.g. from the dashboard or `GET /v1/agents/me`).
-- `api_key`: the agent’s API key (e.g. `ocv_...`).
-
-Example: `X-Shroud-Agent-Key: 550e8400-e29b-41d4-a716-446655440000:ocv_abc123...`
-
-### Vault key resolution
-
-If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
-
-- **Default path:** `providers/{provider}/api-key` in a vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
-- **Override via header:** You can pass a vault reference so Shroud fetches the key from a specific path:
-  - `X-Shroud-Api-Key: vault://{vault_id}/{secret_path}`
-  - Example: `X-Shroud-Api-Key: vault://a1b2c3d4-e5f6-7890-abcd-ef1234567890/gemini/api-key`
-
-The agent must have read access to that vault path.
-
-### Supported providers
-
-Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of the values below (lowercase).
-
-| Provider value | LLM / API |
-|----------------|-----------|
-| `openai`       | OpenAI (GPT-4o, o-series, etc.) — [allowed model IDs](/docs/reference/shroud-supported-models#openai-models) |
-| `anthropic`    | Anthropic (Claude) — [allowed model IDs](/docs/reference/shroud-supported-models#anthropic-models) |
-| `google`       | Google Gemini (Generative Language API) — [allowed model IDs](/docs/reference/shroud-supported-models#google-gemini-models) |
-| `gemini`       | Alias for `google` — same as above |
-| `mistral`      | Mistral — [allowed model IDs](/docs/reference/shroud-supported-models#mistral-models) |
-| `cohere`       | Cohere — [allowed model IDs](/docs/reference/shroud-supported-models#cohere-models) |
-| `openrouter`   | OpenRouter (aggregates many models; single API key) — [notes](/docs/reference/shroud-supported-models#openrouter-models) |
-| `darkbloom`    | Darkbloom (hardware-attested Apple Silicon, E2E encrypted) — [notes](/docs/reference/shroud-supported-models#darkbloom-models) |
-| `venice`       | Venice AI (privacy-focused, no data retention) — [notes](/docs/reference/shroud-supported-models#venice-models) |
-| `bankr`        | Bankr LLM Gateway (multi-provider, cost tracking, wallet-funded) — [notes](/docs/reference/shroud-supported-models#bankr-models) |
-
-- **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
-- **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
-- **Darkbloom:** Use `X-Shroud-Provider: darkbloom`. Inference is routed to hardware-attested Apple Silicon with E2E encryption. Store API key at `providers/darkbloom/api-key`. Model availability is dynamic; check Darkbloom's `/v1/models`.
-- **Venice:** Use `X-Shroud-Provider: venice`. Privacy-first inference with no data retention. Store API key at `providers/venice/api-key`. Supports Claude, GPT, Grok, and TEE-backed models.
-- **Bankr:** Use `X-Shroud-Provider: bankr`. Routes to [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) at `https://llm.bankr.bot`. Store your `bk_` key at `providers/bankr/api-key` (LLM Gateway permission required). OpenAI-compatible `model` IDs (e.g. `claude-opus-4.6`, `gemini-2.5-flash`).
-- **Full allowlist:** [Shroud supported models](/docs/reference/shroud-supported-models) (kept in sync with `shroud/config/providers/*.toml`).
-
-### Request and response format
-
-- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter, Darkbloom, Venice, Bankr):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`). For Bankr, use Bankr model slugs (e.g. `claude-opus-4.6`).
-- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
-- **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
-
-### Configuring the LLM Model
-
-You can specify which model to use in two ways:
-
-#### 1. Per-Request Model Selection
-
-**Option A: Header** (recommended for some providers)
-```bash
-X-Shroud-Model: gpt-4o-mini
-```
-
-**Option B: Request Body** (for OpenAI-style providers)
-```json
-{
-  "model": "gpt-4o-mini",
-  "messages": [...]
-}
-```
-
-**Example:**
 ```typescript
-const res = await fetch("https://shroud.1claw.xyz/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
-    "X-Shroud-Provider": "openai",
-    "X-Shroud-Model": "gpt-4o-mini",  // ← Model in header
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    messages: [{ role: "user", content: "Hello" }],
-  }),
-});
+sanitization_mode: "block"  // block | surgical | log_only
 ```
 
-Or specify in the body:
+### Threat Logging
+
+When enabled, all detected threats are logged to the audit system regardless of the action taken:
+
 ```typescript
-body: JSON.stringify({
-  model: "gpt-4o-mini",  // ← Model in body
-  messages: [{ role: "user", content: "Hello" }],
-})
+threat_logging: true
 ```
 
-#### 2. Per-Agent Model Restrictions
+This is essential for:
+- Understanding your traffic patterns before enabling blocking
+- Security incident investigation
+- Compliance requirements
 
-Configure which models an agent is allowed (or denied) to use via the agent's `shroud_config`:
+---
 
-**Via Dashboard:**
-- Navigate to **Agents → [Agent Name] → Shroud LLM Proxy** card
-- Set `allowed_models` (whitelist) or `denied_models` (blacklist)
+## Configuration Examples
 
-**Via API:**
-```bash
-PATCH /v1/agents/{id}
-{
-  "shroud_config": {
-    "allowed_models": ["gpt-4o-mini", "claude-sonnet-5"],
-    "denied_models": ["gpt-4.1-nano"]
+### Full Configuration
+
+```typescript
+const agent = await client.agents.create({
+  name: "my-secure-agent",
+  shroud_enabled: true,
+  shroud_config: {
+    // Basic Shroud settings
+    pii_policy: "redact",
+    injection_threshold: 0.7,
+    context_injection_threshold: 0.7,
+    enable_secret_redaction: true,
+    enable_response_filtering: true,
+    
+    // Rate limits and budget
+    max_requests_per_minute: 60,
+    max_requests_per_day: 10000,
+    max_tokens_per_request: 8192,
+    daily_budget_usd: 50,
+    allowed_providers: ["openai", "anthropic", "google"],
+    allowed_models: [],
+    denied_models: [],
+    
+    // Threat detection
+    unicode_normalization: {
+      enabled: true,
+      strip_zero_width: true,
+      normalize_homoglyphs: true,
+      normalization_form: "NFKC"
+    },
+    command_injection_detection: {
+      enabled: true,
+      action: "block",
+      patterns: "default"
+    },
+    social_engineering_detection: {
+      enabled: true,
+      action: "warn",
+      sensitivity: "medium"
+    },
+    encoding_detection: {
+      enabled: true,
+      action: "warn",
+      detect_base64: true,
+      detect_hex: true,
+      detect_unicode_escape: true
+    },
+    network_detection: {
+      enabled: true,
+      action: "warn",
+      blocked_domains: ["pastebin.com", "ngrok.io"],
+      allowed_domains: []
+    },
+    filesystem_detection: {
+      enabled: false,
+      action: "log",
+      blocked_paths: ["/etc/passwd", "~/.ssh/"]
+    },
+    tool_call_inspection: {
+      enabled: true,
+      allowed_tool_names: [],
+      denied_tool_names: ["execute_sql", "shell_exec"],
+      scan_arguments: true,
+      block_credential_exfil: true,
+      action: "block"
+    },
+    output_policy: {
+      enabled: true,
+      blocked_patterns: [],
+      blocked_entities: [],
+      block_harmful_content: true,
+      harmful_categories: ["violence", "self_harm", "illegal", "hate", "sexual", "malware"],
+      action: "block"
+    },
+    secret_injection_detection: {
+      enabled: true,
+      action: "warn",
+      sensitivity: "medium"
+    },
+    advanced_redaction: {
+      enabled: true,
+      detect_base64_encoded: true,
+      detect_split_secrets: true,
+      detect_prefix_leak: true,
+      min_secret_length: 8
+    },
+    semantic_policy: {
+      enabled: false,
+      allowed_topics: [],
+      denied_topics: [],
+      allowed_tasks: [],
+      denied_tasks: [],
+      action: "warn"
+    },
+    flagged_request_retention_days: 30,
+    sanitization_mode: "block",
+    threat_logging: true
   }
+});
+```
+
+### Security Presets
+
+#### Strict (Production)
+
+Maximum protection for high-security environments:
+
+```typescript
+{
+  unicode_normalization: { enabled: true, normalize_homoglyphs: true },
+  command_injection_detection: { enabled: true, action: "block", patterns: "strict" },
+  social_engineering_detection: { enabled: true, action: "block", sensitivity: "high" },
+  encoding_detection: { enabled: true, action: "block" },
+  network_detection: { enabled: true, action: "block" },
+  filesystem_detection: { enabled: true, action: "block" },
+  tool_call_inspection: { enabled: true, scan_arguments: true, block_credential_exfil: true, action: "block" },
+  output_policy: { enabled: true, block_harmful_content: true, action: "block" },
+  secret_injection_detection: { enabled: true, action: "block", sensitivity: "high" },
+  advanced_redaction: { enabled: true, detect_base64_encoded: true, detect_split_secrets: true, detect_prefix_leak: true },
+  semantic_policy: { enabled: true, action: "block" },
+  sanitization_mode: "block",
+  threat_logging: true
 }
 ```
 
-**Via SDK:**
-```typescript
-await client.agents.update(agentId, {
-  shroud_config: {
-    allowed_models: ["gpt-4o-mini", "claude-sonnet-5"],
-    denied_models: ["gpt-4.1-nano"],
-  },
-});
-```
+#### Balanced (Default)
 
-**How it works:**
-1. User specifies the model in the request (via header or body)
-2. Shroud checks the agent's `shroud_config`:
-   - If `allowed_models` is set and the model is **not** in the list → **403 Forbidden**
-   - If the model is in `denied_models` → **403 Forbidden**
-   - Otherwise → request proceeds
-
-**Example: Restrict agent to only use cost-effective models**
-```typescript
-await client.agents.update(agentId, {
-  shroud_config: {
-    allowed_models: ["gpt-4o-mini", "gemini-2.5-flash"],  // Only allow cheaper models
-  },
-});
-```
-
-**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) for details.
-
-### Example: cURL
-
-```bash
-# Using agent key and vault-resolved provider key (no X-Shroud-Api-Key)
-curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
-  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
-  -H "X-Shroud-Provider: google" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}'
-
-# With explicit vault key path
-curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
-  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
-  -H "X-Shroud-Provider: anthropic" \
-  -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"claude-sonnet-5","messages":[{"role":"user","content":"Hello"}]}'
-```
-
-### Example: TypeScript (fetch)
+Good protection with minimal false positives:
 
 ```typescript
-const SHROUD_URL = "https://shroud.1claw.xyz";
-const agentId = process.env.ONECLAW_AGENT_ID!;
-const agentApiKey = process.env.ONECLAW_AGENT_API_KEY!;
-
-const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
-  method: "POST",
-  headers: {
-    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
-    "X-Shroud-Provider": "google",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "gemini-2.5-flash",
-    messages: [{ role: "user", content: "Hello" }],
-    max_tokens: 1024,
-  }),
-});
-
-const data = await res.json();
-// OpenAI-style response: data.choices[0].message.content
+{
+  unicode_normalization: { enabled: true },
+  command_injection_detection: { enabled: true, action: "block" },
+  social_engineering_detection: { enabled: true, action: "warn" },
+  encoding_detection: { enabled: true, action: "warn" },
+  network_detection: { enabled: true, action: "warn" },
+  filesystem_detection: { enabled: false },
+  tool_call_inspection: { enabled: true, scan_arguments: true, block_credential_exfil: true, action: "warn" },
+  output_policy: { enabled: true, block_harmful_content: true, action: "warn" },
+  secret_injection_detection: { enabled: true, action: "warn" },
+  advanced_redaction: { enabled: true, detect_base64_encoded: true },
+  semantic_policy: { enabled: false },
+  sanitization_mode: "block",
+  threat_logging: true
+}
 ```
 
-### Errors you may see
+#### Permissive (Development)
 
-| HTTP | Message | Meaning |
-|------|---------|--------|
-| 400 | `missing X-Shroud-Provider header` | Send `X-Shroud-Provider` with a supported provider name. |
-| 401 | `missing X-Shroud-Agent-Key header` | Send `X-Shroud-Agent-Key` with `agent_id:api_key`. |
-| 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
-| 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
-| 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
+Observe traffic patterns without blocking:
+
+```typescript
+{
+  unicode_normalization: { enabled: true },
+  command_injection_detection: { enabled: true, action: "log" },
+  social_engineering_detection: { enabled: true, action: "log" },
+  encoding_detection: { enabled: true, action: "log" },
+  network_detection: { enabled: true, action: "log" },
+  filesystem_detection: { enabled: false },
+  tool_call_inspection: { enabled: true, action: "log" },
+  output_policy: { enabled: false },
+  secret_injection_detection: { enabled: true, action: "log" },
+  advanced_redaction: { enabled: false },
+  semantic_policy: { enabled: false },
+  sanitization_mode: "log_only",
+  threat_logging: true
+}
+```
 
 ---
 
-## IDE Integration (`1claw proxy`)
+## Use Case Tuning
 
-Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+### Coding Assistants
 
-**→ Step-by-step for Cursor, Claude Code, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/guides/ide-shroud-setup).
+Coding assistants legitimately discuss shell commands, file paths, and encoded content:
 
-### Quick start
-
-```bash
-export ONECLAW_AGENT_API_KEY="ocv_..."   # same as MCP / examples
-npx @1claw/cli@latest proxy
-# or: 1claw proxy --agent-key "AGENT_ID:ocv_..." 
+```typescript
+{
+  command_injection_detection: { enabled: true, action: "warn" },  // Don't block code examples
+  encoding_detection: { enabled: true, action: "log" },           // Base64 is common in code
+  filesystem_detection: { enabled: false },                        // Paths discussed constantly
+  social_engineering_detection: { enabled: true, action: "warn" },
+  sanitization_mode: "log_only"  // Learn patterns first
+}
 ```
 
-The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and OpenAI-compatible extensions. It picks a **free port** if `11434` is busy (e.g. Ollama).
+### Financial/Trading Agents
 
-### What the proxy does
+High-value targets require strict protection:
 
-1. Accepts `POST /v1/chat/completions` and **`/v1/messages`** (Claude Code)
-2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
-3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
-4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
-5. Forwards to `https://shroud.1claw.xyz` with inspection, redaction, and policy enforcement
-6. Streams the response back
+```typescript
+{
+  command_injection_detection: { enabled: true, action: "block", patterns: "strict" },
+  social_engineering_detection: { enabled: true, action: "block", sensitivity: "high" },
+  network_detection: { 
+    enabled: true, 
+    action: "block",
+    allowed_domains: ["api.exchange.com", "api.bank.com"]  // Allowlist mode
+  },
+  sanitization_mode: "block"
+}
+```
 
-### LLM Token Billing
+### Customer Support Agents
 
-When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org.
+Balance security with usability:
 
-See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for all proxy flags.
+```typescript
+{
+  command_injection_detection: { enabled: true, action: "block" },
+  social_engineering_detection: { enabled: true, action: "warn", sensitivity: "low" },
+  encoding_detection: { enabled: false },  // Customers share screenshots as base64
+  network_detection: { enabled: true, action: "warn" },
+  sanitization_mode: "surgical"  // Remove threats but process the rest
+}
+```
 
 ---
 
-## Why This Matters
+## Dashboard Configuration
 
-AI agents face unique security challenges that traditional security tools don't address:
+Navigate to **Agents** → *[Your Agent]* → **Shroud LLM Proxy** to configure security features in the Dashboard.
 
-- **LLMs are susceptible to social engineering** — They're trained on human text where authority and urgency are legitimate signals
-- **Prompt injection bypasses application logic** — Attackers can manipulate the model to ignore its instructions
-- **Agents have real capabilities** — File access, code execution, API calls, and transactions can be weaponized
-- **Obfuscation defeats naive filters** — Unicode tricks and encoding bypass keyword-based detection
+The "Threat Detection" section shows:
+- Toggle switches for each detection category
+- Dropdown selectors for actions (block/warn/log)
+- Current status badges showing what's enabled
 
-Shroud's threat detection filters run **before** content reaches the LLM, blocking attacks at the perimeter.
+---
 
-## Defense in Depth
+## Shroud Activity & Live Inspector
 
-The filters work together as **20 layers of defense**. Shroud runs two pipelines: one on the **request** (before the LLM sees the prompt) and one on the **response** (before the agent sees the completion). After both pipelines, the **policy engine** acts as a final gate, enforcing rate limits, budgets, provider restrictions, and per-category blocking rules.
+Shroud logs every inspection event — both clean requests and flagged threats. The dashboard provides three views for monitoring agent LLM traffic:
 
-### Request pipeline
+### Shroud Activity API (REST)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Incoming Request                                            │
-├──────────────────────────────────────────────────────────────┤
-│   1. Hidden Content Stripping  ← Remove markdown/HTML tricks │
-│   2. Secret Redaction          ← Mask vault secrets          │
-│   3. Secret Injection Detect.  ← Catch non-vault credentials │
-│   4. PII Detection             ← Emails, SSNs, cards         │
-│   5. Context Injection Defense ← Detect injected sys prompts │
-│   6. Prompt Injection Scoring  ← Weighted heuristic scoring            │
-│   7. Token Counting            ← Enforce per-request limits  │
-│   8. Unicode Normalization     ← Decode obfuscation          │
-│   9. Command Injection         ← Block shell attacks         │
-│  10. Encoding Detection        ← Catch Base64/hex payloads   │
-│  11. Social Engineering        ← Detect manipulation         │
-│  12. Network Detection         ← Block data exfiltration     │
-│  13. Filesystem Detection      ← Protect sensitive files     │
-│  14. Tool Call Inspection      ← Inspect function arguments  │
-│  15. Semantic Policy           ← Topic/task guardrails       │
-├──────────────────────────────────────────────────────────────┤
-│  Clean request → LLM Provider                                │
-└──────────────────────────────────────────────────────────────┘
-```
+Programmatic access uses the **Vault API** (e.g. `https://api.1claw.xyz`), authenticated with a human JWT or user API key — not the Shroud agent headers.
 
-### Response pipeline
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/shroud/activity` | Recent Shroud inspection events across your org’s agents (feeds the dashboard overview). |
+| POST | `/v1/shroud/activity` | Filtered or paginated activity queries (body parameters align with dashboard filtering). |
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  LLM Response                                                │
-├──────────────────────────────────────────────────────────────┤
-│   1. Token Counting             ← Track response token usage │
-│   2. Tool Call Inspection       ← Scan tool call results     │
-│   3. Output Policy              ← Block harmful/banned text  │
-│   4. Response Injection         ← Echoed injection, MD-image │
-│                                   exfil, data-URI, code-fence│
-│   5. Prompt Injection (resp)    ← Role/override echoed back  │
-│   6. Context Injection (resp)   ← Fake system prompts echoed │
-│   7. Network Detection (resp)   ← Exfil URLs in responses    │
-│   8. Response Filter            ← Hallucinated credentials   │
-│   9. Secret Redaction           ← Mask any leaked secrets    │
-│  10. Semantic Policy            ← Enforce topic constraints  │
-├──────────────────────────────────────────────────────────────┤
-│  Clean response → Agent                                      │
-└──────────────────────────────────────────────────────────────┘
-```
+The **Live** dashboard view adds a real-time **SSE** stream for events as they arrive; list/query traffic uses the REST endpoints above.
 
-The order matters: hidden content stripping and Unicode normalization run early in the request pipeline so subsequent filters see the "true" content, not obfuscated versions. Secret redaction runs on both sides to catch leaks in either direction. **Response-side inspection** (steps 4–7) was added in Shroud v0.5.0 — see [Response-Side Inspection](#response-side-inspection) below. After both pipelines, the **[Policy Engine](#policy-engine-final-gate)** aggregates all filter results and enforces rate limits, budget caps, provider/model restrictions, and per-category blocking rules from the agent's JWT.
+### Shroud Activity (Overview)
 
-## Threat Detection Filters
+**Dashboard:** Navigate to **Shroud Activity** in the sidebar (or `/shroud-activity`).
+
+Shows recent Shroud inspection events across all agents:
+- Request timestamp, agent name, provider, model
+- Inspection result (clean, warned, blocked)
+- Threat detectors that fired and their severity
+- Quick filters by agent, provider, and result
+
+### Threats
+
+**Dashboard:** **Shroud Activity → Threats** (or `/shroud-activity/threats`).
+
+Filtered view showing only threat detections — blocked and warned requests:
+- Severity breakdown (critical, high, medium, low)
+- Detector breakdown (which filters caught what)
+- Drill-down into individual flagged requests
+- Useful for security reviews and tuning detection thresholds
+
+### Live Inspector (SSE)
+
+**Dashboard:** **Shroud Activity → Live** (or `/shroud-activity/live`).
+
+Real-time Server-Sent Events (SSE) stream of inspection events as they happen:
+- Events appear instantly as agents send LLM requests through Shroud
+- Each event shows the agent, provider, model, inspection result, and any threat detections
+- Useful for debugging agent behavior, testing new `shroud_config` settings, and monitoring during deployments
+
+For REST shapes and authentication, see [Shroud Activity API (REST)](#shroud-activity-api-rest) above.
+
+### LLM Token Billing (Stripe AI Gateway)
+
+When your organization has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route LLM requests through the **Stripe AI Gateway**. This bills token usage directly to your org's Stripe subscription — no provider API keys needed.
+
+How it works:
+1. Enable LLM Token Billing via `POST /v1/billing/llm-token-billing/subscribe`
+2. Agent JWTs automatically include `llm_token_billing: true` and `stripe_customer_id`
+3. Shroud routes eligible requests to the Stripe AI Gateway provider, rewrites the model ID for the gateway, and sets `X-Stripe-Customer-ID` from the JWT
+4. Token usage appears on your Stripe invoice
+
+The `1claw proxy` CLI command works seamlessly with LLM Token Billing — agents can use any supported model without managing provider API keys.
+
+---
+
+## Best Practices
+
+1. **Start with `action: "warn"`** — Understand your traffic patterns before enabling blocking
+2. **Enable `threat_logging: true`** — Build an audit trail for investigation
+3. **Use the right preset for your use case** — Coding assistants need different settings than financial agents
+4. **Review logs regularly** — Tune sensitivity based on false positive rates
+5. **Keep `filesystem_detection` disabled for coding assistants** — It generates many false positives
+6. **Use allowlist mode for high-security agents** — More secure than blocklist for network detection
+7. **Test in development first** — Use `sanitization_mode: "log_only"` to validate before production
+
+---
+
+## Monitoring and Alerts
+
+Threat detections are available in:
+
+- **Audit logs** — Query via `client.audit.query()` or the Dashboard
+- **Inspection metadata** — Returned in response headers when threats are detected
+- **Prometheus metrics** — `shroud_threats_detected_total` with labels for threat type
+
+Set up alerts for:
+- Spike in blocked requests (possible attack in progress)
+- New threat patterns from specific agents (compromised agent?)
+- High false positive rates (tuning needed)
+
+
+---
+
+## Shroud Threat Detection
+
+---
+title: Shroud Threat Detection
+description: All 20 Shroud inspection layers — hidden content stripping, injection scoring, PII, network, tool-call, output policy, and response-side inspection.
+keywords: [Shroud, threat detection, prompt injection, PII, secret redaction]
+sidebar_label: Threat detection
+---
+
+# Shroud Threat Detection Filters
+
+Part of the [Shroud LLM proxy](/docs/guides/shroud) guide. Configure detectors via per-agent `shroud_config`.
 
 ### Hidden Content Stripping
 
@@ -16963,7 +17167,7 @@ output_policy: {
 
 ---
 
-### Response-Side Inspection
+### Response-Side Inspection {#response-side-inspection}
 
 **What it does:**
 
@@ -17261,7 +17465,7 @@ semantic_policy: {
 
 ---
 
-### Policy Engine (Final Gate)
+### Policy Engine (Final Gate) {#policy-engine-final-gate}
 
 **What it does:**
 - Runs **after** all inspection filters on the request side, acting as the final gate before a request is forwarded to the LLM provider
@@ -17369,354 +17573,418 @@ Retained requests are available via the audit log. Set this to comply with your 
 
 ---
 
-## Global Settings
-
-### Sanitization Mode
-
-Controls what happens when threats are detected:
-
-| Mode | Behavior |
-|------|----------|
-| `block` | Reject the entire request with 403 |
-| `surgical` | Remove only the malicious content, continue processing |
-| `log_only` | Allow the request but audit the threat |
-
-```typescript
-sanitization_mode: "block"  // block | surgical | log_only
-```
-
-### Threat Logging
-
-When enabled, all detected threats are logged to the audit system regardless of the action taken:
-
-```typescript
-threat_logging: true
-```
-
-This is essential for:
-- Understanding your traffic patterns before enabling blocking
-- Security incident investigation
-- Compliance requirements
 
 ---
 
-## Configuration Examples
+## Shroud
 
-### Full Configuration
+---
+title: Shroud
+description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, and enforces per-agent policies before forwarding to LLM providers.
+keywords: [Shroud, LLM proxy, prompt injection, TEE, secret redaction, threat detection]
+sidebar_label: Shroud
+sidebar_position: 0
+tags: [shroud, security, threat-detection, tee, pipeline]
+---
 
+# Shroud
+
+Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection and secret redaction, then forwards the request to the upstream LLM. Use it to block prompt injection, redact secrets from prompts, centralize provider keys, and sign transactions inside the TEE.
+
+## On this page
+
+- [Per-Agent Configuration](#per-agent-configuration-shroud_config)
+- [Security Features](#security-features)
+- [Using the LLM Proxy](#using-the-llm-proxy)
+- [IDE Integration](#ide-integration-1claw-proxy)
+- [Defense in Depth](#defense-in-depth)
+- [Split guides](#split-guides)
+- [Next steps](#next-steps)
+
+:::tip Try it out
+Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
+:::
+
+---
+
+## Per-Agent Configuration (shroud_config)
+
+Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
+
+### Basic settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
+| `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
+| `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
+| `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
+| `allowed_models` | string[] | Models the agent may use (empty = all) |
+| `denied_models` | string[] | Models explicitly blocked |
+| `max_tokens_per_request` | number | Token cap per LLM request |
+| `max_requests_per_minute` | number | Per-minute rate limit |
+| `max_requests_per_day` | number | Per-day rate limit |
+| `daily_budget_usd` | number | Daily LLM spend cap in USD |
+| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
+| `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
+
+### Threat detection (per detector)
+
+Nested objects (e.g. `social_engineering_detection`, `network_detection`, `encoding_detection`, `command_injection_detection`, `filesystem_detection`, `unicode_normalization`) include `enabled` and an **`action`** where applicable: **`block`** (HTTP 403 when the pipeline detected a match), **`warn`** / **`log`** (allow through but log), or encoder-specific values like **`decode`** for `encoding_detection`.
+
+### How settings are enforced (pipeline + JWT)
+
+1. **Inspection pipeline** — Shroud applies server-wide filters (secret redaction, PII, injection scoring, threat pattern matching). Many filters default to **record + warn** so the request body can still be analyzed.
+2. **PolicyEngine** — Runs **after** the pipeline on each LLM request. It reads per-agent rules from the **agent JWT**: when the agent has Shroud enabled, Vault includes a **`shroud_config`** claim (same JSON as `GET /v1/agents/{id}`). That drives injection/context thresholds, provider/model allowlists, rate limits, budget caps, and **block** vs **warn** for threat categories.
+3. **Refresh JWT** — After you change `shroud_config` in the dashboard or API, have the client **re-exchange** the agent API key for a new JWT (or restart Shroud Bridge) so Shroud sees the update.
+
+User (human) JWTs do not carry `shroud_config`.
+
+### Operational limits
+
+- **Request body size:** 5MB maximum. Requests exceeding this return **413 Payload Too Large**.
+- **Header filtering:** Shroud strips sensitive headers (authorization, `X-Shroud-Agent-Key`, `X-Shroud-Api-Key`, cookies, IP headers) before forwarding to upstream LLM providers. This prevents credential leakage through proxied requests.
+
+## Security Features
+
+Shroud includes **20 inspection layers** covering threat detection, secret protection, input sanitization, response filtering, and policy enforcement. All features are configurable on a per-agent basis via the Dashboard, SDK, or API. The layers span both request and response pipelines, with the policy engine acting as the final gate.
+
+## Using the LLM Proxy
+
+Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
+
+Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.xyz` and `shroud.1claw.xyz` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
+
+### Endpoint
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST   | `https://shroud.1claw.xyz/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
+
+Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes by provider.
+
+### Required headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Agent-Key` | **Required.** Agent credentials in the form `agent_id:api_key` (e.g. `550e8400-e29b-41d4-a716-446655440000:ocv_...`). The API key is the agent’s `ocv_` key from 1Claw. |
+| `X-Shroud-Provider` | **Required.** Provider identifier. Must match a [supported provider](#supported-providers) name (e.g. `openai`, `anthropic`, `google`, `gemini`). |
+| `Content-Type` | `application/json` for request body. |
+
+### Optional headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
+| `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.5-flash`). Can also be set in the request body for some providers. See [Shroud supported models](/docs/reference/shroud-supported-models). |
+
+### Auth format: `X-Shroud-Agent-Key`
+
+The value must be exactly:
+
+```text
+agent_id:api_key
+```
+
+- `agent_id`: the agent’s UUID from 1Claw (e.g. from the dashboard or `GET /v1/agents/me`).
+- `api_key`: the agent’s API key (e.g. `ocv_...`).
+
+Example: `X-Shroud-Agent-Key: 550e8400-e29b-41d4-a716-446655440000:ocv_abc123...`
+
+### Vault key resolution
+
+If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
+
+- **Default path:** `providers/{provider}/api-key` in a vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
+- **Override via header:** You can pass a vault reference so Shroud fetches the key from a specific path:
+  - `X-Shroud-Api-Key: vault://{vault_id}/{secret_path}`
+  - Example: `X-Shroud-Api-Key: vault://a1b2c3d4-e5f6-7890-abcd-ef1234567890/gemini/api-key`
+
+The agent must have read access to that vault path.
+
+### Supported providers
+
+Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of the values below (lowercase).
+
+| Provider value | LLM / API |
+|----------------|-----------|
+| `openai`       | OpenAI (GPT-4o, o-series, etc.) — [allowed model IDs](/docs/reference/shroud-supported-models#openai-models) |
+| `anthropic`    | Anthropic (Claude) — [allowed model IDs](/docs/reference/shroud-supported-models#anthropic-models) |
+| `google`       | Google Gemini (Generative Language API) — [allowed model IDs](/docs/reference/shroud-supported-models#google-gemini-models) |
+| `gemini`       | Alias for `google` — same as above |
+| `mistral`      | Mistral — [allowed model IDs](/docs/reference/shroud-supported-models#mistral-models) |
+| `cohere`       | Cohere — [allowed model IDs](/docs/reference/shroud-supported-models#cohere-models) |
+| `openrouter`   | OpenRouter (aggregates many models; single API key) — [notes](/docs/reference/shroud-supported-models#openrouter-models) |
+| `darkbloom`    | Darkbloom (hardware-attested Apple Silicon, E2E encrypted) — [notes](/docs/reference/shroud-supported-models#darkbloom-models) |
+| `venice`       | Venice AI (privacy-focused, no data retention) — [notes](/docs/reference/shroud-supported-models#venice-models) |
+| `bankr`        | Bankr LLM Gateway (multi-provider, cost tracking, wallet-funded) — [notes](/docs/reference/shroud-supported-models#bankr-models) |
+
+- **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
+- **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
+- **Darkbloom:** Use `X-Shroud-Provider: darkbloom`. Inference is routed to hardware-attested Apple Silicon with E2E encryption. Store API key at `providers/darkbloom/api-key`. Model availability is dynamic; check Darkbloom's `/v1/models`.
+- **Venice:** Use `X-Shroud-Provider: venice`. Privacy-first inference with no data retention. Store API key at `providers/venice/api-key`. Supports Claude, GPT, Grok, and TEE-backed models.
+- **Bankr:** Use `X-Shroud-Provider: bankr`. Routes to [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) at `https://llm.bankr.bot`. Store your `bk_` key at `providers/bankr/api-key` (LLM Gateway permission required). OpenAI-compatible `model` IDs (e.g. `claude-opus-4.6`, `gemini-2.5-flash`).
+- **Full allowlist:** [Shroud supported models](/docs/reference/shroud-supported-models) (kept in sync with `shroud/config/providers/*.toml`).
+
+### Request and response format
+
+- **OpenAI-style (OpenAI, Mistral, Cohere, OpenRouter, Darkbloom, Venice, Bankr):** Request body is the standard [OpenAI chat completions](https://platform.openai.com/docs/api-reference/chat/create) shape: `{ "model", "messages", "max_tokens", "stream", ... }`. Response shape is the same. For OpenRouter, set `model` to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`). For Bankr, use Bankr model slugs (e.g. `claude-opus-4.6`).
+- **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
+- **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
+
+### Configuring the LLM Model
+
+You can specify which model to use in two ways:
+
+#### 1. Per-Request Model Selection
+
+**Option A: Header** (recommended for some providers)
+```bash
+X-Shroud-Model: gpt-4o-mini
+```
+
+**Option B: Request Body** (for OpenAI-style providers)
+```json
+{
+  "model": "gpt-4o-mini",
+  "messages": [...]
+}
+```
+
+**Example:**
 ```typescript
-const agent = await client.agents.create({
-  name: "my-secure-agent",
-  shroud_enabled: true,
-  shroud_config: {
-    // Basic Shroud settings
-    pii_policy: "redact",
-    injection_threshold: 0.7,
-    context_injection_threshold: 0.7,
-    enable_secret_redaction: true,
-    enable_response_filtering: true,
-    
-    // Rate limits and budget
-    max_requests_per_minute: 60,
-    max_requests_per_day: 10000,
-    max_tokens_per_request: 8192,
-    daily_budget_usd: 50,
-    allowed_providers: ["openai", "anthropic", "google"],
-    allowed_models: [],
-    denied_models: [],
-    
-    // Threat detection
-    unicode_normalization: {
-      enabled: true,
-      strip_zero_width: true,
-      normalize_homoglyphs: true,
-      normalization_form: "NFKC"
-    },
-    command_injection_detection: {
-      enabled: true,
-      action: "block",
-      patterns: "default"
-    },
-    social_engineering_detection: {
-      enabled: true,
-      action: "warn",
-      sensitivity: "medium"
-    },
-    encoding_detection: {
-      enabled: true,
-      action: "warn",
-      detect_base64: true,
-      detect_hex: true,
-      detect_unicode_escape: true
-    },
-    network_detection: {
-      enabled: true,
-      action: "warn",
-      blocked_domains: ["pastebin.com", "ngrok.io"],
-      allowed_domains: []
-    },
-    filesystem_detection: {
-      enabled: false,
-      action: "log",
-      blocked_paths: ["/etc/passwd", "~/.ssh/"]
-    },
-    tool_call_inspection: {
-      enabled: true,
-      allowed_tool_names: [],
-      denied_tool_names: ["execute_sql", "shell_exec"],
-      scan_arguments: true,
-      block_credential_exfil: true,
-      action: "block"
-    },
-    output_policy: {
-      enabled: true,
-      blocked_patterns: [],
-      blocked_entities: [],
-      block_harmful_content: true,
-      harmful_categories: ["violence", "self_harm", "illegal", "hate", "sexual", "malware"],
-      action: "block"
-    },
-    secret_injection_detection: {
-      enabled: true,
-      action: "warn",
-      sensitivity: "medium"
-    },
-    advanced_redaction: {
-      enabled: true,
-      detect_base64_encoded: true,
-      detect_split_secrets: true,
-      detect_prefix_leak: true,
-      min_secret_length: 8
-    },
-    semantic_policy: {
-      enabled: false,
-      allowed_topics: [],
-      denied_topics: [],
-      allowed_tasks: [],
-      denied_tasks: [],
-      action: "warn"
-    },
-    flagged_request_retention_days: 30,
-    sanitization_mode: "block",
-    threat_logging: true
-  }
+const res = await fetch("https://shroud.1claw.xyz/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "openai",
+    "X-Shroud-Model": "gpt-4o-mini",  // ← Model in header
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    messages: [{ role: "user", content: "Hello" }],
+  }),
 });
 ```
 
-### Security Presets
-
-#### Strict (Production)
-
-Maximum protection for high-security environments:
-
+Or specify in the body:
 ```typescript
+body: JSON.stringify({
+  model: "gpt-4o-mini",  // ← Model in body
+  messages: [{ role: "user", content: "Hello" }],
+})
+```
+
+#### 2. Per-Agent Model Restrictions
+
+Configure which models an agent is allowed (or denied) to use via the agent's `shroud_config`:
+
+**Via Dashboard:**
+- Navigate to **Agents → [Agent Name] → Shroud LLM Proxy** card
+- Set `allowed_models` (whitelist) or `denied_models` (blacklist)
+
+**Via API:**
+```bash
+PATCH /v1/agents/{id}
 {
-  unicode_normalization: { enabled: true, normalize_homoglyphs: true },
-  command_injection_detection: { enabled: true, action: "block", patterns: "strict" },
-  social_engineering_detection: { enabled: true, action: "block", sensitivity: "high" },
-  encoding_detection: { enabled: true, action: "block" },
-  network_detection: { enabled: true, action: "block" },
-  filesystem_detection: { enabled: true, action: "block" },
-  tool_call_inspection: { enabled: true, scan_arguments: true, block_credential_exfil: true, action: "block" },
-  output_policy: { enabled: true, block_harmful_content: true, action: "block" },
-  secret_injection_detection: { enabled: true, action: "block", sensitivity: "high" },
-  advanced_redaction: { enabled: true, detect_base64_encoded: true, detect_split_secrets: true, detect_prefix_leak: true },
-  semantic_policy: { enabled: true, action: "block" },
-  sanitization_mode: "block",
-  threat_logging: true
+  "shroud_config": {
+    "allowed_models": ["gpt-4o-mini", "claude-sonnet-5"],
+    "denied_models": ["gpt-4.1-nano"]
+  }
 }
 ```
 
-#### Balanced (Default)
-
-Good protection with minimal false positives:
-
+**Via SDK:**
 ```typescript
-{
-  unicode_normalization: { enabled: true },
-  command_injection_detection: { enabled: true, action: "block" },
-  social_engineering_detection: { enabled: true, action: "warn" },
-  encoding_detection: { enabled: true, action: "warn" },
-  network_detection: { enabled: true, action: "warn" },
-  filesystem_detection: { enabled: false },
-  tool_call_inspection: { enabled: true, scan_arguments: true, block_credential_exfil: true, action: "warn" },
-  output_policy: { enabled: true, block_harmful_content: true, action: "warn" },
-  secret_injection_detection: { enabled: true, action: "warn" },
-  advanced_redaction: { enabled: true, detect_base64_encoded: true },
-  semantic_policy: { enabled: false },
-  sanitization_mode: "block",
-  threat_logging: true
-}
-```
-
-#### Permissive (Development)
-
-Observe traffic patterns without blocking:
-
-```typescript
-{
-  unicode_normalization: { enabled: true },
-  command_injection_detection: { enabled: true, action: "log" },
-  social_engineering_detection: { enabled: true, action: "log" },
-  encoding_detection: { enabled: true, action: "log" },
-  network_detection: { enabled: true, action: "log" },
-  filesystem_detection: { enabled: false },
-  tool_call_inspection: { enabled: true, action: "log" },
-  output_policy: { enabled: false },
-  secret_injection_detection: { enabled: true, action: "log" },
-  advanced_redaction: { enabled: false },
-  semantic_policy: { enabled: false },
-  sanitization_mode: "log_only",
-  threat_logging: true
-}
-```
-
----
-
-## Use Case Tuning
-
-### Coding Assistants
-
-Coding assistants legitimately discuss shell commands, file paths, and encoded content:
-
-```typescript
-{
-  command_injection_detection: { enabled: true, action: "warn" },  // Don't block code examples
-  encoding_detection: { enabled: true, action: "log" },           // Base64 is common in code
-  filesystem_detection: { enabled: false },                        // Paths discussed constantly
-  social_engineering_detection: { enabled: true, action: "warn" },
-  sanitization_mode: "log_only"  // Learn patterns first
-}
-```
-
-### Financial/Trading Agents
-
-High-value targets require strict protection:
-
-```typescript
-{
-  command_injection_detection: { enabled: true, action: "block", patterns: "strict" },
-  social_engineering_detection: { enabled: true, action: "block", sensitivity: "high" },
-  network_detection: { 
-    enabled: true, 
-    action: "block",
-    allowed_domains: ["api.exchange.com", "api.bank.com"]  // Allowlist mode
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "claude-sonnet-5"],
+    denied_models: ["gpt-4.1-nano"],
   },
-  sanitization_mode: "block"
-}
+});
 ```
 
-### Customer Support Agents
+**How it works:**
+1. User specifies the model in the request (via header or body)
+2. Shroud checks the agent's `shroud_config`:
+   - If `allowed_models` is set and the model is **not** in the list → **403 Forbidden**
+   - If the model is in `denied_models` → **403 Forbidden**
+   - Otherwise → request proceeds
 
-Balance security with usability:
+**Example: Restrict agent to only use cost-effective models**
+```typescript
+await client.agents.update(agentId, {
+  shroud_config: {
+    allowed_models: ["gpt-4o-mini", "gemini-2.5-flash"],  // Only allow cheaper models
+  },
+});
+```
+
+**Note:** When using Stripe AI Gateway (LLM Token Billing), model names are automatically prefixed with the provider (e.g., `gpt-4o-mini` → `openai/gpt-4o-mini`). See [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) for details.
+
+### Example: cURL
+
+```bash
+# Using agent key and vault-resolved provider key (no X-Shroud-Api-Key)
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: google" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}'
+
+# With explicit vault key path
+curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+  -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
+  -H "X-Shroud-Provider: anthropic" \
+  -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-5","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+### Example: TypeScript (fetch)
 
 ```typescript
-{
-  command_injection_detection: { enabled: true, action: "block" },
-  social_engineering_detection: { enabled: true, action: "warn", sensitivity: "low" },
-  encoding_detection: { enabled: false },  // Customers share screenshots as base64
-  network_detection: { enabled: true, action: "warn" },
-  sanitization_mode: "surgical"  // Remove threats but process the rest
-}
+const SHROUD_URL = "https://shroud.1claw.xyz";
+const agentId = process.env.ONECLAW_AGENT_ID!;
+const agentApiKey = process.env.ONECLAW_AGENT_API_KEY!;
+
+const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
+  method: "POST",
+  headers: {
+    "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
+    "X-Shroud-Provider": "google",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gemini-2.5-flash",
+    messages: [{ role: "user", content: "Hello" }],
+    max_tokens: 1024,
+  }),
+});
+
+const data = await res.json();
+// OpenAI-style response: data.choices[0].message.content
 ```
 
----
+### Errors you may see
 
-## Dashboard Configuration
-
-Navigate to **Agents** → *[Your Agent]* → **Shroud LLM Proxy** to configure security features in the Dashboard.
-
-The "Threat Detection" section shows:
-- Toggle switches for each detection category
-- Dropdown selectors for actions (block/warn/log)
-- Current status badges showing what's enabled
-
----
-
-## Shroud Activity & Live Inspector
-
-Shroud logs every inspection event — both clean requests and flagged threats. The dashboard provides three views for monitoring agent LLM traffic:
-
-### Shroud Activity API (REST)
-
-Programmatic access uses the **Vault API** (e.g. `https://api.1claw.xyz`), authenticated with a human JWT or user API key — not the Shroud agent headers.
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/shroud/activity` | Recent Shroud inspection events across your org’s agents (feeds the dashboard overview). |
-| POST | `/v1/shroud/activity` | Filtered or paginated activity queries (body parameters align with dashboard filtering). |
-
-The **Live** dashboard view adds a real-time **SSE** stream for events as they arrive; list/query traffic uses the REST endpoints above.
-
-### Shroud Activity (Overview)
-
-**Dashboard:** Navigate to **Shroud Activity** in the sidebar (or `/shroud-activity`).
-
-Shows recent Shroud inspection events across all agents:
-- Request timestamp, agent name, provider, model
-- Inspection result (clean, warned, blocked)
-- Threat detectors that fired and their severity
-- Quick filters by agent, provider, and result
-
-### Threats
-
-**Dashboard:** **Shroud Activity → Threats** (or `/shroud-activity/threats`).
-
-Filtered view showing only threat detections — blocked and warned requests:
-- Severity breakdown (critical, high, medium, low)
-- Detector breakdown (which filters caught what)
-- Drill-down into individual flagged requests
-- Useful for security reviews and tuning detection thresholds
-
-### Live Inspector (SSE)
-
-**Dashboard:** **Shroud Activity → Live** (or `/shroud-activity/live`).
-
-Real-time Server-Sent Events (SSE) stream of inspection events as they happen:
-- Events appear instantly as agents send LLM requests through Shroud
-- Each event shows the agent, provider, model, inspection result, and any threat detections
-- Useful for debugging agent behavior, testing new `shroud_config` settings, and monitoring during deployments
-
-For REST shapes and authentication, see [Shroud Activity API (REST)](#shroud-activity-api-rest) above.
-
-### LLM Token Billing (Stripe AI Gateway)
-
-When your organization has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route LLM requests through the **Stripe AI Gateway**. This bills token usage directly to your org's Stripe subscription — no provider API keys needed.
-
-How it works:
-1. Enable LLM Token Billing via `POST /v1/billing/llm-token-billing/subscribe`
-2. Agent JWTs automatically include `llm_token_billing: true` and `stripe_customer_id`
-3. Shroud routes eligible requests to the Stripe AI Gateway provider, rewrites the model ID for the gateway, and sets `X-Stripe-Customer-ID` from the JWT
-4. Token usage appears on your Stripe invoice
-
-The `1claw proxy` CLI command works seamlessly with LLM Token Billing — agents can use any supported model without managing provider API keys.
+| HTTP | Message | Meaning |
+|------|---------|--------|
+| 400 | `missing X-Shroud-Provider header` | Send `X-Shroud-Provider` with a supported provider name. |
+| 401 | `missing X-Shroud-Agent-Key header` | Send `X-Shroud-Agent-Key` with `agent_id:api_key`. |
+| 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
+| 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
+| 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
 
 ---
 
-## Best Practices
+## IDE Integration (`1claw proxy`)
 
-1. **Start with `action: "warn"`** — Understand your traffic patterns before enabling blocking
-2. **Enable `threat_logging: true`** — Build an audit trail for investigation
-3. **Use the right preset for your use case** — Coding assistants need different settings than financial agents
-4. **Review logs regularly** — Tune sensitivity based on false positive rates
-5. **Keep `filesystem_detection` disabled for coding assistants** — It generates many false positives
-6. **Use allowlist mode for high-security agents** — More secure than blocklist for network detection
-7. **Test in development first** — Use `sanitization_mode: "log_only"` to validate before production
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+
+**→ Step-by-step for Cursor, Claude Code, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/guides/ide-shroud-setup).
+
+### Quick start
+
+```bash
+export ONECLAW_AGENT_API_KEY="ocv_..."   # same as MCP / examples
+npx @1claw/cli@latest proxy
+# or: 1claw proxy --agent-key "AGENT_ID:ocv_..." 
+```
+
+The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and OpenAI-compatible extensions. It picks a **free port** if `11434` is busy (e.g. Ollama).
+
+### What the proxy does
+
+1. Accepts `POST /v1/chat/completions` and **`/v1/messages`** (Claude Code)
+2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
+3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
+5. Forwards to `https://shroud.1claw.xyz` with inspection, redaction, and policy enforcement
+6. Streams the response back
+
+### LLM Token Billing
+
+When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, the proxy works **without any provider API keys**. Shroud routes through Stripe AI Gateway and bills token usage to your org.
+
+See the [CLI docs](/docs/guides/cli#llm-proxy-1claw-proxy) for all proxy flags.
 
 ---
 
-## Monitoring and Alerts
+## Why This Matters
 
-Threat detections are available in:
+AI agents face unique security challenges that traditional security tools don't address:
 
-- **Audit logs** — Query via `client.audit.query()` or the Dashboard
-- **Inspection metadata** — Returned in response headers when threats are detected
-- **Prometheus metrics** — `shroud_threats_detected_total` with labels for threat type
+- **LLMs are susceptible to social engineering** — They're trained on human text where authority and urgency are legitimate signals
+- **Prompt injection bypasses application logic** — Attackers can manipulate the model to ignore its instructions
+- **Agents have real capabilities** — File access, code execution, API calls, and transactions can be weaponized
+- **Obfuscation defeats naive filters** — Unicode tricks and encoding bypass keyword-based detection
 
-Set up alerts for:
-- Spike in blocked requests (possible attack in progress)
-- New threat patterns from specific agents (compromised agent?)
-- High false positive rates (tuning needed)
+Shroud's threat detection filters run **before** content reaches the LLM, blocking attacks at the perimeter.
+
+## Defense in Depth
+
+The filters work together as **20 layers of defense**. Shroud runs two pipelines: one on the **request** (before the LLM sees the prompt) and one on the **response** (before the agent sees the completion). After both pipelines, the **policy engine** acts as a final gate, enforcing rate limits, budgets, provider restrictions, and per-category blocking rules.
+
+### Request pipeline
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Incoming Request                                            │
+├──────────────────────────────────────────────────────────────┤
+│   1. Hidden Content Stripping  ← Remove markdown/HTML tricks │
+│   2. Secret Redaction          ← Mask vault secrets          │
+│   3. Secret Injection Detect.  ← Catch non-vault credentials │
+│   4. PII Detection             ← Emails, SSNs, cards         │
+│   5. Context Injection Defense ← Detect injected sys prompts │
+│   6. Prompt Injection Scoring  ← Weighted heuristic scoring            │
+│   7. Token Counting            ← Enforce per-request limits  │
+│   8. Unicode Normalization     ← Decode obfuscation          │
+│   9. Command Injection         ← Block shell attacks         │
+│  10. Encoding Detection        ← Catch Base64/hex payloads   │
+│  11. Social Engineering        ← Detect manipulation         │
+│  12. Network Detection         ← Block data exfiltration     │
+│  13. Filesystem Detection      ← Protect sensitive files     │
+│  14. Tool Call Inspection      ← Inspect function arguments  │
+│  15. Semantic Policy           ← Topic/task guardrails       │
+├──────────────────────────────────────────────────────────────┤
+│  Clean request → LLM Provider                                │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Response pipeline
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  LLM Response                                                │
+├──────────────────────────────────────────────────────────────┤
+│   1. Token Counting             ← Track response token usage │
+│   2. Tool Call Inspection       ← Scan tool call results     │
+│   3. Output Policy              ← Block harmful/banned text  │
+│   4. Response Injection         ← Echoed injection, MD-image │
+│                                   exfil, data-URI, code-fence│
+│   5. Prompt Injection (resp)    ← Role/override echoed back  │
+│   6. Context Injection (resp)   ← Fake system prompts echoed │
+│   7. Network Detection (resp)   ← Exfil URLs in responses    │
+│   8. Response Filter            ← Hallucinated credentials   │
+│   9. Secret Redaction           ← Mask any leaked secrets    │
+│  10. Semantic Policy            ← Enforce topic constraints  │
+├──────────────────────────────────────────────────────────────┤
+│  Clean response → Agent                                      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The order matters: hidden content stripping and Unicode normalization run early in the request pipeline so subsequent filters see the "true" content, not obfuscated versions. Secret redaction runs on both sides to catch leaks in either direction. **Response-side inspection** (steps 4–7) was added in Shroud v0.5.0 — see [Response-Side Inspection](/docs/guides/shroud-threat-detection#response-side-inspection) in the threat detection guide. After both pipelines, the **[Policy Engine](/docs/guides/shroud-threat-detection#policy-engine-final-gate)** aggregates all filter results and enforces rate limits, budget caps, provider/model restrictions, and per-category blocking rules from the agent's JWT.
+
+---
+
+## Split guides
+
+This page covers overview and core usage. Deep dives live in dedicated pages:
+
+- **[Threat Detection Filters](/docs/guides/shroud-threat-detection)** — all 20 inspection layers, request/response pipelines, Policy Engine gate
+- **[Configuration & Operations](/docs/guides/shroud-configuration)** — global settings, examples, use-case tuning, Shroud Activity, monitoring, best practices
+
 
 ## Next steps
 
@@ -25533,25 +25801,13 @@ Human-controlled inter-agent delegation authorization.
 
 ---
 
-## Changelog
+## Changelog 2026
 
 ---
-title: Changelog
-description: Product and API changelog for 1claw.
-sidebar_position: 3
+title: Changelog 2026
+description: 1claw product and API changelog for 2026 releases.
+sidebar_label: "2026"
 ---
-
-# Changelog
-
-For detailed release history, see the [1clawAI GitHub](https://github.com/1clawAI) repositories.
-
-## Jump to year {#changelog-nav}
-
-- [2026 (latest)](#2026)
-
-## API stability
-
-The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
 
 ## 2026 {#2026}
 
@@ -26171,7 +26427,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
 - **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
 - **Verified end-to-end:** Live testnet transactions confirmed on all non-EVM chains — Solana Devnet (sign-only, submit/broadcast, unified sign), Bitcoin Signet (sign-only, submit/broadcast), Tron Shasta (sign-only, submit/broadcast), and Cardano Preprod (sign-only, submit/broadcast).
-- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/guides/intents-api#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
+- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/guides/intents-signing#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
 
 ### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
 
@@ -26831,6 +27087,35 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ---
 
+## Changelog
+
+---
+title: Changelog
+description: Product and API changelog for 1claw.
+sidebar_position: 3
+---
+
+# Changelog
+
+For detailed release history, see the [1clawAI GitHub](https://github.com/1clawAI) repositories.
+
+## Jump to year {#changelog-nav}
+
+- [2026 (latest)](/docs/reference/changelog-2026)
+
+## API stability
+
+The **/v1** API is stable. Breaking changes would be accompanied by a new version prefix or clear deprecation notices. New optional fields or endpoints are added in a backward-compatible way.
+
+
+Release notes by year:
+
+- **[2026](/docs/reference/changelog-2026)** — Cedar/OPA enforcement v2, billing quotas, Turnkey parity, and earlier 2026 releases
+
+
+
+---
+
 ## Error codes
 
 ---
@@ -26943,7 +27228,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Resource limit** — A cap on how many vaults, secrets, or agents your organization can have, based on your subscription tier. When you hit the limit, the API returns 403 with `type: "resource_limit_exceeded"`. Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
 
-**Scope** — For agents, the set of path patterns the agent is allowed to access. When the agent has no explicit scopes on its record, scopes are derived from its policies (the policies’ `secret_path_pattern` values). If there are no policies, the default is `["*"]`. Scopes are embedded in the agent’s JWT.
+**Scope** — For agents, the set of path patterns the agent is allowed to access. When the agent has no explicit scopes on its record, scopes are derived from its policies (the policies’ `secret_path_pattern` values). If there are no policies, scopes default to `[]` (zero access — safe by default). Scopes are embedded in the agent’s JWT.
 
 **Secret** — A named value (e.g. API key, password) stored in a vault at a **path**. Has a type, optional metadata, optional expiry, and versioning. Values are encrypted at rest; list responses never include values. See [Secrets model](/docs/concepts/secrets-model).
 
@@ -26955,13 +27240,13 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Intents API** — A feature that lets agents sign and broadcast on-chain transactions without ever reading the private key. When enabled for an agent, the agent is blocked from reading `private_key` and `ssh_key` secrets; it must use the transaction endpoints. Supports EIP-191 message signing, EIP-712 typed data signing, and all EIP-2718 transaction types (0–4). See [Intents API](/docs/guides/intents-api).
 
-**Signing key (multi-chain)** — A per-agent, per-chain cryptographic keypair provisioned via `POST /v1/agents/{id}/signing-keys`. The private key is stored in the HSM-backed `__agent-keys` vault; the public key and derived address are returned to the caller. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron. See [Agent keys](/docs/security/agent-keys) and [Intents API — Signing Keys](/docs/guides/intents-api#signing-keys).
+**Signing key (multi-chain)** — A per-agent, per-chain cryptographic keypair provisioned via `POST /v1/agents/{id}/signing-keys`. The private key is stored in the HSM-backed `__agent-keys` vault; the public key and derived address are returned to the caller. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron. See [Agent keys](/docs/security/agent-keys) and [Intents API — Signing Keys](/docs/guides/intents-signing#signing-keys).
 
-**EIP-191 (personal_sign)** — A standard for signing human-readable messages on Ethereum. Used for identity verification, login challenges, and off-chain attestations. Requires `message_signing_enabled: true` on the agent. See [Intents API — EIP-191](/docs/guides/intents-api#eip191).
+**EIP-191 (personal_sign)** — A standard for signing human-readable messages on Ethereum. Used for identity verification, login challenges, and off-chain attestations. Requires `message_signing_enabled: true` on the agent. See [Intents API — EIP-191](/docs/guides/intents-signing#eip191).
 
-**EIP-712 (typed data)** — A standard for signing structured typed data on Ethereum (e.g. ERC-20 Permit, gasless approvals). Subject to the agent's `eip712_domain_allowlist` and `eip712_default_policy` guardrails. See [Intents API — EIP-712](/docs/guides/intents-api#eip712).
+**EIP-712 (typed data)** — A standard for signing structured typed data on Ethereum (e.g. ERC-20 Permit, gasless approvals). Subject to the agent's `eip712_domain_allowlist` and `eip712_default_policy` guardrails. See [Intents API — EIP-712](/docs/guides/intents-signing#eip712).
 
-**EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/guides/intents-api#tx-types).
+**EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/guides/intents-signing#tx-types).
 
 
 ---
@@ -27942,7 +28227,7 @@ When you [register an agent](/docs/human-api/agents/register-agent) via `POST /v
 | **Signing key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
 
-Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/guides/intents-api#signing-keys).
+Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/guides/intents-signing#signing-keys).
 
 ## How keys are created
 
@@ -28049,7 +28334,7 @@ Multi-chain signing keys are:
 - **Displayed in the dashboard** — The agent detail page shows a "Signing Keys" card with public keys, addresses, and key version.
 - **Used by the unified sign endpoint** — `POST /v1/agents/{id}/sign` signs EIP-191 messages, EIP-712 typed data, and EIP-2718 transactions using the agent's provisioned key for the specified chain.
 
-See the [Intents API guide](/docs/guides/intents-api#signing-keys) for full provisioning and signing documentation.
+See the [Intents API guide](/docs/guides/intents-signing#signing-keys) for full provisioning and signing documentation.
 
 
 ---

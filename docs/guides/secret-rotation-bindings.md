@@ -312,5 +312,5 @@ Combine with your database user rotation script to complete the workflow.
 
 - [Rotating secrets](/docs/guides/rotating-secrets) for the core rotation guide
 - [Intents API](/docs/guides/intents-api) for transaction signing
-- [Execution Intents](/docs/guides/intents-api#execution-intents) for the full bindings reference
+- [Execution Intents](/docs/guides/intents-guardrails#execution-intents) for the full bindings reference
 - [Securing agent access](/docs/guides/securing-agent-access) for policy best practices

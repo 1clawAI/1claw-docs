@@ -73,6 +73,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/policy-engine",
+                            label: "Policy engine — Cedar, OPA, consensus, ABIs",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/revoking-access",
                             label: "Offboard — revoke policies and tighten access",
                         },
@@ -295,6 +300,16 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/shroud-threat-detection",
+                            label: "Shroud — threat detection filters",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/shroud-configuration",
+                            label: "Shroud — configuration & operations",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/ide-shroud-setup",
                             label: "IDEs — local proxy for Cursor, Copilot, Claude Code",
                         },
@@ -302,6 +317,16 @@ const sidebars: SidebarsConfig = {
                             type: "doc",
                             id: "guides/intents-api",
                             label: "Intents API — sign txs without raw private keys",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/intents-signing",
+                            label: "Intents API — signing & multi-chain",
+                        },
+                        {
+                            type: "doc",
+                            id: "guides/intents-guardrails",
+                            label: "Intents API — guardrails & security",
                         },
                         {
                             type: "doc",
@@ -535,6 +560,7 @@ const sidebars: SidebarsConfig = {
                 "reference/rate-limits",
                 "reference/glossary",
                 "reference/changelog",
+                "reference/changelog-2026",
             ],
         },
     ],

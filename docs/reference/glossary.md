@@ -36,7 +36,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Resource limit** — A cap on how many vaults, secrets, or agents your organization can have, based on your subscription tier. When you hit the limit, the API returns 403 with `type: "resource_limit_exceeded"`. Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
 
-**Scope** — For agents, the set of path patterns the agent is allowed to access. When the agent has no explicit scopes on its record, scopes are derived from its policies (the policies’ `secret_path_pattern` values). If there are no policies, the default is `["*"]`. Scopes are embedded in the agent’s JWT.
+**Scope** — For agents, the set of path patterns the agent is allowed to access. When the agent has no explicit scopes on its record, scopes are derived from its policies (the policies’ `secret_path_pattern` values). If there are no policies, scopes default to `[]` (zero access — safe by default). Scopes are embedded in the agent’s JWT.
 
 **Secret** — A named value (e.g. API key, password) stored in a vault at a **path**. Has a type, optional metadata, optional expiry, and versioning. Values are encrypted at rest; list responses never include values. See [Secrets model](/docs/concepts/secrets-model).
 
@@ -48,10 +48,10 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Intents API** — A feature that lets agents sign and broadcast on-chain transactions without ever reading the private key. When enabled for an agent, the agent is blocked from reading `private_key` and `ssh_key` secrets; it must use the transaction endpoints. Supports EIP-191 message signing, EIP-712 typed data signing, and all EIP-2718 transaction types (0–4). See [Intents API](/docs/guides/intents-api).
 
-**Signing key (multi-chain)** — A per-agent, per-chain cryptographic keypair provisioned via `POST /v1/agents/{id}/signing-keys`. The private key is stored in the HSM-backed `__agent-keys` vault; the public key and derived address are returned to the caller. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron. See [Agent keys](/docs/security/agent-keys) and [Intents API — Signing Keys](/docs/guides/intents-api#signing-keys).
+**Signing key (multi-chain)** — A per-agent, per-chain cryptographic keypair provisioned via `POST /v1/agents/{id}/signing-keys`. The private key is stored in the HSM-backed `__agent-keys` vault; the public key and derived address are returned to the caller. Supported chains: Ethereum, Bitcoin, Solana, XRP, Cardano, Tron. See [Agent keys](/docs/security/agent-keys) and [Intents API — Signing Keys](/docs/guides/intents-signing#signing-keys).
 
-**EIP-191 (personal_sign)** — A standard for signing human-readable messages on Ethereum. Used for identity verification, login challenges, and off-chain attestations. Requires `message_signing_enabled: true` on the agent. See [Intents API — EIP-191](/docs/guides/intents-api#eip191).
+**EIP-191 (personal_sign)** — A standard for signing human-readable messages on Ethereum. Used for identity verification, login challenges, and off-chain attestations. Requires `message_signing_enabled: true` on the agent. See [Intents API — EIP-191](/docs/guides/intents-signing#eip191).
 
-**EIP-712 (typed data)** — A standard for signing structured typed data on Ethereum (e.g. ERC-20 Permit, gasless approvals). Subject to the agent's `eip712_domain_allowlist` and `eip712_default_policy` guardrails. See [Intents API — EIP-712](/docs/guides/intents-api#eip712).
+**EIP-712 (typed data)** — A standard for signing structured typed data on Ethereum (e.g. ERC-20 Permit, gasless approvals). Subject to the agent's `eip712_domain_allowlist` and `eip712_default_policy` guardrails. See [Intents API — EIP-712](/docs/guides/intents-signing#eip712).
 
-**EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/guides/intents-api#tx-types).
+**EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/guides/intents-signing#tx-types).

@@ -565,7 +565,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 134 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
 
 ### Introduction (1)
 
@@ -587,7 +587,7 @@ Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
 
-### Guides (69)
+### Guides (74)
 
 - [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/guides/account-abstraction)
 - [Agent Chat](https://docs.1claw.xyz/docs/guides/agent-chat)
@@ -623,6 +623,8 @@ Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Runtime Hosting](https://docs.1claw.xyz/docs/guides/hosting)
 - [IDE & tool setup (Shroud proxy)](https://docs.1claw.xyz/docs/guides/ide-shroud-setup)
 - [Intents API](https://docs.1claw.xyz/docs/guides/intents-api)
+- [Intents API — Guardrails & Security](https://docs.1claw.xyz/docs/guides/intents-guardrails)
+- [Intents API — Signing](https://docs.1claw.xyz/docs/guides/intents-signing)
 - [Magic integration](https://docs.1claw.xyz/docs/guides/magic)
 - [MCP for AI coding tools](https://docs.1claw.xyz/docs/guides/mcp-deep-dive)
 - [MCP integration](https://docs.1claw.xyz/docs/guides/mcp-integration)
@@ -638,6 +640,7 @@ Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Using 1claw with OpenClaw](https://docs.1claw.xyz/docs/guides/openclaw)
 - [Payment Cards](https://docs.1claw.xyz/docs/guides/payment-cards)
 - [Platform API](https://docs.1claw.xyz/docs/guides/platform-api)
+- [Policy Engine — Cedar, OPA & Consensus](https://docs.1claw.xyz/docs/guides/policy-engine)
 - [Principal-Type Audit](https://docs.1claw.xyz/docs/guides/principal-type-audit)
 - [Revoking access](https://docs.1claw.xyz/docs/guides/revoking-access)
 - [Rotating secrets](https://docs.1claw.xyz/docs/guides/rotating-secrets)
@@ -649,6 +652,8 @@ Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Securing Agent Access](https://docs.1claw.xyz/docs/guides/securing-agent-access)
 - [Setup by client](https://docs.1claw.xyz/docs/guides/setup-by-client)
 - [Sharing Secrets](https://docs.1claw.xyz/docs/guides/sharing-secrets)
+- [Shroud Configuration & Operations](https://docs.1claw.xyz/docs/guides/shroud-configuration)
+- [Shroud Threat Detection](https://docs.1claw.xyz/docs/guides/shroud-threat-detection)
 - [Shroud](https://docs.1claw.xyz/docs/guides/shroud)
 - [Thirdweb integration](https://docs.1claw.xyz/docs/guides/thirdweb)
 - [Treasury Wallets](https://docs.1claw.xyz/docs/guides/treasury)
@@ -712,10 +717,11 @@ Complete index of 128 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Two-factor authentication](https://docs.1claw.xyz/docs/security/two-factor-auth)
 - [Zero trust](https://docs.1claw.xyz/docs/security/zero-trust)
 
-### Reference (8)
+### Reference (9)
 
 - [API & MCP Testing](https://docs.1claw.xyz/docs/reference/api-mcp-testing)
 - [API reference](https://docs.1claw.xyz/docs/reference/api-reference)
+- [Changelog 2026](https://docs.1claw.xyz/docs/reference/changelog-2026)
 - [Changelog](https://docs.1claw.xyz/docs/reference/changelog)
 - [Error codes](https://docs.1claw.xyz/docs/reference/error-codes)
 - [Glossary](https://docs.1claw.xyz/docs/reference/glossary)
