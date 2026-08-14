@@ -29,6 +29,9 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 #### API
 - **Changed:** `GET /v1/billing/subscription` `usage` now includes `wallets` (`{ used, limit }`) alongside `requests` and `intent_transactions`.
 
+#### Quotas (runtime hours)
+- **Fixed:** Runtime hour caps now match the pricing page: Pro **100h/mo** (was 720h), Team **500h/mo** (was 7,200h), Business **2,000h/mo** (was 18,000h). Enforcement in `tier_limits()` was out of sync with customer-facing limits.
+
 #### Clients
 - `@1claw/sdk@0.47.3`, `@1claw/cli@0.47.2`, `@1claw/openapi-spec@0.47.3`
 - Python SDK `oneclaw@0.47.3`, Go SDK `v0.47.3`
