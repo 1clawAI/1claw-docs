@@ -78,7 +78,7 @@ Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1cl
 
 ## How to navigate these docs
 
-- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK).
+- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK). See also [licensing](/docs/concepts/licensing) (MIT client packages vs proprietary server).
 - **[Vault](/docs/human-api/overview)** — Quickstart, Human API, Agent API, MCP Server, and all vault-related guides (access control, rotation, CMEK, sharing, CLI, billing, troubleshooting).
 - **[Shroud](/docs/guides/shroud)** — LLM proxy setup, supported providers (OpenAI, Anthropic, Google/Gemini, OpenRouter, etc.), threat detection, and vault-backed API keys.
 - **[Intents](/docs/guides/intents-api)** — Enabling the Intents API, submitting transactions, guardrails, simulation, and supported chains.
@@ -90,8 +90,7 @@ Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1cl
 
 - [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
 - [Parts of 1claw](/docs/concepts/parts-of-1claw) — Three products (Vault, Shroud, Intents) and how to use them (Dashboard, API, MCP, CLI, SDK).
-- [Quickstart for humans](/docs/quickstart/humans) — Log in and store your first secret.
-- [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
+- [Quickstart](/docs/quickstart) — Fastest path: `1claw setup`, human path, or agent path.
 - [Shroud](/docs/guides/shroud) — Route LLM traffic through Shroud for inspection and redaction.
 - [Intents API](/docs/guides/intents-api) — Let agents sign transactions without seeing keys.
 - [Glossary](/docs/reference/glossary) — Definitions of vault, secret, policy, agent, and other terms.

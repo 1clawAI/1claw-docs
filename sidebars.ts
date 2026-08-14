@@ -8,6 +8,12 @@ const sidebars: SidebarsConfig = {
         "intro",
         {
             type: "category",
+            label: "Quickstart",
+            link: { type: "doc", id: "quickstart/index" },
+            items: ["quickstart/humans", "quickstart/agents"],
+        },
+        {
+            type: "category",
             label: "Concepts",
             link: { type: "doc", id: "concepts/what-is-1claw" },
             items: [
@@ -16,6 +22,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/secrets-model",
                 "concepts/human-vs-agent-api",
                 "concepts/trust-model",
+                "concepts/licensing",
             ],
         },
         {
@@ -33,6 +40,11 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Getting started",
                     items: [
+                        {
+                            type: "doc",
+                            id: "guides/setup-by-client",
+                            label: "Setup by client — Claude, Cursor, ChatGPT",
+                        },
                         {
                             type: "doc",
                             id: "guides/five-minute-walkthrough",
@@ -323,13 +335,18 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/webhooks",
+                            label: "Webhooks — real-time event notifications",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/multi-tenant-platform",
                             label: "Multi-tenant — bootstrap users with templates",
                         },
                         {
                             type: "doc",
-                            id: "guides/principal-type-audit",
-                            label: "Principal-type audit — allowlist vs denylist",
+                            id: "guides/oauth-connected-accounts",
+                            label: "OAuth connected accounts — Google, GitHub, Slack",
                         },
                         {
                             type: "doc",
@@ -396,6 +413,11 @@ const sidebars: SidebarsConfig = {
                         },
                         {
                             type: "doc",
+                            id: "guides/x402",
+                            label: "x402 — on-chain micropayments for overages",
+                        },
+                        {
+                            type: "doc",
                             id: "guides/deploying-updates",
                             label: "Ship changes — agents, policies, rotation",
                         },
@@ -424,12 +446,6 @@ const sidebars: SidebarsConfig = {
             link: { type: "doc", id: "human-api/overview" },
             collapsed: false,
             items: [
-                {
-                    type: "category",
-                    label: "Quickstart",
-                    link: { type: "doc", id: "quickstart/index" },
-                    items: ["quickstart/humans", "quickstart/agents"],
-                },
                 {
                     type: "category",
                     label: "Human API",
@@ -491,7 +507,7 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "SDKs",
             link: { type: "doc", id: "sdks/overview" },
-            items: ["sdks/javascript", "sdks/python", "sdks/curl-examples"],
+            items: ["sdks/javascript", "sdks/python", "sdks/go", "sdks/curl-examples"],
         },
         {
             type: "category",
@@ -503,6 +519,7 @@ const sidebars: SidebarsConfig = {
                 "security/zero-trust",
                 "security/two-factor-auth",
                 "security/risk-engine",
+                "guides/principal-type-audit",
                 "security/compliance",
             ],
         },
