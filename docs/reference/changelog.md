@@ -19,8 +19,8 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 #### Quotas
 - **Changed:** Dropped the 0.25% of transaction-value Intents fee. Signature overage is a flat per-signature charge (`proxy_transaction_submit` rates: Free $0.225, Pro $0.15, Team $0.075, Business $0.04) via prepaid credits or x402. Included signatures remain free up to the monthly quota.
 - **Changed:** Business API calls/month raised to **1,000,000** (was 500,000).
-- **New:** Unified **wallet quota** covering active treasury wallets, agent signing keys, smart accounts, and agents with an EOA. Free 10, Pro 100, Team 250,000, Business 1,000,000, Enterprise unlimited.
-- **New:** Monthly **signature quota** (Free 100, Pro 1,000, Team 200,000, Business 1,000,000). Over quota is billed, not hard-blocked.
+- **New:** Unified **wallet quota** covering active treasury wallets, agent signing keys, smart accounts, and agents with an EOA. Free 10, Pro 10,000, Team 250,000, Business 1,000,000, Enterprise unlimited.
+- **New:** Monthly **signature quota** (Free 100, Pro 20,000, Team 200,000, Business 1,000,000). Over quota is billed, not hard-blocked.
 - **Changed:** Signing POSTs (`POST /v1/agents/{id}/sign`, `/transactions`, `/transactions/sign`) no longer consume the API Calls meter.
 
 #### Treasury wallets
@@ -31,6 +31,10 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 #### Quotas (runtime hours)
 - **Fixed:** Runtime hour caps now match the pricing page: Pro **100h/mo** (was 720h), Team **500h/mo** (was 7,200h), Business **2,000h/mo** (was 18,000h). Enforcement in `tier_limits()` was out of sync with customer-facing limits.
+
+#### Pricing clarity
+- **Changed:** Restored Pro wallet quota to **10,000** and signature quota to **20,000** (reverts interim 100/1,000 limits).
+- **Changed:** Pricing page and docs now distinguish **Execution Intents** (Pro+, HTTP/GraphQL binding calls, hard monthly execution cap) from **Intents API** (Business+, on-chain signing, Signatures/mo meter).
 
 #### Clients
 - `@1claw/sdk@0.47.3`, `@1claw/cli@0.47.2`, `@1claw/openapi-spec@0.47.3`

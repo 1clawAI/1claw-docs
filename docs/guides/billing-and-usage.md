@@ -19,12 +19,27 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 | Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ------------ | --------- | ------------- | --------- | --------- | --------- | ---------- |
 | **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
-| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 100       | 1,000       | 5         | 500       | 10        | 2          |
+| **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 2          |
 | **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
+
+### Execution Intents vs Intents API
+
+Two separate products with different meters:
+
+| Product | What it does | Tier availability | Quota type |
+| ------- | ------------ | ----------------- | ---------- |
+| **Execution Intents** | HTTP/GraphQL binding calls with server-side credentials | Pro+ (Free: not included) | Hard monthly cap (403 when exceeded) |
+| **Intents API** | On-chain transaction signing (TEE-backed) | Business+ | Signatures/mo with per-signature overage |
+
+**Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
+
+**Binding types:** Pro — HTTP + GraphQL (live executors today). Team+ — all binding types (postgres, redis, grpc, etc. return "not yet implemented" until wired). Business+ — TEE execution mode (`execution_mode: "tee"`).
+
+Signatures = on-chain signing. Executions = HTTP/GraphQL binding calls.
 
 ### Resource Limits
 
