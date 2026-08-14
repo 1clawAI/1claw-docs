@@ -1090,86 +1090,18 @@ These are enforced server-side in the Intents API. The AA SDK never sees a signa
 
 ---
 title: Agent Chat
-description: Chat with agents via the Shroud LLM proxy with persistent conversation history.
-sidebar_position: 44
+description: This page moved to Agent Communication — chat and channels for agents.
+unlisted: true
 ---
 
-# Agent Chat
+# Agent Chat (moved)
 
-Send messages to agents through the Shroud LLM proxy. Conversations persist across sessions with full message history.
-
-## Sending a message
-
-```typescript
-// SDK
-const response = await client.chat.sendMessage(agentId, {
-  message: "What API keys do I have stored?",
-  conversation_id: conversationId, // optional, creates new if omitted
-  model: "gpt-4o",
-  provider: "openai"
-});
-```
-
-### SSE streaming
-
-```typescript
-const stream = await client.chat.sendMessageStream(agentId, {
-  message: "Analyze my vault secrets",
-});
-
-const reader = stream.body.getReader();
-// Process SSE events...
-```
-
-## Runtime chat
-
-Chat directly with agents running in cloud runtimes via an OpenAI-compatible in-container bridge:
-
-```
-POST /v1/runtimes/{id}/chat
-```
-
-Step-up auth may be required first:
-
-```
-POST /v1/runtimes/{id}/chat/unlock
-```
-
-The dashboard shows a **Chat** tab alongside the Terminal on runtime detail pages.
-
-## Conversations
-
-List and manage conversations:
-
-```typescript
-const conversations = await client.chat.listConversations(agentId);
-const detail = await client.chat.getConversation(agentId, conversationId);
-await client.chat.deleteConversation(agentId, conversationId);
-```
-
-## MCP tools
-
-| Tool | Description |
-|------|-------------|
-| `send_chat_message` | Send a message to an agent and get a response |
-| `list_chat_conversations` | List agent chat conversations |
-
-## API endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/v1/agents/{id}/chat` | Send message (SSE streaming) |
-| `POST` | `/v1/agents/{id}/chat/unlock` | Step-up auth to unlock chat |
-| `GET` | `/v1/agents/{id}/chat/conversations` | List conversations |
-| `GET` | `/v1/agents/{id}/chat/conversations/{cid}` | Get conversation |
-| `DELETE` | `/v1/agents/{id}/chat/conversations/{cid}` | Delete conversation |
-| `POST` | `/v1/runtimes/{id}/chat` | Runtime chat (SSE) |
-| `POST` | `/v1/runtimes/{id}/chat/unlock` | Runtime chat unlock |
+This content has been consolidated into **[Agent Communication — Chat & Channels](/docs/guides/agent-communication)**, which covers dashboard chat, SSE streaming, and Telegram/WhatsApp/Discord channels in one guide.
 
 
 ---
 
-## Agent Communication
+## Agent Communication — Chat & Channels
 
 ---
 sidebar_label: "Agent Communication — chat & channels"
@@ -2038,7 +1970,7 @@ Deactivated agents cannot exchange tokens or access secrets, but their records a
 
 ---
 
-## Agent Frameworks
+## Agent frameworks (Eliza, GOAT, LangChain, CrewAI)
 
 ---
 title: "Agent frameworks (Eliza, GOAT, LangChain, CrewAI)"
@@ -3559,7 +3491,7 @@ Only register the tools your agent actually needs. A research agent does not nee
 
 ---
 
-## Human-in-the-Loop Approvals
+## Human-in-the-loop approvals
 
 ---
 title: "Human-in-the-loop approvals"
@@ -4295,7 +4227,7 @@ Navigate to **Automations** in the sidebar to:
 
 ---
 
-## Bankr Dynamic Key Vending
+## Bankr Key Vending
 
 ---
 title: Bankr Key Vending
@@ -4750,7 +4682,7 @@ Try out the examples in this repo: **[Ampersend x402](https://github.com/1clawAI
 Every organization starts on the **Free** tier and can upgrade to paid plans for higher limits:
 
 | Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
-| -------------- | ------------- | ---------------------- | ----------- | --------- | --------- | --------- | ---------- |
+| -------------- | ------------- | ---------------------- | ------------ | --------- | ------------- | --------- | --------- | --------- | ---------- |
 | **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
 | **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 2          |
 | **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
@@ -4758,6 +4690,21 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
+
+### Execution Intents vs Intents API
+
+Two separate products with different meters:
+
+| Product | What it does | Tier availability | Quota type |
+| ------- | ------------ | ----------------- | ---------- |
+| **Execution Intents** | HTTP/GraphQL binding calls with server-side credentials | Pro+ (Free: not included) | Hard monthly cap (403 when exceeded) |
+| **Intents API** | On-chain transaction signing (TEE-backed) | Business+ | Signatures/mo with per-signature overage |
+
+**Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
+
+**Binding types:** Pro — HTTP + GraphQL (live executors today). Team+ — all binding types (postgres, redis, grpc, etc. return "not yet implemented" until wired). Business+ — TEE execution mode (`execution_mode: "tee"`).
+
+Signatures = on-chain signing. Executions = HTTP/GraphQL binding calls.
 
 ### Resource Limits
 
@@ -4809,8 +4756,10 @@ Included plan requests are covered by your subscription and do not incur per-req
 | Access shared secret | $0.0045 | $0.003 | $0.0015 | $0.0008 |
 | Audit query | $0.0024 | $0.0016 | $0.0008 | $0.0004 |
 | Other API requests | $0.001 | $0.0005 | $0.0002 | $0.0001 |
+| Transaction simulate | $0.225 | $0.15 | $0.075 | $0.04 |
+| Signature (overage) | $0.225 | $0.15 | $0.075 | $0.04 |
 
-Signature overage (after the included monthly quota) is a **flat per-signature rate** — Free $0.225, Pro $0.15, Team $0.075, Business $0.04. There is no percentage of transaction value. Simulation endpoints use the proxy transaction rate above.
+Signature overage (after the included monthly quota) is a **flat per-signature rate** — not a percentage of transaction value. Simulation endpoints use the same rate as the table above.
 
 Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 
@@ -5324,7 +5273,7 @@ Reference these in your workflow if you want Claude to use examples and config d
 
 ---
 
-## 1Claw CLI
+## CLI
 
 ---
 title: CLI
@@ -6443,10 +6392,11 @@ This is useful when you want agents to operate smart accounts without holding na
 
 ---
 
-## This guide has been renamed
+## Crypto Transaction Proxy (moved)
 
 ---
 title: Crypto Transaction Proxy (moved)
+description: The Crypto Transaction Proxy was renamed to the Intents API. This page redirects to the current guide.
 sidebar_position: 3
 ---
 
@@ -7342,7 +7292,7 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 
 ---
 
-## Fireblocks Integration
+## Fireblocks integration
 
 ---
 title: "Fireblocks integration"
@@ -7516,7 +7466,7 @@ The agent never stores the Fireblocks credentials locally. They are fetched just
 
 ---
 
-## 5-Minute Walkthrough
+## 5-minute walkthrough: vault, key, transaction
 
 ---
 title: "5-minute walkthrough: vault, key, transaction"
@@ -8395,7 +8345,8 @@ Closing the Shroud Bridge window **does not stop the proxy**. The app minimizes 
 
 ---
 title: Intents API
-description: Let agents sign and broadcast blockchain transactions without ever seeing private keys. Includes the full list of supported chains.
+description: Let agents sign and broadcast blockchain transactions without ever seeing private keys. EVM and multi-chain support with guardrails.
+keywords: [Intents API, transaction signing, blockchain agents, EVM, multi-chain]
 sidebar_position: 3
 ---
 
@@ -10092,7 +10043,7 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 
 ---
 
-## Magic Integration
+## Magic integration
 
 ---
 title: "Magic integration"
@@ -10205,7 +10156,7 @@ const tx = await agent.agents.submitTransaction(agentId, {
 
 ---
 
-## MCP for AI Coding Tools
+## MCP for AI coding tools
 
 ---
 title: "MCP for AI coding tools"
@@ -10470,7 +10421,7 @@ The assistant calls `rotate_generate` with the path and charset parameters.
 
 ---
 
-## MCP Integration
+## MCP integration
 
 ---
 title: MCP integration
@@ -11924,7 +11875,7 @@ Concurrent transactions are serialized via UTXO locks to prevent double-spends. 
 
 ---
 
-## Platform API (Multi-Tenant)
+## Platform API (multi-tenant)
 
 ---
 title: "Platform API (multi-tenant)"
@@ -12484,7 +12435,7 @@ Both tables have RLS enabled.
 
 ---
 
-## OIDC federation — Anthropic Workload Identity Federation (WIF)
+## OIDC federation — use 1claw as an IdP for Anthropic WIF
 
 ---
 title: OIDC federation — use 1claw as an IdP for Anthropic WIF
@@ -14126,7 +14077,7 @@ policy = client.platform.create_spend_policy(app_id, {
 
 ---
 
-## Principal-Type Audit (Phase 11)
+## Principal-Type Audit
 
 ---
 title: Principal-Type Audit
@@ -14891,7 +14842,7 @@ To unlock more runtimes and hours, upgrade to Pro or higher at **Settings → Bi
 
 ---
 
-## Safe (Gnosis Safe) Integration
+## Safe (Gnosis Safe) integration
 
 ---
 title: "Safe (Gnosis Safe) integration"
@@ -15303,7 +15254,7 @@ secret_path_pattern `api-keys/*`, permissions `["read"]`. The agent cannot write
 
 ---
 
-## Secret Rotation and Bindings
+## Secret rotation and bindings
 
 ---
 title: "Secret rotation and bindings"
@@ -16080,7 +16031,8 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/guides
 
 ---
 title: Shroud
-description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, detects exfiltration, and enforces per-agent policies before forwarding to OpenAI, Anthropic, Google (Gemini), and others.
+description: TEE LLM proxy with 20 inspection layers. Redacts secrets, blocks prompt injection, and enforces per-agent policies before forwarding to LLM providers.
+keywords: [Shroud, LLM proxy, prompt injection, TEE, secret redaction, threat detection]
 sidebar_label: Shroud
 sidebar_position: 0
 tags: [shroud, security, threat-detection, tee, pipeline]
@@ -17732,7 +17684,7 @@ Set up alerts for:
 
 ---
 
-## Thirdweb Integration
+## Thirdweb integration
 
 ---
 title: "Thirdweb integration"
@@ -17933,8 +17885,8 @@ sidebar_position: 16
 Treasury wallets give human users native, HSM-backed wallets across six blockchains — no external wallet provider, no browser extension. Private keys are generated server-side inside the HSM, stored in a dedicated per-org `__treasury-keys` vault with MPC custody, and never leave the secure enclave unless explicitly exported.
 
 :::info Requirements
-Treasury wallets are available on all tiers and count toward the org wallet quota (Free 10, Pro 10,000, Team 250,000, Business 1,000,000).
-Platform admins bypass the tier check.
+Treasury wallets are available on **all tiers** and count toward your org **wallet quota** (Free 10, Pro 10,000, Team 250,000, Business 1,000,000, Enterprise unlimited).
+Platform admins are unlimited via `effective_billing_tier_for_limits`.
 :::
 
 ## Supported chains
@@ -18492,7 +18444,7 @@ For a full list of error codes and response shapes, see [Error codes](/docs/refe
 
 ---
 
-## wagmi + RainbowKit Integration
+## wagmi + RainbowKit integration
 
 ---
 title: "wagmi + RainbowKit integration"
@@ -19164,7 +19116,7 @@ This release includes 8 authentication and session management fixes:
 
 ---
 
-## Web3Auth Integration
+## Web3Auth integration
 
 ---
 title: "Web3Auth integration"
@@ -19312,7 +19264,196 @@ export async function POST(req: Request) {
 
 ---
 
-## x402 Integration Guide
+## Webhooks
+
+---
+title: Webhooks
+description: Register HTTP endpoints to receive real-time event notifications for treasury, transactions, policies, platform lifecycle, and more.
+sidebar_position: 15
+---
+
+# Webhooks
+
+Register webhook endpoints to receive real-time HTTP POST notifications when events occur in your organization. Deliveries include an HMAC-SHA256 signature for verification. Failed deliveries retry up to 5 times with exponential backoff.
+
+:::info Human-only management
+Webhook CRUD endpoints require a **user JWT** (`principal_type: "user"`). Agents cannot register or modify webhooks.
+:::
+
+## Quickstart
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/webhooks" \
+  -H "Authorization: Bearer $USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-app.com/webhooks/1claw",
+    "events": ["agent.transaction.broadcast", "policy.created"],
+    "description": "Production event handler"
+  }'
+```
+
+The response includes a one-time `secret` — store it securely. All subsequent deliveries are signed with this secret in the `X-Webhook-Signature` header.
+
+## Endpoints
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| POST | `/v1/webhooks` | Register a webhook (returns signing secret once) |
+| GET | `/v1/webhooks` | List webhooks for the org |
+| GET | `/v1/webhooks/{id}` | Get webhook details |
+| PATCH | `/v1/webhooks/{id}` | Update URL, events, active status, or description |
+| DELETE | `/v1/webhooks/{id}` | Delete a webhook |
+| POST | `/v1/webhooks/{id}/rotate-secret` | Rotate the HMAC signing secret (returns new secret once) |
+
+## Verifying signatures
+
+Each delivery includes an `X-Webhook-Signature` header containing an HMAC-SHA256 hex digest of the raw request body, computed with your webhook secret. Verify the signature before processing the payload.
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+```
+
+## Supported events
+
+Subscribe to one or more event types when creating or updating a webhook:
+
+### Treasury & wallets
+
+| Event | Description |
+| ----- | ----------- |
+| `wallet.transfer.sent` | Outgoing transfer from a treasury wallet |
+| `wallet.transfer.received` | Incoming transfer to a treasury wallet |
+| `deposit.received` | Inbound deposit detected |
+| `deposit.confirmed` | Deposit confirmed on-chain |
+| `deposit.credited` | Deposit credited to internal ledger |
+| `deposit_destination.created` | New deposit destination created |
+| `fiat.onramp.completed` | Fiat on-ramp completed |
+| `fiat.offramp.completed` | Fiat off-ramp completed |
+| `internal_transfer.completed` | Internal ledger transfer completed |
+
+### Multisig proposals
+
+| Event | Description |
+| ----- | ----------- |
+| `proposal.created` | New Safe multisig proposal created |
+| `proposal.signed` | Proposal received a signature |
+| `proposal.executed` | Proposal executed on-chain |
+| `proposal.cancelled` | Proposal cancelled |
+
+### Agent transactions & signing
+
+| Event | Description |
+| ----- | ----------- |
+| `agent.transaction.broadcast` | Agent transaction broadcast to chain |
+| `agent.transaction.signed` | Agent transaction signed (sign-only mode) |
+| `signing_key.rotated` | Agent signing key rotated |
+
+### Policies
+
+| Event | Description |
+| ----- | ----------- |
+| `policy.created` | Access policy created |
+| `policy.updated` | Access policy updated |
+| `policy.deleted` | Access policy deleted |
+
+### Payment cards
+
+| Event | Description |
+| ----- | ----------- |
+| `card.ordered` | Card order submitted |
+| `card.ready` | Card ready for use |
+| `card.revealed` | Card PAN revealed (human or agent) |
+| `card.voided` | Card voided |
+| `card.depleted` | Card balance depleted |
+| `card.orphaned_payment` | Order stuck in `ordering` (reconciliation needed) |
+| `card.rejected` | Card order rejected |
+
+### Approvals
+
+| Event | Description |
+| ----- | ----------- |
+| `approval.created` | Agent approval request created |
+| `approval.decided` | Approval approved or rejected |
+| `pending_approval.created` | Consensus pending approval created |
+| `pending_approval.approved` | Pending approval approved |
+| `pending_approval.rejected` | Pending approval rejected |
+| `pending_approval.executed` | Pending approval executed |
+| `pending_approval.expired` | Pending approval expired |
+
+### Platform API
+
+| Event | Description |
+| ----- | ----------- |
+| `platform.user.connected` | User connected to platform app |
+| `platform.user.claimed` | User claimed bootstrapped resources |
+| `platform.user.disconnected` | User disconnected from platform app |
+| `platform.bootstrap.completed` | Bootstrap finished for connected user |
+| `platform.grant.created` | User granted platform app access to resources |
+| `platform.grant.revoked` | Resource grant revoked |
+
+### Policy backend (Cedar/OPA)
+
+| Event | Description |
+| ----- | ----------- |
+| `policy_backend.circuit_breaker_opened` | Advanced policy backend circuit breaker opened |
+| `policy_backend.circuit_breaker_closed` | Advanced policy backend circuit breaker closed |
+
+## Secret rotation
+
+Rotate the HMAC signing secret without deleting the webhook:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/webhooks/WEBHOOK_ID/rotate-secret" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+The new secret is returned once. Update your verification logic before the next delivery.
+
+## Delivery behavior
+
+- Events are dispatched via HTTP POST to your registered URL
+- A background worker processes pending deliveries every 5 seconds
+- Failed deliveries retry up to **5 times** with exponential backoff
+- Delivery history is stored in the `webhook_deliveries` table
+- Webhook destination URLs are validated via SSRF protection (blocks private IPs, cloud metadata endpoints, and `.internal` hostnames)
+- HTTP redirect following is disabled to prevent SSRF
+
+## SDK
+
+```typescript
+// TypeScript SDK
+const webhook = await client.webhooks.create({
+  url: "https://your-app.com/webhooks/1claw",
+  events: ["agent.transaction.broadcast"],
+});
+
+await client.webhooks.update(webhook.id, { is_active: false });
+await client.webhooks.delete(webhook.id);
+```
+
+## Platform apps
+
+Platform developers often subscribe to platform lifecycle events. See [Platform API — Webhook Events](/docs/guides/platform-api#platform-webhook-events) for platform-specific setup patterns and the `platform.*` event types.
+
+Treasury-focused webhook examples (transfers, proposals) are also covered in the [Treasury guide](/docs/guides/treasury#webhooks).
+
+## See also
+
+- [Platform API](/docs/guides/platform-api) — bootstrap users and subscribe to platform events
+- [Treasury](/docs/guides/treasury) — wallet transfers and multisig proposal events
+- [Audit and compliance](/docs/guides/audit-and-compliance) — audit log for all API activity
+- [API reference — Webhooks](/docs/reference/api-reference#webhooks)
+
+
+---
+
+## x402 Micropayments
 
 ---
 title: x402 Micropayments
@@ -20927,7 +21068,7 @@ To read a **specific** version, use the versioned endpoint if your deployment su
 
 ---
 
-## CrewAI
+## CrewAI integration
 
 ---
 title: CrewAI integration
@@ -21007,7 +21148,7 @@ vault_tool = OneclawVaultTool(
 
 ---
 
-## LangChain
+## LangChain integration
 
 ---
 title: LangChain integration
@@ -21092,6 +21233,7 @@ For most Python LangChain projects, `langchain-1claw` is simpler: typed tools, n
 ---
 title: Introduction
 description: 1claw is a cloud HSM secrets manager that lets humans grant AI agents scoped, audited, revocable access to secrets without exposing raw credentials.
+keywords: [1claw, HSM, secrets manager, AI agents, vault, zero trust, cloud HSM]
 sidebar_position: 0
 ---
 
@@ -21169,7 +21311,7 @@ Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1cl
 
 ## How to navigate these docs
 
-- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK).
+- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK). See also [licensing](/docs/concepts/licensing) (MIT client packages vs proprietary server).
 - **[Vault](/docs/human-api/overview)** — Quickstart, Human API, Agent API, MCP Server, and all vault-related guides (access control, rotation, CMEK, sharing, CLI, billing, troubleshooting).
 - **[Shroud](/docs/guides/shroud)** — LLM proxy setup, supported providers (OpenAI, Anthropic, Google/Gemini, OpenRouter, etc.), threat detection, and vault-backed API keys.
 - **[Intents](/docs/guides/intents-api)** — Enabling the Intents API, submitting transactions, guardrails, simulation, and supported chains.
@@ -21181,8 +21323,7 @@ Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1cl
 
 - [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
 - [Parts of 1claw](/docs/concepts/parts-of-1claw) — Three products (Vault, Shroud, Intents) and how to use them (Dashboard, API, MCP, CLI, SDK).
-- [Quickstart for humans](/docs/quickstart/humans) — Log in and store your first secret.
-- [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
+- [Quickstart](/docs/quickstart) — Fastest path: `1claw setup`, human path, or agent path.
 - [Shroud](/docs/guides/shroud) — Route LLM traffic through Shroud for inspection and redaction.
 - [Intents API](/docs/guides/intents-api) — Let agents sign transactions without seeing keys.
 - [Glossary](/docs/reference/glossary) — Definitions of vault, secret, policy, agent, and other terms.
@@ -21265,11 +21406,12 @@ Note: In hosted mode, auth credentials come from client request headers (`Author
 
 ---
 
-## MCP Server
+## MCP Server Overview
 
 ---
 title: MCP Server Overview
 description: The 1claw MCP server gives AI agents secure, just-in-time access to secrets via the Model Context Protocol. Available as a hosted service or local stdio process.
+keywords: [MCP, Model Context Protocol, Claude Desktop, Cursor, agent secrets]
 sidebar_position: 0
 ---
 
@@ -21559,7 +21701,7 @@ The MCP server translates vault API errors into clear, actionable messages:
 
 ---
 
-## Setup Guide
+## MCP Setup Guide
 
 ---
 title: MCP Setup Guide
@@ -21769,7 +21911,7 @@ pnpm inspect
 
 ---
 
-## Tool Reference
+## MCP Tool Reference
 
 ---
 title: MCP Tool Reference
@@ -23617,6 +23759,7 @@ Returns `{ "secrets": [ ... ] }` with id, path, type, version, metadata, created
 ---
 title: Quickstart
 description: Get started with 1Claw in minutes — CLI setup, human and agent flows, and integration paths.
+keywords: [1claw quickstart, CLI setup, agent onboarding, vault tutorial]
 slug: /quickstart
 ---
 
@@ -25365,6 +25508,57 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 ## 2026-08 (latest)
 
+### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
+
+#### Policy backend
+- **New:** `GET/PATCH /v1/org/settings/policy-backend` — configure Cedar/OPA backend (`builtin`, `cedar`, `opa`, `builtin+cedar`, `builtin+opa`), mode (`shadow` default or `enforce`), scope actions, and circuit breaker (`fail_closed` default).
+- **New:** `GET /v1/org/policy-shadow-report` — divergence report when running advanced backends in shadow mode.
+
+#### Contract ABIs
+- **New:** `POST/GET/DELETE /v1/org/contract-abis`, `GET /v1/org/contract-abis/{id}` — org-scoped ABI registry for transaction decoding in policy evaluation.
+
+#### Consensus / pending approvals
+- **New:** `consensus_trigger` on access policies — structured conditions (value, chain, address, function selector, ERC-20 amount, intent type, always).
+- **New:** `POST/GET /v1/pending-approvals`, approve/execute/cancel endpoints — multi-party approval workflow; sign/transactions return **202** when consensus matches.
+- **New webhook events:** `pending_approval.*`, `policy_backend.circuit_breaker_*`.
+
+#### Cedar/OPA
+- **Changed:** Cedar and OPA policy responses include dynamic `enforcement_status` (`shadow`, `enforce`, `inactive`) from org backend config.
+
+#### Clients
+- `@1claw/sdk@0.48.0`, `@1claw/cli@0.48.0`, `@1claw/mcp@0.48.0`, `@1claw/openapi-spec@0.48.0`
+- Python SDK `oneclaw@0.48.0`, Go SDK `v0.48.0`
+
+---
+
+### v0.47.3 — Billing quotas: wallets, signatures, Free treasury (2026-08-13)
+
+#### Quotas
+- **Changed:** Dropped the 0.25% of transaction-value Intents fee. Signature overage is a flat per-signature charge (`proxy_transaction_submit` rates: Free $0.225, Pro $0.15, Team $0.075, Business $0.04) via prepaid credits or x402. Included signatures remain free up to the monthly quota.
+- **Changed:** Business API calls/month raised to **1,000,000** (was 500,000).
+- **New:** Unified **wallet quota** covering active treasury wallets, agent signing keys, smart accounts, and agents with an EOA. Free 10, Pro 10,000, Team 250,000, Business 1,000,000, Enterprise unlimited.
+- **New:** Monthly **signature quota** (Free 100, Pro 20,000, Team 200,000, Business 1,000,000). Over quota is billed, not hard-blocked.
+- **Changed:** Signing POSTs (`POST /v1/agents/{id}/sign`, `/transactions`, `/transactions/sign`) no longer consume the API Calls meter.
+
+#### Treasury wallets
+- **Changed:** Treasury wallet generate/import/rotate/send/swap are available on **all tiers** (no Pro+ gate). Counted against the wallet quota. Dashboard `/treasury` is no longer Pro-walled.
+
+#### API
+- **Changed:** `GET /v1/billing/subscription` `usage` now includes `wallets` (`{ used, limit }`) alongside `requests` and `intent_transactions`.
+
+#### Quotas (runtime hours)
+- **Fixed:** Runtime hour caps now match the pricing page: Pro **100h/mo** (was 720h), Team **500h/mo** (was 7,200h), Business **2,000h/mo** (was 18,000h). Enforcement in `tier_limits()` was out of sync with customer-facing limits.
+
+#### Pricing clarity
+- **Changed:** Restored Pro wallet quota to **10,000** and signature quota to **20,000** (reverts interim 100/1,000 limits).
+- **Changed:** Pricing page and docs now distinguish **Execution Intents** (Pro+, HTTP/GraphQL binding calls, hard monthly execution cap) from **Intents API** (Business+, on-chain signing, Signatures/mo meter).
+
+#### Clients
+- `@1claw/sdk@0.47.3`, `@1claw/cli@0.47.2`, `@1claw/openapi-spec@0.47.3`
+- Python SDK `oneclaw@0.47.3`, Go SDK `v0.47.3`
+
+---
+
 ### v0.47.0 — Turnkey Parity Features (2026-08-13)
 
 #### Key Import (BYOK)
@@ -26320,7 +26514,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 - **New:** Dashboard wizard UI with QR codes for public addresses and key export.
 - **New:** SDK — `client.treasury.generateWallets()`, `.listWallets()`, `.getWallet()`, `.exportWallet()`, `.rotateWallet()`, `.deactivateWallet()`.
 - **New:** CLI — `1claw treasury generate`, `list`, `get`, `export`, `rotate`, `deactivate`.
-- **Changed:** Treasury page no longer requires beta access; treasury wallets are available on all tiers and count toward wallet quota.
+- **Changed:** Treasury page no longer requires beta access — requires Pro+ subscription.
 - **Removed:** Coinbase CDP embedded wallets replaced by native wallet generation.
 
 ### Multi-chain signing keys (v0.18)
@@ -27930,14 +28124,13 @@ All KMS requests include CRC32C checksums. The API verifies response checksums a
 
 ---
 title: Principal-Type Audit
-description: Pointer to the Phase 11 principal_type allowlist/denylist audit.
+description: Redirects to the principal-type audit guide in Security.
+unlisted: true
 ---
 
-# Principal-Type Audit
+# Principal-Type Audit (moved)
 
-This document lives with the guides:
-
-→ **[Principal-Type Audit (Phase 11)](/docs/guides/principal-type-audit)**
+The full Phase 11 principal-type audit lives at **[Principal-Type Audit](/docs/guides/principal-type-audit)** in the Security section.
 
 It inventories every sensitive `principal_type` check in `vault/src/` and classifies allowlist vs denylist patterns for `platform_delegated` safety.
 
@@ -28148,7 +28341,7 @@ The Risk Engine requires no configuration to activate — it runs automatically 
 
 ---
 
-## Two-factor authentication (2FA)
+## Two-factor authentication
 
 ---
 title: Two-factor authentication
