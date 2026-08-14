@@ -1510,7 +1510,7 @@ All error responses include a `detail` field with a human-readable message.
 | Tier       | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Price                                        |
 | ---------- | ------------ | --------- | ------------- | --------- | --------- | --------- | -------------------------------------------- |
 | Free       | 1,000        | 10        | 100           | 3         | 50        | 2         | $0                                           |
-| Pro        | 20,000       | 10,000    | 20,000        | 5         | 500       | 10        | $29/mo                                       |
+| Pro        | 20,000       | 100       | 1,000         | 5         | 500       | 10        | $29/mo                                       |
 | Team       | 200,000      | 250,000   | 200,000       | 100       | 5,000     | 50        | $299/mo (SSO, Platform API)                  |
 | Business   | 1,000,000    | 1,000,000 | 1,000,000     | Unlimited | Unlimited | 200       | $999/mo (+ CMEK, Intents, Shroud Enterprise, Treasury Wallets) |
 | Enterprise | Unlimited    | Unlimited | Unlimited     | Unlimited | Unlimited | Unlimited | Contact                                      |

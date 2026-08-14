@@ -482,7 +482,7 @@ For operating dozens or hundreds of agents:
 ## Billing
 
 - Free: 1,000 API calls/mo, 10 wallets, 100 signatures
-- Pro ($29/mo): 20,000 API calls, 10,000 wallets, 20,000 signatures, Platform API
+- Pro ($29/mo): 20,000 API calls, 100 wallets, 1,000 signatures, Platform API
 - Team ($299/mo): 200,000 API calls, 250,000 wallets, 200,000 signatures, SSO, Platform API
 - Business ($999/mo): 1,000,000 API calls, wallets, and signatures, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
 - Enterprise: Custom, unlimited, KMS delegation, BAA
