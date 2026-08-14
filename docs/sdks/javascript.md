@@ -242,7 +242,7 @@ To regenerate types after spec changes (when working from the monorepo): `npm ru
 
 ## Human API (dashboard / server)
 
-The dashboard uses **fetch** and **TanStack Query** with the same base URL and JWT. There is no separate "human" SDK package; use `@1claw/sdk` or fetch with the [Human API](/docs/human-api/overview) docs.
+The dashboard uses **fetch** and **TanStack Query** with the same base URL and JWT. There is no separate "human" SDK package; use `@1claw/sdk` or fetch with the [Human API](/docs/vaults/human-api/overview) docs.
 
 ## Related
 

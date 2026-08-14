@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 This page gets you from zero to a stored secret in a few minutes: obtain a JWT, create a vault, then create and read a secret.
 
 :::tip Fastest path
-Prefer the CLI? Run [`1claw login`](/docs/guides/cli#authentication), then `1claw vault create` and `1claw secret set`. Or use [`1claw setup`](/docs/quickstart#fastest-cli-setup) to provision vault + agent + AI client MCP in one step. See the [Quickstart hub](/docs/quickstart) for all paths.
+Prefer the CLI? Run [`1claw login`](/docs/integrations/cli#authentication), then `1claw vault create` and `1claw secret set`. Or use [`1claw setup`](/docs/quickstart#fastest-cli-setup) to provision vault + agent + AI client MCP in one step. See the [Quickstart hub](/docs/quickstart) for all paths.
 :::
 
 :::tip Try it out
@@ -272,6 +272,6 @@ Returns `{ "secrets": [ ... ] }` with id, path, type, version, metadata, created
 
 ## Next steps
 
-- [Human API overview](/docs/human-api/overview) — All endpoints and auth options.
-- [Create a secret](/docs/human-api/secrets/create) — Full request/response and options.
-- [Give an agent access](/docs/guides/give-agent-access) — Register an agent and grant read access.
+- [Human API overview](/docs/vaults/human-api/overview) — All endpoints and auth options.
+- [Create a secret](/docs/vaults/human-api/secrets/create) — Full request/response and options.
+- [Give an agent access](/docs/vaults/golden-path) — Register an agent and grant read access.

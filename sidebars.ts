@@ -1,7 +1,7 @@
 import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 /**
- * Docs: Concepts, Guides (how-tos), product areas (Vault, Shroud, Intents, Treasury), SDKs, Security, Reference.
+ * Product-centric IA: Introduction → Quickstart → Concepts → product areas → Guides → SDKs → Integrations → Security → Reference
  */
 const sidebars: SidebarsConfig = {
     docs: [
@@ -27,505 +27,204 @@ const sidebars: SidebarsConfig = {
         },
         {
             type: "category",
-            label: "Guides",
-            link: {
-                type: "generated-index",
-                title: "Guides",
-                description:
-                    "Task-focused walkthroughs: when to use each guide is spelled out in the sidebar title.",
-                slug: "/category/guides",
-            },
-            items: [
-                {
-                    type: "category",
-                    label: "Getting started",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/setup-by-client",
-                            label: "Setup by client — Claude, Cursor, ChatGPT",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/five-minute-walkthrough",
-                            label: "5-minute walkthrough — vault, key, transaction",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Access & policies",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/give-agent-access",
-                            label: "Golden path — vault, secret, policy, agent fetch",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/securing-agent-access",
-                            label: "Reduce blast radius — vault binding, scopes, TTL",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/scoped-permissions",
-                            label: "Fine-grained access — policies and API key scopes",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/policy-engine",
-                            label: "Policy engine — Cedar, OPA, consensus, ABIs",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/revoking-access",
-                            label: "Offboard — revoke policies and tighten access",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Secrets & encryption",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/rotating-secrets",
-                            label: "Rotate credentials safely in the vault",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/sharing-secrets",
-                            label: "Share with people or agents (inbound / outbound)",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/customer-managed-keys",
-                            label: "CMEK — extra client-side encryption layer",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/mpc",
-                            label: "MPC — split keys across HSM providers",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/secret-rotation-bindings",
-                            label: "Rotation & bindings — rotate without redeploying",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Agents & scale",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/agent-self-onboarding",
-                            label: "Self-enrollment — agents request access via email flow",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-fleet-management",
-                            label: "Many agents — environments, keys, and operations",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/oidc-federation",
-                            label: "OIDC federation — Anthropic WIF, no static keys",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/approvals",
-                            label: "Human-in-the-loop — approvals for agent actions",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-delegation",
-                            label: "Delegation — inter-agent task delegation",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Tools, CLI & integrations",
-                    items: [
-                    {
-                        type: "doc",
-                        id: "guides/mcp-integration",
-                        label: "MCP — Claude Desktop and compatible clients",
-                    },
-                    {
-                        type: "doc",
-                        id: "guides/base-mcp-secure",
-                        label: "Base MCP — secure Base MCP with 1Claw",
-                    },
-                        {
-                            type: "doc",
-                            id: "guides/cli",
-                            label: "CLI — CI/CD, env pull/push, full API",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-templates",
-                            label: "Agent templates — contribute a spawn template",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/openclaw",
-                            label: "OpenClaw — Cursor / editor plugin",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/elizaos",
-                            label: "elizaOS — vault + signing plugin",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/scaffold-agent",
-                            label: "Scaffold-Agent — monorepo for onchain AI agents",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/ecosystem",
-                            label: "Ecosystem — all integrations directory",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Wallet & key infra migrations",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/migrate-from-dynamic",
-                            label: "Dynamic — migration guide",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/migrate-from-privy",
-                            label: "Privy — side-by-side integration",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/coinbase-smart-wallet",
-                            label: "Coinbase Wallet / Smart Wallet",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/migrate-from-turnkey",
-                            label: "Turnkey — migration from API key infra",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/web3auth",
-                            label: "Web3Auth — social login + 1claw backend",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/thirdweb",
-                            label: "Thirdweb — replace Engine, keep frontend",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/magic",
-                            label: "Magic — auth wallets + 1claw agents",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/fireblocks",
-                            label: "Fireblocks — institutional custody complement",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/safe-multisig",
-                            label: "Safe — proposals, signing, auto-execute",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/account-abstraction",
-                            label: "ERC-4337 — smart accounts with 1claw signers",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/wagmi-rainbowkit",
-                            label: "wagmi + RainbowKit — frontend + 1claw backend",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "AI agent integrations",
-                    items: [
-                        {
-                            type: "category",
-                            label: "Official packages",
-                            items: [
-                                {
-                                    type: "doc",
-                                    id: "integrations/langchain",
-                                    label: "LangChain — langchain-1claw on PyPI",
-                                },
-                                {
-                                    type: "doc",
-                                    id: "integrations/crewai",
-                                    label: "CrewAI — 1claw-crewai-tools on PyPI",
-                                },
-                            ],
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-frameworks",
-                            label: "Agent frameworks — Eliza, GOAT, LangChain, CrewAI",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/mcp-deep-dive",
-                            label: "MCP for AI tools — Cursor, Claude, VS Code, Zed",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/ai-sdk-integration",
-                            label: "Vercel AI SDK / OpenAI Agents SDK",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "LLM, transactions & treasury",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/shroud",
-                            label: "Shroud — LLM proxy, redaction, threat detection",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/shroud-threat-detection",
-                            label: "Shroud — threat detection filters",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/shroud-configuration",
-                            label: "Shroud — configuration & operations",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/ide-shroud-setup",
-                            label: "IDEs — local proxy for Cursor, Copilot, Claude Code",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/intents-api",
-                            label: "Intents API — sign txs without raw private keys",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/intents-signing",
-                            label: "Intents API — signing & multi-chain",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/intents-guardrails",
-                            label: "Intents API — guardrails & security",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/bankr-key-vending",
-                            label: "Bankr Key Vending — dynamic short-lived keys",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/payment-cards",
-                            label: "Payment Cards — order prepaid/gift cards via x402",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/crypto-proxy",
-                            label: "Note: Crypto proxy renamed → Intents API",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/multi-chain-signing",
-                            label: "Multi-chain signing keys — per-agent keypairs",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/treasury",
-                            label: "Treasury — Safe multisigs & access requests",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/platform-api",
-                            label: "Platform API — build products on 1Claw",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/webhooks",
-                            label: "Webhooks — real-time event notifications",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/multi-tenant-platform",
-                            label: "Multi-tenant — bootstrap users with templates",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/oauth-connected-accounts",
-                            label: "OAuth connected accounts — Google, GitHub, Slack",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/embedded-wallets-quickstart",
-                            label: "Embedded wallets — 2-minute quickstart",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/wallet-react",
-                            label: "@1claw/wallet-react — embeddable React widget",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Agent communication",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/agent-communication",
-                            label: "Chat & Channels — Telegram, WhatsApp, Discord",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Automations, runtimes & memory",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/automations",
-                            label: "Automations — cron, webhooks, AI workflows",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/runtimes",
-                            label: "Cloud Runtimes — managed containers for agents",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/hosting",
-                            label: "Hosting — public URLs for agent runtimes",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-memory",
-                            label: "Agent Memory — scratch, durable, semantic storage",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/agent-discovery",
-                            label: "Agent Discovery — directory, A2A, MCP URLs",
-                        },
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Billing, ops & compliance",
-                    items: [
-                        {
-                            type: "doc",
-                            id: "guides/billing-and-usage",
-                            label: "Billing — tiers, credits, x402, LLM token add-on",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/x402",
-                            label: "x402 — on-chain micropayments for overages",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/deploying-updates",
-                            label: "Ship changes — agents, policies, rotation",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/audit-and-compliance",
-                            label: "Audit log — evidence for reviews and compliance",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/email-notifications",
-                            label: "Email — enroll, shares, billing alerts",
-                        },
-                        {
-                            type: "doc",
-                            id: "guides/troubleshooting",
-                            label: "Troubleshooting — common API and auth issues",
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            type: "category",
-            label: "Vault",
-            link: { type: "doc", id: "human-api/overview" },
+            label: "Vaults",
+            link: { type: "doc", id: "vaults/overview" },
             collapsed: false,
             items: [
+                "vaults/golden-path",
+                "vaults/securing-access",
+                "vaults/scoped-permissions",
+                "vaults/revoking-access",
+                "vaults/rotating-secrets",
+                "vaults/rotation-bindings",
+                "vaults/cmek",
+                "vaults/mpc",
                 {
                     type: "category",
                     label: "Human API",
+                    link: { type: "doc", id: "vaults/human-api/overview" },
                     items: [
-                        "human-api/authentication",
+                        "vaults/human-api/authentication",
                         {
                             type: "category",
                             label: "Secrets",
                             items: [
-                                "human-api/secrets/create",
-                                "human-api/secrets/read",
-                                "human-api/secrets/update",
-                                "human-api/secrets/delete",
-                                "human-api/secrets/rotate",
+                                "vaults/human-api/secrets/create",
+                                "vaults/human-api/secrets/read",
+                                "vaults/human-api/secrets/update",
+                                "vaults/human-api/secrets/delete",
+                                "vaults/human-api/secrets/rotate",
                             ],
                         },
                         {
                             type: "category",
                             label: "Grants (Policies)",
                             items: [
-                                "human-api/grants/create-grant",
-                                "human-api/grants/revoke-grant",
-                                "human-api/grants/list-grants",
+                                "vaults/human-api/grants/create-grant",
+                                "vaults/human-api/grants/revoke-grant",
+                                "vaults/human-api/grants/list-grants",
                             ],
                         },
                         {
                             type: "category",
                             label: "Agents",
                             items: [
-                                "human-api/agents/register-agent",
-                                "human-api/agents/list-agents",
-                                "human-api/agents/deactivate-agent",
+                                "vaults/human-api/agents/register-agent",
+                                "vaults/human-api/agents/list-agents",
+                                "vaults/human-api/agents/deactivate-agent",
                             ],
                         },
-                        "human-api/errors",
-                    ],
-                },
-                {
-                    type: "category",
-                    label: "Agent API",
-                    link: { type: "doc", id: "agent-api/overview" },
-                    items: [
-                        "agent-api/authentication",
-                        "agent-api/fetch-secret",
-                        "agent-api/list-accessible-secrets",
-                        "agent-api/audit-log",
-                        "agent-api/errors",
+                        "vaults/human-api/errors",
                     ],
                 },
                 {
                     type: "category",
                     label: "MCP Server",
-                    link: { type: "doc", id: "mcp/overview" },
-                    items: ["mcp/setup", "mcp/tools", "mcp/security", "mcp/deployment"],
+                    link: { type: "doc", id: "vaults/mcp/overview" },
+                    items: [
+                        "vaults/mcp/setup",
+                        "vaults/mcp/tools",
+                        "vaults/mcp/security",
+                        "vaults/mcp/deployment",
+                    ],
                 },
+            ],
+        },
+        {
+            type: "category",
+            label: "Agents",
+            link: { type: "doc", id: "agents/overview" },
+            collapsed: false,
+            items: [
+                "agents/self-enrollment",
+                "agents/fleet-management",
+                "agents/delegation",
+                "agents/discovery",
+                "agents/memory",
+                "agents/communication",
+                "agents/channels",
+                "agents/bankr-keys",
+                "agents/oidc-federation",
+                {
+                    type: "category",
+                    label: "Shroud (LLM proxy)",
+                    link: { type: "doc", id: "agents/shroud/overview" },
+                    items: [
+                        "agents/shroud/threat-detection",
+                        "agents/shroud/configuration",
+                        "agents/shroud/ide-setup",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Intents (signing)",
+                    link: { type: "doc", id: "agents/intents/overview" },
+                    items: [
+                        "agents/intents/signing",
+                        "agents/intents/guardrails",
+                        "agents/intents/multi-chain-signing",
+                        "agents/intents/crypto-proxy-legacy",
+                    ],
+                },
+                {
+                    type: "category",
+                    label: "Agent API",
+                    link: { type: "doc", id: "agents/api/overview" },
+                    items: [
+                        "agents/api/authentication",
+                        "agents/api/fetch-secret",
+                        "agents/api/list-accessible-secrets",
+                        "agents/api/audit-log",
+                        "agents/api/errors",
+                    ],
+                },
+            ],
+        },
+        {
+            type: "category",
+            label: "Automations",
+            link: { type: "doc", id: "automations/overview" },
+            items: [],
+        },
+        {
+            type: "category",
+            label: "Runtimes",
+            link: { type: "doc", id: "runtimes/overview" },
+            items: ["runtimes/hosting"],
+        },
+        {
+            type: "category",
+            label: "Cards",
+            link: { type: "doc", id: "cards/overview" },
+            items: [],
+        },
+        {
+            type: "category",
+            label: "Treasury",
+            link: { type: "doc", id: "treasury/overview" },
+            collapsed: false,
+            items: [
+                "treasury/embedded-wallets",
+                "treasury/wallet-react",
+                "treasury/safe-multisig",
+                "treasury/account-abstraction",
+                "treasury/approvals",
+                "treasury/policy-engine",
+            ],
+        },
+        {
+            type: "category",
+            label: "Sharing",
+            link: { type: "doc", id: "sharing/overview" },
+            items: [],
+        },
+        {
+            type: "category",
+            label: "Risk Engine",
+            link: { type: "doc", id: "risk-engine/overview" },
+            items: [],
+        },
+        {
+            type: "category",
+            label: "Platform API",
+            link: { type: "doc", id: "platform-api/overview" },
+            items: [
+                "platform-api/multi-tenant",
+                "platform-api/webhooks",
+                "platform-api/oauth-connections",
+            ],
+        },
+        {
+            type: "category",
+            label: "Dashboard",
+            link: { type: "doc", id: "dashboard/overview" },
+            items: [
+                "dashboard/vaults-secrets",
+                "dashboard/agents-policies",
+                "dashboard/treasury-cards",
+                "dashboard/settings-billing",
+                "dashboard/platform-wizard",
+            ],
+        },
+        {
+            type: "category",
+            label: "Guides",
+            link: {
+                type: "generated-index",
+                title: "Guides",
+                description: "Cross-cutting workflows: setup, billing, compliance, troubleshooting.",
+                slug: "/category/guides",
+            },
+            items: [
+                "guides/setup-by-client",
+                "guides/five-minute-walkthrough",
+                "guides/billing-and-usage",
+                "guides/x402",
+                "guides/deploying-updates",
+                "guides/audit-and-compliance",
+                "guides/email-notifications",
+                "guides/troubleshooting",
+                "guides/principal-type-audit",
             ],
         },
         {
@@ -536,6 +235,46 @@ const sidebars: SidebarsConfig = {
         },
         {
             type: "category",
+            label: "Integrations",
+            link: { type: "doc", id: "integrations/overview" },
+            items: [
+                {
+                    type: "category",
+                    label: "Official packages",
+                    items: ["integrations/langchain", "integrations/crewai"],
+                },
+                "integrations/mcp-integration",
+                "integrations/mcp-deep-dive",
+                "integrations/cli",
+                "integrations/agent-frameworks",
+                "integrations/ai-sdk-integration",
+                "integrations/openclaw",
+                "integrations/openclaw-plugin",
+                "integrations/elizaos",
+                "integrations/scaffold-agent",
+                "integrations/base-mcp-secure",
+                "integrations/claude-code",
+                "integrations/agent-templates",
+                "integrations/ecosystem",
+                {
+                    type: "category",
+                    label: "Wallet & key migrations",
+                    items: [
+                        "integrations/migrate-from-dynamic",
+                        "integrations/migrate-from-privy",
+                        "integrations/migrate-from-turnkey",
+                        "integrations/web3auth",
+                        "integrations/thirdweb",
+                        "integrations/magic",
+                        "integrations/fireblocks",
+                        "integrations/coinbase-smart-wallet",
+                        "integrations/wagmi-rainbowkit",
+                    ],
+                },
+            ],
+        },
+        {
+            type: "category",
             label: "Security",
             items: [
                 "security/hsm-overview",
@@ -543,8 +282,6 @@ const sidebars: SidebarsConfig = {
                 "security/agent-keys",
                 "security/zero-trust",
                 "security/two-factor-auth",
-                "security/risk-engine",
-                "guides/principal-type-audit",
                 "security/compliance",
             ],
         },

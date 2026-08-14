@@ -46,7 +46,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 **What it is:** A proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz). Your agent sends LLM requests to Shroud with `X-Shroud-Agent-Key` and `X-Shroud-Provider`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
 
-**When to use it:** When you want to prevent prompt injection, redact secrets from prompts, or centralize provider API keys in the vault. See [Shroud](/docs/guides/shroud).
+**When to use it:** When you want to prevent prompt injection, redact secrets from prompts, or centralize provider API keys in the vault. See [Shroud](/docs/agents/shroud/overview).
 
 **You need:** An agent with Shroud enabled; provider API key in the vault or sent via `X-Shroud-Api-Key`.
 
@@ -56,7 +56,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 **What it is:** Endpoints for submitting and simulating transactions. The agent calls `POST /v1/agents/:id/transactions` with chain, recipient, value, and signing key path; the server signs and broadcasts. Optional: run in Shroud’s TEE for signing inside a confidential environment.
 
-**When to use it:** When your agent needs to send on-chain transactions (transfers, contract calls) without ever holding the private key. See [Intents API](/docs/guides/intents-api).
+**When to use it:** When your agent needs to send on-chain transactions (transfers, contract calls) without ever holding the private key. See [Intents API](/docs/agents/intents/overview).
 
 **You need:** An agent with `intents_api_enabled: true`; a signing key stored in a vault path the agent can read; policies that allow the agent to use that path.
 
@@ -68,7 +68,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 **When to use it:** When you want an AI agent to read or write secrets, create vaults, or sign transactions through 1claw. Configure your AI tool to use the 1claw MCP server (hosted at `mcp.1claw.xyz` or run locally). The agent uses its own API key; you control what it can do via policies.
 
-**You need:** An agent registered in the dashboard (or via API), with policies that grant the agent access to the vaults and paths it needs. See [MCP Setup](/docs/mcp/setup) and [Give an agent access](/docs/guides/give-agent-access).
+**You need:** An agent registered in the dashboard (or via API), with policies that grant the agent access to the vaults and paths it needs. See [MCP Setup](/docs/vaults/mcp/setup) and [Give an agent access](/docs/vaults/golden-path).
 
 ---
 
@@ -78,7 +78,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 **When to use it:** For scripts, cron jobs, deploy pipelines, or any environment where you want to pull secrets or run a process with secrets without building API calls yourself. Use `1claw env run -- your-command` to run a command with vault secrets as environment variables.
 
-**You need:** Node.js 20+; install with `npm i -g @1claw/cli`. Then `1claw login` (device flow) or set `ONECLAW_TOKEN` / `ONECLAW_API_KEY`. See [CLI guide](/docs/guides/cli).
+**You need:** Node.js 20+; install with `npm i -g @1claw/cli`. Then `1claw login` (device flow) or set `ONECLAW_TOKEN` / `ONECLAW_API_KEY`. See [CLI guide](/docs/integrations/cli).
 
 ---
 

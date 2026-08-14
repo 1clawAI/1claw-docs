@@ -179,7 +179,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 ## Treasury
 
-Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](/docs/guides/treasury).
+Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](/docs/treasury/overview).
 
 ### Treasury wallets (multi-chain, human-only)
 
@@ -697,4 +697,4 @@ Human-controlled inter-agent delegation authorization.
 - **POST /v1/auth/refresh** exists but returns **400** with "Refresh tokens not yet implemented". Use token issuance (e.g. `POST /v1/auth/token` or `POST /v1/auth/agent-token`) instead.
 - Request processing order (rate limit, auth, billing, handler) and how to interpret 401, 402, 403, 429: see [Request pipeline](/docs/reference/request-pipeline).
 - Intents API routes additionally require the `intents_api_enabled` claim in the JWT.
-- See [Authentication](/docs/human-api/authentication) for details on obtaining JWTs.
+- See [Authentication](/docs/vaults/human-api/authentication) for details on obtaining JWTs.

@@ -52,7 +52,7 @@ Run post-deploy (or locally):
 cd docs && pnpm run build && pnpm run serve -- --port 3456
 npx lighthouse http://localhost:3456/ --only-categories=performance,seo --quiet
 npx lighthouse http://localhost:3456/docs/quickstart/humans --only-categories=performance,seo --quiet
-npx lighthouse http://localhost:3456/docs/human-api/overview --only-categories=performance,seo --quiet
+npx lighthouse http://localhost:3456/docs/vaults/human-api/overview --only-categories=performance,seo --quiet
 ```
 
 Target: ≥ 90 performance and SEO on homepage, quickstart, and one API reference page.
@@ -63,7 +63,7 @@ Target: ≥ 90 performance and SEO on homepage, quickstart, and one API referenc
 | ---- | ----------- | --- |
 | Homepage (`/`) | 82 | 100 |
 | Quickstart (`/docs/quickstart/humans`) | 81 | 100 |
-| Human API (`/docs/human-api/overview`) | 83 | 100 |
+| Human API (`/docs/vaults/human-api/overview`) | 83 | 100 |
 
 SEO target met. Performance is below 90 on local static serve (large JS bundles + search index); Vercel CDN and production caching may score higher. Main lever: code-split search/Mermaid on doc pages only.
 
@@ -83,3 +83,19 @@ SEO target met. Performance is below 90 on local static serve (large JS bundles 
 - **Changelog pre-2026** — only 2026 split; no 2025 archive page (all content was 2026-only)
 - **Per-page dynamic OG titles** — static `og-docs.png` used; dynamic `1claw.xyz/api/og` available for future per-route meta
 - **Hand-maintained `api-reference.md`** — still points to `@1claw/openapi-spec` as canonical; auto-codegen deferred
+
+## Phase 4 — Product-centric IA (2026-08-14)
+
+Full sidebar reorganization matching product taxonomy:
+
+Introduction → Quickstart → Concepts → **Vaults → Agents → Automations → Runtimes → Cards → Treasury → Sharing → Risk Engine → Platform API → Dashboard → Guides → SDKs → Integrations → Security → Reference**
+
+- **~70 pages moved** from `guides/` into product folders (`vaults/`, `agents/`, `treasury/`, etc.)
+- **Human API + MCP** under `vaults/`; **Agent API** under `agents/api/`
+- **6 new Dashboard pages** (`dashboard/overview` through `platform-wizard`)
+- **New landing pages:** `vaults/overview`, `agents/overview`, `integrations/overview`
+- **92 HTTP redirects** in `redirects.js` for old URLs
+- **Guides slimmed** to 9 cross-cutting workflow pages
+- **Navbar** aligned: Vaults, Agents, Automations, Runtimes, Treasury, Platform
+- Build: 143 pages, 0 broken links
+

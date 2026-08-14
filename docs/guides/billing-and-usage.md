@@ -400,7 +400,7 @@ Response shape (fields vary by org and Stripe data availability):
 
 ## Payment Card Ordering
 
-Card ordering via the [Payment Card Vault](/docs/guides/payment-cards) is available on all tiers with monthly volume quotas:
+Card ordering via the [Payment Card Vault](/docs/cards/overview) is available on all tiers with monthly volume quotas:
 
 | Tier | Cards/month | Default max order | Default daily limit |
 |------|------------|-------------------|---------------------|

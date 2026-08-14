@@ -264,7 +264,7 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 **Shroud fallback order** (`X-Shroud-Provider: bankr`): (1) active lease, (2) `providers/bankr/api-key`, (3) `X-Shroud-Api-Key` header.
 
-**Docs:** https://docs.1claw.xyz/docs/guides/bankr-key-vending
+**Docs:** https://docs.1claw.xyz/docs/agents/bankr-keys
 
 ---
 

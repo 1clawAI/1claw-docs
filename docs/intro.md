@@ -19,18 +19,43 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 
 | Product | What it does | Docs |
 |--------|----------------|------|
-| **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vault →](/docs/human-api/overview) |
-| **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others; blocks prompt injection and hides secrets | [Shroud →](/docs/guides/shroud) |
-| **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/guides/intents-api) |
-| **Treasury** | Native multi-chain wallets and Safe multisigs—wallet generation, signers, thresholds, and agent access requests | [Treasury →](/docs/guides/treasury) |
-| **Mobile App** | iOS + Android companion for human-in-the-loop approvals — passkey auth, biometric unlock, push notifications, risk-tiered step-up (beta) | [Parts of 1claw →](/docs/concepts/parts-of-1claw) |
+| **Vault** | Store and manage secrets; Human API, Agent API, and MCP for just-in-time secret access | [Vaults →](/docs/vaults/overview) |
+| **Agents** | Register agents, Shroud LLM proxy, Intents signing, memory, channels | [Agents →](/docs/agents/overview) |
+| **Shroud** | LLM proxy that inspects and redacts before forwarding to OpenAI, Anthropic, Google (Gemini), and others | [Shroud →](/docs/agents/shroud/overview) |
+| **Intents** | Let agents sign and broadcast blockchain transactions without ever seeing private keys | [Intents →](/docs/agents/intents/overview) |
+| **Treasury** | Native multi-chain wallets, embedded wallets, Safe multisigs, and policy engine | [Treasury →](/docs/treasury/overview) |
+| **Automations** | Cron, webhook, and event-driven workflows | [Automations →](/docs/automations/overview) |
+| **Runtimes** | Managed containers for agents with optional public hosting | [Runtimes →](/docs/runtimes/overview) |
+| **Cards** | Agent-ordered prepaid/gift cards via x402 (PAN never exposed) | [Cards →](/docs/cards/overview) |
+| **Platform API** | Build products on 1Claw with bootstrap templates | [Platform →](/docs/platform-api/overview) |
+| **Dashboard** | Web UI at 1claw.xyz for humans | [Dashboard →](/docs/dashboard/overview) |
 
-- **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/guides/customer-managed-keys) (client-side encryption layer) and [MPC](/docs/guides/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
+- **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/vaults/cmek) (client-side encryption layer) and [MPC](/docs/vaults/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
 - **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
 - **Treasury** provides native multi-chain wallet generation (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) for human users and tracks onchain multisig treasuries with agent access requests.
 
-**Task walkthroughs** (golden paths, CLI, MCP, Scaffold-Agent, billing, and more) live under **[Guides](/docs/category/guides)** in the sidebar.
+**Task walkthroughs** (setup, billing, compliance, troubleshooting) live under **[Guides](/docs/category/guides)**. Product docs are organized by area in the sidebar.
+
+## How to navigate these docs
+
+| Section | Start here |
+|---------|------------|
+| [Vaults](/docs/vaults/overview) | Secrets, policies, CMEK, MPC, Human API, MCP |
+| [Agents](/docs/agents/overview) | Lifecycle, Shroud, Intents, memory, channels |
+| [Automations](/docs/automations/overview) | Workflow spec, triggers, presets |
+| [Runtimes](/docs/runtimes/overview) | Containers, hosting, shell |
+| [Cards](/docs/cards/overview) | x402 card ordering and guardrails |
+| [Treasury](/docs/treasury/overview) | Wallets, embedded wallets, approvals, Cedar/OPA |
+| [Sharing](/docs/sharing/overview) | Share links and inbound flow |
+| [Risk Engine](/docs/risk-engine/overview) | Adaptive auth scoring, honeytokens |
+| [Platform API](/docs/platform-api/overview) | Apps, templates, bootstrap, webhooks |
+| [Dashboard](/docs/dashboard/overview) | Web UI walkthrough |
+| [Guides](/docs/category/guides) | Cross-cutting workflows |
+| [SDKs](/docs/sdks/overview) | TypeScript, Python, Go, curl |
+| [Integrations](/docs/integrations/overview) | LangChain, MCP, migrations |
+| [Security](/docs/security/hsm-overview) | HSM, zero-trust, compliance |
+| [Reference](/docs/reference/api-reference) | API reference, glossary, changelog |
 
 ## Architecture
 
@@ -77,21 +102,11 @@ The same REST API serves both personas:
 
 Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
 
-## How to navigate these docs
-
-- **[Concepts](/docs/concepts/what-is-1claw)** — Vaults, secrets, policies, agents, HSM architecture, and [parts of 1claw](/docs/concepts/parts-of-1claw) (three products + Dashboard, API, MCP, CLI, SDK). See also [licensing](/docs/concepts/licensing) (MIT client packages vs proprietary server).
-- **[Vault](/docs/human-api/overview)** — Quickstart, Human API, Agent API, MCP Server, and all vault-related guides (access control, rotation, CMEK, sharing, CLI, billing, troubleshooting).
-- **[Shroud](/docs/guides/shroud)** — LLM proxy setup, supported providers (OpenAI, Anthropic, Google/Gemini, OpenRouter, etc.), threat detection, and vault-backed API keys.
-- **[Intents](/docs/guides/intents-api)** — Enabling the Intents API, submitting transactions, guardrails, simulation, and supported chains.
-- **[SDKs](/docs/sdks/overview)** — TypeScript/JavaScript, Python, and curl examples.
-- **[Security](/docs/security/hsm-overview)** — HSM, key hierarchy, zero-trust, compliance.
-- **[Reference](/docs/reference/api-reference)** — API reference, request pipeline, error codes, rate limits, [glossary](/docs/reference/glossary), changelog.
-
 ## Next steps
 
 - [What is 1claw?](/docs/concepts/what-is-1claw) — Core concepts in more detail.
 - [Parts of 1claw](/docs/concepts/parts-of-1claw) — Three products (Vault, Shroud, Intents) and how to use them (Dashboard, API, MCP, CLI, SDK).
 - [Quickstart](/docs/quickstart) — Fastest path: `1claw setup`, human path, or agent path.
-- [Shroud](/docs/guides/shroud) — Route LLM traffic through Shroud for inspection and redaction.
-- [Intents API](/docs/guides/intents-api) — Let agents sign transactions without seeing keys.
+- [Shroud](/docs/agents/shroud/overview) — Route LLM traffic through Shroud for inspection and redaction.
+- [Intents API](/docs/agents/intents/overview) — Let agents sign transactions without seeing keys.
 - [Glossary](/docs/reference/glossary) — Definitions of vault, secret, policy, agent, and other terms.

@@ -271,8 +271,8 @@ The human sees the share in their **Inbound** shares in the dashboard and accept
 
 ## Next steps
 
-- [Agent Self-Onboarding](/docs/guides/agent-self-onboarding) — Full agent-first journey: enroll, read, write, share.
-- [Managing Agent Fleets](/docs/guides/agent-fleet-management) — Patterns for operating 100+ agents.
-- [Agent API overview](/docs/agent-api/overview) — Auth and endpoints in one place.
-- [Give an agent access](/docs/guides/give-agent-access) — How a human registers an agent and creates a policy (or, after self-enrollment, how they grant the new agent access to vaults).
-- [Fetch secret](/docs/agent-api/fetch-secret) — Full request/response and errors.
+- [Agent Self-Onboarding](/docs/agents/self-enrollment) — Full agent-first journey: enroll, read, write, share.
+- [Managing Agent Fleets](/docs/agents/fleet-management) — Patterns for operating 100+ agents.
+- [Agent API overview](/docs/agents/api/overview) — Auth and endpoints in one place.
+- [Give an agent access](/docs/vaults/golden-path) — How a human registers an agent and creates a policy (or, after self-enrollment, how they grant the new agent access to vaults).
+- [Fetch secret](/docs/agents/api/fetch-secret) — Full request/response and errors.

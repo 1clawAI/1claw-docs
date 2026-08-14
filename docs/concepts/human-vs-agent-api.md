@@ -54,4 +54,4 @@ Humans need long-lived sessions or API keys for dashboards and automation; agent
 
 - [Quickstart for humans](/docs/quickstart/humans) — Get a JWT and create a vault and secret.
 - [Quickstart for agents](/docs/quickstart/agents) — Get an agent token and fetch a secret.
-- [Give an agent access](/docs/guides/give-agent-access) — End-to-end: secret → agent → policy → fetch.
+- [Give an agent access](/docs/vaults/golden-path) — End-to-end: secret → agent → policy → fetch.

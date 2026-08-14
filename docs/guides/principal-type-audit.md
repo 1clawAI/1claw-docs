@@ -178,6 +178,6 @@ fn require_human(caller: &CallerIdentity) -> Result<(), AppError> {
 
 ## Related
 
-- [Platform API](./platform-api.md)
-- [Multi-tenant platform](./multi-tenant-platform.md)
+- [Platform API](/docs/platform-api/overview)
+- [Multi-tenant platform](/docs/platform-api/multi-tenant)
 - Prod script: `scripts/test-platform-delegation-prod.sh`

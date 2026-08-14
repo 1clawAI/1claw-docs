@@ -45,19 +45,19 @@ export default function Home(): React.ReactElement {
                                     what 1claw is and how it works
                                 </li>
                                 <li>
-                                    <Link to="/docs/human-api/overview">
+                                    <Link to="/docs/vaults/human-api/overview">
                                         Human API
                                     </Link>{" "}
                                     — manage vaults, secrets, and policies
                                 </li>
                                 <li>
-                                    <Link to="/docs/agent-api/overview">
+                                    <Link to="/docs/agents/api/overview">
                                         Agent API
                                     </Link>{" "}
                                     — how agents authenticate and fetch secrets
                                 </li>
                                 <li>
-                                    <Link to="/docs/mcp/overview">MCP Server</Link>{" "}
+                                    <Link to="/docs/vaults/mcp/overview">MCP Server</Link>{" "}
                                     — Model Context Protocol tools for Claude,
                                     Cursor, and other AI agents
                                 </li>

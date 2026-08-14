@@ -63,7 +63,7 @@ Plus `OneclawChatMessageHistory` for durable conversation storage and `OneclawMe
 
 ## MCP alternative
 
-If you already run LangChain with MCP adapters, you can point at the hosted 1Claw MCP server instead of installing this package. That path auto-discovers a larger tool set but adds a network hop. See [Agent frameworks](/docs/guides/agent-frameworks#langchain) for MCP setup.
+If you already run LangChain with MCP adapters, you can point at the hosted 1Claw MCP server instead of installing this package. That path auto-discovers a larger tool set but adds a network hop. See [Agent frameworks](/docs/integrations/agent-frameworks#langchain) for MCP setup.
 
 For most Python LangChain projects, `langchain-1claw` is simpler: typed tools, no MCP server to run, and the same policy gates on the backend.
 
@@ -71,4 +71,4 @@ For most Python LangChain projects, `langchain-1claw` is simpler: typed tools, n
 
 - PyPI: [langchain-1claw](https://pypi.org/project/langchain-1claw/)
 - Source: [github.com/1clawAI/langchain-1claw](https://github.com/1clawAI/langchain-1claw)
-- Broader framework guide: [Agent frameworks](/docs/guides/agent-frameworks)
+- Broader framework guide: [Agent frameworks](/docs/integrations/agent-frameworks)

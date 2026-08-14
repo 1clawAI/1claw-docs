@@ -622,7 +622,7 @@ sidebar_label: "2026"
 - **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
 - **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
 - **Verified end-to-end:** Live testnet transactions confirmed on all non-EVM chains — Solana Devnet (sign-only, submit/broadcast, unified sign), Bitcoin Signet (sign-only, submit/broadcast), Tron Shasta (sign-only, submit/broadcast), and Cardano Preprod (sign-only, submit/broadcast).
-- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/guides/intents-signing#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
+- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/agents/intents/signing#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
 
 ### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
 
@@ -841,7 +841,7 @@ sidebar_label: "2026"
 ### Shroud: Bankr LLM Gateway upstream
 
 - **New:** Shroud provider `bankr` — route agent LLM traffic through [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) (`https://llm.bankr.bot`) with `X-Shroud-Provider: bankr`. Store `bk_` keys at `providers/bankr/api-key`. Empty model allowlist (Bankr catalog is authoritative).
-- **Docs:** [Shroud supported models](/docs/reference/shroud-supported-models#bankr-models), [Shroud guide](/docs/guides/shroud#supported-providers), [Ecosystem](/docs/guides/ecosystem).
+- **Docs:** [Shroud supported models](/docs/reference/shroud-supported-models#bankr-models), [Shroud guide](/docs/agents/shroud/overview#supported-providers), [Ecosystem](/docs/integrations/ecosystem).
 
 ---
 
@@ -1061,7 +1061,7 @@ sidebar_label: "2026"
 - **Updated:** `POST /v1/agents/enroll` — `human_email` is **optional**. With email, a pending enrollment is created and Allow/Deny links are sent; the JSON response may include **`approval_url`** as a fallback if email is delayed. **Name only** creates a link-only pending enrollment; the response includes **`approval_url`** for the human to open while signed in to approve into their org.
 - **Updated:** Database migration allows nullable org/user/email on `pending_agent_enrollments` for link-only rows; global cap on link-only pendings via `ONECLAW_MAX_LINK_ONLY_PENDING_ENROLLMENTS` (default 100).
 - **Updated:** CLI `agent enroll` — `--email` is optional; prints `approval_url` when returned.
-- **Docs:** [Quickstart for agents](/docs/quickstart/agents), [Agent self-onboarding](/docs/guides/agent-self-onboarding), [Give an agent access](/docs/guides/give-agent-access), [OpenClaw](/docs/guides/openclaw).
+- **Docs:** [Quickstart for agents](/docs/quickstart/agents), [Agent self-onboarding](/docs/agents/self-enrollment), [Give an agent access](/docs/vaults/golden-path), [OpenClaw](/docs/integrations/openclaw).
 
 ### MPC Secret Storage
 
@@ -1070,7 +1070,7 @@ sidebar_label: "2026"
 - **New:** `client_share` returned in `SecretCreatedResponse` for client custody modes. Must be stored securely — only returned once. Required via `X-Client-Share` header on read.
 - **New:** Crypto modules — `mpc_provider.rs` (orchestrates split/reconstruct), `shamir.rs` (Shamir secret sharing over GF(256)), `xor_split.rs` (XOR 2-of-2), `hsm_aws.rs` (AWS KMS CryptoProvider), `hsm_azure.rs` (Azure Key Vault CryptoProvider).
 - **New:** Database tables `vault_mpc_keks` and `secret_dek_shares` (migration 063).
-- **New:** [MPC guide](/docs/guides/mpc) in documentation.
+- **New:** [MPC guide](/docs/vaults/mpc) in documentation.
 
 ### GDPR Data Export
 

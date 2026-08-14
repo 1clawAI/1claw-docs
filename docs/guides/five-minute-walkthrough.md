@@ -261,8 +261,8 @@ The response includes the `tx_hash` you can look up on [Sepolia Etherscan](https
 
 ## Next steps
 
-- Add [transaction guardrails](/docs/guides/intents-guardrails#transaction-guardrails) (allowlists, daily spend caps, per-tx limits)
-- Enable [Shroud](/docs/guides/shroud) to inspect and redact LLM traffic
-- Connect via [MCP](/docs/guides/mcp-integration) so your AI coding tools call 1claw directly
-- Set up [human-in-the-loop approvals](/docs/guides/approvals) for high-value operations
-- Explore [multi-chain signing](/docs/guides/multi-chain-signing) for Bitcoin, Solana, XRP, Cardano, and Tron
+- Add [transaction guardrails](/docs/agents/intents/guardrails#transaction-guardrails) (allowlists, daily spend caps, per-tx limits)
+- Enable [Shroud](/docs/agents/shroud/overview) to inspect and redact LLM traffic
+- Connect via [MCP](/docs/integrations/mcp-integration) so your AI coding tools call 1claw directly
+- Set up [human-in-the-loop approvals](/docs/treasury/approvals) for high-value operations
+- Explore [multi-chain signing](/docs/agents/intents/multi-chain-signing) for Bitcoin, Solana, XRP, Cardano, and Tron

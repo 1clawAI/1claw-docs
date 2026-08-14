@@ -47,7 +47,7 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 
 ## MCP: "Access denied" or 403 on get_secret
 
-- The agent must have a **policy** that grants read access to that vault and path. Create a policy in the dashboard (Vault → Policies) with the agent as principal and a path pattern that matches the secret (e.g. `**` for all paths). See [Give an agent access](/docs/guides/give-agent-access).
+- The agent must have a **policy** that grants read access to that vault and path. Create a policy in the dashboard (Vault → Policies) with the agent as principal and a path pattern that matches the secret (e.g. `**` for all paths). See [Give an agent access](/docs/vaults/golden-path).
 
 ## CLI: Device login not completing
 

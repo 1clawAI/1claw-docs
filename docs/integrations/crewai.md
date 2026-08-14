@@ -71,4 +71,4 @@ vault_tool = OneclawVaultTool(
 
 - PyPI: [1claw-crewai-tools](https://pypi.org/project/1claw-crewai-tools/)
 - Source: [github.com/1clawAI/1claw-crewai-tools](https://github.com/1clawAI/1claw-crewai-tools)
-- Broader framework guide: [Agent frameworks](/docs/guides/agent-frameworks)
+- Broader framework guide: [Agent frameworks](/docs/integrations/agent-frameworks)

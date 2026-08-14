@@ -10,7 +10,7 @@ Typed Go client for the 1Claw Vault API. Built for microservices, operators, and
 
 Covers vaults, secrets, agents, policies, billing, audit, treasury, Intents API signing, execution bindings, and platform apps. Agent API keys exchange for JWTs the same way as the TypeScript and Python SDKs.
 
-For AI agents in IDEs, use the [MCP server](/docs/guides/mcp-integration) instead of embedding this client in agent prompts.
+For AI agents in IDEs, use the [MCP server](/docs/integrations/mcp-integration) instead of embedding this client in agent prompts.
 
 ## Installation
 

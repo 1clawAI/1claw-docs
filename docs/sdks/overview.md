@@ -17,7 +17,7 @@ Official clients for calling the 1Claw REST API from your own code. Pick the lan
 - **elizaOS** — `@1claw/plugin-elizaos` adds vault and signing actions to elizaOS characters. See [GitHub](https://github.com/1clawAI/1claw-elizaos-plugin).
 - **curl / HTTP** — Every endpoint is REST. See [curl examples](/docs/sdks/curl-examples).
 
-If you're connecting Cursor or Claude Desktop to a vault, start with [MCP integration](/docs/guides/mcp-integration) instead of an SDK.
+If you're connecting Cursor or Claude Desktop to a vault, start with [MCP integration](/docs/integrations/mcp-integration) instead of an SDK.
 
 **API contract:** The canonical source of truth is the **OpenAPI 3.1** spec, published as [@1claw/openapi-spec](https://www.npmjs.com/package/@1claw/openapi-spec).
 

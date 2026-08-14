@@ -17,7 +17,7 @@ brew install 1clawAI/tap/oneclaw   # or: npm install -g @1claw/cli
 1claw setup
 ```
 
-When setup finishes, your AI assistant can call 1Claw tools (`get_secret`, `list_secrets`, and more) at runtime — secrets stay in the vault, not in prompts or `.env` files. See the [CLI guide](/docs/guides/cli) for all options (`--client cursor`, `--local`, existing agent keys).
+When setup finishes, your AI assistant can call 1Claw tools (`get_secret`, `list_secrets`, and more) at runtime — secrets stay in the vault, not in prompts or `.env` files. See the [CLI guide](/docs/integrations/cli) for all options (`--client cursor`, `--local`, existing agent keys).
 :::
 
 ## How 1Claw works
@@ -59,8 +59,8 @@ Same API for both: `https://api.1claw.xyz`. The dashboard at [1claw.xyz](https:/
 | **AI assistant with vault access** (Cursor, Claude, etc.) | [`1claw setup`](#fastest-cli-setup) | 1 command |
 | **Store secrets as a human** (scripts, apps, CI) | [Human path](#human-path-store-and-use-secrets) | 3–4 steps |
 | **Agent fetching secrets** (service, LangChain, custom code) | [Agent path](#agent-path-fetch-secrets-at-runtime) | 2–4 steps |
-| **Human grants agent access end-to-end** | [Golden path](/docs/guides/give-agent-access) or `1claw setup` | 4 steps |
-| **No cloud / offline secrets** | `1claw init --docker --local` or [local vault](/docs/guides/cli#local-vault-offline-encrypted) | See [CLI](/docs/guides/cli) |
+| **Human grants agent access end-to-end** | [Golden path](/docs/vaults/golden-path) or `1claw setup` | 4 steps |
+| **No cloud / offline secrets** | `1claw init --docker --local` or [local vault](/docs/integrations/cli#local-vault-offline-encrypted) | See [CLI](/docs/integrations/cli) |
 
 ---
 
@@ -100,7 +100,7 @@ export ONECLAW_TOKEN="..."           # or ONECLAW_API_KEY + ONECLAW_VAULT_ID
 1claw env run -- npm start
 ```
 
-Full command reference: [CLI guide](/docs/guides/cli).
+Full command reference: [CLI guide](/docs/integrations/cli).
 
 ---
 
@@ -163,7 +163,7 @@ Then list and fetch secrets the policy allows (metadata vs decrypted value):
 Full walkthrough (enroll, token, list, fetch, share back): [Quickstart for agents](/docs/quickstart/agents).
 
 :::info Policies are the gate
-An agent with an API key but **no policy** gets **zero secrets**. After creating an agent, always add a policy (dashboard, `1claw policy create`, or let `1claw setup` do it). See [Give an agent access](/docs/guides/give-agent-access).
+An agent with an API key but **no policy** gets **zero secrets**. After creating an agent, always add a policy (dashboard, `1claw policy create`, or let `1claw setup` do it). See [Give an agent access](/docs/vaults/golden-path).
 :::
 
 ---
@@ -174,13 +174,13 @@ Choose the interface that matches where your code runs:
 
 | Integration | Best for | Get started |
 | ----------- | -------- | ----------- |
-| **[CLI](/docs/guides/cli)** | Fastest onboarding, CI/CD, `env run`, local daemon | `1claw setup` |
+| **[CLI](/docs/integrations/cli)** | Fastest onboarding, CI/CD, `env run`, local daemon | `1claw setup` |
 | **[Dashboard](https://1claw.xyz)** | Visual setup, policies, audit log, billing | Sign up → onboarding wizard |
-| **[MCP Server](/docs/mcp/overview)** | AI assistants (Claude, Cursor, GPT) calling vault tools | `1claw setup` or [MCP setup](/docs/mcp/setup) |
+| **[MCP Server](/docs/vaults/mcp/overview)** | AI assistants (Claude, Cursor, GPT) calling vault tools | `1claw setup` or [MCP setup](/docs/vaults/mcp/setup) |
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
-| **[Shroud proxy](/docs/guides/shroud)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
-| **[Intents API](/docs/guides/intents-api)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
+| **[Shroud proxy](/docs/agents/shroud/overview)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
+| **[Intents API](/docs/agents/intents/overview)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
 | **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
 | **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
 
@@ -208,11 +208,11 @@ npm run deploy
 
 **4. LLM app with guardrails**
 
-Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.xyz`. See [Shroud](/docs/guides/shroud) and [IDE setup](/docs/guides/ide-shroud-setup).
+Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.xyz`. See [Shroud](/docs/agents/shroud/overview) and [IDE setup](/docs/agents/shroud/ide-setup).
 
 **5. On-chain agent**
 
-Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/guides/intents-api).
+Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/agents/intents/overview).
 
 ---
 
@@ -222,7 +222,7 @@ The shortest manual path if you are not using `1claw setup`:
 
 1. **Sign up** — [1claw.xyz](https://1claw.xyz) or `1claw login`
 2. **Vault + secret** — `1claw vault create` + `1claw secret set …` (or dashboard)
-3. **Agent + policy** — `1claw agent create my-agent` + `1claw policy create …` (or [golden path guide](/docs/guides/give-agent-access))
+3. **Agent + policy** — `1claw agent create my-agent` + `1claw policy create …` (or [golden path guide](/docs/vaults/golden-path))
 4. **Connect** — MCP via `1claw setup`, SDK in your app, or `1claw agent token` + API calls
 
 ---
@@ -242,8 +242,8 @@ The shortest manual path if you are not using `1claw setup`:
 
 - [Quickstart for humans](/docs/quickstart/humans) — REST/SDK vault CRUD in detail
 - [Quickstart for agents](/docs/quickstart/agents) — enroll, token exchange, fetch secrets
-- [Give an agent access](/docs/guides/give-agent-access) — golden path with policies
+- [Give an agent access](/docs/vaults/golden-path) — golden path with policies
 - [Parts of 1Claw](/docs/concepts/parts-of-1claw) — Vault, Shroud, Intents, and all interfaces
-- [CLI](/docs/guides/cli) — full command reference, Docker runtime, local daemon
-- [MCP overview](/docs/mcp/overview) — tools your AI assistant can call
+- [CLI](/docs/integrations/cli) — full command reference, Docker runtime, local daemon
+- [MCP overview](/docs/vaults/mcp/overview) — tools your AI assistant can call
 - [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples

@@ -6,7 +6,7 @@ sidebar_position: 2
 
 # Agent keys
 
-When you [register an agent](/docs/human-api/agents/register-agent) via `POST /v1/agents`, 1Claw automatically generates three types of cryptographic material:
+When you [register an agent](/docs/vaults/human-api/agents/register-agent) via `POST /v1/agents`, 1Claw automatically generates three types of cryptographic material:
 
 | Key | Algorithm | Purpose | Storage |
 |-----|-----------|---------|---------|
@@ -14,7 +14,7 @@ When you [register an agent](/docs/human-api/agents/register-agent) via `POST /v
 | **Signing key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
 
-Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/guides/intents-signing#signing-keys).
+Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/agents/intents/signing#signing-keys).
 
 ## How keys are created
 
@@ -83,7 +83,7 @@ GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ecdh/private_key
 ```
 
 :::tip
-The `ecdh:setup-agents` script in the [Google A2A example](/docs/guides/give-agent-access) automates this: it creates agents and grants each one read access to its own keys.
+The `ecdh:setup-agents` script in the [Google A2A example](/docs/vaults/golden-path) automates this: it creates agents and grants each one read access to its own keys.
 :::
 
 ## Key formats
@@ -121,4 +121,4 @@ Multi-chain signing keys are:
 - **Displayed in the dashboard** — The agent detail page shows a "Signing Keys" card with public keys, addresses, and key version.
 - **Used by the unified sign endpoint** — `POST /v1/agents/{id}/sign` signs EIP-191 messages, EIP-712 typed data, and EIP-2718 transactions using the agent's provisioned key for the specified chain.
 
-See the [Intents API guide](/docs/guides/intents-signing#signing-keys) for full provisioning and signing documentation.
+See the [Intents API guide](/docs/agents/intents/signing#signing-keys) for full provisioning and signing documentation.

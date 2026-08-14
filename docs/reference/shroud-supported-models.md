@@ -18,7 +18,7 @@ If you add or rename models in production, update those TOML files first, then r
 
 ## How to use these IDs
 
-- Set **`X-Shroud-Provider`** to the provider name (see [Shroud guide](/docs/guides/shroud#supported-providers)).
+- Set **`X-Shroud-Provider`** to the provider name (see [Shroud guide](/docs/agents/shroud/overview#supported-providers)).
 - Pass the model as **`model` in the JSON body** (OpenAI-style chat) or **`X-Shroud-Model`**, using the exact strings in the tables below.
 - For **`google`** / **`gemini`**, IDs are the short Gemini model names (e.g. `gemini-2.5-pro`).
 - For **`openrouter`**, the allowlist is empty in config, meaning **any OpenRouter model slug** is accepted (e.g. `anthropic/claude-3.5-sonnet`). OpenRouter’s catalog is authoritative.
@@ -126,7 +126,7 @@ The **`stripe`** provider entry in Shroud also uses an empty model allowlist; ga
 
 ## Policy allowlists (`shroud_config`)
 
-Per-agent **`allowed_models`** / **`denied_models`** in `shroud_config` should use the **same strings** you send in requests (after any Stripe rewrite, the logical model is still the one you chose in your client). See [Shroud — per-agent configuration](/docs/guides/shroud#per-agent-configuration-shroud_config).
+Per-agent **`allowed_models`** / **`denied_models`** in `shroud_config` should use the **same strings** you send in requests (after any Stripe rewrite, the logical model is still the one you chose in your client). See [Shroud — per-agent configuration](/docs/agents/shroud/overview#per-agent-configuration-shroud_config).
 
 ---
 
