@@ -213,7 +213,7 @@ const sidebars: SidebarsConfig = {
                     type: "category",
                     label: "Policy & approvals",
                     collapsed: true,
-                    items: ["treasury/approvals", "treasury/policy-engine"],
+                    items: ["treasury/approvals", "treasury/policy-engine", "treasury/policy-language", "treasury/policy-examples"],
                 },
             ],
         },

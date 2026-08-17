@@ -26,6 +26,7 @@ const CATEGORIES = [
     { prefix: "security/", label: "Security" },
     { prefix: "reference/", label: "Reference" },
     { prefix: "integrations/", label: "Integrations" },
+    { prefix: "treasury/", label: "Treasury Policy" },
 ];
 
 function getAllMdFiles(dir, files = []) {

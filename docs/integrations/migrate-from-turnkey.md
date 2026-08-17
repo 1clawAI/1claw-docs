@@ -100,9 +100,9 @@ console.log("tx_hash:", tx.data.tx_hash);
 
 Key difference: Turnkey requires you to serialize the transaction yourself and pass the raw bytes. 1claw accepts high-level parameters (chain, to, value, data) and handles serialization, nonce management, gas estimation, and broadcasting.
 
-### 3. Replace Turnkey activity policies with 1claw guardrails
+### 3. Replace Turnkey activity policies with 1claw policy language
 
-Turnkey's activity policies control what operations are allowed. 1claw's equivalent is a combination of access policies and transaction guardrails.
+Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only agent guardrail knobs. Guardrails remain the simple per-agent caps.
 
 **Turnkey policy (before):**
 
@@ -115,7 +115,33 @@ Turnkey's activity policies control what operations are allowed. 1claw's equival
 }
 ```
 
-**1claw guardrails (after):**
+**1claw `tx_conditions` + consensus (after):**
+
+```json
+{
+  "effect": "deny",
+  "secret_path_pattern": "agents/**/chains/**",
+  "permissions": ["read"],
+  "tx_conditions": { "value_above": "1000000000" },
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
+    "approval": { "min_approvals": 1 }
+  }
+}
+```
+
+| Turnkey | 1claw |
+| ------- | ----- |
+| `eth.tx.to` | Cedar `resource.to` / `tx_conditions.to_address_in` |
+| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (gwei) |
+| `eth.tx.function_name` | `resource.function_name` / `tx_conditions.function_name_in` |
+| `contract_call_args['amount']` | `resource.arg_amount` / `function_args` |
+| `approvers.count() >= N` | `consensus_trigger.approval.min_approvals` → **202** |
+| Smart Contract Interfaces | `POST /v1/org/contract-abis` (`interface_kind`: `evm_abi` \| `solana_idl`) |
+
+Cedar (Team+) example: `forbid(...) when { resource has function_name && resource.function_name == "transfer" }`. Full field table: [policy language](/docs/treasury/policy-language).
+
+Simple caps still work as agent guardrails:
 
 ```bash
 curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \

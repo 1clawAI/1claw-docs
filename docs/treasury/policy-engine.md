@@ -78,7 +78,7 @@ curl -s -X POST https://api.1claw.xyz/v1/org/cedar-policies \
   -H "Content-Type: application/json" \
   -d '{
     "name": "deny-large-eth-transfer",
-    "policy_text": "forbid(principal, action, resource) when { resource has chain && resource.value_gwei > 1000000000 };"
+    "cedar_text": "permit(principal, action, resource); forbid(principal, action == OneClaw::Action::\"sign\", resource) when { resource has value_gwei && resource.value_gwei > 1000000000 };"
   }'
 ```
 
@@ -101,6 +101,8 @@ Enforcement-path evaluation timeout is **100 ms** (5 s on `/test` only). Fuel li
 
 Upload ABIs so policies can inspect decoded calldata (`function_name`, normalized `erc20_transfer_*` fields, `decode_failed` flag).
 
+Each ABI has an `interface_kind`: `evm_abi` (default) for EVM contract ABIs, or `solana_idl` for Anchor IDLs. The kind determines which decoder is used to populate the transaction context.
+
 ```bash
 curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
@@ -110,6 +112,7 @@ curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
     "contract_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "name": "USDC",
     "token_decimals": 6,
+    "interface_kind": "evm_abi",
     "abi_json": [ ... ]
   }'
 ```
@@ -146,6 +149,7 @@ Condition types: `value_above`, `chain_in`, `to_address_in`, `function_selector_
 1. Agent submits sign/transaction → **202** with `pending_approval_id`
 2. Humans approve via `POST /v1/pending-approvals/{id}/approve` (payload hash binding prevents TOCTOU)
 3. Execute via `POST /v1/pending-approvals/{id}/execute` — guardrails and policies **re-run at execution time**
+4. The `approval_id` bypass token is **single-use** (consumed atomically on execute) and **submitter-bound** (only the original submitter can execute)
 
 Webhook events: `pending_approval.created`, `.approved`, `.rejected`, `.executed`, `.expired`.
 
@@ -179,6 +183,8 @@ await client.pendingApprovals.approve(id, { decision: "approve", payload_hash })
 
 ## Next steps
 
+- [Policy language](/docs/treasury/policy-language) — TransactionContext fields, Cedar grammar, OPA `input.transaction`, `tx_conditions`
+- [Policy cookbooks](/docs/treasury/policy-examples) — USDC caps, Permit deny, decode_failed, Solana, Bitcoin
 - [Scoped permissions](/docs/vaults/scoped-permissions) — built-in glob policies
 - [Intents API guardrails](/docs/agents/intents/guardrails) — per-agent tx caps and allowlists
 - [Webhooks](/docs/platform-api/webhooks) — `pending_approval.*` and circuit breaker events
