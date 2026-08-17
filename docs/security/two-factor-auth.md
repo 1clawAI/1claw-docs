@@ -10,6 +10,8 @@ sidebar_position: 5
 
 2FA is optional but recommended. It can be enabled and disabled from **Settings → Security** in the dashboard.
 
+**Availability:** TOTP 2FA is available on **every plan**, including Free. There is no tier gate.
+
 ## How it works
 
 ### Setup

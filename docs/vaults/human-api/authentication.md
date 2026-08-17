@@ -301,6 +301,27 @@ Passwordless login using WebAuthn/FIDO2 passkeys. Uses P-256 ECDSA signatures ve
 - `GET /v1/auth/passkeys` — list registered passkeys (name, credential ID, created_at, last_used_at).
 - `DELETE /v1/auth/passkeys/{id}` — delete a passkey.
 
+### Passkey-gated vault unlock (optional)
+
+Users can require a WebAuthn passkey assertion before secret values are returned:
+
+1. Enable **Require passkey to unlock vaults** in **Settings → Security**, or `PATCH /v1/auth/settings` with `{ "require_passkey_for_vaults": true }` (requires at least one registered passkey).
+2. Before `GET /v1/vaults/{id}/secrets/{path}` (or version reads), obtain a vault unlock token:
+   - `POST /v1/auth/passkeys/vault-assert/begin` (authenticated)
+   - Complete WebAuthn with `navigator.credentials.get()` (user verification required)
+   - `POST /v1/auth/passkeys/vault-assert/complete` → `{ "passkey_token": "..." }`
+3. Send `X-Passkey-Token: <passkey_token>` on secret read requests. Tokens are reusable for **5 minutes** so one prompt covers a burst of reveals.
+
+When the setting is off, secret reads behave as before (policy + JWT only).
+
+### User security settings
+
+| Endpoint | Auth | Description |
+| -------- | ---- | ----------- |
+| `GET /v1/auth/settings` | Bearer JWT (user) | Returns `require_passkey_for_vaults` |
+| `PATCH /v1/auth/settings` | Bearer JWT (user) | Update `require_passkey_for_vaults` |
+
+
 ---
 
 ## Set password (platform users)

@@ -16,8 +16,9 @@ sidebar_position: 4
 
 | Feature | Tier | Notes |
 |---------|------|-------|
-| **TOTP MFA** | Pro+ | QR setup, recovery codes |
-| **Passkeys** | All | Register/delete WebAuthn credentials |
+| **TOTP MFA** | All tiers | QR setup, recovery codes |
+| **Passkeys** | All | Register/delete WebAuthn credentials; optional login prompt |
+| **Vault unlock** | All | Require passkey to reveal secrets (`require_passkey_for_vaults`) |
 | **DPoP enforcement** | Team+ | Org-wide `off` / `warn` / `required` |
 | **API keys** | All | Personal `1ck_` keys with optional expiry |
 

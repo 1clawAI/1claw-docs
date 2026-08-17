@@ -8,6 +8,17 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### Auth & dashboard security (2026-08-17) {#auth--dashboard-security-2026-08-17}
+
+#### Human authentication
+- **Changed:** TOTP MFA is available on **all tiers** (including Free); the Pro+ gate was removed.
+- **New:** Per-user setting `require_passkey_for_vaults` (migration 193) — when enabled, `GET` secret reads require `X-Passkey-Token` from a user-verified WebAuthn assertion.
+- **New:** `GET/PATCH /v1/auth/settings` — read/update `require_passkey_for_vaults` (user-only; enabling requires at least one registered passkey).
+- **New:** `POST /v1/auth/passkeys/vault-assert/begin` + `.../complete` — issue a reusable 5-minute vault unlock token after passkey verification.
+- **New:** Dashboard passkey suggestion prompt after login for users without a passkey (dismissible, 7-day snooze). Toggle in **Settings → Security** ("Vault unlock" card).
+
+---
+
 ### v0.49.0 — Policy engine composability & deep inspection (2026-08-17) {#v0490--policy-engine-composability--deep-inspection-2026-08-17}
 
 #### Built-in transaction policies

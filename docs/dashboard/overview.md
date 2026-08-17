@@ -12,7 +12,7 @@ The **Dashboard** at [1claw.xyz](https://1claw.xyz) is the primary interface for
 
 | Method | Notes |
 |--------|-------|
-| Email + password | Standard login; MFA optional on Pro+ |
+| Email + password | Standard login; MFA optional on all tiers |
 | Google OAuth | One-click sign-in |
 | Passkey | Passwordless WebAuthn login |
 | SSO | WorkOS/OIDC for Team+ |
