@@ -30,4 +30,8 @@ sidebar_position: 2
 
 - Clients must use HTTPS. The API is served over TLS. Do not send tokens or secrets over plain HTTP.
 
+## Production deployment
+
+- **`ONECLAW_PROXY_SECRET`** (required in production): shared secret used to validate trusted proxy headers (`X-Forwarded-For`, etc.) for IP-based policy conditions and rate limiting. Without it, the IP filter middleware cannot safely trust client IPs behind a load balancer. Set via Terraform / Cloud Run env (see internal runbooks).
+
 See [Trust model](/docs/concepts/trust-model) for a short summary.

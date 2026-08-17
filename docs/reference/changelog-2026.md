@@ -8,6 +8,44 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.48.2 — tx_conditions, consensus tokens & security hardening (2026-08-17) {#v0482--tx_conditions-consensus-tokens--security-hardening-2026-08-17}
+
+#### Built-in transaction policies
+- **New:** `tx_conditions` JSONB on `access_policies` (migration 189) — AND of present fields evaluated at signing time: `function_name_in`, `function_selector_in`, `erc20_amount_above`, `value_above` (gwei), `to_address_in`, `chain_in`, `intent_type_in`, `decode_failed`, `program_id_in`. All tiers. Dashboard: `TxConditionsEditor` on policy create/edit.
+
+#### Contract ABI registry
+- **New:** `interface_kind` on contract ABIs (migration 190) — `evm_abi` (default) or `solana_idl` for Anchor IDL decoding. Solana program instructions populate `function_name`, `program_id_in`, and related TransactionContext fields.
+
+#### Consensus / pending approvals
+- **New:** Single-use **`approval_id`** bypass token (migration 191) — consumed atomically on execute, **submitter-bound** (only the original submitter can execute). Works on the EVM submit path after human approval.
+
+#### Treasury delegation
+- **Fixed:** Per-delegation guardrails (`to_allowlist`, `allowed_chains`, `max_value_eth`) are now enforced at **signing time** during treasury-mode Intents API requests — strictest of agent + delegation limits wins.
+
+#### Security & reliability
+- **Changed:** `ip_filter` middleware **fail-closed** on DB errors (500 instead of silent allow). Production requires **`ONECLAW_PROXY_SECRET`** for trusted proxy header validation.
+- **New:** Runtime JWT **`runtime_id`** claim; auth middleware validates `X-1Claw-Runtime-Id` matches the token (prevents cross-runtime replay).
+- **Fixed:** OPA WASM evaluation uses wasmtime epoch interruption for reliable timeout enforcement.
+- **Fixed:** Treasury wallet send double-conversion of `value_wei`.
+- **Fixed:** Agent enrollment anti-spam — bounded cooldown map, sensitive target threshold.
+
+#### Docs
+- **New:** [Policy Engine v2 guide](/docs/guides/policy-engine-v2), [Policy language](/docs/treasury/policy-language), [Policy cookbooks](/docs/treasury/policy-examples).
+
+#### Clients
+- `@1claw/sdk@0.48.2`, `@1claw/cli@0.48.2`, `@1claw/mcp@0.48.2`, `@1claw/openapi-spec@0.48.2`
+- Python SDK `oneclaw@0.48.2`, Go SDK `v0.48.2`
+
+---
+
+### v0.48.1 — Client package alignment (2026-08-14)
+
+#### Clients
+- **Changed:** Submodule pointers aligned for npm/PyPI publish — SDK, CLI, MCP, OpenAPI spec, Python SDK (`__version__` fix), Go SDK at **0.48.1**.
+- **Changed:** `@1claw/wallet-react@0.4.2` — passkey tx digest binding for treasury send/swap.
+
+---
+
 ### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
 
 #### Policy backend

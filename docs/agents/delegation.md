@@ -110,6 +110,12 @@ When an agent calls `POST /v1/agents/{target_id}/chat`, the delegation engine:
 
 If any check fails, the request is rejected with 403 and a descriptive error.
 
+## Treasury delegation guardrails (signing time)
+
+Separate from chat delegation, **treasury-mode** Intents API signing (`POST /v1/agents/{id}/transactions` with `treasury_id`) uses `treasury_delegations.guardrails` JSONB. As of **v0.48.2**, per-delegation fields — `to_allowlist`, `allowed_chains`, `max_value_eth` — are enforced **at signing time**, not only in the dashboard. The strictest of agent-level guardrails and delegation guardrails wins.
+
+See [Treasury overview](/docs/treasury/overview) and [Intents API guardrails](/docs/agents/intents/guardrails).
+
 ## Sub-agent creation wizard
 
 The dashboard provides a guided wizard at `/agents/sub-agent-wizard` for creating sub-agents with pre-configured delegation rules:

@@ -1023,6 +1023,12 @@ When an agent calls `POST /v1/agents/{target_id}/chat`, the delegation engine:
 
 If any check fails, the request is rejected with 403 and a descriptive error.
 
+## Treasury delegation guardrails (signing time)
+
+Separate from chat delegation, **treasury-mode** Intents API signing (`POST /v1/agents/{id}/transactions` with `treasury_id`) uses `treasury_delegations.guardrails` JSONB. As of **v0.48.2**, per-delegation fields — `to_allowlist`, `allowed_chains`, `max_value_eth` — are enforced **at signing time**, not only in the dashboard. The strictest of agent-level guardrails and delegation guardrails wins.
+
+See [Treasury overview](/docs/treasury/overview) and [Intents API guardrails](/docs/agents/intents/guardrails).
+
 ## Sub-agent creation wizard
 
 The dashboard provides a guided wizard at `/agents/sub-agent-wizard` for creating sub-agents with pre-configured delegation rules:
@@ -8462,6 +8468,55 @@ The response includes the `tx_hash` you can look up on [Sepolia Etherscan](https
 
 ---
 
+## Policy Engine v2
+
+---
+title: Policy Engine v2
+description: Cedar, OPA, tx_conditions, consensus triggers, and pending approvals for agent signing — overview and links to the full policy docs.
+keywords: [policy engine v2, Cedar, OPA, tx_conditions, consensus, pending approvals]
+---
+
+# Policy Engine v2
+
+**Policy Engine v2** is 1claw's signing-time authorization stack: built-in glob policies with **`tx_conditions`**, optional **Cedar** (Team+) and **OPA** (Business+) backends, **contract ABI / Solana IDL** decoding, and **consensus triggers** that return **202** pending approval instead of signing immediately.
+
+:::tip Canonical docs
+This page is a guide entry point. Full reference lives under **Treasury → Policy Engine** in the sidebar.
+:::
+
+## What's included
+
+| Feature | Tier | Doc |
+| ------- | ---- | --- |
+| Built-in policies + **`tx_conditions`** | All | [Policy language — tx_conditions](/docs/treasury/policy-language#built-in-tx_conditions-all-tiers) |
+| Cedar backend (shadow / enforce) | Team+ | [Policy Engine — Cedar](/docs/treasury/policy-engine#cedar-policies) |
+| OPA (Rego/WASM) backend | Business+ | [Policy Engine — OPA](/docs/treasury/policy-engine#opa-policies) |
+| Contract ABIs + **`interface_kind`** (`evm_abi` / `solana_idl`) | All (registry) | [Contract ABI registry](/docs/treasury/policy-engine#contract-abi-registry) |
+| **Consensus triggers** + pending approvals | All | [Consensus & pending approvals](/docs/treasury/policy-engine#consensus--pending-approvals) |
+| Copy-paste cookbooks (USDC caps, Permit deny, Solana, …) | All | [Policy cookbooks](/docs/treasury/policy-examples) |
+
+## Quick start
+
+1. Read [Policy Engine — Cedar, OPA & Consensus](/docs/treasury/policy-engine) for org backend settings (`shadow` vs `enforce`), circuit breaker, and the approval workflow.
+2. Register ABIs at `POST /v1/org/contract-abis` with `interface_kind: "evm_abi"` or `"solana_idl"`.
+3. Attach **`tx_conditions`** or **`consensus_trigger`** JSON to access policies on signing key paths.
+4. When consensus matches, the API returns **202** with `pending_approval_id`. After human approval, execute with `POST /v1/pending-approvals/{id}/execute` — the **`approval_id` token is single-use** and **submitter-bound**.
+
+```bash
+curl -s https://api.1claw.xyz/v1/org/settings/policy-backend \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
+```
+
+## Related
+
+- [Intents API guardrails](/docs/agents/intents/guardrails) — per-agent tx caps and allowlists (evaluated before policies)
+- [Treasury delegation](/docs/agents/delegation) — inter-agent chat; treasury-mode signing applies **delegation guardrails at signing time**
+- [Webhooks](/docs/platform-api/webhooks) — `pending_approval.*`, `policy_backend.circuit_breaker_*`
+- [Changelog 2026 — v0.48.x](/docs/reference/changelog-2026#v0482--tx_conditions-consensus-tokens--security-hardening-2026-08-17)
+
+
+---
+
 ## Principal-Type Audit
 
 ---
@@ -13218,9 +13273,9 @@ console.log("tx_hash:", tx.data.tx_hash);
 
 Key difference: Turnkey requires you to serialize the transaction yourself and pass the raw bytes. 1claw accepts high-level parameters (chain, to, value, data) and handles serialization, nonce management, gas estimation, and broadcasting.
 
-### 3. Replace Turnkey activity policies with 1claw guardrails
+### 3. Replace Turnkey activity policies with 1claw policy language
 
-Turnkey's activity policies control what operations are allowed. 1claw's equivalent is a combination of access policies and transaction guardrails.
+Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only agent guardrail knobs. Guardrails remain the simple per-agent caps.
 
 **Turnkey policy (before):**
 
@@ -13233,7 +13288,33 @@ Turnkey's activity policies control what operations are allowed. 1claw's equival
 }
 ```
 
-**1claw guardrails (after):**
+**1claw `tx_conditions` + consensus (after):**
+
+```json
+{
+  "effect": "deny",
+  "secret_path_pattern": "agents/**/chains/**",
+  "permissions": ["read"],
+  "tx_conditions": { "value_above": "1000000000" },
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
+    "approval": { "min_approvals": 1 }
+  }
+}
+```
+
+| Turnkey | 1claw |
+| ------- | ----- |
+| `eth.tx.to` | Cedar `resource.to` / `tx_conditions.to_address_in` |
+| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (gwei) |
+| `eth.tx.function_name` | `resource.function_name` / `tx_conditions.function_name_in` |
+| `contract_call_args['amount']` | `resource.arg_amount` / `function_args` |
+| `approvers.count() >= N` | `consensus_trigger.approval.min_approvals` → **202** |
+| Smart Contract Interfaces | `POST /v1/org/contract-abis` (`interface_kind`: `evm_abi` \| `solana_idl`) |
+
+Cedar (Team+) example: `forbid(...) when { resource has function_name && resource.function_name == "transfer" }`. Full field table: [policy language](/docs/treasury/policy-language).
+
+Simple caps still work as agent guardrails:
 
 ```bash
 curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
@@ -18675,6 +18756,44 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.48.2 — tx_conditions, consensus tokens & security hardening (2026-08-17) {#v0482--tx_conditions-consensus-tokens--security-hardening-2026-08-17}
+
+#### Built-in transaction policies
+- **New:** `tx_conditions` JSONB on `access_policies` (migration 189) — AND of present fields evaluated at signing time: `function_name_in`, `function_selector_in`, `erc20_amount_above`, `value_above` (gwei), `to_address_in`, `chain_in`, `intent_type_in`, `decode_failed`, `program_id_in`. All tiers. Dashboard: `TxConditionsEditor` on policy create/edit.
+
+#### Contract ABI registry
+- **New:** `interface_kind` on contract ABIs (migration 190) — `evm_abi` (default) or `solana_idl` for Anchor IDL decoding. Solana program instructions populate `function_name`, `program_id_in`, and related TransactionContext fields.
+
+#### Consensus / pending approvals
+- **New:** Single-use **`approval_id`** bypass token (migration 191) — consumed atomically on execute, **submitter-bound** (only the original submitter can execute). Works on the EVM submit path after human approval.
+
+#### Treasury delegation
+- **Fixed:** Per-delegation guardrails (`to_allowlist`, `allowed_chains`, `max_value_eth`) are now enforced at **signing time** during treasury-mode Intents API requests — strictest of agent + delegation limits wins.
+
+#### Security & reliability
+- **Changed:** `ip_filter` middleware **fail-closed** on DB errors (500 instead of silent allow). Production requires **`ONECLAW_PROXY_SECRET`** for trusted proxy header validation.
+- **New:** Runtime JWT **`runtime_id`** claim; auth middleware validates `X-1Claw-Runtime-Id` matches the token (prevents cross-runtime replay).
+- **Fixed:** OPA WASM evaluation uses wasmtime epoch interruption for reliable timeout enforcement.
+- **Fixed:** Treasury wallet send double-conversion of `value_wei`.
+- **Fixed:** Agent enrollment anti-spam — bounded cooldown map, sensitive target threshold.
+
+#### Docs
+- **New:** [Policy Engine v2 guide](/docs/guides/policy-engine-v2), [Policy language](/docs/treasury/policy-language), [Policy cookbooks](/docs/treasury/policy-examples).
+
+#### Clients
+- `@1claw/sdk@0.48.2`, `@1claw/cli@0.48.2`, `@1claw/mcp@0.48.2`, `@1claw/openapi-spec@0.48.2`
+- Python SDK `oneclaw@0.48.2`, Go SDK `v0.48.2`
+
+---
+
+### v0.48.1 — Client package alignment (2026-08-14)
+
+#### Clients
+- **Changed:** Submodule pointers aligned for npm/PyPI publish — SDK, CLI, MCP, OpenAPI spec, Python SDK (`__version__` fix), Go SDK at **0.48.1**.
+- **Changed:** `@1claw/wallet-react@0.4.2` — passkey tx digest binding for treasury send/swap.
+
+---
+
 ### v0.48.0 — Cedar/OPA Enforcement v2 (2026-08-14)
 
 #### Policy backend
@@ -22087,6 +22206,10 @@ sidebar_position: 2
 
 - Clients must use HTTPS. The API is served over TLS. Do not send tokens or secrets over plain HTTP.
 
+## Production deployment
+
+- **`ONECLAW_PROXY_SECRET`** (required in production): shared secret used to validate trusted proxy headers (`X-Forwarded-For`, etc.) for IP-based policy conditions and rate limiting. Without it, the IP filter middleware cannot safely trust client IPs behind a load balancer. Set via Terraform / Cloud Run env (see internal runbooks).
+
 See [Trust model](/docs/concepts/trust-model) for a short summary.
 
 
@@ -23627,7 +23750,7 @@ curl -s -X POST https://api.1claw.xyz/v1/org/cedar-policies \
   -H "Content-Type: application/json" \
   -d '{
     "name": "deny-large-eth-transfer",
-    "policy_text": "forbid(principal, action, resource) when { resource has chain && resource.value_gwei > 1000000000 };"
+    "cedar_text": "permit(principal, action, resource); forbid(principal, action == OneClaw::Action::\"sign\", resource) when { resource has value_gwei && resource.value_gwei > 1000000000 };"
   }'
 ```
 
@@ -23650,6 +23773,8 @@ Enforcement-path evaluation timeout is **100 ms** (5 s on `/test` only). Fuel li
 
 Upload ABIs so policies can inspect decoded calldata (`function_name`, normalized `erc20_transfer_*` fields, `decode_failed` flag).
 
+Each ABI has an `interface_kind`: `evm_abi` (default) for EVM contract ABIs, or `solana_idl` for Anchor IDLs. The kind determines which decoder is used to populate the transaction context.
+
 ```bash
 curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
@@ -23659,6 +23784,7 @@ curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
     "contract_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "name": "USDC",
     "token_decimals": 6,
+    "interface_kind": "evm_abi",
     "abi_json": [ ... ]
   }'
 ```
@@ -23695,6 +23821,7 @@ Condition types: `value_above`, `chain_in`, `to_address_in`, `function_selector_
 1. Agent submits sign/transaction → **202** with `pending_approval_id`
 2. Humans approve via `POST /v1/pending-approvals/{id}/approve` (payload hash binding prevents TOCTOU)
 3. Execute via `POST /v1/pending-approvals/{id}/execute` — guardrails and policies **re-run at execution time**
+4. The `approval_id` bypass token is **single-use** (consumed atomically on execute) and **submitter-bound** (only the original submitter can execute)
 
 Webhook events: `pending_approval.created`, `.approved`, `.rejected`, `.executed`, `.expired`.
 
@@ -23728,10 +23855,277 @@ await client.pendingApprovals.approve(id, { decision: "approve", payload_hash })
 
 ## Next steps
 
+- [Policy language](/docs/treasury/policy-language) — TransactionContext fields, Cedar grammar, OPA `input.transaction`, `tx_conditions`
+- [Policy cookbooks](/docs/treasury/policy-examples) — USDC caps, Permit deny, decode_failed, Solana, Bitcoin
 - [Scoped permissions](/docs/vaults/scoped-permissions) — built-in glob policies
 - [Intents API guardrails](/docs/agents/intents/guardrails) — per-agent tx caps and allowlists
 - [Webhooks](/docs/platform-api/webhooks) — `pending_approval.*` and circuit breaker events
 - [Cedar policies API](/docs/reference/api-reference) — full endpoint list in OpenAPI spec (`@1claw/openapi-spec`)
+
+
+---
+
+## Policy cookbooks
+
+---
+title: Policy cookbooks
+description: Ready-to-paste Cedar, tx_conditions, and consensus examples for USDC caps, selector allowlists, EIP-712 Permit deny, decode_failed fail-closed, business hours, N-of-M, Solana, and Bitcoin.
+keywords: [policy examples, Cedar, tx_conditions, consensus, USDC, Permit, Solana]
+---
+
+# Policy cookbooks
+
+All examples assume payload-aware evaluation (TransactionContext on sign/submit). Field table: [policy language](/docs/treasury/policy-language).
+
+## Deny USDC `transfer` over a raw amount
+
+Built-in (all tiers):
+
+```json
+{
+  "effect": "deny",
+  "secret_path_pattern": "agents/**/chains/**",
+  "permissions": ["read", "write"],
+  "tx_conditions": {
+    "function_name_in": ["transfer"],
+    "to_address_in": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+    "erc20_amount_above": "1000000000"
+  }
+}
+```
+
+Cedar:
+
+```cedar
+permit(principal, action, resource);
+forbid(principal, action == OneClaw::Action::"sign", resource)
+when {
+  resource has function_name && resource.function_name == "transfer"
+};
+```
+
+## Allowlist selectors on a known contract
+
+```json
+{
+  "effect": "allow",
+  "tx_conditions": {
+    "to_address_in": ["0xKnownContract"],
+    "function_selector_in": ["0xa9059cbb", "0x095ea7b3"]
+  }
+}
+```
+
+## EIP-712 Permit deny
+
+```cedar
+permit(principal, action, resource);
+forbid(principal, action == OneClaw::Action::"sign", resource)
+when {
+  resource has eip712_primary_type &&
+  resource.eip712_primary_type == "Permit"
+};
+```
+
+Consensus 202 on typed data:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "intent_type_in", "values": ["typed_data"] }],
+    "approval": { "min_approvals": 1 }
+  }
+}
+```
+
+## `decode_failed` fail-closed
+
+```json
+{
+  "effect": "deny",
+  "tx_conditions": { "decode_failed": true }
+}
+```
+
+Outer calldata only — multicall/Safe/4337 inner transfers are not decoded.
+
+## Business hours
+
+```json
+{
+  "conditions": {
+    "time_window": { "start_hour": 9, "end_hour": 17, "days_of_week": [1, 2, 3, 4, 5] }
+  }
+}
+```
+
+## N-of-M over value
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
+    "approval": { "min_approvals": 2 },
+    "expiry_secs": 3600
+  }
+}
+```
+
+## Solana program allowlist
+
+```json
+{
+  "effect": "allow",
+  "tx_conditions": {
+    "chain_in": ["solana"],
+    "program_id_in": ["11111111111111111111111111111111"]
+  }
+}
+```
+
+System/SPL transfers set `function_name` to `transfer` / `transferChecked` without an IDL. Register Anchor IDLs with `interface_kind: "solana_idl"`.
+
+## Bitcoin output allowlist
+
+Use built-in `to_address_in` (populated from the constructed output address):
+
+```json
+{
+  "effect": "allow",
+  "tx_conditions": {
+    "chain_in": ["bitcoin"],
+    "to_address_in": ["bc1qallowed..."]
+  }
+}
+```
+
+
+---
+
+## Policy language
+
+---
+title: Policy language
+description: Turnkey-style reference for 1claw policies — four layers, evaluation order, TransactionContext fields, Cedar resource attributes, OPA input.transaction, consensus JSON, and time_window.
+keywords: [policy language, Cedar, OPA, tx_conditions, TransactionContext, consensus]
+---
+
+# Policy language
+
+1claw does not ship a CEL clone (`eth.tx.*`). Signing policies are a **typed TransactionContext** evaluated by four layers. The same payload is available as Cedar **resource attributes**, OPA `input.transaction` / `input.tx`, built-in **`tx_conditions`**, and **consensus triggers**.
+
+See [cookbooks](/docs/treasury/policy-examples) for copy-paste rules. Getting started: [Policy Engine](/docs/treasury/policy-engine).
+
+## Four layers
+
+| Layer | Who | When |
+| ----- | --- | ---- |
+| **Agent guardrails** | Per-agent knobs (`tx_max_value_eth`, allowlists, …) | Every Intents sign/submit |
+| **Built-in `tx_conditions`** | `access_policies.tx_conditions` JSON (all tiers) | After calldata is known |
+| **Cedar / OPA** | Org backend `builtin+cedar` / `builtin+opa` | Shadow or enforce; payload-aware second eval |
+| **Consensus** | `consensus_trigger` on an access policy | Match → **202** pending approval |
+
+Human **`X-Auth-Confirm`** on export/import is **AND** with activity policies (`export` / `import` / `raw_sign`). Agents cannot export keys.
+
+## Evaluation order
+
+```
+sign or submit
+  → build TransactionContext (ABI / IDL / request construction)
+  → agent guardrails
+  → built-in path + tx_conditions
+  → Cedar or OPA with tx (action sign / submit / raw_sign)
+  → consensus (202) or sign
+```
+
+Key-path Cedar/OPA still runs at key lookup (`tx: None`). A **second** evaluation runs once the payload is decoded — Turnkey evaluates the transaction, not only the key.
+
+## TransactionContext fields
+
+Serialized as `context.tx` (alias `transaction` for OPA). Optional fields require Cedar `has` guards.
+
+| Field | Type | Notes |
+| ----- | ---- | ----- |
+| `chain` | string | `ethereum`, `solana`, … |
+| `chain_family` | string | `evm` / `solana` / `bitcoin` / `xrp` / `cardano` / `tron` |
+| `intent_type` | string | `transaction`, `typed_data`, `personal_sign`, `eip712_digest`, `treasury_send` |
+| `sign_only` | bool | true on `/sign` |
+| `to` / `from` | string? | |
+| `value_gwei` | long? | Overflow → `value_overflow` |
+| `function_name` | string? | ABI name or ERC-20/System/SPL hardcoded |
+| `function_selector` | string? | `0x` + 4 bytes |
+| `function_signature` | string? | alias of selector |
+| `function_args` | map of strings | Turnkey `contract_call_args['amount']` → `arg_amount` |
+| `arg_amount` / `arg_to` / `arg_from` / `arg_spender` | string? | Lifted named args |
+| `decode_failed` | bool | Calldata present but ABI decode failed — **fail-closed** |
+| `erc20_*` | string? | Normalized transfer/approve |
+| `eip712_primary_type` | string? | typed_data |
+| `program_ids` | string[] | Solana |
+| `btc_outputs` | `{address, value_sat}[]` | Bitcoin |
+| `xrp_tx_type` | string? | default `Payment` |
+| `tron_contract_type` | string? | Transfer vs TriggerSmartContract |
+
+**Outermost calldata only.** Multicall, Safe `execTransaction`, and ERC-4337 `handleOps` are not unwrapped. Treat `decode_failed` as deny.
+
+## Cedar (resource attributes)
+
+`entity Transaction` carries the fields above. Qualify actions as `OneClaw::Action::"sign"` so they match the schema. Documented form:
+
+```cedar
+permit(principal, action, resource);
+forbid(principal, action == OneClaw::Action::"sign", resource)
+when {
+  resource has function_name && resource.function_name == "transfer" &&
+  resource has value_gwei && resource.value_gwei > 1000000000
+};
+```
+
+Actions: `read`, `write`, `rotate`, `sign`, `submit`, `export`, `import`, `raw_sign`.
+
+Nested `context.tx` is also present (primitives only). Prefer `resource.*` for grammar that matches the schema.
+
+Org backend `scope` defaults to `["sign"]`. Add `export` / `raw_sign` to enforce activity policies.
+
+## OPA
+
+`input.tx` and `input.transaction` are the same object (Rust serializes `tx`; both keys are hoisted).
+
+```rego
+deny[msg] {
+  input.transaction.function_name == "transfer"
+  msg := "transfer denied"
+}
+```
+
+## Built-in `tx_conditions` (all tiers)
+
+AND of present fields. `effect` on the policy is allow or deny.
+
+| Field | Match |
+| ----- | ----- |
+| `function_name_in` | case-insensitive |
+| `function_selector_in` | case-insensitive |
+| `erc20_amount_above` | raw token units |
+| `value_above` | gwei |
+| `to_address_in` | |
+| `chain_in` | |
+| `intent_type_in` | |
+| `decode_failed` | bool |
+| `program_id_in` | any listed program in `program_ids` |
+
+Ignored on secret read (no TransactionContext). Agent guardrails stay the simple knobs; `tx_conditions` is the free expression layer.
+
+## Consensus JSON
+
+`approvers.count() >= N` maps to `consensus_trigger.approval.min_approvals`. Conditions AND together (`value_above`, `chain_in`, `to_address_in`, `function_selector_in`, `erc20_amount_above`, `intent_type_in`, `always`). Match → **202**.
+
+## Time window
+
+`conditions.time_window`: `start_hour`, `end_hour`, `days_of_week` (0=Sun). UTC. CronSpan-style expressions are not implemented.
+
+## Solana interfaces
+
+`POST /v1/org/contract-abis` with `interface_kind: "solana_idl"` (address = program id). Equivalent to Turnkey Smart Contract Interfaces. System/SPL `transfer` / `transferChecked` names work without an IDL.
 
 
 ---

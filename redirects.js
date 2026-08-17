@@ -55,7 +55,6 @@ module.exports = [
     { from: "/docs/guides/account-abstraction", to: "/docs/treasury/account-abstraction" },
     { from: "/docs/guides/approvals", to: "/docs/treasury/approvals" },
     { from: "/docs/guides/policy-engine", to: "/docs/treasury/policy-engine" },
-    { from: "/docs/guides/policy-engine-v2", to: "/docs/treasury/policy-engine" },
     { from: "/docs/guides/sharing-secrets", to: "/docs/sharing/overview" },
     { from: "/docs/security/risk-engine", to: "/docs/risk-engine/overview" },
     { from: "/docs/guides/platform-api", to: "/docs/platform-api/overview" },

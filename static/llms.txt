@@ -565,7 +565,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 141 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 144 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
 
 ### Introduction (1)
 
@@ -587,13 +587,14 @@ Complete index of 141 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
 
-### Guides (9)
+### Guides (10)
 
 - [Audit and compliance](https://docs.1claw.xyz/docs/guides/audit-and-compliance)
 - [Billing & Usage](https://docs.1claw.xyz/docs/guides/billing-and-usage)
 - [Deploying Updates](https://docs.1claw.xyz/docs/guides/deploying-updates)
 - [Email Notifications](https://docs.1claw.xyz/docs/guides/email-notifications)
 - [5-minute walkthrough: vault, key, transaction](https://docs.1claw.xyz/docs/guides/five-minute-walkthrough)
+- [Policy Engine v2](https://docs.1claw.xyz/docs/guides/policy-engine-v2)
 - [Principal-Type Audit](https://docs.1claw.xyz/docs/guides/principal-type-audit)
 - [Setup by client](https://docs.1claw.xyz/docs/guides/setup-by-client)
 - [Troubleshooting](https://docs.1claw.xyz/docs/guides/troubleshooting)
@@ -656,7 +657,19 @@ Complete index of 141 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [wagmi + RainbowKit integration](https://docs.1claw.xyz/docs/integrations/wagmi-rainbowkit)
 - [Web3Auth integration](https://docs.1claw.xyz/docs/integrations/web3auth)
 
-### Other (76)
+### Treasury Policy (9)
+
+- [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/treasury/account-abstraction)
+- [Human-in-the-loop approvals](https://docs.1claw.xyz/docs/treasury/approvals)
+- [Embedded Wallets — 2-Minute Quickstart](https://docs.1claw.xyz/docs/treasury/embedded-wallets)
+- [Treasury Wallets](https://docs.1claw.xyz/docs/treasury/overview)
+- [Policy Engine — Cedar, OPA & Consensus](https://docs.1claw.xyz/docs/treasury/policy-engine)
+- [Policy cookbooks](https://docs.1claw.xyz/docs/treasury/policy-examples)
+- [Policy language](https://docs.1claw.xyz/docs/treasury/policy-language)
+- [Safe (Gnosis Safe) integration](https://docs.1claw.xyz/docs/treasury/safe-multisig)
+- [@1claw/wallet-react](https://docs.1claw.xyz/docs/treasury/wallet-react)
+
+### Other (69)
 
 - [Audit log (agents)](https://docs.1claw.xyz/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.xyz/docs/agents/api/authentication)
@@ -699,13 +712,6 @@ Complete index of 141 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Runtime Hosting](https://docs.1claw.xyz/docs/runtimes/hosting)
 - [Cloud Runtimes](https://docs.1claw.xyz/docs/runtimes/overview)
 - [Sharing Secrets](https://docs.1claw.xyz/docs/sharing/overview)
-- [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/treasury/account-abstraction)
-- [Human-in-the-loop approvals](https://docs.1claw.xyz/docs/treasury/approvals)
-- [Embedded Wallets — 2-Minute Quickstart](https://docs.1claw.xyz/docs/treasury/embedded-wallets)
-- [Treasury Wallets](https://docs.1claw.xyz/docs/treasury/overview)
-- [Policy Engine — Cedar, OPA & Consensus](https://docs.1claw.xyz/docs/treasury/policy-engine)
-- [Safe (Gnosis Safe) integration](https://docs.1claw.xyz/docs/treasury/safe-multisig)
-- [@1claw/wallet-react](https://docs.1claw.xyz/docs/treasury/wallet-react)
 - [Customer-Managed Encryption Keys (CMEK)](https://docs.1claw.xyz/docs/vaults/cmek)
 - [Give an agent access](https://docs.1claw.xyz/docs/vaults/golden-path)
 - [Deactivate agent / Rotate key](https://docs.1claw.xyz/docs/vaults/human-api/agents/deactivate-agent)

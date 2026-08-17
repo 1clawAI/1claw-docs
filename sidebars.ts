@@ -256,6 +256,7 @@ const sidebars: SidebarsConfig = {
             items: [
                 "guides/setup-by-client",
                 "guides/five-minute-walkthrough",
+                "guides/policy-engine-v2",
                 "guides/billing-and-usage",
                 "guides/x402",
                 "guides/deploying-updates",
