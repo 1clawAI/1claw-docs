@@ -8,6 +8,33 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.49.0 — Policy engine composability & deep inspection (2026-08-17) {#v0490--policy-engine-composability--deep-inspection-2026-08-17}
+
+#### Built-in transaction policies
+- **New:** `tx_conditions.match_mode` — `"all"` (default, AND) or `"any"` (OR) for combining individual condition fields at signing time.
+- **New:** `tx_conditions.deep_inspect` — when true, conditions are also evaluated against inner calls extracted from wrapper transactions (multicall, Safe `execTransaction`, ERC-4337 `handleOps`).
+
+#### Policy time windows
+- **New:** IANA `timezone` and `cron_expr` on policy `conditions.time_window` — schedule-aware access control with timezone-aware hour/day checks and cron matching.
+
+#### Consensus composability
+- **New:** `consensus_trigger.skip_when` — array of flat condition sets; when ALL fields in ANY entry match, consensus is bypassed.
+- **New:** `consensus_trigger.require_when` — consensus is only required when at least one entry matches; if set and none match, consensus is skipped.
+- **New:** `consensus_trigger.deep_inspect` — evaluate consensus conditions against inner wrapper calls, not just the outer transaction.
+
+#### Deep decode
+- **New:** `crypto/deep_decode.rs` — unwraps multicall, Safe, and ERC-4337 batch transactions to populate `inner_calls` on `TransactionContext` for policy evaluation.
+
+#### Fixed
+- **Fixed:** `POST /v1/pending-approvals/{id}/execute` no longer returns 500 when JSONB key reordering caused `payload_hash` mismatch — canonical alphabetical key sorting in `pre_sign.rs`.
+
+#### Clients
+- `@1claw/sdk@0.49.0`, `@1claw/cli@0.49.0`, `@1claw/mcp@0.49.0`, `@1claw/openapi-spec@0.49.0`
+- Python SDK `oneclaw@0.49.0`, Go SDK `v0.49.0`
+- Integration packages `@1claw/agentkit`, `@1claw/openclaw-plugin`, `@workspace/1claw-hermes`, `1claw-mobile` at **0.49.0**
+
+---
+
 ### v0.48.2 — tx_conditions, consensus tokens & security hardening (2026-08-17) {#v0482--tx_conditions-consensus-tokens--security-hardening-2026-08-17}
 
 #### Built-in transaction policies
