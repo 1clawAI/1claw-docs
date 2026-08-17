@@ -124,7 +124,7 @@ sidebar_label: "2026"
 
 ---
 
-### v0.47.0 — Turnkey Parity Features (2026-08-13)
+### v0.47.0 — Key Import, Policy Engine v2, Sub-Orgs & Portfolio (2026-08-13)
 
 #### Key Import (BYOK)
 - **New:** `POST /v1/agents/{id}/signing-keys/{chain}/import` — Import an existing private key as a signing key. Human-only, requires `X-Auth-Confirm` password re-authentication. Supports hex, base64, and WIF formats.

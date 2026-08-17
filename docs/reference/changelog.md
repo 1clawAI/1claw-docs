@@ -19,5 +19,5 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 Release notes by year:
 
-- **[2026](/docs/reference/changelog-2026)** — Cedar/OPA enforcement v2, billing quotas, Turnkey parity, and earlier 2026 releases
+- **[2026](/docs/reference/changelog-2026)** — Cedar/OPA enforcement v2, billing quotas, key management, and earlier 2026 releases
 

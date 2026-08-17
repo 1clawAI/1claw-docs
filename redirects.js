@@ -92,4 +92,7 @@ module.exports = [
     { from: "/docs/guides/agent-templates", to: "/docs/integrations/agent-templates" },
     { from: "/docs/guides/claude-code", to: "/docs/integrations/claude-code" },
     { from: "/docs/security/principal-type-audit", to: "/docs/guides/principal-type-audit" },
+    { from: "/docs/guides/sub-organizations", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
+    { from: "/docs/guides/portfolio", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
+    { from: "/docs/guides/key-import", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
 ];
