@@ -19,6 +19,27 @@ sidebar_label: "2026"
 
 ---
 
+### v0.50.0 — Policy Parity Sprint (2026-08-18) {#v0500--policy-parity-sprint-2026-08-18}
+
+#### Consensus precision & approver identity
+- **New:** `threshold_wei` on `ConsensusCondition::value_above` — arbitrary-precision wei thresholds (preferred over deprecated `threshold_gwei`).
+- **New:** `required_roles`, `per_role_minimums`, and `require_credential_types` on consensus `approval` requirements — enforce role-based and credential-gated approvals (e.g. require passkey-verified approver).
+- **New:** `credential_type` on `approval_signatures` (migration 195) — records auth method used at vote time (`password`, `passkey`, `totp`, `biometric`, `api_key`).
+
+#### EIP-712 & EIP-7702 policy conditions
+- **New:** `tx_conditions` fields: `eip712_primary_type_in`, `eip712_verifying_contract_in`, `eip712_domain_name_in`, `eip712_domain_chain_id_in` — fine-grained typed data signing policies.
+- **New:** `eip7702_authorized_addresses_in` — restrict EIP-7702 delegate contracts via `authorization_list` in TransactionContext.
+
+#### Control-plane governance
+- **New:** Org setting `control_plane_consensus_policy_id` — gates policy CRUD, signing key export, and member mutations behind consensus (returns **202**).
+- **New:** `ConsensusCondition::action_in` — match control-plane actions (`policy.create`, `policy.update`, `policy.delete`, `signing_key.export`, `member.role_change`, `member.remove`).
+
+#### Clients
+- `@1claw/sdk@0.50.0`, `@1claw/cli@0.50.0`, `@1claw/mcp@0.50.0`, `@1claw/openapi-spec@0.50.0`
+- Python SDK `oneclaw@0.50.0`, Go SDK `v0.50.0`
+
+---
+
 ### v0.49.0 — Policy engine composability & deep inspection (2026-08-17) {#v0490--policy-engine-composability--deep-inspection-2026-08-17}
 
 #### Built-in transaction policies

@@ -54,6 +54,9 @@ Serialized as `context.tx` (alias `transaction` for OPA). Optional fields requir
 | `decode_failed` | bool | Calldata present but ABI decode failed — **fail-closed** |
 | `erc20_*` | string? | Normalized transfer/approve |
 | `eip712_primary_type` | string? | typed_data |
+| `eip712_domain` | object? | `{ name, version, chain_id, verifying_contract }` |
+| `eip712_message` | object? | Full typed data message JSON |
+| `eip7702_authorized_addresses` | string[]? | EIP-7702 delegation targets |
 | `program_ids` | string[] | Solana |
 | `btc_outputs` | `{address, value_sat}[]` | Bitcoin |
 | `xrp_tx_type` | string? | default `Payment` |
@@ -108,6 +111,11 @@ Fields are combined according to `match_mode`. `effect` on the policy is allow o
 | `decode_failed` | bool |
 | `program_id_in` | any listed program in `program_ids` |
 | `deep_inspect` | bool — also evaluate against inner calls |
+| `eip712_primary_type_in` | typed_data primaryType allowlist |
+| `eip712_verifying_contract_in` | typed_data domain.verifyingContract allowlist (case-insensitive) |
+| `eip712_domain_name_in` | typed_data domain.name allowlist |
+| `eip712_domain_chain_id_in` | typed_data domain.chainId allowlist (integers) |
+| `eip7702_authorized_addresses_in` | EIP-7702 authorized delegate addresses (case-insensitive) |
 
 Ignored on secret read (no TransactionContext). Agent guardrails stay the simple knobs; `tx_conditions` is the free expression layer.
 
@@ -149,6 +157,37 @@ A match on **any** inner call counts as an overall match. This catches transfers
 
 Without `deep_inspect`, the outer function name is `multicall` or `execTransaction` and would not match `transfer`.
 
+### EIP-712 per-field conditions
+
+Use `eip712_*` fields to write policies over typed data signing (Permit2, order signing, etc.):
+
+```json
+{
+  "tx_conditions": {
+    "intent_type_in": ["typed_data"],
+    "eip712_primary_type_in": ["Permit", "Permit2", "PermitSingle"],
+    "eip712_verifying_contract_in": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"]
+  }
+}
+```
+
+Match is case-insensitive on addresses. Combine with `effect: "deny"` to block dangerous typed-data signatures, or `effect: "allow"` to whitelist known verifiers.
+
+### EIP-7702 authorization list conditions
+
+EIP-7702 "set code" transactions delegate execution to another contract. Use `eip7702_authorized_addresses_in` to restrict which contracts an agent may delegate to:
+
+```json
+{
+  "tx_conditions": {
+    "eip7702_authorized_addresses_in": ["0xKnownSafeImplementation"],
+    "chain_in": ["ethereum"]
+  }
+}
+```
+
+To deny all EIP-7702 transactions that delegate to unknown contracts, pair with `effect: "deny"` and set the list to known-bad addresses, or create an allow-only policy with your approved implementation addresses.
+
 ## Consensus JSON
 
 `approvers.count() >= N` maps to `consensus_trigger.approval.min_approvals`. Conditions AND together (`value_above`, `chain_in`, `to_address_in`, `function_selector_in`, `erc20_amount_above`, `intent_type_in`, `always`). Match → **202**.
@@ -182,6 +221,66 @@ Each entry is a `FlatConditionSet` with the same vocabulary as `ConsensusConditi
 
 In this example, consensus only triggers for transactions above 1 ETH (via `require_when`), but even those are exempted when sending to the known treasury multisig on Ethereum (via `skip_when`).
 
+### Consensus value precision
+
+`ConsensusCondition::ValueAbove` supports `threshold_wei` (string, arbitrary precision) alongside the deprecated `threshold_gwei` (i64). Prefer `threshold_wei` for all new policies:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_wei": "1000000000000000000" }],
+    "approval": { "min_approvals": 2 }
+  }
+}
+```
+
+When both are present, `threshold_wei` takes precedence. `threshold_gwei` is retained for backward compatibility only.
+
+### Consensus approver roles and credential types
+
+Fine-grained control over who can approve and with what authentication method:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_wei": "5000000000000000000" }],
+    "approval": {
+      "min_approvals": 2,
+      "required_roles": ["owner", "admin"],
+      "per_role_minimums": { "owner": 1 },
+      "require_credential_types": ["passkey"]
+    },
+    "expiry_secs": 3600
+  }
+}
+```
+
+| Field | Effect |
+| ----- | ------ |
+| `required_roles` | Only signatures from users with a listed org role (`owner`, `admin`, `member`) count toward `min_approvals` |
+| `per_role_minimums` | Enforce minimum counts per role — e.g. at least 1 owner must approve |
+| `require_credential_types` | At least one approval must use a listed credential type (`passkey`, `totp`, `biometric`, `password`, `api_key`) |
+
+The signature's `credential_type` is recorded at vote time from the step-up authentication method used (`X-Auth-Confirm` header).
+
+### Control-plane governance
+
+Administrative actions (policy CRUD, key export, member management) can be governed by the same consensus engine. Set an org-level `control_plane_consensus_policy_id` referencing a policy with `consensus_trigger`:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "action_in", "actions": ["policy.create", "policy.update", "policy.delete", "signing_key.export", "member.role_change", "member.remove"] }],
+    "approval": { "min_approvals": 2, "required_roles": ["owner"] },
+    "expiry_secs": 3600
+  }
+}
+```
+
+When configured, matching control-plane mutations return **202** with a `pending_approval_id`, just like transaction consensus. The `action_payload` contains the full request body (hash-bound) so approvers see exactly what is being authorized.
+
+Governed actions: `policy.create`, `policy.update`, `policy.delete`, `signing_key.export`, `signing_key.import`, `member.role_change`, `member.remove`, `agent.create`, `agent.delete`.
+
 ### Consensus deep inspection
 
 Set `deep_inspect: true` on the consensus trigger to also evaluate conditions against inner calls from multicall, Safe, and ERC-4337 wrappers. A match on any inner call triggers the consensus requirement:
@@ -189,12 +288,22 @@ Set `deep_inspect: true` on the consensus trigger to also evaluate conditions ag
 ```json
 {
   "consensus_trigger": {
-    "conditions": [{ "type": "value_above", "threshold_gwei": 5000000000 }],
+    "conditions": [{ "type": "value_above", "threshold_wei": "5000000000000000000" }],
     "approval": { "min_approvals": 2 },
     "deep_inspect": true
   }
 }
 ```
+
+## Confidence builders
+
+| Feature | Status |
+| ------- | ------ |
+| **Hash-chained audit logs** | Every `audit_events` row includes `prev_event_id` and `integrity_hash` (SHA-256 chain). Enables cryptographic tamper detection across the full event log. |
+| **Calldata-bound approvals** | `pending_approvals.payload_hash` is validated at vote time — the approved payload cannot be swapped before execution. |
+| **Policy simulator** | `POST /v1/org/cedar-policies/test` and `POST /v1/org/opa-policies/test` (dry-run). Shadow mode available via org settings. |
+| **Deep calldata inspection** | Multicall, Safe `execTransaction`, ERC-4337 `handleOps` inner calls unwrapped and evaluated. Fail-closed `decode_failed` flag. |
+| **HSM/TEE attestation** | GCP KMS FIPS 140-2 Level 3 for key operations. Shroud runs on AMD SEV-SNP confidential compute. |
 
 ## Time window
 

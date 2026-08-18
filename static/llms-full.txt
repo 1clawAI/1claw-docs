@@ -8479,7 +8479,7 @@ keywords: [policy engine v2, Cedar, OPA, tx_conditions, consensus, pending appro
 
 # Policy Engine v2
 
-**Policy Engine v2** is 1claw's signing-time authorization stack: built-in glob policies with **`tx_conditions`**, optional **Cedar** (Team+) and **OPA** (Business+) backends, **contract ABI / Solana IDL** decoding, and **consensus triggers** that return **202** pending approval instead of signing immediately.
+**Policy Engine v2** is 1claw's signing-time authorization stack: built-in glob policies with **`tx_conditions`** (including EIP-712 per-field conditions and EIP-7702 authorization list conditions), optional **Cedar** (Team+) and **OPA** (Business+) backends, **contract ABI / Solana IDL** decoding, and **consensus triggers** (with wei-precision thresholds, approver role/credential requirements, and control-plane governance) that return **202** pending approval instead of signing immediately.
 
 :::tip Canonical docs
 This page is a guide entry point. Full reference lives under **Treasury → Policy Engine** in the sidebar.
@@ -13298,8 +13298,8 @@ Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only age
   "permissions": ["read"],
   "tx_conditions": { "value_above": "1000000000" },
   "consensus_trigger": {
-    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
-    "approval": { "min_approvals": 1 }
+    "conditions": [{ "type": "value_above", "threshold_wei": "1000000000000000000" }],
+    "approval": { "min_approvals": 1, "required_roles": ["owner", "admin"], "require_credential_types": ["passkey"] }
   }
 }
 ```
@@ -13307,10 +13307,15 @@ Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only age
 | Turnkey | 1claw |
 | ------- | ----- |
 | `eth.tx.to` | Cedar `resource.to` / `tx_conditions.to_address_in` |
-| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (gwei) |
+| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (wei string, arbitrary precision) |
 | `eth.tx.function_name` | `resource.function_name` / `tx_conditions.function_name_in` |
 | `contract_call_args['amount']` | `resource.arg_amount` / `function_args` |
 | `approvers.count() >= N` | `consensus_trigger.approval.min_approvals` → **202** |
+| `approvers.any(cred == "passkey")` | `consensus_trigger.approval.require_credential_types` |
+| `approvers.filter(role == "admin")` | `consensus_trigger.approval.required_roles` + `per_role_minimums` |
+| Activity policies on org mutations | `control_plane_consensus_policy_id` org setting + `action_in` conditions |
+| `eth.tx.eip712.domain.*` | `tx_conditions.eip712_verifying_contract_in`, `eip712_domain_name_in`, `eip712_domain_chain_id_in` |
+| EIP-7702 authorization list | `tx_conditions.eip7702_authorized_addresses_in` |
 | Smart Contract Interfaces | `POST /v1/org/contract-abis` (`interface_kind`: `evm_abi` \| `solana_idl`) |
 
 Cedar (Team+) example: `forbid(...) when { resource has function_name && resource.function_name == "transfer" }`. Full field table: [policy language](/docs/treasury/policy-language).
