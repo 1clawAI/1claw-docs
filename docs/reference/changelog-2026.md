@@ -8,6 +8,37 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.51.0 — Environment Variables (2026-08-18) {#v0510--environment-variables-2026-08-18}
+
+First-class per-key environment variables on vaults, bringing Vercel-style env management to 1Claw.
+
+#### New features
+- **Per-key env vars** — Store `DATABASE_URL`, `STRIPE_KEY`, etc. as individual encrypted entries targeting specific environments (production, preview, development, custom). Replaces the `config/prod/*` path hack.
+- **Named environments** — Built-in production/preview/development plus tier-gated custom environments with copy-from support.
+- **Org shared vars** — Organization-level env vars linked to multiple vaults. Vault-level vars with same key+environment always win.
+- **Resolution endpoint** — `GET /v1/vaults/{id}/env-vars/resolve` returns the final KEY=VALUE set with three-tier precedence (shared < vault < branch override).
+- **Sensitive write-only vars** — Values non-readable after creation for human callers. Disallowed on Development-only. Org enforcement policy available.
+- **Cloud Runtime injection** — Resolved env vars merged into container environment at start/rebuild. 64KB combined limit. Restart required for changes.
+- **CLI commands** — `env ls`, `env add`, `env rm`, `env environments ls|add|rm`, `-e` flag on `pull`/`push`/`run`.
+- **SDK** — `client.envVars.list()`, `.create()`, `.get()`, `.update()`, `.delete()`, `.resolve()`.
+- **MCP** — `resolve_env` tool.
+- **Dashboard** — Env Variables tab on vault detail, Shared Env Vars settings page, environment management.
+
+#### Bug fixes
+- CLI `env pull` now correctly unwraps the `{ secrets: [...] }` response wrapper.
+- CLI `env push` now sends `type` instead of `secret_type` (matching the API's serde rename).
+
+#### Migrations
+- 197: `env_vars` table
+- 198: `vault_environments` table (built-in + custom)
+- 199: `org_env_vars` and `org_env_var_links` tables
+- 200: `runtimes.environment` column
+
+#### Clients
+- `@1claw/sdk@0.51.0`, `@1claw/cli@0.51.0`, `@1claw/mcp@0.51.0`, `@1claw/openapi-spec@0.51.0`
+
+---
+
 ### Auth & dashboard security (2026-08-17) {#auth--dashboard-security-2026-08-17}
 
 #### Human authentication
