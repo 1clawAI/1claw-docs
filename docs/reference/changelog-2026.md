@@ -8,6 +8,30 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.52.0 — Agent Environment Tagging (2026-08-18) {#v0520--agent-environment-tagging-2026-08-18}
+
+Tag agents with a named environment for policy scoping and automatic env var resolution.
+
+#### New features
+- **Agent environment tag** — `environment`, `environment_locked`, `env_auto_resolve`, and `per_environment_guardrails` on agents.
+- **JWT claim** — Agent tokens include `environment` when the agent is tagged.
+- **Policy scoping** — Access policy `conditions.environment_in` restricts policies to specific environments.
+- **Auto-resolve** — When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` uses the agent's tag when `environment` is omitted.
+- **CLI flags** — `--environment`, `--environment-locked`, `--env-auto-resolve` on create; update supports `--per-environment-guardrails`.
+- **Dashboard** — Environment tag UI on agent create and detail pages.
+
+#### Bug fixes
+- `consensus_policy` unit tests updated for `require_credential_types` field.
+
+#### Migrations
+- 201: `agents.environment`, `environment_locked`, `env_auto_resolve`, `per_environment_guardrails`
+
+#### Clients
+- `@1claw/sdk@0.52.0`, `@1claw/cli@0.52.0`, `@1claw/mcp@0.52.0`, `@1claw/openapi-spec@0.52.0`
+- Python SDK `oneclaw@0.52.0`, Go SDK `v0.52.0`
+
+---
+
 ### v0.51.0 — Environment Variables (2026-08-18) {#v0510--environment-variables-2026-08-18}
 
 First-class per-key environment variables on vaults, bringing Vercel-style env management to 1Claw.
