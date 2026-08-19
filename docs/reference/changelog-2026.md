@@ -8,6 +8,40 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.0 — Embedded Wallet Competitive Parity (2026-08-19) {#v0530--embedded-wallet-competitive-parity-2026-08-19}
+
+Whole-agent governance hardening for embedded wallet competitive parity with Turnkey-style signing infrastructure.
+
+#### New features
+- **Expression engine** — Mini DSL in `tx_conditions.expression` for signing-time policy evaluation (schema version 2). Fail-closed with step budget and length limits.
+- **Policy schema versioning** — `policy_schema_version` on access policies (migration 202). Version 1 = legacy field-matching; version 2 = expression engine support.
+- **TEE attestation endpoint** — Public `GET /v1/shroud/attestation` on Shroud returns GCE identity token + image hash with verification steps.
+- **Audit chain verification** — `GET /v1/audit/verify` returns org-scoped hash chain integrity result with HMAC-SHA256 scheme metadata.
+- **Multi-chain deep decode** — Full Solana, Bitcoin, and Tron transaction parsers feed `TransactionContext` for policy engine evaluation.
+- **Control-plane action kinds** — `action_kind_in` on consensus triggers for version-agnostic grouping (e.g. `signing_key.*`, `policy.*`).
+- **Approval bypass** — `approval_id` on consensus-gated requests (policy create, agent create, signing key export, treasury send).
+- **Shamir org KEK** — Infrastructure for 2-of-3 Shamir KEK custody across HSM providers (migration 203).
+- **Credential recovery escape hatch** — Time-delayed recovery for MFA/passkey consensus gating in solo/small orgs (migration 204).
+- **Wallet access policies** — Role-based wallet permissions schema (migration 205).
+- **`allowed_tokens` enforcement** — Spend policies now enforce `allowed_tokens` at signing time.
+
+#### Security docs
+- Security overview, trust model comparison, Turnkey migration guide, security whitepaper.
+- Policy versioning guide, external security review scope runbook.
+
+#### Migrations
+- 202: `access_policies.policy_schema_version`
+- 203: `organizations.kek_custody`, `org_kek_shares`, `org_kek_recovery_codes`
+- 204: `credential_recovery_requests`
+- 205: `wallet_access_policies`, `users.wallet_roles`, `agents.wallet_roles`
+
+#### Clients
+- `@1claw/sdk@0.53.0`, `@1claw/cli@0.53.0`, `@1claw/mcp@0.53.0`, `@1claw/openapi-spec@0.53.0`
+- Python SDK `oneclaw@0.53.0`, Go SDK `v0.53.0`
+- Vault `0.53.0`, Shroud `0.8.0`
+
+---
+
 ### v0.52.0 — Agent Environment Tagging (2026-08-18) {#v0520--agent-environment-tagging-2026-08-18}
 
 Tag agents with a named environment for policy scoping and automatic env var resolution.

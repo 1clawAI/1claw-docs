@@ -1,255 +1,187 @@
----
-title: "Migrate from Turnkey"
-description: Move from Turnkey's API-based key infrastructure to 1claw's HSM-backed signing keys and vault. Side-by-side comparison and migration steps.
-sidebar_position: 56
----
+# Migrate From Turnkey to 1Claw
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+## Why Whole-Agent Governance Matters
 
-# Migrate from Turnkey
+Turnkey governs signing. 1Claw governs the whole agent.
 
-[Turnkey](https://turnkey.com) provides non-custodial key infrastructure through an API. If you use Turnkey for programmatic signing and are evaluating 1claw, this guide walks through the differences and shows how to migrate.
+If your agents access secrets, call LLMs, run automations, communicate through channels, and sign transactions — governing only the signing step leaves every other surface ungoverned. An attacker who compromises an agent's LLM context, exfiltrates credentials through tool calls, or manipulates automations bypasses signing controls entirely.
 
-## Feature comparison
+1Claw places secrets, LLM traffic (Shroud), runtimes, memory, channels, automations, and signing under one policy engine and one hash-chained audit log. Migrating from Turnkey gives you:
 
-| Feature | Turnkey | 1claw |
-|---------|---------|-------|
-| Key storage | Secure enclaves (AWS Nitro) | Google Cloud KMS HSM (FIPS 140-2 L3) |
-| Key generation | API-driven, user-controlled | Human-provisioned per agent, HSM-generated |
-| Signing API | `signTransaction`, `signRawPayload` | Intents API (`POST /v1/agents/{id}/transactions`, unified `/sign`) |
-| Policy model | Organization policies, approvals | Per-agent policies with path globs, time windows, IP conditions |
-| Transaction guardrails | Activity policies | Allowlists, per-tx caps, daily limits, chain restrictions, token allowlists |
-| Multi-chain | Ethereum and Solana | Ethereum, Bitcoin, Solana, XRP, Cardano, Tron |
-| Agent-native | Requires custom integration | Built-in agent auth, JWT scoping, self-enrollment |
-| Secret management | Not included | Full vault with HSM encryption |
-| LLM proxy | Not included | Shroud TEE proxy |
-| Multisig treasury | Not built in | Safe-based proposals |
+- **Unified policy evaluation** across all agent actions, not just signing
+- **LLM security** (prompt injection detection, secret redaction, semantic policies)
+- **Control-plane governance** (policy changes, key exports, member mutations require approval)
+- **Agent memory and automations** under the same audit trail
+- **Deep transaction inspection** (`deep_inspect` for multicall, Safe, ERC-4337)
+- **Cedar/OPA** formal policy backends for enterprise compliance
 
-The main architectural difference: Turnkey gives you fine-grained control over key management operations (create, export, import, rotate). 1claw abstracts key management away entirely. The agent asks "sign this transaction" and the vault handles key lifecycle. You never import, export, or directly manage key material through the API.
+## Migration Checklist
 
-## Migration steps
+### 1. Map Your Turnkey Wallets to 1Claw Signing Keys
 
-### 1. Map Turnkey organizations to 1claw orgs
+| Turnkey Concept | 1Claw Equivalent |
+|----------------|-----------------|
+| Wallet | Agent signing key (`POST /v1/agents/{id}/signing-keys`) |
+| Private key (HD) | Per-chain signing key stored in `__agent-keys` vault |
+| Sub-organization | Sub-org (`POST /v1/org/sub-orgs`) or platform app |
+| User | Human user or platform-provisioned connected user |
+| API key | `ocv_` agent API key or `plt_` platform key |
 
-Turnkey uses organizations as the top-level grouping. In 1claw, your account has one org. If you run multiple Turnkey orgs for different environments (staging, production), use separate vaults within your 1claw org.
+### 2. Translate Turnkey Policies to 1Claw
 
-```bash
-# Create vaults for each environment
-curl -X POST https://api.1claw.xyz/v1/vaults \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Production Keys","description":"Migrated from Turnkey prod org"}'
+#### Activity Types → `action_in` / `action_kind_in`
 
-curl -X POST https://api.1claw.xyz/v1/vaults \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Staging Keys","description":"Migrated from Turnkey staging org"}'
-```
+| Turnkey Activity Type | 1Claw `action_in` | 1Claw `action_kind` |
+|----------------------|-------------------|-------------------|
+| `ACTIVITY_TYPE_SIGN_TRANSACTION` | (data-plane: `tx_conditions`) | — |
+| `ACTIVITY_TYPE_CREATE_POLICY` | `policy.create` | `policy` |
+| `ACTIVITY_TYPE_UPDATE_POLICY` | `policy.update` | `policy` |
+| `ACTIVITY_TYPE_DELETE_POLICY` | `policy.delete` | `policy` |
+| `ACTIVITY_TYPE_CREATE_WALLET` | `signing_key.create` | `signing_key` |
+| `ACTIVITY_TYPE_EXPORT_WALLET` | `signing_key.export` | `signing_key` |
+| `ACTIVITY_TYPE_CREATE_USER` | `member.invite` | `member` |
+| `ACTIVITY_TYPE_DELETE_USER` | `member.remove` | `member` |
+| `ACTIVITY_TYPE_CREATE_API_KEY` | `credential.create` | `credential` |
+| `ACTIVITY_TYPE_DELETE_API_KEY` | `credential.delete` | `credential` |
+| `ACTIVITY_TYPE_UPDATE_USER` | `member.role_change` | `member` |
 
-### 2. Replace Turnkey wallets with signing keys
-
-In Turnkey, you create wallets and sign with specific accounts derived from those wallets. In 1claw, you provision per-agent signing keys.
-
-**Turnkey (before):**
-
-```typescript
-import { Turnkey } from "@turnkey/sdk-server";
-
-const turnkey = new Turnkey({
-  apiBaseUrl: "https://api.turnkey.com",
-  apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY!,
-  apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY!,
-  defaultOrganizationId: process.env.TURNKEY_ORG_ID!,
-});
-
-const client = turnkey.apiClient();
-
-// Sign a transaction
-const { signedTransaction } = await client.signTransaction({
-  type: "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
-  organizationId: orgId,
-  parameters: {
-    signWith: walletAccountAddress,
-    unsignedTransaction: serializedTx,
-    type: "TRANSACTION_TYPE_ETHEREUM",
-  },
-});
-```
-
-**1claw (after):**
-
-```typescript
-import { createClient } from "@1claw/sdk";
-
-const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
-  apiKey: process.env.ONECLAW_AGENT_KEY!, // ocv_ key
-});
-
-// Submit a transaction directly; 1claw handles serialization, signing, broadcast
-const tx = await client.agents.submitTransaction(agentId, {
-  chain: "ethereum",
-  to: "0xRecipient...",
-  value: "0.1",
-  simulate_first: true,
-});
-
-console.log("tx_hash:", tx.data.tx_hash);
-```
-
-Key difference: Turnkey requires you to serialize the transaction yourself and pass the raw bytes. 1claw accepts high-level parameters (chain, to, value, data) and handles serialization, nonce management, gas estimation, and broadcasting.
-
-### 3. Replace Turnkey activity policies with 1claw policy language
-
-Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only agent guardrail knobs. Guardrails remain the simple per-agent caps.
-
-**Turnkey policy (before):**
-
+Use `action_kind_in` to match all actions in a category:
 ```json
 {
-  "policyName": "Limit ETH transfers",
-  "effect": "EFFECT_DENY",
-  "consensus": "approvers.count() >= 1",
-  "condition": "eth.tx.value > '1000000000000000000'"
-}
-```
-
-**1claw `tx_conditions` + consensus (after):**
-
-```json
-{
-  "effect": "deny",
-  "secret_path_pattern": "agents/**/chains/**",
-  "permissions": ["read"],
-  "tx_conditions": { "value_above": "1000000000" },
   "consensus_trigger": {
-    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
-    "approval": { "min_approvals": 1 }
+    "action_in": [],
+    "conditions": [{ "action_kind_in": { "kinds": ["signing_key", "member"] } }],
+    "min_approvals": 2
   }
 }
 ```
 
-| Turnkey | 1claw |
-| ------- | ----- |
-| `eth.tx.to` | Cedar `resource.to` / `tx_conditions.to_address_in` |
-| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (gwei) |
-| `eth.tx.function_name` | `resource.function_name` / `tx_conditions.function_name_in` |
-| `contract_call_args['amount']` | `resource.arg_amount` / `function_args` |
-| `approvers.count() >= N` | `consensus_trigger.approval.min_approvals` → **202** |
-| Smart Contract Interfaces | `POST /v1/org/contract-abis` (`interface_kind`: `evm_abi` \| `solana_idl`) |
+#### Transaction Policies → `tx_conditions`
 
-Cedar (Team+) example: `forbid(...) when { resource has function_name && resource.function_name == "transfer" }`. Full field table: [policy language](/docs/treasury/policy-language).
-
-Simple caps still work as agent guardrails:
-
-```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tx_max_value_eth": "1.0",
-    "tx_daily_limit_eth": "10.0",
-    "tx_to_allowlist": ["0xAllowedContract..."],
-    "tx_allowed_chains": ["ethereum", "base"],
-    "tx_max_per_day": 100
-  }'
+**Turnkey DSL:**
+```
+policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
+  .filter(Transaction.chain == "ethereum")
+  .filter(Transaction.to in ["0xabc...", "0xdef..."])
+  .filter(Transaction.value <= 1000000000000000000)
+  .all()
 ```
 
-1claw guardrails are per-agent, not organization-wide. Each agent can have different constraints.
-
-### 4. Migrate signing key material (if needed)
-
-If you need to keep existing Turnkey addresses (e.g., they hold funds or are registered in contracts), you have two options:
-
-**Option A: Export from Turnkey, import to 1claw vault (recommended for funded accounts)**
-
-```bash
-# After exporting the private key from Turnkey:
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/keys/ethereum-signer" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "value": "0xYourPrivateKey...",
-    "type": "private_key",
-    "description": "Migrated from Turnkey wallet"
-  }'
+**1Claw `tx_conditions` (v1 — all tiers):**
+```json
+{
+  "chain_in": ["ethereum"],
+  "to_address_in": ["0xabc...", "0xdef..."],
+  "value_above": "1000000000000000000"
+}
 ```
 
-:::warning
-Handle private keys carefully during export/import. Use a secure environment, never log the key, and delete the plaintext immediately after import. Once in the vault, the key is HSM-encrypted and policy-gated.
-:::
-
-**Option B: Generate fresh keys in 1claw (recommended for new deployments)**
-
-```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"chain":"ethereum"}'
+**1Claw expression engine (v2 — all tiers):**
+```
+chain == "ethereum" && to in ["0xabc...", "0xdef..."] && value_wei <= "1000000000000000000"
 ```
 
-This generates a new keypair inside the HSM. You get the public key and address back. Fund the new address and update any contract registrations.
+**1Claw Cedar (Team+ tier):**
+```cedar
+permit(
+  principal == Agent::"agent-uuid",
+  action == Action::"sign",
+  resource
+)
+when {
+  resource.chain == "ethereum" &&
+  resource.to in ["0xabc...", "0xdef..."] &&
+  resource.value_gwei <= 1000000000
+};
+```
 
-### 5. Replace Turnkey API key auth with 1claw agent auth
+#### Consensus Policies
 
-Turnkey uses API public/private key pairs (stamped requests). 1claw uses agent API keys exchanged for JWTs.
+**Turnkey:** n-of-m quorum signing via QuorumOS.
 
-**Turnkey auth:**
-- API key pair (public key registered, private key signs requests)
-- Stamped headers on every request
-- Organization-scoped
+**1Claw:** `consensus_trigger` on access policies with composable conditions:
 
-**1claw auth:**
-- Agent API key (`ocv_`) exchanged for short-lived JWT
-- JWT includes scopes derived from policies
-- Agent-scoped with vault binding
+```json
+{
+  "consensus_trigger": {
+    "conditions": [
+      { "value_above": { "threshold_wei": "5000000000000000000" } },
+      { "chain_in": ["ethereum", "bitcoin"] }
+    ],
+    "min_approvals": 2,
+    "required_roles": ["admin"],
+    "require_credential_types": ["passkey", "totp"],
+    "skip_when": [{ "value_above": "100000000000000000", "to_address_in": ["0xsafe..."] }],
+    "require_when": [{ "always": true }]
+  }
+}
+```
 
+### 3. Per-Chain Struct Depth Comparison
+
+| Chain | Turnkey Fields | 1Claw `TransactionContext` Fields |
+|-------|---------------|----------------------------------|
+| **Ethereum** | to, value, data, gasLimit | to, from, value_wei, function_selector, function_name, decoded_args, erc20_*, erc721_*, eip712_*, tx_type, deep_inspect inner_calls |
+| **Bitcoin** | inputs, outputs, fee | btc_outputs, btc_inputs, btc_fee, btc_total_output_sat, btc_is_segwit, btc_version, btc_locktime |
+| **Solana** | instructions, programId | program_ids, sol_account_keys, sol_instructions (with decoded_args), sol_transfers, spl_transfers, sol_num_signers |
+| **Tron** | contractType, to, amount | tron_contract_type, tron_to_address, tron_amount, tron_owner_address, tron_contract_address, tron_function_selector, tron_resource_type, tron_permissions |
+| **XRP** | — | xrp_tx_type, xrp_destination, xrp_amount, xrp_destination_tag (30+ XRPL tx types) |
+| **Cardano** | — | ada_outputs, ada_native_assets |
+
+### 4. What You Gain by Migrating
+
+| Capability | On Turnkey | On 1Claw |
+|-----------|-----------|---------|
+| Agent memory (encrypted, semantic search) | Build yourself | Built-in (`PUT /v1/agents/{id}/memory/{ns}/{key}`) |
+| Cron/webhook automations | Build yourself | Built-in (14 step types, approval gates) |
+| LLM proxy with secret redaction | Not available | Shroud (AMD SEV-SNP TEE) |
+| Messaging channels (Telegram, WhatsApp, Discord) | Build yourself | Built-in with auto-respond |
+| Agent-to-agent delegation | Build yourself | Built-in with human-controlled authorization |
+| Cloud runtimes (managed containers) | Build yourself | Built-in with idle auto-stop |
+| OIDC federation (Anthropic WIF) | — | `POST /v1/auth/federated-token` |
+| Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
+| Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
+| Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
+| MCP server for AI tools | — | `@1claw/mcp` with 60+ tools |
+
+### 5. API Mapping
+
+| Turnkey API | 1Claw Equivalent |
+|------------|-----------------|
+| `POST /api/v1/sign` | `POST /v1/agents/{id}/sign` (unified intent-based) |
+| `POST /api/v1/submit` | `POST /v1/agents/{id}/transactions` |
+| Create wallet | `POST /v1/agents/{id}/signing-keys` |
+| Export wallet | `POST /v1/agents/{id}/signing-keys/{chain}/export` |
+| Create policy | `POST /v1/vaults/{id}/policies` |
+| Create sub-org | `POST /v1/org/sub-orgs` |
+| Create user | `POST /v1/platform/users/upsert` |
+
+### 6. SDK Migration
+
+**Turnkey SDK:**
 ```typescript
-// 1claw: agent authenticates with one call
-const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
-  apiKey: "ocv_your_agent_key", // auto-exchanges for JWT
+import { Turnkey } from "@turnkey/sdk-server";
+const turnkey = new Turnkey({ apiBaseUrl, apiPublicKey, apiPrivateKey });
+const result = await turnkey.apiClient().signTransaction({ ... });
+```
+
+**1Claw SDK:**
+```typescript
+import { OneclawClient } from "@1claw/sdk";
+const client = new OneclawClient({ baseUrl, apiKey });
+const result = await client.agents.signIntent(agentId, {
+  intent_type: "transaction",
+  chain: "ethereum",
+  to: "0x...",
+  value: "1000000000000000000",
 });
-
-// All subsequent calls use the JWT automatically
-// JWT refreshes before expiry
 ```
 
-## Concept map
+## Migration Support
 
-| Turnkey concept | 1claw equivalent |
-|-----------------|------------------|
-| Organization | Org (auto-created) |
-| Wallet | Signing key (per-agent, per-chain) |
-| Account (derived address) | Agent EOA / signing key address |
-| API key pair (stamp) | Agent API key (`ocv_`) + JWT |
-| Activity policy | Transaction guardrails + access policies |
-| `signTransaction()` | `POST /v1/agents/{id}/transactions` |
-| `signRawPayload()` | `POST /v1/agents/{id}/sign` (unified, supports personal_sign, typed_data, digest) |
-| Sub-organization | Separate vault within same org |
-| User (Turnkey) | Human user in 1claw |
+Contact ops@1claw.xyz for assisted migration, including:
 
-## Hybrid approach
-
-If you want to keep Turnkey for some operations (e.g., user-facing wallet signing via their iframe) and use 1claw for backend/agent operations, that works fine. Store your Turnkey API credentials in a 1claw vault:
-
-```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/turnkey/api-private-key" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "value": "'"$TURNKEY_API_PRIVATE_KEY"'",
-    "type": "private_key",
-    "description": "Turnkey API private key"
-  }'
-```
-
-Your agent fetches the Turnkey key from the vault at runtime, signs Turnkey requests, and you get audit logging on every access.
-
-## Further reading
-
-- [Intents API](/docs/agents/intents/overview) for the full transaction signing reference
-- [Multi-chain signing keys](/docs/agents/intents/multi-chain-signing) for provisioning keys across six chains
-- [Account Abstraction](/docs/treasury/account-abstraction) for ERC-4337 smart accounts
-- [Five-minute walkthrough](/docs/guides/five-minute-walkthrough) for a quick end-to-end demo
+- Policy translation review
+- Signing key import (`POST /v1/agents/{id}/signing-keys/{chain}/import`)
+- Parallel-run validation (sign on both platforms, compare outputs)
+- Custom Cedar/OPA policy authoring for complex Turnkey DSL translations
