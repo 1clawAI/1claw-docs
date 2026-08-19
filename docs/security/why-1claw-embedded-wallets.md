@@ -1,3 +1,9 @@
+---
+title: Why 1Claw for Embedded Wallets
+description: "How 1Claw embedded wallets fit into a unified agent-security platform — policy engine, Shroud LLM inspection, spend controls, and live verification endpoints."
+sidebar_position: 11
+---
+
 # Why 1Claw for Embedded Wallets
 
 ## Embedded Wallets Inside a Unified Agent-Security Platform

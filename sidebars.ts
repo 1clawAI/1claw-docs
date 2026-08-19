@@ -358,6 +358,7 @@ const sidebars: SidebarsConfig = {
                 "security/audit-verification",
                 "security/whitepaper",
                 "security/trust-model-comparison",
+                "security/why-1claw-embedded-wallets",
                 "security/policy-versioning",
                 "security/key-hierarchy",
                 "security/agent-keys",
