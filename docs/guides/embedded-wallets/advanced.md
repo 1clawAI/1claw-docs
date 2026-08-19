@@ -154,23 +154,30 @@ const { data } = await client.portfolio.get({
 
 Useful for dashboard-style apps serving power users with both embedded wallets and agents.
 
-## Roadmap (domain-only today)
+## Roadmap and v0.53.1 notes
 
-The following exist as **domain modules and migrations** but do **not** yet have public HTTP handlers documented for embedded-wallet integrators:
+### Wallet access policies (live API)
 
-| Feature | Status |
-| ------- | ------ |
-| **Wallet access policies** (`wallet_access_policies`, migration 205) | Domain evaluator only — no public CRUD API yet |
-| **Credential recovery escape hatch** (`credential_recovery_requests`, migration 204) | Org setting + domain logic — no end-user API yet |
+Role-based grants for send, swap, balance view, and export are available via:
 
-Do not build product flows against these until API endpoints ship. Watch [Changelog 2026](/docs/reference/changelog-2026) for releases.
+- `POST/GET/DELETE /v1/treasury/wallets/access-policies`
+- Dashboard: **Settings → Wallet Access**
+
+See [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies). Runtime enforcement on every treasury send/swap path is part of the v0.53.1 parity sprint — **spend policies remain the primary cap for embedded end-user sends today**.
+
+### Credential recovery (org admin)
+
+Org owners can configure MFA/passkey recovery escape hatches (`domain/credential_recovery.rs`). Approve + delayed execute flow; requires org owner/admin. No end-user self-service API yet — watch [Changelog 2026](/docs/reference/changelog-2026).
+
+### Shamir org KEK (Business+)
+
+Business/Enterprise orgs can configure Shamir-split org KEKs for multi-HSM custody. Reconstruct forwards to Shroud TEE when configured. Operator runbook: internal docs.
 
 ## Migration from other wallet providers
 
 - [Migrate from Turnkey](/docs/integrations/migrate-from-turnkey) — signing + governance mapping
 - [Migrate from Privy](/docs/integrations/migrate-from-privy)
 - [Migrate from Dynamic](/docs/integrations/migrate-from-dynamic)
-- [Why 1Claw for embedded wallets](/docs/security/why-1claw-embedded-wallets)
 
 ## Related
 

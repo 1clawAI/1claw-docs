@@ -168,14 +168,9 @@ If you want to show a custom UI instead of a raw redirect (e.g., an in-app modal
 
 ```tsx
 <OneclawEmbeddedWallet
-  appId="plt_..."
   onLinkRequired={(authorizeUrl, appSlug) => {
-    // Show a modal explaining the user needs to connect their account
-    showModal({
-      title: "Connect your 1Claw account",
-      message: "You already have a 1Claw account. Approve the connection to use your existing wallet.",
-      onConfirm: () => window.open(authorizeUrl, "_blank"),
-    });
+    // Custom modal, or:
+    window.location.href = authorizeUrl;
   }}
 />
 ```
@@ -376,6 +371,7 @@ This release includes 8 authentication and session management fixes:
 ## Further reading
 
 - [Embedded Wallets Quickstart](/docs/treasury/embedded-wallets) — the 2-minute version
+- [Embedded Wallets guide](/docs/guides/embedded-wallets) — full integrator series
 - [Platform API](/docs/platform-api/overview) — full platform developer documentation
 - [Treasury Wallets](/docs/treasury/overview) — the underlying treasury wallet system
 - [GitHub: @1claw/wallet-react](https://github.com/1clawAI/wallet-react) — source code and README

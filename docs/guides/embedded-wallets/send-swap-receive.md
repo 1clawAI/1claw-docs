@@ -43,9 +43,13 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/send" \
   -H "X-Auth-Confirm: $USER_PASSWORD" \
   -d '{
     "to": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    "amount": "0.01"
+    "value_wei": "0.01"
   }'
 ```
+
+:::note HTTP vs SDK field names
+The REST API uses `value_wei` (major-unit decimal string for non-EVM chains per OpenAPI). The `@1claw/sdk` `sendFromWallet()` helper accepts `amount` and maps it for you.
+:::
 
 </TabItem>
 </Tabs>
@@ -161,7 +165,7 @@ Users can inspect effective policy:
 
 ```typescript
 const { data } = await client.treasuryWallets.getEffectiveSpendPolicy();
-console.log(data.source); // "app_default" | "user_override" | ...
+console.log(data.source); // e.g. app default vs user override when present
 ```
 
 ## Audit & webhooks

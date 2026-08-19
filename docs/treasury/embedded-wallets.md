@@ -10,7 +10,7 @@ Get your users a wallet with just an email address. No browser extensions, no se
 
 ## Prerequisites
 
-- A 1Claw account with a Pro+ plan
+- A 1Claw account with a **Pro+** plan
 - A platform app (`plt_` API key) — [create one in the dashboard](https://1claw.xyz/platform)
 
 ## Install
@@ -19,29 +19,36 @@ Get your users a wallet with just an email address. No browser extensions, no se
 npm install @1claw/sdk
 ```
 
-## 5 Lines to a Wallet
+## Email OTP flow
 
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz", apiKey: "plt_..." });
+const client = createClient({ baseUrl: "https://api.1claw.xyz" });
 
-// 1. Send a login code to the user's email
+// 1. Send a login code
 await client.auth.sendEmailOtp({ email: "user@example.com" });
 
-// 2. User enters the 6-digit code they received
-const { token, wallet_address } = await client.auth.verifyEmailOtp({
+// 2. Verify the code — returns JWT + provisions wallets
+const { data } = await client.auth.verifyEmailOtp({
   email: "user@example.com",
   code: "123456",
   auto_provision_chains: ["ethereum"],
 });
 
-// 3. That's it — they have a wallet. Send funds:
-await client.treasuryWallets.sendFromWallet("ethereum", {
-  to: "0x...",
-  amount: "0.01",
-}, password);
+client.http.setToken(data.token);
+
+// 3. Send funds (requires password re-auth)
+await client.treasuryWallets.sendFromWallet(
+  "ethereum",
+  { to: "0x...", amount: "0.01" },
+  userPassword,
+);
 ```
+
+:::tip API response fields
+Email OTP verify returns `token` (JWT), `is_new_user`, `user_id`, `org_id`, and optional `wallet_address`. Call `client.http.setToken(data.token)` before treasury calls.
+:::
 
 ## React Widget (Even Simpler)
 
@@ -54,8 +61,9 @@ import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-reac
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." chains={["ethereum", "base"]}>
+    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
       <OneclawEmbeddedWallet
+        chains={["ethereum", "base"]}
         features={["send", "swap", "receive", "buy"]}
         socialProviders={["google", "apple", "email"]}
       />
@@ -69,16 +77,23 @@ function App() {
 Control what your users can do with their wallets:
 
 ```typescript
-// Set app-wide defaults
-await client.platform.createSpendPolicy(appId, {
+import { createClient } from "@1claw/sdk";
+
+const platform = createClient({
+  baseUrl: "https://api.1claw.xyz",
+  apiKey: process.env.PLATFORM_KEY!, // plt_...
+});
+
+// App-wide defaults
+await platform.platform.createSpendPolicy(appId, {
   max_value_per_tx_eth: "0.1",
   daily_limit_eth: "1.0",
   allowed_chains: ["ethereum", "base"],
   to_allowlist: ["0xYourContract..."],
 });
 
-// Override for a specific user
-await client.platform.setUserSpendPolicy(connectionId, {
+// Per-user override
+await platform.platform.setUserSpendPolicy(connectionId, {
   max_value_per_tx_eth: "0.5",
   daily_limit_eth: "5.0",
 });
@@ -86,26 +101,27 @@ await client.platform.setUserSpendPolicy(connectionId, {
 
 ## Sign in with 1Claw (OAuth2)
 
-Let users sign in with their existing 1Claw account:
-
 ```typescript
-// Redirect user to 1Claw login
-const authorizeUrl = "https://1claw.xyz/oauth/authorize?" + new URLSearchParams({
-  client_id: "your-app-slug",
-  redirect_uri: "https://yourapp.com/callback",
-  response_type: "code",
-  scope: "openid email wallet",
-  code_challenge: challenge,
-  code_challenge_method: "S256",
-});
-window.location.href = authorizeUrl;
+import { createClient, generatePKCE, buildAuthorizeUrl } from "@1claw/sdk";
 
-// In your callback handler:
-const { access_token, id_token } = await client.auth.exchangeOAuthCode({
-  code: searchParams.get("code"),
+const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const { codeVerifier, codeChallenge } = await generatePKCE();
+
+const url = buildAuthorizeUrl("https://1claw.xyz", {
+  clientId: "your-app-slug",
+  redirectUri: "https://yourapp.com/callback",
+  scopes: ["openid", "email"],
+  codeChallenge,
+  codeChallengeMethod: "S256",
+  state: crypto.randomUUID(),
+});
+
+// After redirect back:
+const { data } = await client.auth.exchangeOAuthCode({
+  code: callbackCode,
   client_id: "your-app-slug",
   redirect_uri: "https://yourapp.com/callback",
-  code_verifier: storedVerifier,
+  code_verifier: codeVerifier,
 });
 ```
 
@@ -117,16 +133,16 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 | Social login | Google, Apple, Discord |
 | Sign in with 1Claw | Full OAuth2 + PKCE |
 | Multi-chain wallets | Ethereum, Bitcoin, Solana, XRP, Cardano, Tron |
-| Gasless transactions | ERC-4337 sponsored gas |
+| Gasless transactions | ERC-4337 sponsored gas (`gasless: true`) |
 | Spend policies | Per-app defaults + per-user overrides |
 | Passkey tx auth | WebAuthn for transaction signing |
 | Fiat on/off ramps | Buy/sell crypto via partner widgets |
 
 ## Next Steps
 
-- **[Embedded Wallets guide series](/docs/guides/embedded-wallets)** — full documentation (auth, multi-chain, spend policies, Platform API, fiat ramps, advanced)
-- [Platform API guide](/docs/platform-api/overview) — full platform developer documentation
-- [@1claw/wallet-react](/docs/treasury/wallet-react) — React component documentation
-- [Security overview](/docs/security/security-overview) — custody, attestation, audit verification
-- [API reference](/docs/reference/api-reference) — full API reference
-- [OpenAPI spec](https://github.com/1clawAI/1claw/tree/main/packages/openapi-spec) — OpenAPI 3.1 specification
+- **[Embedded Wallets guide series](/docs/guides/embedded-wallets)** — full documentation
+- [Platform API guide](/docs/platform-api/overview)
+- [@1claw/wallet-react](/docs/treasury/wallet-react)
+- [Security and custody](/docs/guides/embedded-wallets/security-and-custody)
+- [Testing and production](/docs/guides/embedded-wallets/testing-production)
+- [API reference](/docs/reference/api-reference)

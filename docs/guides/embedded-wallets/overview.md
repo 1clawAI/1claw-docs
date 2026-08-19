@@ -99,21 +99,25 @@ Embedded wallet keys inherit 1Claw's envelope encryption, audit hash chain, and 
 - [Security overview](/docs/security/security-overview) — threat model, attestation, audit verification
 - [Trust model comparison](/docs/security/trust-model-comparison) — whole-agent governance vs signing-only infrastructure
 - [Migrate from Turnkey](/docs/integrations/migrate-from-turnkey) — mapping wallets and policies to 1Claw
-- [Why 1Claw for embedded wallets](/docs/security/why-1claw-embedded-wallets) — platform positioning
+- [Trust model comparison](/docs/security/trust-model-comparison) — platform positioning vs signing-only providers
 
 ## Guide map
 
-| Guide | Topics |
-| ----- | ------ |
-| [Getting started](/docs/guides/embedded-wallets/getting-started) | Platform app, `plt_` key, bootstrap, claim flow |
-| [Authentication](/docs/guides/embedded-wallets/authentication) | Email OTP, social login, passkeys, Sign in with 1Claw |
-| [Multi-chain wallets](/docs/guides/embedded-wallets/multi-chain-wallets) | Six chains, generation, balances |
-| [Send, swap, receive](/docs/guides/embedded-wallets/send-swap-receive) | Transfers, 0x swaps, gasless, passkey tx auth |
-| [Spend policies](/docs/guides/embedded-wallets/spend-policies) | App defaults, per-user overrides |
-| [React integration](/docs/guides/embedded-wallets/react-integration) | `@1claw/wallet-react` props and theming |
-| [Platform API](/docs/guides/embedded-wallets/platform-api) | Upsert, bootstrap, templates, grants |
-| [Fiat on/off ramps](/docs/guides/embedded-wallets/fiat-ramps) | Coinbase Onramp, MoonPay |
-| [Advanced](/docs/guides/embedded-wallets/advanced) | Deposits, internal ledger, sub-orgs, CMEK/MPC |
+| # | Guide | Topics |
+| - | ----- | ------ |
+| 1 | [Overview](/docs/guides/embedded-wallets) | Architecture, vs agent keys, journey |
+| 2 | [Getting started](/docs/guides/embedded-wallets/getting-started) | Platform app, `plt_` key, bootstrap, claim flow |
+| 3 | [Authentication](/docs/guides/embedded-wallets/authentication) | Email OTP, social login, passkeys, Sign in with 1Claw |
+| 4 | [Multi-chain wallets](/docs/guides/embedded-wallets/multi-chain-wallets) | Six chains, generation, balances, import/export |
+| 5 | [Send, swap, receive](/docs/guides/embedded-wallets/send-swap-receive) | Transfers, 0x swaps, gasless, passkey tx auth |
+| 6 | [Spend policies](/docs/guides/embedded-wallets/spend-policies) | App defaults, per-user overrides |
+| 7 | [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies) | Role/principal grants (v0.53.1) |
+| 8 | [React integration](/docs/guides/embedded-wallets/react-integration) | `@1claw/wallet-react` props and theming |
+| 9 | [Platform API](/docs/guides/embedded-wallets/platform-api) | Upsert, bootstrap, templates, grants |
+| 10 | [Fiat on/off ramps](/docs/guides/embedded-wallets/fiat-ramps) | Coinbase Onramp, MoonPay |
+| 11 | [Advanced](/docs/guides/embedded-wallets/advanced) | Deposits, internal ledger, sub-orgs, CMEK/MPC |
+| 12 | [Security and custody](/docs/guides/embedded-wallets/security-and-custody) | HSM, platform_locked, enforcement layers |
+| 13 | [Testing and production](/docs/guides/embedded-wallets/testing-production) | Staging checklist, go-live |
 
 ## Quick links
 

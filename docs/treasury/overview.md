@@ -53,12 +53,16 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 | GET    | `/v1/treasury/wallets`                  | List all active wallets              |
 | GET    | `/v1/treasury/wallets/{chain}`          | Get wallet for a specific chain      |
 | GET    | `/v1/treasury/wallets/{chain}/balance`  | Query native + ERC-20 balances       |
+| GET    | `/v1/treasury/wallets/spend-policy`     | Effective spend policy (user JWT)    |
 | POST   | `/v1/treasury/wallets/{chain}/send`     | Send tokens (password re-auth)       |
 | POST   | `/v1/treasury/wallets/{chain}/swap`     | Swap tokens via DEX (password re-auth)|
 | POST   | `/v1/treasury/wallets/{chain}/export`   | Export wallet (password re-auth)     |
 | POST   | `/v1/treasury/wallets/{chain}/import`   | Import existing wallet (BYOK, password re-auth) |
 | POST   | `/v1/treasury/wallets/{chain}/rotate`   | Rotate keypair                       |
 | DELETE | `/v1/treasury/wallets/{chain}`          | Deactivate wallet                    |
+| POST   | `/v1/treasury/wallets/access-policies`  | Create wallet access policy (Pro+)   |
+| GET    | `/v1/treasury/wallets/access-policies`  | List wallet access policies          |
+| DELETE | `/v1/treasury/wallets/access-policies/{id}` | Delete wallet access policy      |
 
 ### Generate wallets
 
@@ -193,10 +197,8 @@ Response:
 ```json
 {
   "chain": "ethereum",
-  "curve": "secp256k1",
-  "private_key": "0xabc123...",
-  "public_key": "04abcdef...",
-  "address": "0x4e83..."
+  "address": "0x4e83...",
+  "private_key_hex": "0xabc123..."
 }
 ```
 
@@ -477,6 +479,9 @@ Failed deliveries are retried up to 5 times with exponential backoff.
 
 ## See also
 
+- [Embedded Wallets guide](/docs/guides/embedded-wallets) — platform integrator flow
+- [Spend policies](/docs/treasury/spend-policies) — app and per-user caps
+- [Wallet access policies](/docs/treasury/wallet-access-policies) — role-based grants
 - [Intents API](/docs/agents/intents/overview) — agent transaction signing
 - [Multi-Party Computation (MPC)](/docs/vaults/mpc) — how MPC custody works under the hood
 - [Billing and usage](/docs/guides/billing-and-usage) — tier requirements

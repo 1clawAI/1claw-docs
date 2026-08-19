@@ -40,8 +40,8 @@ const { data } = await client.auth.verifyEmailOtp({
   auto_provision_chains: ["ethereum", "bitcoin", "solana"],
 });
 
-client.http.setToken(data.access_token);
-// data.user_id, data.org_id, data.is_new
+client.http.setToken(data.token);
+// data.user_id, data.org_id, data.is_new_user, data.wallet_address
 ```
 
 </TabItem>
@@ -61,6 +61,7 @@ curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
     "code":"123456",
     "auto_provision_chains":["ethereum"]
   }'
+# Response: token, user_id, org_id, is_new_user, wallet_address?
 ```
 
 </TabItem>

@@ -233,7 +233,8 @@ const userClient = createClient({
 });
 
 const { data } = await userClient.treasuryWallets.getEffectiveSpendPolicy();
-// data.policy?.max_value_per_tx_eth, data.policy?.allowed_chains, ...
+// API returns { policy: {...} | null }; SDK exposes the inner policy on data
+console.log(data?.max_value_per_tx_eth, data?.allowed_chains);
 ```
 
 </TabItem>
@@ -395,7 +396,7 @@ The embedded wallet widget calls treasury wallet send/swap APIs with the user's 
 ```tsx
 import { OneclawWalletProvider, OneclawTreasuryWidget } from "@1claw/wallet-react";
 
-<OneclawWalletProvider appId="your-app-id" baseUrl="https://api.1claw.xyz">
+<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
   <OneclawTreasuryWidget theme="dark" chains={["ethereum", "base"]} />
 </OneclawWalletProvider>
 ```
