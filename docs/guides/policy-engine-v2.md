@@ -17,6 +17,8 @@ This page is a guide entry point. Full reference lives under **Treasury → Poli
 | Feature | Tier | Doc |
 | ------- | ---- | --- |
 | Built-in policies + **`tx_conditions`** | All | [Policy language — tx_conditions](/docs/treasury/policy-language#built-in-tx_conditions-all-tiers) |
+| **Expression engine** (`policy_schema_version: 2`) | All | [Policy language — Expression engine](/docs/treasury/policy-language#expression-engine-schema-v2) |
+| **Attribute conditions** | All | [Policy language — Attribute conditions](/docs/treasury/policy-language#attribute-conditions) |
 | Cedar backend (shadow / enforce) | Team+ | [Policy Engine — Cedar](/docs/treasury/policy-engine#cedar-policies) |
 | OPA (Rego/WASM) backend | Business+ | [Policy Engine — OPA](/docs/treasury/policy-engine#opa-policies) |
 | Contract ABIs + **`interface_kind`** (`evm_abi` / `solana_idl`) | All (registry) | [Contract ABI registry](/docs/treasury/policy-engine#contract-abi-registry) |

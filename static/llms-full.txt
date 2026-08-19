@@ -24824,10 +24824,8 @@ All KMS requests include CRC32C checksums. The API verifies response checksums a
 
 1Claw uses versioned policy schemas to ensure backward compatibility as the policy engine evolves. Every policy carries a `policy_schema_version` field that determines which evaluation features are available.
 
-:::caution Expression engine — stored, not yet enforced at signing time
-`policy_schema_version: 2` and `tx_conditions.expression` are **persisted** in the database and accepted by the policy CRUD API. The expression evaluator (`domain/expression_engine.rs`) is implemented and unit-tested, but it is **not wired into signing-time policy evaluation** yet. At signing time, only v1 field-matching (`chain_in`, `to_address_in`, etc.), Cedar/OPA backends (when enabled), and built-in consensus triggers are enforced today.
-
-**Status:** Schema + storage = **Live** · Signing-time expression evaluation = **Enforcement wiring in progress**
+:::tip Expression engine — enforced at signing time
+`policy_schema_version: 2` and `tx_conditions.expression` are persisted and **evaluated at signing time** via `evaluate_expression_fail_closed` in the policy engine (v0.53.1+). Expression results are AND-combined with v1 field-matching when both are present. Fail-closed on parse or evaluation errors.
 :::
 
 ## Schema Versions
@@ -24844,18 +24842,16 @@ The original field-matching schema. All policies created before the expression e
 
 **Evaluation:** Each field in `tx_conditions` is matched independently against the `TransactionContext`. All fields combined per `match_mode`.
 
-### Version 2 (Schema — expression enforcement in progress)
+### Version 2 (Expression + action_kind)
 
-Adds storage for the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
+Adds the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
 
-**New features (stored today):**
+**Features:**
 - `tx_conditions.expression` — mini-DSL for predicate logic (see below)
 - `action_kind_in` on consensus triggers — version-agnostic action matching (e.g. `signing_key` matches `signing_key.export`, `.import`, `.rotate`, `.deactivate`)
 - Expanded `CONTROL_PLANE_ACTIONS` taxonomy (29 actions across 15 kinds)
 
-**Evaluation today:** v1 field-matching in `tx_conditions` is enforced at signing time as before. The `expression` field is **not** evaluated during transaction/sign requests yet — policies that rely solely on expressions will not gate signing until enforcement wiring ships.
-
-**Planned evaluation (when wired):** Expression and field-matching will be AND-combined. The expression engine has security hardening designed in: step budget (1000), AST depth cap (16), string length cap (1024), fail-closed on errors.
+**Evaluation:** v1 field-matching and expressions are **both enforced at signing time** when `policy_schema_version: 2`. Results are AND-combined. The expression engine uses a step budget (1000), AST depth cap (16), string length cap (1024), and fail-closed error handling.
 
 ## Migration Guide
 
@@ -24887,9 +24883,9 @@ When creating new policies, set `policy_schema_version: 2` to unlock expression 
 }
 ```
 
-### Combining field-matching and expressions (planned)
+### Combining field-matching and expressions
 
-When expression enforcement is wired, both will be AND-combined — the transaction must satisfy field-level conditions **and** the expression. Until then, only field-matching applies at signing time:
+Both are AND-combined at signing time — the transaction must satisfy field-level conditions **and** the expression when `policy_schema_version: 2`:
 
 ```json
 {
@@ -25170,7 +25166,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
 | **Audit integrity** | Event log | Hash-chained event log with independent verification API |
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
-| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**schema-only**) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
+| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**Live** at signing time, schema v2) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
 | **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
@@ -25217,11 +25213,18 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
 }
 ```
 
-### 1Claw Expression Engine (v2 policies — schema-only today)
+### 1Claw Expression Engine (v2 policies — live)
 
-:::caution Status — stored, not enforced at signing time
-Expressions in `tx_conditions.expression` are persisted when `policy_schema_version: 2`, but signing-time evaluation is **not wired yet**. Use v1 field-matching for live enforcement until expression wiring ships.
-:::
+```json
+{
+  "policy_schema_version": 2,
+  "tx_conditions": {
+    "expression": "(chain == 'ethereum' || chain == 'base') && value_gwei > 1000000000"
+  }
+}
+```
+
+Expressions in `tx_conditions.expression` are **enforced at signing time** when `policy_schema_version: 2`. Use v1 field-matching alone on schema v1 policies; combine both on v2 for AND semantics.
 
 ```
 chain == "ethereum" && value_wei > "500000000000000000" && to in ["0xabc...", "0xdef..."]
@@ -25445,13 +25448,9 @@ Walks the organization's audit chain and reports:
 | Tier | Engine | Status | Capability |
 |------|--------|--------|------------|
 | All tiers | `tx_conditions` (JSON) | **Live** | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
-| All tiers (v2 schema) | Expression engine | **Schema-only** — stored, signing-time enforcement in progress | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget |
+| All tiers (v2 schema) | Expression engine | **Live** | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget; fail-closed |
 | Team+ | Cedar | **Live** (shadow/enforce modes) | AWS Cedar policy language with full RBAC |
 | Business+ | OPA | **Live** (shadow/enforce modes) | Open Policy Agent Rego for arbitrary authorization logic |
-
-:::caution Expression engine status
-`policy_schema_version: 2` and `tx_conditions.expression` are accepted by the API and persisted. The evaluator is implemented in `domain/expression_engine.rs` but **not yet called** during transaction/sign policy checks. Do not rely on expressions to gate signing until enforcement wiring ships.
-:::
 
 **Security hardening (expression engine):**
 - Expression length cap: 4096 bytes

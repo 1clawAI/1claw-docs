@@ -295,6 +295,59 @@ Set `deep_inspect: true` on the consensus trigger to also evaluate conditions ag
 }
 ```
 
+## Expression engine (schema v2)
+
+Set `policy_schema_version: 2` on access policies to enable the mini DSL in `tx_conditions.expression`. The evaluator runs at **signing time** (wired in `policy_engine.rs` via `evaluate_expression_fail_closed`) and is **AND-combined** with v1 field-matching when both are present.
+
+```json
+{
+  "policy_schema_version": 2,
+  "tx_conditions": {
+    "chain_in": ["ethereum"],
+    "expression": "value_gwei > 1000000000 && function_name != 'approve'"
+  }
+}
+```
+
+**Security properties (fail-closed):**
+
+| Property | Limit |
+| -------- | ----- |
+| Step budget | 1000 evaluation steps |
+| AST depth | 16 levels |
+| Expression length | 1024 characters |
+| On parse/eval error | Deny for allow-policies; effect-aware for deny-policies |
+
+Supported operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `&&`, `||`, `!`, `in`, `contains`. Context fields include `chain`, `chain_family`, `intent_type`, `to`, `value_wei`, `value_gwei`, `function_name`, `function_selector`, `decode_failed`, and ERC-20 lift fields.
+
+See [Policy schema versioning](/docs/security/policy-schema-versioning) for the full operator and field reference.
+
+## Attribute conditions
+
+`attribute_conditions` JSON on access policies (Policy Engine v2) gates access by caller metadata — evaluated alongside glob path match, IP/time conditions, and `effect`/`priority`.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `required_tags` | string[] | Caller must have all listed secret/principal tags |
+| `principal_role` | string[] | Required org role (`owner`, `admin`, `member`) |
+| `auth_method` | string[] | Required auth method (`api_key`, `mtls`, `oidc_client_credentials`) |
+| `risk_verdict_max` | string | Max acceptable risk verdict (`low`, `medium`, `high`, `critical`) — fail-closed when no risk context |
+| `device_known` | boolean | When `true`, require a known/registered mobile device |
+
+```json
+{
+  "effect": "deny",
+  "priority": 10,
+  "attribute_conditions": {
+    "risk_verdict_max": "medium",
+    "auth_method": ["api_key"],
+    "device_known": true
+  }
+}
+```
+
+Also supported in `conditions.environment_in` (string array) for agent environment scoping on secret reads.
+
 ## Confidence builders
 
 | Feature | Status |
