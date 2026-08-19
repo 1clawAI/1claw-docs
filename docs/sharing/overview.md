@@ -23,7 +23,20 @@ Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-exa
 | `user`             | Direct share to an existing 1Claw user by ID                                    |
 | `agent`            | Direct share to a registered agent by ID                                        |
 | `external_email`   | Invite-by-email — the recipient doesn't need an account yet (humans only)       |
-| `anyone_with_link` | Anyone with the share URL can access                                            |
+| `anyone_with_link` | Anyone with the share URL can access (see warning below) |
+
+:::danger `anyone_with_link` is a bearer secret
+`GET /v1/share/{share_id}` is **unauthenticated**. For `anyone_with_link` shares, anyone who has the URL receives the **decrypted secret value** in the JSON response — the link itself is the credential (like an unlisted API key).
+
+**Strongly recommended for this share type:**
+
+- Set a **`passphrase`** — recipients must send it in the JSON body on each access: `{"passphrase":"..."}`.
+- Set an **`ip_allowlist`** — restrict access to known egress IPs.
+- Keep **`expires_at`** and **`max_access_count`** as tight as your workflow allows.
+- Treat share URLs like passwords: never post them in chat, tickets, or public repos; revoke immediately if leaked.
+
+Other recipient types (`user`, `agent`, `creator`, `external_email`) still require authentication or the inbound accept flow — only `anyone_with_link` exposes plaintext to unauthenticated GET.
+:::
 
 ## Create a share
 
@@ -172,11 +185,15 @@ Note: only humans can create email-based shares — agents are blocked from this
 
 ## Access a share
 
+For **`anyone_with_link`** shares, `GET /v1/share/{share_id}` requires **no** `Authorization` header and returns the decrypted secret to anyone holding the URL. Prefer passphrase + IP allowlist (see warning above).
+
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
 
 ```bash
 curl https://api.1claw.xyz/v1/share/{share_id}
+# If the share has a passphrase, include it in the request body (JSON):
+# curl --data '{"passphrase":"your-passphrase"}' https://api.1claw.xyz/v1/share/{share_id}
 ```
 
 </TabItem>
@@ -261,6 +278,7 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/agents
 
 ## Security considerations
 
+- **`anyone_with_link` bearer risk:** Unauthenticated `GET /v1/share/{id}` returns plaintext. Use passphrase + IP allowlist; rotate/revoke on leak.
 - Shares respect the `max_access_count` — once exhausted, the link is dead.
 - Shares expire at `expires_at` — past that datetime, access is denied.
 - Share creators are notified on each access.

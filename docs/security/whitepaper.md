@@ -26,14 +26,15 @@
 ### 2. Cryptographic Key Hierarchy
 
 ```
-Organization KEK (GCP KMS / Shamir 2-of-3)
+Organization KEK (GCP KMS / Shamir 2-of-3 across HSMs)
   └── Per-secret DEK (AES-256-GCM, unique per secret version)
         └── Secret value (encrypted at rest)
 ```
 
-- **Per-org shared KEK:** All vaults in an org share a single KMS CryptoKey. Envelope encryption isolation at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
+- **Per-org shared KEK:** All vaults in an org share a single KMS CryptoKey (or Shamir-split org KEK on Team+). Envelope encryption isolation at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
 - **KEK protection level:** HSM for paid tiers (FIPS 140-2 Level 3), SOFTWARE for free tier.
-- **Shamir custody (Business/Enterprise):** Org KEK split 2-of-3 across GCP KMS + AWS KMS + client share. Reconstruction inside Shroud TEE only.
+- **Shamir custody (Team+ org KEK; optional vault DEK MPC):** Shamir 2-of-3 splits **encryption keys** (org KEK or per-vault DEK shares) across GCP KMS + AWS KMS (+ Azure for vault-level `2of3_multi_hsm`; optional client share on Business/Enterprise org KEK). Reconstruction of org KEK material for sensitive operations is intended inside the **Shroud TEE** only; vault-level DEK reconstruction occurs in the Vault API during authorized secret access.
+- **Not threshold transaction signing:** Agent and treasury **signing keys** use standard HSM envelope encryption. Policy consensus (`consensus_trigger`) gates who may authorize a sign/export action — it does not split a secp256k1/Ed25519 private key across signers the way Turnkey QuorumOS does.
 - **Auto-rotation:** 365-day rotation period on KEKs. Nightly DEK re-wrap ensures old versions can be destroyed.
 - **CMEK (opt-in):** Customer-managed AES-256-GCM layer on top of HSM envelope encryption. Key never touches server.
 
@@ -123,7 +124,7 @@ Administrative mutations (policy CRUD, key export, member changes) can require m
 
 - **6-chain support:** Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
 - **HSM-backed generation:** Private keys generated and stored via envelope encryption with the org KEK
-- **MPC custody (Pro+):** Automatic tier-based custody: XOR 2-of-2 (Pro/Team) or Shamir 2-of-3 (Business/Enterprise)
+- **MPC custody (Pro+ vault option; org KEK Shamir on Team+):** Tier-based **encryption key** custody — XOR 2-of-2 client share (Pro/Team vault MPC) or Shamir 2-of-3 DEK shares across GCP/AWS/Azure (`2of3_multi_hsm`). Org-level Shamir KEK (migration 203) splits the **KEK**, not signing keys. This protects ciphertext at rest; it is not multi-party transaction signing.
 - **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth`
 - **Role-based access:** `wallet_access_policies` gate sign/send/swap/export/view per principal, role, or platform app
 - **System vault isolation:** `__treasury-keys` vault blocks direct API reads — private keys accessible only through designated export endpoints with password re-authentication
@@ -178,7 +179,7 @@ Contact ops@1claw.xyz for compliance attestation details.
 |-----------|------------------------------|-------|
 | Governance scope | Transaction signing | Whole agent (secrets + LLM + runtimes + memory + channels + automations + signing) |
 | Policy evaluation point | Before signing | Before signing AND before secret access AND before LLM forwarding AND before execution |
-| TEE usage | Signing enclave | Signing + LLM inspection + secret redaction + Shamir reconstruction |
+| TEE usage | Signing enclave | Signing + LLM inspection + secret redaction + org-KEK Shamir reconstruction (TEE boundary) |
 | Audit integrity | Event log | Hash-chained log with public verification API |
 | Consensus composability | n-of-m quorum | `skip_when` / `require_when` with per-role minimums and credential-type requirements |
 | Policy language | Proprietary DSL | Expression engine (open) + Cedar (standard) + OPA (standard) |

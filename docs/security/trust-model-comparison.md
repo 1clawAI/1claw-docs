@@ -38,7 +38,17 @@ curl https://api.1claw.xyz/.well-known/jwks.json
 
 1Claw-issued agent JWTs are verifiable by any OIDC relying party (Anthropic WIF, GCP/AWS STS). Public JWKS with EdDSA + RS256 keys, 5-minute cache.
 
-## Comparison Table
+## MPC vs Shamir key custody
+
+Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation — 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
+
+| | Turnkey | 1Claw |
+|---|---------|-------|
+| **Primary Shamir/MPC use** | Threshold **transaction signing** | Threshold **envelope encryption** (KEK/DEK custody) |
+| **Where full key material exists** | Never assembled outside QuorumOS enclave | DEK reconstructed briefly in Vault memory on authorized read; org KEK reconstruction targeted to Shroud TEE |
+| **Governance quorum** | On-chain signature quorum | Control-plane `consensus_trigger` (approvals before sign/export/policy change) |
+
+---
 
 | Dimension | Signing-Only (Turnkey) | Whole-Agent (1Claw) |
 |-----------|----------------------|-------------------|
@@ -50,7 +60,7 @@ curl https://api.1claw.xyz/.well-known/jwks.json
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
 | **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (built-in) + expression engine + Cedar (Team+) + OPA (Business+) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
-| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` with composable `skip_when`/`require_when`, per-role minimums, credential types |
+| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
 | **LLM security** | Not applicable | Shroud: PII redaction, injection scoring, secret redaction, tool call inspection, semantic policy |
 | **Agent memory** | Not applicable | Encrypted scratch/durable/semantic memory with namespace isolation |

@@ -97,9 +97,11 @@ when {
 
 #### Consensus Policies
 
-**Turnkey:** n-of-m quorum signing via QuorumOS.
+**Turnkey:** n-of-m quorum **transaction signing** via QuorumOS (MPC threshold signatures).
 
-**1Claw:** `consensus_trigger` on access policies with composable conditions:
+**1Claw:** `consensus_trigger` gates **who may authorize** signing, exports, and policy changes — human approvals before the single HSM-protected signing key is used. This is governance consensus, not Turnkey-style MPC co-signing.
+
+**1Claw Shamir/MPC (encryption, not signing):** Optional vault-level `2of3_multi_hsm` splits each secret's **DEK** across GCP/AWS/Azure HSMs. Org-level Shamir KEK (Team+) splits the **KEK** across HSMs (+ optional client share). These protect ciphertext at rest; they do not split secp256k1/Ed25519 signing keys for on-chain threshold signatures.
 
 ```json
 {
@@ -142,7 +144,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 60+ tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 104 tools |
 
 ### 5. API Mapping
 

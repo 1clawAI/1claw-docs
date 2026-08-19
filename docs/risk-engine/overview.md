@@ -159,7 +159,11 @@ When the Risk Engine produces a **critical** verdict (e.g., honeytoken accessed)
 
 ### Recovery
 
-Verdicts have a 15-minute TTL. After expiry, the principal can re-authenticate. Administrators can also manually investigate and clear verdicts via the Risk Engine dashboard.
+Verdicts expire automatically after **15 minutes** (`expires_at` on the verdict record). After expiry, the principal can authenticate again unless a new high/critical event refreshes the verdict.
+
+**Honeytoken / critical verdict caveat:** A triggered honeytoken creates a **critical** verdict that revokes all active sessions (CAE). The 15-minute TTL applies to the verdict itself — not to any manual investigation you still need to do. If an attacker may still hold exfiltrated credentials, treat honeytoken triggers as **confirmed compromise**: rotate affected secrets, review audit logs, and consider keeping the principal blocked until an admin clears the incident (manual verdict review / re-auth hardening is a planned product improvement).
+
+Administrators can inspect active verdicts via the Risk Engine dashboard or `GET /v1/risk/verdicts`.
 
 ---
 

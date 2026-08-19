@@ -91,7 +91,21 @@ The scheme is publicly documented — only chain data requires org authenticatio
 | Deep transaction inspection | `deep_inspect` decodes multicall, Safe execTransaction, ERC-4337 inner calls |
 | Consensus composability | `skip_when` / `require_when` on policies prevent automation breakage |
 | Hash-chained audit | Every event cryptographically linked; `payload_hash` binds approvals to actions |
-| Multi-party signing | Shamir threshold across HSM providers; no single provider holds the full key |
+| Shamir-split key custody | Org KEK and optional vault DEK shares split across HSM providers (envelope encryption — not threshold transaction signing) |
+
+### MPC and Shamir key custody (not threshold signing)
+
+1Claw uses Shamir secret sharing for **encryption key custody**, not for multi-party **transaction signing**:
+
+| Layer | What is split | Where shares live | Where reconstruction happens |
+|-------|----------------|-------------------|----------------------------|
+| **Vault MPC** (`2of3_multi_hsm`, optional per vault) | Per-secret **DEK** (data encryption key) | GCP KMS, AWS KMS, Azure Key Vault (wrapped Shamir shares) | Vault API during secret read/write — any 2-of-3 HSM shares reconstruct the DEK in memory for AES-GCM decrypt |
+| **Org Shamir KEK** (Team+ / Business+, migration 203) | Organization **KEK** (key encryption key) | GCP + AWS (+ optional client share on Business/Enterprise) | Sensitive org-KEK reconstruction is designed for the **Shroud TEE** boundary; Vault orchestrates share storage and forwarding |
+| **Treasury / agent signing keys** | N/A (single HSM envelope) | `__treasury-keys` / `__agent-keys` vaults | Standard envelope encryption — signing uses one HSM-protected key, gated by policies |
+
+This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-style MPC-CMP **threshold signing**, where multiple parties co-sign a transaction without assembling the full private key.
+
+**Turnkey comparison:** Turnkey's QuorumOS performs n-of-m **signature** quorum on private keys. 1Claw's Shamir modes ensure no single cloud HSM provider holds a complete DEK or org KEK — but transaction signatures are produced by a single signing key after policy checks, not by a distributed signing ceremony.
 
 ---
 
