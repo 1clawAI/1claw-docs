@@ -8,6 +8,28 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.2 (2026-08-19) {#v0532-2026-08-19}
+
+**Release engineering & OpenAPI sync**
+- OpenAPI `@1claw/openapi-spec` 0.53.2: `ShroudAttestationResponse` adds `attestation_level` (`none` | `identity` | `confidential` | `sev_snp`) and `confidential_claims` (SEV-SNP tier metadata)
+- SDK, CLI, MCP, Python SDK, Go SDK, and OpenClaw plugin bumped to **0.53.2**
+- Production test scripts validate `attestation_level` on `GET /v1/shroud/attestation`
+- `@1claw/wallet-react` **v0.5.0** — audit-driven auth/session fixes; parent submodule pointer updated
+
+**Shroud & execution**
+- SEV-SNP attestation verification with measurement match against published image digest
+- TEE execution forwarding: Vault `POST /v1/agents/{id}/execute` with `execution_mode: "tee"` dispatches to Shroud when `ONECLAW_SHROUD_EXECUTION_URL` is configured
+- Shroud secrets manifest refresh notifications for faster redaction automata updates
+
+**Dashboard & policy UI**
+- Policy Engine v2 dashboard parity: tx conditions editor, consensus `skip_when` / `require_when`, expression engine fields
+- Embedded wallet UX improvements and blog post on competitive positioning
+
+**Security (2026-08-19 audit)**
+- HIGH/MEDIUM findings from security audit remediated in vault and dashboard
+
+---
+
 ### v0.53.1 (2026-08-19) {#v0531-2026-08-19}
 
 **Raw Transaction Deep Decode**
