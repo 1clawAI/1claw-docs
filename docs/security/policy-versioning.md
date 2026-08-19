@@ -4,6 +4,12 @@
 
 1Claw uses versioned policy schemas to ensure backward compatibility as the policy engine evolves. Every policy carries a `policy_schema_version` field that determines which evaluation features are available.
 
+:::caution Expression engine — stored, not yet enforced at signing time
+`policy_schema_version: 2` and `tx_conditions.expression` are **persisted** in the database and accepted by the policy CRUD API. The expression evaluator (`domain/expression_engine.rs`) is implemented and unit-tested, but it is **not wired into signing-time policy evaluation** yet. At signing time, only v1 field-matching (`chain_in`, `to_address_in`, etc.), Cedar/OPA backends (when enabled), and built-in consensus triggers are enforced today.
+
+**Status:** Schema + storage = **Live** · Signing-time expression evaluation = **Enforcement wiring in progress**
+:::
+
 ## Schema Versions
 
 ### Version 1 (Legacy)
@@ -18,16 +24,18 @@ The original field-matching schema. All policies created before the expression e
 
 **Evaluation:** Each field in `tx_conditions` is matched independently against the `TransactionContext`. All fields combined per `match_mode`.
 
-### Version 2 (Current)
+### Version 2 (Schema — expression enforcement in progress)
 
-Adds the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
+Adds storage for the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
 
-**New features:**
+**New features (stored today):**
 - `tx_conditions.expression` — mini-DSL for predicate logic (see below)
 - `action_kind_in` on consensus triggers — version-agnostic action matching (e.g. `signing_key` matches `signing_key.export`, `.import`, `.rotate`, `.deactivate`)
 - Expanded `CONTROL_PLANE_ACTIONS` taxonomy (29 actions across 15 kinds)
 
-**Evaluation:** When `expression` is present in `tx_conditions`, it is evaluated alongside field-matching. Both must pass (AND logic). The expression engine has security hardening: step budget (1000), AST depth cap (16), string length cap (1024), fail-closed on errors.
+**Evaluation today:** v1 field-matching in `tx_conditions` is enforced at signing time as before. The `expression` field is **not** evaluated during transaction/sign requests yet — policies that rely solely on expressions will not gate signing until enforcement wiring ships.
+
+**Planned evaluation (when wired):** Expression and field-matching will be AND-combined. The expression engine has security hardening designed in: step budget (1000), AST depth cap (16), string length cap (1024), fail-closed on errors.
 
 ## Migration Guide
 
@@ -59,9 +67,9 @@ When creating new policies, set `policy_schema_version: 2` to unlock expression 
 }
 ```
 
-### Combining field-matching and expressions
+### Combining field-matching and expressions (planned)
 
-When both are present, they are AND-combined — the transaction must satisfy both the field-level conditions and the expression:
+When expression enforcement is wired, both will be AND-combined — the transaction must satisfy field-level conditions **and** the expression. Until then, only field-matching applies at signing time:
 
 ```json
 {

@@ -34,6 +34,10 @@ Organization KEK (GCP KMS / Shamir 2-of-3 across HSMs)
 - **Per-org shared KEK:** All vaults in an org share a single KMS CryptoKey (or Shamir-split org KEK on Team+). Envelope encryption isolation at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
 - **KEK protection level:** HSM for paid tiers (FIPS 140-2 Level 3), SOFTWARE for free tier.
 - **Shamir custody (Team+ org KEK; optional vault DEK MPC):** Shamir 2-of-3 splits **encryption keys** (org KEK or per-vault DEK shares) across GCP KMS + AWS KMS (+ Azure for vault-level `2of3_multi_hsm`; optional client share on Business/Enterprise org KEK). Reconstruction of org KEK material for sensitive operations is intended inside the **Shroud TEE** only; vault-level DEK reconstruction occurs in the Vault API during authorized secret access.
+
+:::info Org Shamir KEK status — **Schema / domain module**
+Migration 203 and `domain/shamir_kek.rs` define org-level Shamir KEK custody modes. **Vault MPC** (`2of2_client_custody`, `2of3_multi_hsm`, `2of3_client_custody`) on individual vaults is **Live** via `POST /v1/vaults/{id}/mpc`. Org-wide Shamir KEK orchestration beyond storage/orchestration stubs is **not fully wired** to production key paths yet — treat as **in progress** unless your deployment explicitly enables it.
+:::
 - **Not threshold transaction signing:** Agent and treasury **signing keys** use standard HSM envelope encryption. Policy consensus (`consensus_trigger`) gates who may authorize a sign/export action — it does not split a secp256k1/Ed25519 private key across signers the way Turnkey QuorumOS does.
 - **Auto-rotation:** 365-day rotation period on KEKs. Nightly DEK re-wrap ensures old versions can be destroyed.
 - **CMEK (opt-in):** Customer-managed AES-256-GCM layer on top of HSM envelope encryption. Key never touches server.
@@ -61,8 +65,12 @@ This proves the Shroud enclave is running on AMD SEV-SNP hardware with the publi
 Every audit event is hash-chained:
 
 ```
-integrity_hash = SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)
+integrity_hash = HMAC-SHA256(key, [prev_hash, org_id, actor_type, actor_id, action, metadata, timestamp])
 ```
+
+:::info Status — **Live** (structural verify)
+Hash chaining is written on every insert. `GET /v1/audit/verify` checks linkage within an org-scoped window. Full client-side HMAC recompute is not available without the server audit key. See [Audit verification](/docs/security/audit-verification).
+:::
 
 **Independent verification endpoint:**
 
@@ -73,20 +81,23 @@ Authorization: Bearer <token>
 
 Walks the organization's audit chain and reports:
 - Total events verified
-- Any gaps (missing `prev_event_id` links)
-- Any hash mismatches (tampered events)
-- Chain completeness percentage
+- Any gaps (missing `integrity_hash` or broken `prev_event_id` linkage)
+- `chain_valid` boolean for the queried window
 
 ### 5. Policy Engine
 
 **Three tiers of policy expressiveness:**
 
-| Tier | Engine | Capability |
-|------|--------|-----------|
-| All tiers | `tx_conditions` (JSON) | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
-| All tiers (v2) | Expression engine | Predicate logic: `&&`, `||`, `&gt;`, `&lt;`, `in`, `contains` with 1000-step budget |
-| Team+ | Cedar | AWS Cedar policy language with full RBAC |
-| Business+ | OPA | Open Policy Agent Rego for arbitrary authorization logic |
+| Tier | Engine | Status | Capability |
+|------|--------|--------|------------|
+| All tiers | `tx_conditions` (JSON) | **Live** | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
+| All tiers (v2 schema) | Expression engine | **Schema-only** — stored, signing-time enforcement in progress | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget |
+| Team+ | Cedar | **Live** (shadow/enforce modes) | AWS Cedar policy language with full RBAC |
+| Business+ | OPA | **Live** (shadow/enforce modes) | Open Policy Agent Rego for arbitrary authorization logic |
+
+:::caution Expression engine status
+`policy_schema_version: 2` and `tx_conditions.expression` are accepted by the API and persisted. The evaluator is implemented in `domain/expression_engine.rs` but **not yet called** during transaction/sign policy checks. Do not rely on expressions to gate signing until enforcement wiring ships.
+:::
 
 **Security hardening (expression engine):**
 - Expression length cap: 4096 bytes
@@ -125,8 +136,8 @@ Administrative mutations (policy CRUD, key export, member changes) can require m
 - **6-chain support:** Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
 - **HSM-backed generation:** Private keys generated and stored via envelope encryption with the org KEK
 - **MPC custody (Pro+ vault option; org KEK Shamir on Team+):** Tier-based **encryption key** custody — XOR 2-of-2 client share (Pro/Team vault MPC) or Shamir 2-of-3 DEK shares across GCP/AWS/Azure (`2of3_multi_hsm`). Org-level Shamir KEK (migration 203) splits the **KEK**, not signing keys. This protects ciphertext at rest; it is not multi-party transaction signing.
-- **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth`
-- **Role-based access:** `wallet_access_policies` gate sign/send/swap/export/view per principal, role, or platform app
+- **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth` — **Live** via `validate_wallet_send()` on treasury send/swap
+- **Role-based access:** `wallet_access_policies` table and `domain/wallet_access.rs` evaluator — **Schema-only / domain module**; not yet wired to treasury wallet handlers. Use spend policies for embedded wallet constraints today.
 - **System vault isolation:** `__treasury-keys` vault blocks direct API reads — private keys accessible only through designated export endpoints with password re-authentication
 
 ### 8. LLM Security (Shroud)

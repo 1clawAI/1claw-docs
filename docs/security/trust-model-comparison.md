@@ -27,7 +27,7 @@ curl -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.xyz/v1/audit/verify
 ```
 
-Every audit event is hash-chained: `SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)`. The verify endpoint walks the chain and reports any gaps or tampering. You can export and verify independently.
+Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint walks the chain and reports linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details and limitations.
 
 ### OIDC Federation (Live)
 
@@ -58,7 +58,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
 | **Audit integrity** | Event log | Hash-chained event log with independent verification API |
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
-| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (built-in) + expression engine + Cedar (Team+) + OPA (Business+) |
+| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**schema-only**) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
 | **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
@@ -105,7 +105,11 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
 }
 ```
 
-### 1Claw Expression Engine (v2 policies)
+### 1Claw Expression Engine (v2 policies — schema-only today)
+
+:::caution Status — stored, not enforced at signing time
+Expressions in `tx_conditions.expression` are persisted when `policy_schema_version: 2`, but signing-time evaluation is **not wired yet**. Use v1 field-matching for live enforcement until expression wiring ships.
+:::
 
 ```
 chain == "ethereum" && value_wei > "500000000000000000" && to in ["0xabc...", "0xdef..."]

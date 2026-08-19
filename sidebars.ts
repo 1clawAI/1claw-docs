@@ -349,6 +349,11 @@ const sidebars: SidebarsConfig = {
             link: { type: "doc", id: "security/hsm-overview" },
             collapsed: true,
             items: [
+                "security/security-overview",
+                "security/audit-verification",
+                "security/whitepaper",
+                "security/trust-model-comparison",
+                "security/policy-versioning",
                 "security/key-hierarchy",
                 "security/agent-keys",
                 "security/zero-trust",

@@ -54,7 +54,7 @@ curl https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 
 ### Audit Hash Chain (Org-Scoped, Authenticated)
 
-Every audit event is linked to the previous via HMAC-SHA256, forming a tamper-evident chain:
+Every audit event is linked to the previous via `prev_event_id` and an HMAC-SHA256 `integrity_hash`, forming a tamper-evident chain:
 
 ```bash
 # Verify your org's audit chain integrity
@@ -62,9 +62,9 @@ curl -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.xyz/v1/audit/verify | jq .
 ```
 
-**Chain structure:** `HMAC-SHA256(prev_hash | org_id | actor_type | actor_id | action | metadata | timestamp)`
+**Chain structure:** `integrity_hash = HMAC-SHA256(key, [prev_hash, org_id, actor_type, actor_id, action, metadata, timestamp])`
 
-The scheme is publicly documented — only chain data requires org authentication.
+See [Audit hash chain verification](/docs/security/audit-verification) for the full algorithm, response fields, and limitations (org-scoped window; verify checks linkage, not full client-side HMAC recompute).
 
 ### Envelope Encryption
 
@@ -123,7 +123,7 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 
 - **Security questions:** ops@1claw.xyz
 - **Attestation endpoint:** `GET https://shroud.1claw.xyz/v1/shroud/attestation`
-- **Audit verification:** `GET https://api.1claw.xyz/v1/audit/verify` (authenticated)
+- **Audit verification:** [Audit hash chain verification](/docs/security/audit-verification) — `GET https://api.1claw.xyz/v1/audit/verify` (authenticated)
 - **Full documentation:** https://docs.1claw.xyz/security/
 
 ---
