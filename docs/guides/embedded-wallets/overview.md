@@ -66,7 +66,7 @@ flowchart TB
 3. **Treasury wallets** — HSM-generated keys in `__treasury-keys` at `users/{user_id}/chains/{chain}/private_key`. Sends and swaps require human step-up (`X-Auth-Confirm` password or passkey tx token).
 
 :::tip Custody guarantee
-When you bootstrap with `platform_locked: true`, your platform operator account **cannot read** end-user secret values — only lifecycle operations (create, delete, rotate). See [Platform API — custody](/docs/platform-api/overview#custody-guarantee).
+When you bootstrap with `platform_locked: true`, your platform operator account **cannot read** end-user secret values — only lifecycle operations (create, delete, rotate). See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee).
 :::
 
 ## Embedded wallets vs agent signing keys

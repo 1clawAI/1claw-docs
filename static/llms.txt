@@ -572,7 +572,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 146 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 161 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
 
 ### Introduction (1)
 
@@ -594,13 +594,23 @@ Complete index of 146 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
 
-### Guides (12)
+### Guides (22)
 
 - [Agent Environment Tagging](https://docs.1claw.xyz/docs/guides/agent-environment-tagging)
 - [Audit and compliance](https://docs.1claw.xyz/docs/guides/audit-and-compliance)
 - [Billing & Usage](https://docs.1claw.xyz/docs/guides/billing-and-usage)
 - [Deploying Updates](https://docs.1claw.xyz/docs/guides/deploying-updates)
 - [Email Notifications](https://docs.1claw.xyz/docs/guides/email-notifications)
+- [Advanced Embedded Wallet Features](https://docs.1claw.xyz/docs/guides/embedded-wallets/advanced)
+- [Embedded Wallet Authentication](https://docs.1claw.xyz/docs/guides/embedded-wallets/authentication)
+- [Fiat On and Off Ramps](https://docs.1claw.xyz/docs/guides/embedded-wallets/fiat-ramps)
+- [Getting Started with Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/getting-started)
+- [Multi-Chain Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/multi-chain-wallets)
+- [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets/overview)
+- [Platform API for Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/platform-api)
+- [React Integration](https://docs.1claw.xyz/docs/guides/embedded-wallets/react-integration)
+- [Send, Swap, and Receive](https://docs.1claw.xyz/docs/guides/embedded-wallets/send-swap-receive)
+- [Wallet Spend Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/spend-policies)
 - [Environment Variables](https://docs.1claw.xyz/docs/guides/environment-variables)
 - [5-minute walkthrough: vault, key, transaction](https://docs.1claw.xyz/docs/guides/five-minute-walkthrough)
 - [Policy Engine v2](https://docs.1claw.xyz/docs/guides/policy-engine-v2)
@@ -617,13 +627,18 @@ Complete index of 146 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [SDKs overview](https://docs.1claw.xyz/docs/sdks/overview)
 - [Python SDK](https://docs.1claw.xyz/docs/sdks/python)
 
-### Security (6)
+### Security (11)
 
 - [Agent keys](https://docs.1claw.xyz/docs/security/agent-keys)
 - [Compliance](https://docs.1claw.xyz/docs/security/compliance)
 - [HSM overview](https://docs.1claw.xyz/docs/security/hsm-overview)
 - [Key hierarchy](https://docs.1claw.xyz/docs/security/key-hierarchy)
+- [Policy Schema Versioning](https://docs.1claw.xyz/docs/security/policy-versioning)
+- [1Claw Security Overview](https://docs.1claw.xyz/docs/security/security-overview)
+- [Trust Model Comparison: 1Claw vs Signing-Only Infrastructure](https://docs.1claw.xyz/docs/security/trust-model-comparison)
 - [Two-factor authentication](https://docs.1claw.xyz/docs/security/two-factor-auth)
+- [1Claw Security Architecture Whitepaper](https://docs.1claw.xyz/docs/security/whitepaper)
+- [Why 1Claw for Embedded Wallets](https://docs.1claw.xyz/docs/security/why-1claw-embedded-wallets)
 - [Zero trust](https://docs.1claw.xyz/docs/security/zero-trust)
 
 ### Reference (9)
@@ -657,7 +672,7 @@ Complete index of 146 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [MCP integration](https://docs.1claw.xyz/docs/integrations/mcp-integration)
 - [Migrate from Dynamic](https://docs.1claw.xyz/docs/integrations/migrate-from-dynamic)
 - [Migrate from Privy](https://docs.1claw.xyz/docs/integrations/migrate-from-privy)
-- [Migrate from Turnkey](https://docs.1claw.xyz/docs/integrations/migrate-from-turnkey)
+- [Migrate From Turnkey to 1Claw](https://docs.1claw.xyz/docs/integrations/migrate-from-turnkey)
 - [1claw OpenClaw Plugin](https://docs.1claw.xyz/docs/integrations/openclaw-plugin)
 - [Using 1claw with OpenClaw](https://docs.1claw.xyz/docs/integrations/openclaw)
 - [Integrations overview](https://docs.1claw.xyz/docs/integrations/overview)

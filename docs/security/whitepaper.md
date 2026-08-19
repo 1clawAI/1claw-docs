@@ -84,7 +84,7 @@ Walks the organization's audit chain and reports:
 | Tier | Engine | Capability |
 |------|--------|-----------|
 | All tiers | `tx_conditions` (JSON) | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
-| All tiers (v2) | Expression engine | Predicate logic: `&&`, `||`, `>`, `<`, `in`, `contains` with 1000-step budget |
+| All tiers (v2) | Expression engine | Predicate logic: `&&`, `||`, `&gt;`, `&lt;`, `in`, `contains` with 1000-step budget |
 | Team+ | Cedar | AWS Cedar policy language with full RBAC |
 | Business+ | OPA | Open Policy Agent Rego for arbitrary authorization logic |
 
@@ -207,4 +207,4 @@ curl -X POST https://api.1claw.xyz/v1/org/cedar-policies/test \
 
 ---
 
-*This document describes systems as deployed at publication date. For the latest security updates, see the [changelog](/reference/changelog) and [trust model comparison](/security/trust-model-comparison).*
+*This document describes systems as deployed at publication date. For the latest security updates, see the [changelog](/docs/reference/changelog) and [trust model comparison](/docs/security/trust-model-comparison).*

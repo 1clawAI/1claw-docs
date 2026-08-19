@@ -80,4 +80,4 @@ curl https://api.1claw.xyz/.well-known/jwks.json
 4. Bootstrap resources: `POST /v1/platform/connections/{id}/bootstrap`
 5. Embed `<OneclawEmbeddedWallet />` or `<SignInWith1Claw />` in your app
 
-See the [Platform API docs](/platform) and the [`@1claw/wallet-react` package](/sdks/wallet-react) for integration guides.
+See the [Platform API docs](/docs/platform-api/overview) and the [`@1claw/wallet-react` package](/docs/treasury/wallet-react) for integration guides.
