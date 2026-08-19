@@ -606,7 +606,7 @@ Complete index of 161 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Fiat On and Off Ramps](https://docs.1claw.xyz/docs/guides/embedded-wallets/fiat-ramps)
 - [Getting Started with Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/getting-started)
 - [Multi-Chain Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/multi-chain-wallets)
-- [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets/overview)
+- [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets)
 - [Platform API for Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/platform-api)
 - [React Integration](https://docs.1claw.xyz/docs/guides/embedded-wallets/react-integration)
 - [Send, Swap, and Receive](https://docs.1claw.xyz/docs/guides/embedded-wallets/send-swap-receive)
