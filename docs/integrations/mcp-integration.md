@@ -125,6 +125,11 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 | `rotate_generate` | Server-side rotation — generates a random value that never leaves the server |
 | `list_versions` | List all versions of a secret with creation dates and disabled status |
 | `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle into JSON |
+| `resolve_env` | Resolve per-key env vars for a vault and environment (precedence applied). Omit `environment` when the agent has `env_auto_resolve: true` |
+
+### Environment variables (v0.51)
+
+Per-key encrypted env vars on vaults replace path-based `config/prod/*` bundles for deployment configs. See [Environment Variables](/docs/guides/environment-variables). Agents with `env_auto_resolve: true` can call `resolve_env` without specifying an environment — the server uses the agent's JWT `environment` claim.
 
 ### Vaults & access
 

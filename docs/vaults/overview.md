@@ -18,6 +18,7 @@ The **Vault** is the foundation of 1Claw. Every secret, agent credential, signin
 | **CMEK** | Client-side AES-256-GCM layer; server never sees your key | [CMEK](/docs/vaults/cmek) |
 | **MPC** | Split DEKs across HSM providers (2-of-2 or 2-of-3) | [MPC](/docs/vaults/mpc) |
 | **Sharing** | Share secrets with people or agents via share links | [Sharing](/docs/sharing/overview) |
+| **Env variables** | Per-key vars with production/preview/development scoping | [Environment Variables](/docs/guides/environment-variables) |
 
 ## Interfaces
 

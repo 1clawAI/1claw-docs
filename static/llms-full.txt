@@ -7484,6 +7484,173 @@ See also: [Vaults overview](/docs/vaults/overview), [Golden path](/docs/vaults/g
 
 ---
 
+## Agent Environment Tagging
+
+---
+title: Agent Environment Tagging
+description: Tag agents with production, preview, or custom environments for policy scoping, env var auto-resolve, and per-environment guardrails.
+keywords: [agent environment, env_auto_resolve, environment_in, per_environment_guardrails, JWT environment claim]
+sidebar_position: 7
+---
+
+# Agent Environment Tagging (v0.52)
+
+Tag agents with a named **environment** so policies, env var resolution, and transaction guardrails can differ between production, preview, development, and custom deployment targets — without maintaining separate agent records.
+
+## Agent fields
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `environment` | string | `production`, `preview`, `development`, or a custom slug |
+| `environment_locked` | boolean | When `true`, the tag cannot be changed after creation |
+| `env_auto_resolve` | boolean | Resolve endpoint auto-fills `environment` from the agent tag |
+| `per_environment_guardrails` | object | JSONB guardrail overrides keyed by environment slug |
+
+All four fields appear on `CreateAgentRequest`, `UpdateAgentRequest`, and `AgentResponse`.
+
+## JWT claim
+
+Agent tokens from `POST /v1/auth/agent-token` include an `environment` claim when the agent has a tag. Auth middleware populates `CallerIdentity.environment` for policy evaluation and env var resolution.
+
+## Policy scoping with `environment_in`
+
+Built-in access policies support an `environment_in` array in the `conditions` JSON object. The policy matches only when the caller's environment is in the list:
+
+```json
+{
+  "secret_path_pattern": "config/*",
+  "permissions": ["read"],
+  "conditions": {
+    "environment_in": ["production", "preview"]
+  }
+}
+```
+
+Agents without an environment tag do not match `environment_in` conditions.
+
+## Env var auto-resolve
+
+When `env_auto_resolve` is `true` on an agent:
+
+- `GET /v1/vaults/{id}/env-vars/resolve` may omit the `environment` query parameter
+- The server uses the agent's tagged environment from the JWT
+- MCP `resolve_env` behaves the same way
+
+Org setting **`env.enforce_agent_environment_scope`** (Settings → Security) blocks agents from resolving vars for environments other than their tag — even if they pass a different `?environment=` query param.
+
+## Per-environment guardrails
+
+`per_environment_guardrails` lets you override transaction limits per environment without separate agents:
+
+```json
+{
+  "production": {
+    "max_value": "1.0",
+    "daily_limit": "10.0",
+    "to_allowlist": ["0x..."]
+  },
+  "preview": {
+    "max_value": "0.1",
+    "daily_limit": "1.0"
+  }
+}
+```
+
+Per-environment values intersect with global agent guardrails — the **strictest** limit wins.
+
+## Create and update
+
+### API
+
+```bash
+curl -s -X POST "https://api.1claw.xyz/v1/agents" \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "preview-bot",
+    "environment": "preview",
+    "environment_locked": false,
+    "env_auto_resolve": true
+  }'
+```
+
+```bash
+curl -s -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "production",
+    "environment_locked": true,
+    "per_environment_guardrails": {
+      "production": { "max_value": "1.0" }
+    }
+  }'
+```
+
+Agents cannot PATCH their own record — only human users can update environment tags.
+
+### CLI
+
+```bash
+1claw agent create preview-bot \
+  --environment preview \
+  --env-auto-resolve
+
+1claw agent create prod-bot \
+  --environment production \
+  --environment-locked \
+  --env-auto-resolve
+
+1claw agent update $AGENT_ID \
+  --environment production \
+  --environment-locked true \
+  --per-environment-guardrails '{"production":{"tx_max_value":"1.0"}}'
+```
+
+### SDK
+
+```typescript
+await client.agents.create({
+  name: "preview-bot",
+  environment: "preview",
+  env_auto_resolve: true,
+});
+
+await client.agents.update(agentId, {
+  environment: "production",
+  environment_locked: true,
+  per_environment_guardrails: {
+    production: { max_value: "1.0", daily_limit: "10.0" },
+  },
+});
+
+// Omit environment when env_auto_resolve is true on the agent JWT
+const { vars } = await client.envVars.resolve(vaultId);
+```
+
+## Typical workflow
+
+1. Create [environment variables](/docs/guides/environment-variables) on the vault for `production` and `preview`.
+2. Register two agents (or one agent per environment) with matching `environment` tags.
+3. Enable `env_auto_resolve` so runtime and MCP callers do not pass `?environment=` manually.
+4. Add policies with `environment_in` so preview agents cannot read production-only paths.
+5. Optionally enable `env.enforce_agent_environment_scope` org-wide for defense in depth.
+
+## Dashboard
+
+- **Agent create** — environment tag selector with lock and auto-resolve toggles
+- **Agent detail** — edit environment, lock state, auto-resolve, and per-environment guardrails JSON
+
+## Related
+
+- [Environment Variables (v0.51)](/docs/guides/environment-variables) — per-key vars, resolve precedence, runtime injection
+- [Intents API guardrails](/docs/agents/intents/guardrails) — global agent transaction limits
+- [Scoped permissions](/docs/vaults/scoped-permissions) — path patterns and permissions
+- [Changelog 2026 — v0.52.0](/docs/reference/changelog-2026#v0520--agent-environment-tagging-2026-08-18)
+
+
+---
+
 ## Audit and compliance
 
 ---
@@ -8198,6 +8365,172 @@ All emails use inline CSS for maximum email client compatibility. They follow a 
 
 ---
 
+## Environment Variables
+
+---
+title: Environment Variables
+description: Per-key encrypted env vars on vaults with Vercel-style environment scoping, org shared vars, branch overrides, and Cloud Runtime injection.
+keywords: [environment variables, env vars, production, preview, development, resolve, runtime injection]
+sidebar_position: 6
+---
+
+# Environment Variables (v0.51)
+
+First-class per-key environment variables on vaults replace the legacy `config/prod/*` secret-path pattern. Each entry is envelope-encrypted, scoped to one or more **environments** (production, preview, development, or custom), and resolved at deploy time with explicit precedence.
+
+## Concepts
+
+| Concept | Description |
+| ------- | ----------- |
+| **Env var** | A named key (`DATABASE_URL`, `STRIPE_KEY`, …) with a value targeting specific environments |
+| **Environment** | Built-in slugs (`production`, `preview`, `development`) plus tier-gated custom environments per vault |
+| **Org shared var** | Organization-level var linked to multiple vaults — lowest precedence at resolve time |
+| **Branch override** | Preview var with `git_branch` set — highest precedence when branch matches |
+| **Sensitive var** | Write-only for humans after creation (list/get omit value); cannot target Development-only |
+
+### Resolution precedence
+
+`GET /v1/vaults/{id}/env-vars/resolve?environment=preview&git_branch=feat/x` returns the final `KEY=VALUE` map:
+
+1. **Org shared vars** linked to the vault (lowest)
+2. **Vault vars** for the environment (`git_branch IS NULL`)
+3. **Branch overrides** where `git_branch` matches (highest)
+
+Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"branch_override"`.
+
+## API endpoints
+
+### Vault-scoped
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `GET` | `/v1/vaults/{id}/env-vars` | List vars (filter `?environment=`) |
+| `POST` | `/v1/vaults/{id}/env-vars` | Create var |
+| `GET` | `/v1/vaults/{id}/env-vars/{key}` | Get var (`?environment=`, `?git_branch=`) |
+| `PATCH` | `/v1/vaults/{id}/env-vars/{key}` | Update var |
+| `DELETE` | `/v1/vaults/{id}/env-vars/{key}` | Delete var |
+| `GET` | `/v1/vaults/{id}/env-vars/resolve` | Resolve final KEY=VALUE set |
+| `GET` | `/v1/vaults/{id}/environments` | List environments |
+| `POST` | `/v1/vaults/{id}/environments` | Create custom environment |
+| `DELETE` | `/v1/vaults/{id}/environments/{slug}` | Delete custom environment |
+
+### Org-scoped shared vars
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `GET` | `/v1/org/env-vars` | List shared vars |
+| `POST` | `/v1/org/env-vars` | Create shared var |
+| `PATCH` | `/v1/org/env-vars/{key}` | Update shared var |
+| `DELETE` | `/v1/org/env-vars/{id}` | Delete shared var |
+| `POST` | `/v1/org/env-vars/{id}/link` | Link shared var to a vault |
+| `DELETE` | `/v1/org/env-vars/{id}/links/{vault_id}` | Unlink from vault |
+
+Limit: **1,000 vars per vault**.
+
+## Example: create and resolve
+
+```bash
+# Create a production-scoped var
+curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars" \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "DATABASE_URL",
+    "value": "postgres://prod.example/db",
+    "environments": ["production"],
+    "sensitive": true
+  }'
+
+# Resolve for preview with optional branch
+curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars/resolve?environment=preview&git_branch=feat/auth" \
+  -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
+```
+
+## SDK
+
+```typescript
+import { createClient } from "@1claw/sdk";
+
+const client = createClient({ baseUrl: "https://api.1claw.xyz", apiKey: process.env.ONECLAW_API_KEY! });
+
+await client.envVars.create(vaultId, {
+  key: "STRIPE_KEY",
+  value: "sk_live_...",
+  environments: ["production"],
+  sensitive: true,
+});
+
+const { vars, sources } = await client.envVars.resolve(vaultId, "production");
+```
+
+See [JavaScript SDK — Environment Variables](/docs/sdks/javascript#environment-variables) for the full API surface.
+
+## CLI
+
+Per-key management (distinct from legacy `env pull`/`push` which sync path-based secrets):
+
+```bash
+1claw env ls production                        # List vars for an environment
+1claw env add DATABASE_URL production          # Add var scoped to production
+1claw env add API_KEY preview --sensitive      # Sensitive write-only var
+1claw env rm DATABASE_URL preview              # Remove from preview
+1claw env environments ls                      # List vault environments
+1claw env environments add staging             # Create custom environment
+1claw env environments rm staging              # Delete custom environment
+```
+
+Legacy path-based workflows still support environment scoping:
+
+```bash
+1claw env pull -e production -o .env.production
+1claw env push .env -e staging
+1claw env run -e production -- npm start
+```
+
+## MCP
+
+| Tool | Purpose |
+| ---- | ------- |
+| `resolve_env` | Returns the resolved KEY=VALUE map for a vault and environment |
+
+When the calling agent has `env_auto_resolve: true`, omit `environment` and the server uses the agent's tagged environment from the JWT. See [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
+
+## Cloud Runtime injection
+
+When a [Cloud Runtime](/docs/runtimes/overview) starts or rebuilds, the Vault resolves env vars for `runtime.environment` (plus `source_branch` as `git_branch`) and merges them into the container environment. Vault-resolved keys win over `env_public`. Combined limit: **64 KB**. Restart required after env var changes.
+
+## Org settings (Settings → Security)
+
+| Setting | Key | Effect |
+| ------- | --- | ------ |
+| Require sensitive prod/preview vars | `env.require_sensitive_prod` | Forces `sensitive: true` on production and preview vars |
+| Enforce agent environment scope | `env.enforce_agent_environment_scope` | Agents may only resolve vars for their tagged environment |
+
+## Custom environment tiers
+
+| Tier | Custom environments per vault |
+| ---- | ------------------------------ |
+| Pro | 1 |
+| Team | 5 |
+| Business | 12 |
+| Enterprise | Unlimited |
+
+## Dashboard
+
+- **Vault detail → Env Variables** — CRUD, environment filter, sensitive toggle
+- **Org Settings → Shared Env Vars** — org-level vars and vault links
+- **Manage Environments** dialog on vault detail — built-in + custom slugs
+
+## Related
+
+- [Agent Environment Tagging (v0.52)](/docs/guides/agent-environment-tagging) — tag agents so resolve auto-fills `environment`
+- [CLI integration](/docs/integrations/cli) — full command reference
+- [MCP integration](/docs/integrations/mcp-integration) — `resolve_env` tool
+- [Changelog 2026 — v0.51.0](/docs/reference/changelog-2026#v0510--environment-variables-2026-08-18)
+
+
+---
+
 ## 5-minute walkthrough: vault, key, transaction
 
 ---
@@ -8479,7 +8812,7 @@ keywords: [policy engine v2, Cedar, OPA, tx_conditions, consensus, pending appro
 
 # Policy Engine v2
 
-**Policy Engine v2** is 1claw's signing-time authorization stack: built-in glob policies with **`tx_conditions`** (including EIP-712 per-field conditions and EIP-7702 authorization list conditions), optional **Cedar** (Team+) and **OPA** (Business+) backends, **contract ABI / Solana IDL** decoding, and **consensus triggers** (with wei-precision thresholds, approver role/credential requirements, and control-plane governance) that return **202** pending approval instead of signing immediately.
+**Policy Engine v2** is 1claw's signing-time authorization stack: built-in glob policies with **`tx_conditions`**, optional **Cedar** (Team+) and **OPA** (Business+) backends, **contract ABI / Solana IDL** decoding, and **consensus triggers** that return **202** pending approval instead of signing immediately.
 
 :::tip Canonical docs
 This page is a guide entry point. Full reference lives under **Treasury → Policy Engine** in the sidebar.
@@ -10462,9 +10795,17 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
   --tx-to-allowlist 0x... \            # Transaction guardrails
   --tx-max-value 0.1 \
   --tx-daily-limit 1.0 \
-  --tx-allowed-chains sepolia,base
+  --tx-allowed-chains sepolia,base \
+  --environment preview \              # Tag agent with named environment (v0.52)
+  --environment-locked \               # Lock tag after creation
+  --env-auto-resolve                   # Auto-fill env on resolve endpoint
 1claw agent get <id>
 1claw agent update <id> --shroud true --intents-api true
+1claw agent update <id> \
+  --environment production \
+  --environment-locked true \
+  --env-auto-resolve true \
+  --per-environment-guardrails '{"production":{"tx_max_value":"1.0"}}'
 1claw agent update <id> --execution-intents true \
   --execution-guardrails '{"max_requests_per_minute":30,"allowed_binding_types":["http","graphql"]}'
 1claw agent delete <id>
@@ -10653,13 +10994,32 @@ The agent must have `federation_enabled = true` and the audience on its allowlis
 
 ## Environment (CI/CD)
 
+### Path-based pull/push/run
+
 ```bash
 1claw env pull                         # Pull secrets as .env format
 1claw env pull --format json           # As JSON
 1claw env pull -o .env.local           # Write to file
+1claw env pull -e production           # Pull for a specific environment
 1claw env push .env                    # Push .env file to vault
+1claw env push .env -e staging         # Push to a specific environment
 1claw env run -- npm start             # Run with secrets injected
+1claw env run -e production -- npm start
 1claw env run --prefix config/ -- ./deploy.sh
+```
+
+### Per-key env vars (v0.51)
+
+Manage individual encrypted env vars with environment scoping and precedence-based resolution. See [Environment Variables](/docs/guides/environment-variables).
+
+```bash
+1claw env ls production                        # List vars for an environment
+1claw env add DATABASE_URL production          # Add var scoped to production
+1claw env add API_KEY preview --sensitive      # Sensitive write-only var
+1claw env rm DATABASE_URL preview              # Remove from preview
+1claw env environments ls                      # List vault environments
+1claw env environments add staging             # Create custom environment
+1claw env environments rm staging              # Delete custom environment
 ```
 
 ### Environment cache (offline mode)
@@ -12630,6 +12990,11 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 | `rotate_generate` | Server-side rotation — generates a random value that never leaves the server |
 | `list_versions` | List all versions of a secret with creation dates and disabled status |
 | `get_env_bundle` | Fetch and parse a KEY=VALUE env bundle into JSON |
+| `resolve_env` | Resolve per-key env vars for a vault and environment (precedence applied). Omit `environment` when the agent has `env_auto_resolve: true` |
+
+### Environment variables (v0.51)
+
+Per-key encrypted env vars on vaults replace path-based `config/prod/*` bundles for deployment configs. See [Environment Variables](/docs/guides/environment-variables). Agents with `env_auto_resolve: true` can call `resolve_env` without specifying an environment — the server uses the agent's JWT `environment` claim.
 
 ### Vaults & access
 
@@ -13298,8 +13663,8 @@ Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only age
   "permissions": ["read"],
   "tx_conditions": { "value_above": "1000000000" },
   "consensus_trigger": {
-    "conditions": [{ "type": "value_above", "threshold_wei": "1000000000000000000" }],
-    "approval": { "min_approvals": 1, "required_roles": ["owner", "admin"], "require_credential_types": ["passkey"] }
+    "conditions": [{ "type": "value_above", "threshold_gwei": 1000000000 }],
+    "approval": { "min_approvals": 1 }
   }
 }
 ```
@@ -13307,15 +13672,10 @@ Turnkey `eth.tx.*` CEL maps to **payload-aware** 1claw policies — not only age
 | Turnkey | 1claw |
 | ------- | ----- |
 | `eth.tx.to` | Cedar `resource.to` / `tx_conditions.to_address_in` |
-| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (wei string, arbitrary precision) |
+| `eth.tx.value` | `resource.value_gwei` / `tx_conditions.value_above` (gwei) |
 | `eth.tx.function_name` | `resource.function_name` / `tx_conditions.function_name_in` |
 | `contract_call_args['amount']` | `resource.arg_amount` / `function_args` |
 | `approvers.count() >= N` | `consensus_trigger.approval.min_approvals` → **202** |
-| `approvers.any(cred == "passkey")` | `consensus_trigger.approval.require_credential_types` |
-| `approvers.filter(role == "admin")` | `consensus_trigger.approval.required_roles` + `per_role_minimums` |
-| Activity policies on org mutations | `control_plane_consensus_policy_id` org setting + `action_in` conditions |
-| `eth.tx.eip712.domain.*` | `tx_conditions.eip712_verifying_contract_in`, `eip712_domain_name_in`, `eip712_domain_chain_id_in` |
-| EIP-7702 authorization list | `tx_conditions.eip7702_authorized_addresses_in` |
 | Smart Contract Interfaces | `POST /v1/org/contract-abis` (`interface_kind`: `evm_abi` \| `solana_idl`) |
 
 Cedar (Team+) example: `forbid(...) when { resource has function_name && resource.function_name == "transfer" }`. Full field table: [policy language](/docs/treasury/policy-language).
@@ -18762,6 +19122,61 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.52.0 — Agent Environment Tagging (2026-08-18) {#v0520--agent-environment-tagging-2026-08-18}
+
+Tag agents with a named environment for policy scoping and automatic env var resolution.
+
+#### New features
+- **Agent environment tag** — `environment`, `environment_locked`, `env_auto_resolve`, and `per_environment_guardrails` on agents.
+- **JWT claim** — Agent tokens include `environment` when the agent is tagged.
+- **Policy scoping** — Access policy `conditions.environment_in` restricts policies to specific environments.
+- **Auto-resolve** — When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` uses the agent's tag when `environment` is omitted.
+- **CLI flags** — `--environment`, `--environment-locked`, `--env-auto-resolve` on create; update supports `--per-environment-guardrails`.
+- **Dashboard** — Environment tag UI on agent create and detail pages.
+
+#### Bug fixes
+- `consensus_policy` unit tests updated for `require_credential_types` field.
+
+#### Migrations
+- 201: `agents.environment`, `environment_locked`, `env_auto_resolve`, `per_environment_guardrails`
+
+#### Clients
+- `@1claw/sdk@0.52.0`, `@1claw/cli@0.52.0`, `@1claw/mcp@0.52.0`, `@1claw/openapi-spec@0.52.0`
+- Python SDK `oneclaw@0.52.0`, Go SDK `v0.52.0`
+
+---
+
+### v0.51.0 — Environment Variables (2026-08-18) {#v0510--environment-variables-2026-08-18}
+
+First-class per-key environment variables on vaults, bringing Vercel-style env management to 1Claw.
+
+#### New features
+- **Per-key env vars** — Store `DATABASE_URL`, `STRIPE_KEY`, etc. as individual encrypted entries targeting specific environments (production, preview, development, custom). Replaces the `config/prod/*` path hack.
+- **Named environments** — Built-in production/preview/development plus tier-gated custom environments with copy-from support.
+- **Org shared vars** — Organization-level env vars linked to multiple vaults. Vault-level vars with same key+environment always win.
+- **Resolution endpoint** — `GET /v1/vaults/{id}/env-vars/resolve` returns the final KEY=VALUE set with three-tier precedence (shared < vault < branch override).
+- **Sensitive write-only vars** — Values non-readable after creation for human callers. Disallowed on Development-only. Org enforcement policy available.
+- **Cloud Runtime injection** — Resolved env vars merged into container environment at start/rebuild. 64KB combined limit. Restart required for changes.
+- **CLI commands** — `env ls`, `env add`, `env rm`, `env environments ls|add|rm`, `-e` flag on `pull`/`push`/`run`.
+- **SDK** — `client.envVars.list()`, `.create()`, `.get()`, `.update()`, `.delete()`, `.resolve()`.
+- **MCP** — `resolve_env` tool.
+- **Dashboard** — Env Variables tab on vault detail, Shared Env Vars settings page, environment management.
+
+#### Bug fixes
+- CLI `env pull` now correctly unwraps the `{ secrets: [...] }` response wrapper.
+- CLI `env push` now sends `type` instead of `secret_type` (matching the API's serde rename).
+
+#### Migrations
+- 197: `env_vars` table
+- 198: `vault_environments` table (built-in + custom)
+- 199: `org_env_vars` and `org_env_var_links` tables
+- 200: `runtimes.environment` column
+
+#### Clients
+- `@1claw/sdk@0.51.0`, `@1claw/cli@0.51.0`, `@1claw/mcp@0.51.0`, `@1claw/openapi-spec@0.51.0`
+
+---
+
 ### Auth & dashboard security (2026-08-17) {#auth--dashboard-security-2026-08-17}
 
 #### Human authentication
@@ -18770,6 +19185,27 @@ sidebar_label: "2026"
 - **New:** `GET/PATCH /v1/auth/settings` — read/update `require_passkey_for_vaults` (user-only; enabling requires at least one registered passkey).
 - **New:** `POST /v1/auth/passkeys/vault-assert/begin` + `.../complete` — issue a reusable 5-minute vault unlock token after passkey verification.
 - **New:** Dashboard passkey suggestion prompt after login for users without a passkey (dismissible, 7-day snooze). Toggle in **Settings → Security** ("Vault unlock" card).
+
+---
+
+### v0.50.0 — Policy Parity Sprint (2026-08-18) {#v0500--policy-parity-sprint-2026-08-18}
+
+#### Consensus precision & approver identity
+- **New:** `threshold_wei` on `ConsensusCondition::value_above` — arbitrary-precision wei thresholds (preferred over deprecated `threshold_gwei`).
+- **New:** `required_roles`, `per_role_minimums`, and `require_credential_types` on consensus `approval` requirements — enforce role-based and credential-gated approvals (e.g. require passkey-verified approver).
+- **New:** `credential_type` on `approval_signatures` (migration 195) — records auth method used at vote time (`password`, `passkey`, `totp`, `biometric`, `api_key`).
+
+#### EIP-712 & EIP-7702 policy conditions
+- **New:** `tx_conditions` fields: `eip712_primary_type_in`, `eip712_verifying_contract_in`, `eip712_domain_name_in`, `eip712_domain_chain_id_in` — fine-grained typed data signing policies.
+- **New:** `eip7702_authorized_addresses_in` — restrict EIP-7702 delegate contracts via `authorization_list` in TransactionContext.
+
+#### Control-plane governance
+- **New:** Org setting `control_plane_consensus_policy_id` — gates policy CRUD, signing key export, and member mutations behind consensus (returns **202**).
+- **New:** `ConsensusCondition::action_in` — match control-plane actions (`policy.create`, `policy.update`, `policy.delete`, `signing_key.export`, `member.role_change`, `member.remove`).
+
+#### Clients
+- `@1claw/sdk@0.50.0`, `@1claw/cli@0.50.0`, `@1claw/mcp@0.50.0`, `@1claw/openapi-spec@0.50.0`
+- Python SDK `oneclaw@0.50.0`, Go SDK `v0.50.0`
 
 ---
 
@@ -20135,7 +20571,7 @@ The **/v1** API is stable. Breaking changes would be accompanied by a new versio
 
 Release notes by year:
 
-- **[2026](/docs/reference/changelog-2026)** — Cedar/OPA enforcement v2, billing quotas, key management, and earlier 2026 releases
+- **[2026](/docs/reference/changelog-2026)** — Environment Variables, Cedar/OPA enforcement v2, billing quotas, key management, and earlier 2026 releases
 
 
 
@@ -20247,7 +20683,11 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Path** — A slash-separated identifier for a secret inside a vault (e.g. `api-keys/stripe`, `config/prod/db`). Used in policies as glob patterns (e.g. `**`, `prod/*`). See [Secrets model](/docs/concepts/secrets-model).
 
-**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/vaults/human-api/grants/create-grant) and [Scoped permissions](/docs/vaults/scoped-permissions).
+**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window, **`environment_in`** for agent environment scoping), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/vaults/human-api/grants/create-grant) and [Scoped permissions](/docs/vaults/scoped-permissions).
+
+**Environment variable (env var)** — A per-key encrypted entry on a vault (`DATABASE_URL`, `STRIPE_KEY`, …) scoped to one or more environments (production, preview, development, custom). Resolved via `GET /v1/vaults/{id}/env-vars/resolve` with precedence: org shared < vault < branch override. See [Environment Variables](/docs/guides/environment-variables).
+
+**Agent environment tag** — A named environment on an agent (`production`, `preview`, `development`, or custom) used for policy `environment_in` conditions, env var auto-resolve (`env_auto_resolve`), and per-environment guardrail overrides. Included in the agent JWT as an `environment` claim when set. See [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
 
 **Principal** — The identity that a policy applies to: a **user** (by user ID) or an **agent** (by agent ID). The principal must match the caller for the policy to apply.
 
@@ -21472,6 +21912,7 @@ All API endpoints are organized into resource modules:
 | `client.auth`              | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()`, `forgotPassword()`, `resetPassword()`, `sendEmailOtp()`, `verifyEmailOtp()`, `socialLogin()`, `exchangeOAuthCode()`, `exchangeFederatedToken()` |
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
+| `client.envVars`           | `list()`, `create()`, `get()`, `update()`, `delete()`, `resolve()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
 | `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()`, `importSmartAccount()` |
 | `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`, `importKey()`                         |
@@ -21532,6 +21973,36 @@ if (res.error) {
     console.log(res.data.value);
 }
 ```
+
+## Environment Variables
+
+Per-vault env vars with environment scoping and three-tier resolution (org shared → vault → branch override):
+
+```ts
+await client.envVars.create(vaultId, {
+  key: "DATABASE_URL",
+  value: "postgres://...",
+  environments: ["production", "preview"],
+  sensitive: true,
+});
+
+const { vars, sources } = await client.envVars.resolve(vaultId, "production");
+```
+
+Tag agents with an environment for auto-resolve and policy scoping:
+
+```ts
+await client.agents.create({
+  name: "preview-bot",
+  environment: "preview",
+  env_auto_resolve: true,
+});
+
+// When env_auto_resolve is true on the agent JWT, omit environment
+const { vars } = await client.envVars.resolve(vaultId);
+```
+
+See [Environment Variables](/docs/guides/environment-variables) and [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
 
 ## Error types
 
@@ -24106,6 +24577,9 @@ Serialized as `context.tx` (alias `transaction` for OPA). Optional fields requir
 | `decode_failed` | bool | Calldata present but ABI decode failed — **fail-closed** |
 | `erc20_*` | string? | Normalized transfer/approve |
 | `eip712_primary_type` | string? | typed_data |
+| `eip712_domain` | object? | `{ name, version, chain_id, verifying_contract }` |
+| `eip712_message` | object? | Full typed data message JSON |
+| `eip7702_authorized_addresses` | string[]? | EIP-7702 delegation targets |
 | `program_ids` | string[] | Solana |
 | `btc_outputs` | `{address, value_sat}[]` | Bitcoin |
 | `xrp_tx_type` | string? | default `Payment` |
@@ -24160,6 +24634,11 @@ Fields are combined according to `match_mode`. `effect` on the policy is allow o
 | `decode_failed` | bool |
 | `program_id_in` | any listed program in `program_ids` |
 | `deep_inspect` | bool — also evaluate against inner calls |
+| `eip712_primary_type_in` | typed_data primaryType allowlist |
+| `eip712_verifying_contract_in` | typed_data domain.verifyingContract allowlist (case-insensitive) |
+| `eip712_domain_name_in` | typed_data domain.name allowlist |
+| `eip712_domain_chain_id_in` | typed_data domain.chainId allowlist (integers) |
+| `eip7702_authorized_addresses_in` | EIP-7702 authorized delegate addresses (case-insensitive) |
 
 Ignored on secret read (no TransactionContext). Agent guardrails stay the simple knobs; `tx_conditions` is the free expression layer.
 
@@ -24201,6 +24680,37 @@ A match on **any** inner call counts as an overall match. This catches transfers
 
 Without `deep_inspect`, the outer function name is `multicall` or `execTransaction` and would not match `transfer`.
 
+### EIP-712 per-field conditions
+
+Use `eip712_*` fields to write policies over typed data signing (Permit2, order signing, etc.):
+
+```json
+{
+  "tx_conditions": {
+    "intent_type_in": ["typed_data"],
+    "eip712_primary_type_in": ["Permit", "Permit2", "PermitSingle"],
+    "eip712_verifying_contract_in": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"]
+  }
+}
+```
+
+Match is case-insensitive on addresses. Combine with `effect: "deny"` to block dangerous typed-data signatures, or `effect: "allow"` to whitelist known verifiers.
+
+### EIP-7702 authorization list conditions
+
+EIP-7702 "set code" transactions delegate execution to another contract. Use `eip7702_authorized_addresses_in` to restrict which contracts an agent may delegate to:
+
+```json
+{
+  "tx_conditions": {
+    "eip7702_authorized_addresses_in": ["0xKnownSafeImplementation"],
+    "chain_in": ["ethereum"]
+  }
+}
+```
+
+To deny all EIP-7702 transactions that delegate to unknown contracts, pair with `effect: "deny"` and set the list to known-bad addresses, or create an allow-only policy with your approved implementation addresses.
+
 ## Consensus JSON
 
 `approvers.count() >= N` maps to `consensus_trigger.approval.min_approvals`. Conditions AND together (`value_above`, `chain_in`, `to_address_in`, `function_selector_in`, `erc20_amount_above`, `intent_type_in`, `always`). Match → **202**.
@@ -24234,6 +24744,66 @@ Each entry is a `FlatConditionSet` with the same vocabulary as `ConsensusConditi
 
 In this example, consensus only triggers for transactions above 1 ETH (via `require_when`), but even those are exempted when sending to the known treasury multisig on Ethereum (via `skip_when`).
 
+### Consensus value precision
+
+`ConsensusCondition::ValueAbove` supports `threshold_wei` (string, arbitrary precision) alongside the deprecated `threshold_gwei` (i64). Prefer `threshold_wei` for all new policies:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_wei": "1000000000000000000" }],
+    "approval": { "min_approvals": 2 }
+  }
+}
+```
+
+When both are present, `threshold_wei` takes precedence. `threshold_gwei` is retained for backward compatibility only.
+
+### Consensus approver roles and credential types
+
+Fine-grained control over who can approve and with what authentication method:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "value_above", "threshold_wei": "5000000000000000000" }],
+    "approval": {
+      "min_approvals": 2,
+      "required_roles": ["owner", "admin"],
+      "per_role_minimums": { "owner": 1 },
+      "require_credential_types": ["passkey"]
+    },
+    "expiry_secs": 3600
+  }
+}
+```
+
+| Field | Effect |
+| ----- | ------ |
+| `required_roles` | Only signatures from users with a listed org role (`owner`, `admin`, `member`) count toward `min_approvals` |
+| `per_role_minimums` | Enforce minimum counts per role — e.g. at least 1 owner must approve |
+| `require_credential_types` | At least one approval must use a listed credential type (`passkey`, `totp`, `biometric`, `password`, `api_key`) |
+
+The signature's `credential_type` is recorded at vote time from the step-up authentication method used (`X-Auth-Confirm` header).
+
+### Control-plane governance
+
+Administrative actions (policy CRUD, key export, member management) can be governed by the same consensus engine. Set an org-level `control_plane_consensus_policy_id` referencing a policy with `consensus_trigger`:
+
+```json
+{
+  "consensus_trigger": {
+    "conditions": [{ "type": "action_in", "actions": ["policy.create", "policy.update", "policy.delete", "signing_key.export", "member.role_change", "member.remove"] }],
+    "approval": { "min_approvals": 2, "required_roles": ["owner"] },
+    "expiry_secs": 3600
+  }
+}
+```
+
+When configured, matching control-plane mutations return **202** with a `pending_approval_id`, just like transaction consensus. The `action_payload` contains the full request body (hash-bound) so approvers see exactly what is being authorized.
+
+Governed actions: `policy.create`, `policy.update`, `policy.delete`, `signing_key.export`, `signing_key.import`, `member.role_change`, `member.remove`, `agent.create`, `agent.delete`.
+
 ### Consensus deep inspection
 
 Set `deep_inspect: true` on the consensus trigger to also evaluate conditions against inner calls from multicall, Safe, and ERC-4337 wrappers. A match on any inner call triggers the consensus requirement:
@@ -24241,12 +24811,22 @@ Set `deep_inspect: true` on the consensus trigger to also evaluate conditions ag
 ```json
 {
   "consensus_trigger": {
-    "conditions": [{ "type": "value_above", "threshold_gwei": 5000000000 }],
+    "conditions": [{ "type": "value_above", "threshold_wei": "5000000000000000000" }],
     "approval": { "min_approvals": 2 },
     "deep_inspect": true
   }
 }
 ```
+
+## Confidence builders
+
+| Feature | Status |
+| ------- | ------ |
+| **Hash-chained audit logs** | Every `audit_events` row includes `prev_event_id` and `integrity_hash` (SHA-256 chain). Enables cryptographic tamper detection across the full event log. |
+| **Calldata-bound approvals** | `pending_approvals.payload_hash` is validated at vote time — the approved payload cannot be swapped before execution. |
+| **Policy simulator** | `POST /v1/org/cedar-policies/test` and `POST /v1/org/opa-policies/test` (dry-run). Shadow mode available via org settings. |
+| **Deep calldata inspection** | Multicall, Safe `execTransaction`, ERC-4337 `handleOps` inner calls unwrapped and evaluated. Fail-closed `decode_failed` flag. |
+| **HSM/TEE attestation** | GCP KMS FIPS 140-2 Level 3 for key operations. Shroud runs on AMD SEV-SNP confidential compute. |
 
 ## Time window
 
@@ -29030,6 +29610,7 @@ The **Vault** is the foundation of 1Claw. Every secret, agent credential, signin
 | **CMEK** | Client-side AES-256-GCM layer; server never sees your key | [CMEK](/docs/vaults/cmek) |
 | **MPC** | Split DEKs across HSM providers (2-of-2 or 2-of-3) | [MPC](/docs/vaults/mpc) |
 | **Sharing** | Share secrets with people or agents via share links | [Sharing](/docs/sharing/overview) |
+| **Env variables** | Per-key vars with production/preview/development scoping | [Environment Variables](/docs/guides/environment-variables) |
 
 ## Interfaces
 

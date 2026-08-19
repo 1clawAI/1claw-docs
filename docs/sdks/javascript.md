@@ -90,6 +90,7 @@ All API endpoints are organized into resource modules:
 | `client.auth`              | `login()`, `signup()`, `agentToken()`, `apiKeyToken()`, `google()`, `changePassword()`, `logout()`, `forgotPassword()`, `resetPassword()`, `sendEmailOtp()`, `verifyEmailOtp()`, `socialLogin()`, `exchangeOAuthCode()`, `exchangeFederatedToken()` |
 | `client.vault`             | `create()`, `list()`, `get()`, `delete()`                                                          |
 | `client.secrets`           | `set()`, `get()`, `list()`, `delete()`, `rotate()`, `listVersions()`, `getVersion()`, `rotateGenerate()`, `disableVersion()` |
+| `client.envVars`           | `list()`, `create()`, `get()`, `update()`, `delete()`, `resolve()` |
 | `client.access`            | `grantHuman()`, `grantAgent()`, `update()`, `revoke()`, `listGrants()`                             |
 | `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()`, `importSmartAccount()` |
 | `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`, `importKey()`                         |
@@ -150,6 +151,36 @@ if (res.error) {
     console.log(res.data.value);
 }
 ```
+
+## Environment Variables
+
+Per-vault env vars with environment scoping and three-tier resolution (org shared → vault → branch override):
+
+```ts
+await client.envVars.create(vaultId, {
+  key: "DATABASE_URL",
+  value: "postgres://...",
+  environments: ["production", "preview"],
+  sensitive: true,
+});
+
+const { vars, sources } = await client.envVars.resolve(vaultId, "production");
+```
+
+Tag agents with an environment for auto-resolve and policy scoping:
+
+```ts
+await client.agents.create({
+  name: "preview-bot",
+  environment: "preview",
+  env_auto_resolve: true,
+});
+
+// When env_auto_resolve is true on the agent JWT, omit environment
+const { vars } = await client.envVars.resolve(vaultId);
+```
+
+See [Environment Variables](/docs/guides/environment-variables) and [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
 
 ## Error types
 

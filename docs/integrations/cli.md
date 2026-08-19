@@ -158,9 +158,17 @@ When you choose "Create a new agent", `setup` provisions everything end-to-end:
   --tx-to-allowlist 0x... \            # Transaction guardrails
   --tx-max-value 0.1 \
   --tx-daily-limit 1.0 \
-  --tx-allowed-chains sepolia,base
+  --tx-allowed-chains sepolia,base \
+  --environment preview \              # Tag agent with named environment (v0.52)
+  --environment-locked \               # Lock tag after creation
+  --env-auto-resolve                   # Auto-fill env on resolve endpoint
 1claw agent get <id>
 1claw agent update <id> --shroud true --intents-api true
+1claw agent update <id> \
+  --environment production \
+  --environment-locked true \
+  --env-auto-resolve true \
+  --per-environment-guardrails '{"production":{"tx_max_value":"1.0"}}'
 1claw agent update <id> --execution-intents true \
   --execution-guardrails '{"max_requests_per_minute":30,"allowed_binding_types":["http","graphql"]}'
 1claw agent delete <id>
@@ -349,13 +357,32 @@ The agent must have `federation_enabled = true` and the audience on its allowlis
 
 ## Environment (CI/CD)
 
+### Path-based pull/push/run
+
 ```bash
 1claw env pull                         # Pull secrets as .env format
 1claw env pull --format json           # As JSON
 1claw env pull -o .env.local           # Write to file
+1claw env pull -e production           # Pull for a specific environment
 1claw env push .env                    # Push .env file to vault
+1claw env push .env -e staging         # Push to a specific environment
 1claw env run -- npm start             # Run with secrets injected
+1claw env run -e production -- npm start
 1claw env run --prefix config/ -- ./deploy.sh
+```
+
+### Per-key env vars (v0.51)
+
+Manage individual encrypted env vars with environment scoping and precedence-based resolution. See [Environment Variables](/docs/guides/environment-variables).
+
+```bash
+1claw env ls production                        # List vars for an environment
+1claw env add DATABASE_URL production          # Add var scoped to production
+1claw env add API_KEY preview --sensitive      # Sensitive write-only var
+1claw env rm DATABASE_URL preview              # Remove from preview
+1claw env environments ls                      # List vault environments
+1claw env environments add staging             # Create custom environment
+1claw env environments rm staging              # Delete custom environment
 ```
 
 ### Environment cache (offline mode)

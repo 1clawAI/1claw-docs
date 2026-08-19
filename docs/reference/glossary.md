@@ -30,7 +30,11 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Path** — A slash-separated identifier for a secret inside a vault (e.g. `api-keys/stripe`, `config/prod/db`). Used in policies as glob patterns (e.g. `**`, `prod/*`). See [Secrets model](/docs/concepts/secrets-model).
 
-**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/vaults/human-api/grants/create-grant) and [Scoped permissions](/docs/vaults/scoped-permissions).
+**Policy** — A rule that grants a **principal** (user or agent) permission to read and/or write secrets in a vault that match a **secret path pattern**. Policies can have conditions (IP, time window, **`environment_in`** for agent environment scoping), effect/priority (Policy Engine v2), and an expiry. Also called a **grant** in the Human API sidebar. Created and managed per vault. See [Create a policy](/docs/vaults/human-api/grants/create-grant) and [Scoped permissions](/docs/vaults/scoped-permissions).
+
+**Environment variable (env var)** — A per-key encrypted entry on a vault (`DATABASE_URL`, `STRIPE_KEY`, …) scoped to one or more environments (production, preview, development, custom). Resolved via `GET /v1/vaults/{id}/env-vars/resolve` with precedence: org shared < vault < branch override. See [Environment Variables](/docs/guides/environment-variables).
+
+**Agent environment tag** — A named environment on an agent (`production`, `preview`, `development`, or custom) used for policy `environment_in` conditions, env var auto-resolve (`env_auto_resolve`), and per-environment guardrail overrides. Included in the agent JWT as an `environment` claim when set. See [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
 
 **Principal** — The identity that a policy applies to: a **user** (by user ID) or an **agent** (by agent ID). The principal must match the caller for the policy to apply.
 
