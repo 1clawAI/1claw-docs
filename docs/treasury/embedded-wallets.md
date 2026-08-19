@@ -124,7 +124,9 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 
 ## Next Steps
 
+- **[Embedded Wallets guide series](/docs/guides/embedded-wallets)** — full documentation (auth, multi-chain, spend policies, Platform API, fiat ramps, advanced)
 - [Platform API guide](/docs/platform-api/overview) — full platform developer documentation
 - [@1claw/wallet-react](/docs/treasury/wallet-react) — React component documentation
+- [Security overview](/docs/security/security-overview) — custody, attestation, audit verification
 - [API reference](/docs/reference/api-reference) — full API reference
 - [OpenAPI spec](https://github.com/1clawAI/1claw/tree/main/packages/openapi-spec) — OpenAPI 3.1 specification
