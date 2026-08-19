@@ -61,6 +61,13 @@ First-class per-key env vars on vaults with Vercel-style environment scoping. Pe
 ### Agent Environment Tagging (v0.52)
 Agents can be tagged with a named environment (`production`, `preview`, `development`, or custom) for policy scoping and env var resolution. Fields on `agents`: `environment`, `environment_locked` (immutable after bootstrap), `env_auto_resolve` (resolve endpoint auto-fills from agent tag), `per_environment_guardrails` (JSONB overrides per environment). JWT includes `environment` claim when set. Policy conditions support `environment_in` array for environment-scoped access. When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` omits the `environment` query param and uses the agent's tag. Org setting `env.enforce_agent_environment_scope` blocks agents from resolving vars outside their tagged environment. CLI: `--environment`, `--environment-locked`, `--env-auto-resolve` on `agent create`; `--environment`, `--environment-locked`, `--env-auto-resolve`, `--per-environment-guardrails` on `agent update`. Dashboard: environment tag selector on agent create/detail pages. Migration 201. Guide: https://docs.1claw.xyz/docs/guides/agent-environment-tagging
 
+### v0.53.1 Sprint Enhancements
+- Raw transaction deep decode for pre-built Solana/Bitcoin/Tron transactions (`raw_transaction` base64, `tron_transaction` JSON on sign/submit DTOs — enables policy enforcement on pre-built non-EVM transactions)
+- Shamir KEK TEE-forwarded reconstruction (Business+ tier; returns 501 when Shroud not configured)
+- Credential recovery with configurable delay window (default 72h) and admin/owner approval; split into approve + execute steps (`POST /v1/auth/credential-recovery/requests/{id}/execute`)
+- Wallet access policies per-chain CRUD (`POST/GET/DELETE /v1/wallets/access-policies`)
+- Expression engine evaluated at signing time for policy schema v2 (`evaluate_expression_fail_closed` in policy engine)
+
 ### Agents
 AI agent identities registered via the dashboard or API. Agents support three authentication methods: `api_key` (default, generates `ocv_` prefixed key), `mtls` (client certificate fingerprint), and `oidc_client_credentials` (OIDC issuer + client ID). All agents automatically receive an Ed25519 SSH keypair stored in a dedicated `__agent-keys` vault for future encrypted A2A messaging. Agents can be scoped to specific vaults (`vault_ids`), specific secret paths (via policies), and have a custom token TTL (`token_ttl_seconds`). Agents cannot access anything not explicitly granted by a human.
 

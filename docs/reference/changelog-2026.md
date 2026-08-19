@@ -8,6 +8,39 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.1 (2026-08-19) {#v0531-2026-08-19}
+
+**Raw Transaction Deep Decode**
+- Added `raw_transaction` (base64) and `tron_transaction` (JSON) fields to sign and submit endpoints
+- Pre-built Solana, Bitcoin, and Tron transactions are now deep-decoded for policy enforcement
+- Base64 validation and 64KB size cap enforced server-side
+
+**Credential Recovery Hardening**
+- Split approve/execute into two steps with configurable delay window (default 72 hours)
+- Added `POST /v1/auth/credential-recovery/requests/{id}/execute` endpoint
+- Admin/owner role verification required for approve and execute actions
+- Org-configurable `credential_recovery_delay_hours` setting
+
+**Shamir KEK TEE Forwarding**
+- Reconstruct endpoint now forwards to Shroud TEE for secure key reconstruction
+- Returns 501 when Shroud is not configured (deployment without TEE)
+- Shroud stub handler at `POST /v1/admin/shamir/reconstruct`
+
+**Wallet Access Policies**
+- New CRUD endpoints: `POST/GET/DELETE /v1/wallets/access-policies`
+- Per-chain, per-agent/user permission policies with conditions (value caps, token allowlists)
+
+**OpenAPI Specification**
+- 15 new endpoint definitions (wallet access, credential recovery, Shamir KEK, execute)
+- Full request/response schemas with component definitions
+
+**Expression Engine & Chain Decoders**
+- Expression engine now evaluated in signing path for schema v2 policies
+- Solana, Bitcoin, and Tron transaction decoders integrated into policy context builder
+- Fail-open fallback when decode fails (graceful degradation)
+
+---
+
 ### v0.53.0 — Embedded Wallet Competitive Parity (2026-08-19) {#v0530--embedded-wallet-competitive-parity-2026-08-19}
 
 Whole-agent governance hardening for embedded wallet competitive parity with Turnkey-style signing infrastructure.
