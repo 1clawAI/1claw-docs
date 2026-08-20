@@ -1,6 +1,16 @@
+import { execSync } from "node:child_process";
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+
+function gitRepoAvailable(): boolean {
+    try {
+        execSync("git rev-parse --is-inside-work-tree", { stdio: "ignore" });
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 const config: Config = {
     title: "1claw Docs",
@@ -31,7 +41,7 @@ const config: Config = {
                     routeBasePath: "docs",
                     sidebarPath: "./sidebars.ts",
                     editUrl: undefined,
-                    showLastUpdateTime: true,
+                    showLastUpdateTime: gitRepoAvailable(),
                     showLastUpdateAuthor: false,
                 },
                 blog: false,

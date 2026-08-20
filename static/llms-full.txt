@@ -8523,23 +8523,30 @@ const { data } = await client.portfolio.get({
 
 Useful for dashboard-style apps serving power users with both embedded wallets and agents.
 
-## Roadmap (domain-only today)
+## Roadmap and v0.53.1 notes
 
-The following exist as **domain modules and migrations** but do **not** yet have public HTTP handlers documented for embedded-wallet integrators:
+### Wallet access policies (live API)
 
-| Feature | Status |
-| ------- | ------ |
-| **Wallet access policies** (`wallet_access_policies`, migration 205) | Domain evaluator only — no public CRUD API yet |
-| **Credential recovery escape hatch** (`credential_recovery_requests`, migration 204) | Org setting + domain logic — no end-user API yet |
+Role-based grants for send, swap, balance view, and export are available via:
 
-Do not build product flows against these until API endpoints ship. Watch [Changelog 2026](/docs/reference/changelog-2026) for releases.
+- `POST/GET/DELETE /v1/treasury/wallets/access-policies`
+- Dashboard: **Settings → Wallet Access**
+
+See [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies). Runtime enforcement on every treasury send/swap path is part of the v0.53.1 parity sprint — **spend policies remain the primary cap for embedded end-user sends today**.
+
+### Credential recovery (org admin)
+
+Org owners can configure MFA/passkey recovery escape hatches (`domain/credential_recovery.rs`). Approve + delayed execute flow; requires org owner/admin. No end-user self-service API yet — watch [Changelog 2026](/docs/reference/changelog-2026).
+
+### Shamir org KEK (Business+)
+
+Business/Enterprise orgs can configure Shamir-split org KEKs for multi-HSM custody. Reconstruct forwards to Shroud TEE when configured. Operator runbook: internal docs.
 
 ## Migration from other wallet providers
 
 - [Migrate from Turnkey](/docs/integrations/migrate-from-turnkey) — signing + governance mapping
 - [Migrate from Privy](/docs/integrations/migrate-from-privy)
 - [Migrate from Dynamic](/docs/integrations/migrate-from-dynamic)
-- [Why 1Claw for embedded wallets](/docs/security/why-1claw-embedded-wallets)
 
 ## Related
 
@@ -8595,8 +8602,8 @@ const { data } = await client.auth.verifyEmailOtp({
   auto_provision_chains: ["ethereum", "bitcoin", "solana"],
 });
 
-client.http.setToken(data.access_token);
-// data.user_id, data.org_id, data.is_new
+client.http.setToken(data.token);
+// data.user_id, data.org_id, data.is_new_user, data.wallet_address
 ```
 
 </TabItem>
@@ -8616,6 +8623,7 @@ curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
     "code":"123456",
     "auto_provision_chains":["ethereum"]
   }'
+# Response: token, user_id, org_id, is_new_user, wallet_address?
 ```
 
 </TabItem>
@@ -9409,21 +9417,25 @@ Embedded wallet keys inherit 1Claw's envelope encryption, audit hash chain, and 
 - [Security overview](/docs/security/security-overview) — threat model, attestation, audit verification
 - [Trust model comparison](/docs/security/trust-model-comparison) — whole-agent governance vs signing-only infrastructure
 - [Migrate from Turnkey](/docs/integrations/migrate-from-turnkey) — mapping wallets and policies to 1Claw
-- [Why 1Claw for embedded wallets](/docs/security/why-1claw-embedded-wallets) — platform positioning
+- [Trust model comparison](/docs/security/trust-model-comparison) — platform positioning vs signing-only providers
 
 ## Guide map
 
-| Guide | Topics |
-| ----- | ------ |
-| [Getting started](/docs/guides/embedded-wallets/getting-started) | Platform app, `plt_` key, bootstrap, claim flow |
-| [Authentication](/docs/guides/embedded-wallets/authentication) | Email OTP, social login, passkeys, Sign in with 1Claw |
-| [Multi-chain wallets](/docs/guides/embedded-wallets/multi-chain-wallets) | Six chains, generation, balances |
-| [Send, swap, receive](/docs/guides/embedded-wallets/send-swap-receive) | Transfers, 0x swaps, gasless, passkey tx auth |
-| [Spend policies](/docs/guides/embedded-wallets/spend-policies) | App defaults, per-user overrides |
-| [React integration](/docs/guides/embedded-wallets/react-integration) | `@1claw/wallet-react` props and theming |
-| [Platform API](/docs/guides/embedded-wallets/platform-api) | Upsert, bootstrap, templates, grants |
-| [Fiat on/off ramps](/docs/guides/embedded-wallets/fiat-ramps) | Coinbase Onramp, MoonPay |
-| [Advanced](/docs/guides/embedded-wallets/advanced) | Deposits, internal ledger, sub-orgs, CMEK/MPC |
+| # | Guide | Topics |
+| - | ----- | ------ |
+| 1 | [Overview](/docs/guides/embedded-wallets) | Architecture, vs agent keys, journey |
+| 2 | [Getting started](/docs/guides/embedded-wallets/getting-started) | Platform app, `plt_` key, bootstrap, claim flow |
+| 3 | [Authentication](/docs/guides/embedded-wallets/authentication) | Email OTP, social login, passkeys, Sign in with 1Claw |
+| 4 | [Multi-chain wallets](/docs/guides/embedded-wallets/multi-chain-wallets) | Six chains, generation, balances, import/export |
+| 5 | [Send, swap, receive](/docs/guides/embedded-wallets/send-swap-receive) | Transfers, 0x swaps, gasless, passkey tx auth |
+| 6 | [Spend policies](/docs/guides/embedded-wallets/spend-policies) | App defaults, per-user overrides |
+| 7 | [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies) | Role/principal grants (v0.53.1) |
+| 8 | [React integration](/docs/guides/embedded-wallets/react-integration) | `@1claw/wallet-react` props and theming |
+| 9 | [Platform API](/docs/guides/embedded-wallets/platform-api) | Upsert, bootstrap, templates, grants |
+| 10 | [Fiat on/off ramps](/docs/guides/embedded-wallets/fiat-ramps) | Coinbase Onramp, MoonPay |
+| 11 | [Advanced](/docs/guides/embedded-wallets/advanced) | Deposits, internal ledger, sub-orgs, CMEK/MPC |
+| 12 | [Security and custody](/docs/guides/embedded-wallets/security-and-custody) | HSM, platform_locked, enforcement layers |
+| 13 | [Testing and production](/docs/guides/embedded-wallets/testing-production) | Staging checklist, go-live |
 
 ## Quick links
 
@@ -9849,6 +9861,125 @@ Never expose human `1ck_` keys in frontend bundles — use **`plt_`** only.
 
 ---
 
+## Security and Custody
+
+---
+title: Security and Custody
+description: How embedded wallet keys are stored, who can access them, spend policy enforcement, and platform custody guarantees.
+sidebar_position: 11
+---
+
+# Security and Custody
+
+Embedded wallets inherit 1Claw's HSM-backed key hierarchy, envelope encryption, and audit hash chain. This page explains what your users' keys are protected by, what your platform can and cannot do, and how step-up auth fits in.
+
+## Key storage model
+
+| Layer | What it protects |
+| ----- | ---------------- |
+| **HSM / KMS** | Org KEK wraps per-secret DEKs; tier-aware HSM vs software protection |
+| **`__treasury-keys` vault** | Per-org vault at `users/{user_id}/chains/{chain}/private_key` |
+| **MPC (paid tiers)** | Pro/Team: XOR 2-of-2 client custody; Business/Enterprise: Shamir 2-of-3 multi-HSM |
+| **Direct secret reads** | Blocked — keys are never returned via `GET /v1/vaults/.../secrets/...` |
+
+Private keys are only exposed through:
+
+- `POST /v1/treasury/wallets/{chain}/export` (password re-auth, audit-logged)
+- Server-side signing on send/swap (user never sees the key)
+
+:::info Agents cannot use treasury wallets
+All treasury wallet endpoints enforce `require_human()`. Autonomous signing uses [agent signing keys](/docs/agents/intents/multi-chain-signing), not embedded treasury wallets.
+:::
+
+## Platform custody guarantee
+
+When you bootstrap with **`platform_locked: true`**, your platform operator account can manage lifecycle (create, delete, rotate) but **cannot read** end-user secret values — including treasury private keys.
+
+See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee).
+
+## Enforcement layers for sends and swaps
+
+Before any treasury wallet transaction is signed, the server evaluates guardrails in order:
+
+1. **Human step-up** — `X-Auth-Confirm` (password) or `X-Passkey-Token` (WebAuthn bound to tx digest)
+2. **[Spend policies](/docs/guides/embedded-wallets/spend-policies)** — app default + optional per-user override (`validate_wallet_send()`)
+3. **[Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies)** — role/principal grants (Pro+; API live, runtime enforcement rolling out)
+4. **Account lockout** — failed re-auth on export/send/swap increments lockout counter (10 failures → 15-minute lock)
+
+Clients and widgets cannot bypass server-side checks — a blocked transaction never reaches signing.
+
+## Authentication security
+
+| Method | Notes |
+| ------ | ----- |
+| Email OTP | 5-minute TTL, auth-rate-limited (5 burst / 1 sec per IP) |
+| Social login | Server-verified ID tokens; no email auto-linking (409 on conflict) |
+| Sign in with 1Claw | PKCE (S256) required in production; RS256 ID tokens |
+| Passkey tx auth | 5-minute token bound to `SHA256(chain\|to\|value_wei\|data)` |
+
+See [Authentication](/docs/guides/embedded-wallets/authentication).
+
+## Audit and compliance
+
+- Every export, send, swap, and import is audit-logged (`treasury_wallet.*` events)
+- Audit log uses hash-chained integrity (`integrity_hash`, `prev_event_id`)
+- Verify org audit chain: `GET /v1/audit/verify` (org-scoped)
+
+See [Audit and compliance](/docs/guides/audit-and-compliance) and [Security overview](/docs/security/security-overview).
+
+## Enterprise options
+
+| Feature | Tier | Purpose |
+| ------- | ---- | ------- |
+| CMEK | Business / Enterprise | Customer-managed AES layer; fingerprint only on server |
+| Shamir org KEK | Business / Enterprise | Multi-HSM key encryption for org KEK |
+| Sub-organizations | Enterprise | Per-tenant isolation under a parent org |
+
+Details: [Advanced features](/docs/guides/embedded-wallets/advanced#cmek-and-mpc-custody).
+
+## Threat model summary
+
+```mermaid
+flowchart LR
+    subgraph UserDevice["User device"]
+        Widget["wallet-react / your UI"]
+    end
+
+    subgraph PlatformBackend["Your backend (plt_ key)"]
+        Upsert["users/upsert"]
+        Spend["spend policies"]
+    end
+
+    subgraph OneClaw["1Claw Vault"]
+        Auth["Auth + step-up"]
+        Policy["Spend + access policies"]
+        HSM["HSM signing"]
+    end
+
+    Widget -->|"User JWT only"| Auth
+    Widget -->|"Send/swap"| Policy
+    Policy --> HSM
+    PlatformBackend -->|"No key reads when platform_locked"| Upsert
+    PlatformBackend --> Spend
+    Spend --> Policy
+```
+
+**Your responsibilities as a platform developer:**
+
+- Never ship `plt_` keys in frontend bundles — use `@1claw/wallet-react` or server-side Platform API calls
+- Set spend policies before production
+- Use HTTPS and secure OAuth redirect URIs
+- Monitor webhooks for anomalous transfer patterns
+
+## Related
+
+- [Trust model comparison](/docs/security/trust-model-comparison)
+- [HSM architecture](/docs/concepts/hsm-architecture)
+- [Testing and production](/docs/guides/embedded-wallets/testing-production)
+
+
+---
+
 ## Send, Swap, and Receive
 
 ---
@@ -9896,9 +10027,13 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/send" \
   -H "X-Auth-Confirm: $USER_PASSWORD" \
   -d '{
     "to": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    "amount": "0.01"
+    "value_wei": "0.01"
   }'
 ```
+
+:::note HTTP vs SDK field names
+The REST API uses `value_wei` (major-unit decimal string for non-EVM chains per OpenAPI). The `@1claw/sdk` `sendFromWallet()` helper accepts `amount` and maps it for you.
+:::
 
 </TabItem>
 </Tabs>
@@ -10014,7 +10149,7 @@ Users can inspect effective policy:
 
 ```typescript
 const { data } = await client.treasuryWallets.getEffectiveSpendPolicy();
-console.log(data.source); // "app_default" | "user_override" | ...
+console.log(data.source); // e.g. app default vs user override when present
 ```
 
 ## Audit & webhooks
@@ -10273,7 +10408,8 @@ const userClient = createClient({
 });
 
 const { data } = await userClient.treasuryWallets.getEffectiveSpendPolicy();
-// data.policy?.max_value_per_tx_eth, data.policy?.allowed_chains, ...
+// API returns { policy: {...} | null }; SDK exposes the inner policy on data
+console.log(data?.max_value_per_tx_eth, data?.allowed_chains);
 ```
 
 </TabItem>
@@ -10435,7 +10571,7 @@ The embedded wallet widget calls treasury wallet send/swap APIs with the user's 
 ```tsx
 import { OneclawWalletProvider, OneclawTreasuryWidget } from "@1claw/wallet-react";
 
-<OneclawWalletProvider appId="your-app-id" baseUrl="https://api.1claw.xyz">
+<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
   <OneclawTreasuryWidget theme="dark" chains={["ethereum", "base"]} />
 </OneclawWalletProvider>
 ```
@@ -10478,6 +10614,339 @@ wallet_spend_policies          wallet_send_ledger
 - [React integration](/docs/guides/embedded-wallets/react-integration) — `@1claw/wallet-react`
 - [Trust model](/docs/security/trust-model-comparison) — spend policy vs signing-only controls
 - [Security overview](/docs/security/security-overview) — audit and policy enforcement plane
+
+
+---
+
+## Testing and Production
+
+---
+title: Testing and Production
+description: Checklist for testing embedded wallet flows locally, staging spend policies, webhooks, and going live with @1claw/wallet-react.
+sidebar_position: 12
+---
+
+# Testing and Production
+
+Use this checklist before launching embedded wallets to real users.
+
+## Prerequisites
+
+| Requirement | Verify |
+| ----------- | ------ |
+| Pro+ subscription | Platform API enabled on your org |
+| Platform app | `plt_` key created; stored server-side only |
+| Redirect URIs | OAuth redirect URIs registered on platform app |
+| Chain RPCs | Target chains enabled in [chain registry](/docs/reference/api-reference) |
+| Spend policies | App default (and per-user overrides if needed) configured |
+
+## Local and staging test flow
+
+### 1. Auth smoke test
+
+```bash
+# Send OTP
+curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test+wallet@yourdomain.com","platform_app_id":"APP_UUID"}'
+
+# Verify (use code from email)
+curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"test+wallet@yourdomain.com",
+    "code":"123456",
+    "auto_provision_chains":["ethereum","base"]
+  }'
+```
+
+Expect `token`, `user_id`, `is_new_user`, and optional `wallet_address` in the response.
+
+### 2. Wallet provisioning
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+Confirm wallets exist for each requested chain.
+
+### 3. Balance read
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+### 4. Send on testnet
+
+Use Sepolia or Base Sepolia. Fund the wallet via faucet, then send with step-up auth:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/sepolia/send" \
+  -H "Authorization: Bearer $USER_JWT" \
+  -H "X-Auth-Confirm: $PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    "value_wei": "0.001"
+  }'
+```
+
+### 5. Spend policy violation
+
+Configure a tight allowlist, attempt send to a non-listed address, confirm **403** with descriptive `detail`.
+
+### 6. Widget integration
+
+```tsx
+<OneclawWalletProvider apiKey={process.env.NEXT_PUBLIC_PLT_KEY!} baseUrl="https://api.1claw.xyz">
+  <OneclawEmbeddedWallet
+    chains={["ethereum"]}
+    features={["send", "receive"]}
+    socialProviders={["email"]}
+  />
+</OneclawWalletProvider>
+```
+
+Verify: login → balance load → send → policy error toast on violation.
+
+## Production checklist
+
+### Security
+
+- [ ] `plt_` key only in server env or `NEXT_PUBLIC_` for widget (never human `1ck_` keys in browser)
+- [ ] Spend policies defined (`max_value_per_tx_eth`, `daily_limit_eth`, `allowed_chains`)
+- [ ] OAuth PKCE (S256) enabled for Sign in with 1Claw
+- [ ] HTTPS on all redirect URIs
+- [ ] Webhook HMAC secret configured and verified in your receiver
+
+### Platform API
+
+- [ ] `max_connected_users` set appropriately
+- [ ] `billing_model` matches your commercial model (`platform_pays` vs `user_pays`)
+- [ ] Bootstrap templates use `platform_locked: true` for end-user secrets
+- [ ] Claim flow tested (`claim_url` → user claims resources)
+
+### Operations
+
+- [ ] Webhooks subscribed: `platform.user.connected`, `wallet.transfer.sent`, `wallet.transfer.received`
+- [ ] Error monitoring on 403 spend policy rejections and 401 auth failures
+- [ ] Support runbook for cross-org linking (409 + consent URL)
+
+### Optional production features
+
+| Feature | When to enable |
+| ------- | -------------- |
+| Passkey tx auth | High-value sends |
+| Gasless (`gasless: true`) | Consumer UX on EVM; requires Pimlico |
+| Fiat on-ramp (`buy` feature) | Operator configures `COINBASE_ONRAMP_APP_ID` / `MOONPAY_API_KEY` |
+| Deposit destinations | Per-invoice inbound tracking |
+| Internal ledger | Off-chain balances between org accounts |
+
+## Environment variables (operator)
+
+| Variable | Service | Purpose |
+| -------- | ------- | ------- |
+| `ZERO_X_API_KEY` | Vault | DEX swaps |
+| `PIMLICO_API_KEY` | Vault | Gasless ERC-4337 |
+| `COINBASE_ONRAMP_APP_ID` | Vault | Fiat on-ramp |
+| `MOONPAY_API_KEY` / `MOONPAY_SECRET_KEY` | Vault | MoonPay widget + webhook verify |
+| `ONECLAW_GOOGLE_CLIENT_ID` | Vault | Google social login |
+| `ONECLAW_APPLE_CLIENT_ID` | Vault | Apple social login |
+| `ONECLAW_DISCORD_CLIENT_ID` + `SECRET` | Vault | Discord OAuth code exchange |
+
+## Monitoring
+
+- Dashboard **Treasury** — wallet balances and send history
+- `GET /v1/treasury/wallets/spend-policy` — effective policy for a user session
+- Platform app audit: `GET /v1/platform/apps/{id}/audit`
+- [Status page](https://1claw.xyz/status) — API and dashboard health
+
+## Related
+
+- [Getting started](/docs/guides/embedded-wallets/getting-started)
+- [Security and custody](/docs/guides/embedded-wallets/security-and-custody)
+- [Platform webhooks](/docs/platform-api/webhooks)
+- [Troubleshooting](/docs/guides/troubleshooting)
+
+
+---
+
+## Wallet Access Policies
+
+---
+title: Wallet Access Policies
+description: Role-based grants for who can send, swap, view balance, or export treasury wallets — API, scopes, and tier requirements.
+sidebar_position: 7
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Wallet Access Policies
+
+Wallet access policies (v0.53.1) extend [spend policies](/docs/guides/embedded-wallets/spend-policies) with **role- and principal-based grants** — control which users, agents, or role tags can send, swap, view balances, or export keys on treasury wallets.
+
+:::info Tier and principal requirements
+- **Pro or higher** plan required to create policies
+- **Human-only** — agents cannot create or delete wallet access policies
+- Distinct from **spend policies** (platform app caps on end-user sends) — see comparison below
+:::
+
+## Spend policies vs wallet access policies
+
+| | **Spend policies** | **Wallet access policies** |
+| --- | --- | --- |
+| **Purpose** | Cap what embedded-wallet **end-users** can send/swap | Grant **specific principals** permission to act on wallets |
+| **Set by** | Platform app (`plt_` key) | Org admin (human JWT) |
+| **Endpoints** | `/v1/platform/apps/{id}/spend-policies` | `/v1/treasury/wallets/access-policies` |
+| **Enforcement** | Live on send/swap | API + dashboard live; runtime enforcement on treasury routes is rolling out with v0.53.1 |
+
+Use **spend policies** for consumer wallet caps in embedded apps. Use **wallet access policies** when agents, team roles, or platform apps need granular wallet permissions inside an org.
+
+## Policy model
+
+Each policy row defines:
+
+| Field | Description |
+| ----- | ----------- |
+| `scope_type` | `wallet` (specific wallet), `platform_app`, or `org` (org-wide) |
+| `scope_id` | UUID when scope is `wallet` or `platform_app`; omit for `org` |
+| `principal_type` | `user`, `agent`, `role`, or `platform_app` |
+| `principal_id` | User/agent UUID, role tag string, or platform app UUID |
+| `can_send` / `can_swap` / `can_view_balance` / `can_export` / `can_sign` | Boolean permission flags |
+| `allowed_chains` | Chain allowlist (empty = all) |
+| `max_value_per_tx_eth` / `daily_limit_eth` | Optional caps on the grant |
+| `conditions` | JSONB for extended conditions |
+| `expires_at` | Optional expiry |
+
+Resolution order in the domain evaluator: direct principal match → role tag match → platform app match → org-wide default. **No matching policy = deny** (fail-closed).
+
+## API endpoints
+
+| Method | Path | Auth |
+| ------ | ---- | ---- |
+| `POST` | `/v1/treasury/wallets/access-policies` | Human JWT |
+| `GET` | `/v1/treasury/wallets/access-policies` | Human JWT |
+| `DELETE` | `/v1/treasury/wallets/access-policies/{id}` | Human JWT |
+
+Query params on list: `scope_type`, `scope_id`.
+
+### Create a policy
+
+<Tabs groupId="code-examples">
+<TabItem value="curl" label="curl">
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/access-policies" \
+  -H "Authorization: Bearer $USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope_type": "org",
+    "principal_type": "agent",
+    "principal_id": "AGENT_UUID",
+    "can_send": true,
+    "can_swap": false,
+    "can_view_balance": true,
+    "can_export": false,
+    "allowed_chains": ["ethereum", "base"],
+    "max_value_per_tx_eth": "0.5",
+    "daily_limit_eth": "2.0"
+  }'
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+// Use fetch or curl until @1claw/sdk adds a walletAccess resource.
+// Request body matches the Vault handler DTO (scope_type, principal_type, …).
+const res = await fetch("https://api.1claw.xyz/v1/treasury/wallets/access-policies", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${userJwt}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    scope_type: "org",
+    principal_type: "agent",
+    principal_id: agentId,
+    can_send: true,
+    can_view_balance: true,
+    allowed_chains: ["ethereum", "base"],
+  }),
+});
+const policy = await res.json();
+```
+
+</TabItem>
+</Tabs>
+
+Returns **201** with the full policy object.
+
+### List policies
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets/access-policies?scope_type=org" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+Response: `{ "policies": [ ... ] }` — active policies only.
+
+### Delete (soft-delete)
+
+```bash
+curl -X DELETE "https://api.1claw.xyz/v1/treasury/wallets/access-policies/$POLICY_ID" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+Returns **204**. Sets `is_active = false`.
+
+## Dashboard
+
+Manage policies at **Settings → Wallet Access** (`/settings/wallet-access`). Create grants by chain, target type (agent/user), permissions (`send`, `swap`, `receive`), and optional expiry.
+
+## Example: agent read-only balance
+
+Allow a support agent to view balances but not send:
+
+```json
+{
+  "scope_type": "org",
+  "principal_type": "agent",
+  "principal_id": "support-agent-uuid",
+  "can_view_balance": true,
+  "can_send": false,
+  "can_swap": false,
+  "can_export": false
+}
+```
+
+## Example: role-based ops team
+
+Grant all users with wallet role tag `treasury_ops` send access on Ethereum only:
+
+```json
+{
+  "scope_type": "org",
+  "principal_type": "role",
+  "principal_id": "treasury_ops",
+  "can_send": true,
+  "can_swap": true,
+  "allowed_chains": ["ethereum"],
+  "max_value_per_tx_eth": "1.0"
+}
+```
+
+Assign roles via `users.wallet_roles` / `agents.wallet_roles` (org admin).
+
+## Related
+
+- [Spend policies](/docs/guides/embedded-wallets/spend-policies) — platform app spend caps
+- [Security and custody](/docs/guides/embedded-wallets/security-and-custody)
+- [Treasury wallet access](/docs/treasury/wallet-access-policies) — same API from treasury docs angle
+- [Changelog 2026](/docs/reference/changelog-2026) — v0.53.1 wallet access release notes
 
 
 ---
@@ -10940,6 +11409,8 @@ This page is a guide entry point. Full reference lives under **Treasury → Poli
 | Feature | Tier | Doc |
 | ------- | ---- | --- |
 | Built-in policies + **`tx_conditions`** | All | [Policy language — tx_conditions](/docs/treasury/policy-language#built-in-tx_conditions-all-tiers) |
+| **Expression engine** (`policy_schema_version: 2`) | All | [Policy language — Expression engine](/docs/treasury/policy-language#expression-engine-schema-v2) |
+| **Attribute conditions** | All | [Policy language — Attribute conditions](/docs/treasury/policy-language#attribute-conditions) |
 | Cedar backend (shadow / enforce) | Team+ | [Policy Engine — Cedar](/docs/treasury/policy-engine#cedar-policies) |
 | OPA (Rego/WASM) backend | Business+ | [Policy Engine — OPA](/docs/treasury/policy-engine#opa-policies) |
 | Contract ABIs + **`interface_kind`** (`evm_abi` / `solana_idl`) | All (registry) | [Contract ABI registry](/docs/treasury/policy-engine#contract-abi-registry) |
@@ -21173,6 +21644,61 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.2 (2026-08-19) {#v0532-2026-08-19}
+
+**Release engineering & OpenAPI sync**
+- OpenAPI `@1claw/openapi-spec` 0.53.2: `ShroudAttestationResponse` adds `attestation_level` (`none` | `identity` | `confidential` | `sev_snp`) and `confidential_claims` (SEV-SNP tier metadata)
+- SDK, CLI, MCP, Python SDK, Go SDK, and OpenClaw plugin bumped to **0.53.2**
+- Production test scripts validate `attestation_level` on `GET /v1/shroud/attestation`
+- `@1claw/wallet-react` **v0.5.0** — audit-driven auth/session fixes; parent submodule pointer updated
+
+**Shroud & execution**
+- SEV-SNP attestation verification with measurement match against published image digest
+- TEE execution forwarding: Vault `POST /v1/agents/{id}/execute` with `execution_mode: "tee"` dispatches to Shroud when `ONECLAW_SHROUD_EXECUTION_URL` is configured
+- Shroud secrets manifest refresh notifications for faster redaction automata updates
+
+**Dashboard & policy UI**
+- Policy Engine v2 dashboard parity: tx conditions editor, consensus `skip_when` / `require_when`, expression engine fields
+- Embedded wallet UX improvements and blog post on competitive positioning
+
+**Security (2026-08-19 audit)**
+- HIGH/MEDIUM findings from security audit remediated in vault and dashboard
+
+---
+
+### v0.53.1 (2026-08-19) {#v0531-2026-08-19}
+
+**Raw Transaction Deep Decode**
+- Added `raw_transaction` (base64) and `tron_transaction` (JSON) fields to sign and submit endpoints
+- Pre-built Solana, Bitcoin, and Tron transactions are now deep-decoded for policy enforcement
+- Base64 validation and 64KB size cap enforced server-side
+
+**Credential Recovery Hardening**
+- Split approve/execute into two steps with configurable delay window (default 72 hours)
+- Added `POST /v1/auth/credential-recovery/requests/{id}/execute` endpoint
+- Admin/owner role verification required for approve and execute actions
+- Org-configurable `credential_recovery_delay_hours` setting
+
+**Shamir KEK TEE Forwarding**
+- Reconstruct endpoint now forwards to Shroud TEE for secure key reconstruction
+- Returns 501 when Shroud is not configured (deployment without TEE)
+- Shroud stub handler at `POST /v1/admin/shamir/reconstruct`
+
+**Wallet Access Policies**
+- New CRUD endpoints: `POST/GET/DELETE /v1/wallets/access-policies`
+- Per-chain, per-agent/user permission policies with conditions (value caps, token allowlists)
+
+**OpenAPI Specification**
+- 15 new endpoint definitions (wallet access, credential recovery, Shamir KEK, execute)
+- Full request/response schemas with component definitions
+
+**Expression Engine & Chain Decoders**
+- Expression engine now evaluated in signing path for schema v2 policies
+- Solana, Bitcoin, and Tron transaction decoders integrated into policy context builder
+- Fail-open fallback when decode fails (graceful degradation)
+
+---
+
 ### v0.53.0 — Embedded Wallet Competitive Parity (2026-08-19) {#v0530--embedded-wallet-competitive-parity-2026-08-19}
 
 Whole-agent governance hardening for embedded wallet competitive parity with Turnkey-style signing infrastructure.
@@ -24824,8 +25350,10 @@ All KMS requests include CRC32C checksums. The API verifies response checksums a
 
 1Claw uses versioned policy schemas to ensure backward compatibility as the policy engine evolves. Every policy carries a `policy_schema_version` field that determines which evaluation features are available.
 
-:::tip Expression engine — enforced at signing time
-`policy_schema_version: 2` and `tx_conditions.expression` are persisted and **evaluated at signing time** via `evaluate_expression_fail_closed` in the policy engine (v0.53.1+). Expression results are AND-combined with v1 field-matching when both are present. Fail-closed on parse or evaluation errors.
+:::caution Expression engine — stored, not yet enforced at signing time
+`policy_schema_version: 2` and `tx_conditions.expression` are **persisted** in the database and accepted by the policy CRUD API. The expression evaluator (`domain/expression_engine.rs`) is implemented and unit-tested, but it is **not wired into signing-time policy evaluation** yet. At signing time, only v1 field-matching (`chain_in`, `to_address_in`, etc.), Cedar/OPA backends (when enabled), and built-in consensus triggers are enforced today.
+
+**Status:** Schema + storage = **Live** · Signing-time expression evaluation = **Enforcement wiring in progress**
 :::
 
 ## Schema Versions
@@ -24842,16 +25370,18 @@ The original field-matching schema. All policies created before the expression e
 
 **Evaluation:** Each field in `tx_conditions` is matched independently against the `TransactionContext`. All fields combined per `match_mode`.
 
-### Version 2 (Expression + action_kind)
+### Version 2 (Schema — expression enforcement in progress)
 
-Adds the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
+Adds storage for the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
 
-**Features:**
+**New features (stored today):**
 - `tx_conditions.expression` — mini-DSL for predicate logic (see below)
 - `action_kind_in` on consensus triggers — version-agnostic action matching (e.g. `signing_key` matches `signing_key.export`, `.import`, `.rotate`, `.deactivate`)
 - Expanded `CONTROL_PLANE_ACTIONS` taxonomy (29 actions across 15 kinds)
 
-**Evaluation:** v1 field-matching and expressions are **both enforced at signing time** when `policy_schema_version: 2`. Results are AND-combined. The expression engine uses a step budget (1000), AST depth cap (16), string length cap (1024), and fail-closed error handling.
+**Evaluation today:** v1 field-matching in `tx_conditions` is enforced at signing time as before. The `expression` field is **not** evaluated during transaction/sign requests yet — policies that rely solely on expressions will not gate signing until enforcement wiring ships.
+
+**Planned evaluation (when wired):** Expression and field-matching will be AND-combined. The expression engine has security hardening designed in: step budget (1000), AST depth cap (16), string length cap (1024), fail-closed on errors.
 
 ## Migration Guide
 
@@ -24883,9 +25413,9 @@ When creating new policies, set `policy_schema_version: 2` to unlock expression 
 }
 ```
 
-### Combining field-matching and expressions
+### Combining field-matching and expressions (planned)
 
-Both are AND-combined at signing time — the transaction must satisfy field-level conditions **and** the expression when `policy_schema_version: 2`:
+When expression enforcement is wired, both will be AND-combined — the transaction must satisfy field-level conditions **and** the expression. Until then, only field-matching applies at signing time:
 
 ```json
 {
@@ -25166,7 +25696,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
 | **Audit integrity** | Event log | Hash-chained event log with independent verification API |
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
-| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**Live** at signing time, schema v2) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
+| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**schema-only**) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
 | **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
@@ -25213,18 +25743,11 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
 }
 ```
 
-### 1Claw Expression Engine (v2 policies — live)
+### 1Claw Expression Engine (v2 policies — schema-only today)
 
-```json
-{
-  "policy_schema_version": 2,
-  "tx_conditions": {
-    "expression": "(chain == 'ethereum' || chain == 'base') && value_gwei > 1000000000"
-  }
-}
-```
-
-Expressions in `tx_conditions.expression` are **enforced at signing time** when `policy_schema_version: 2`. Use v1 field-matching alone on schema v1 policies; combine both on v2 for AND semantics.
+:::caution Status — stored, not enforced at signing time
+Expressions in `tx_conditions.expression` are persisted when `policy_schema_version: 2`, but signing-time evaluation is **not wired yet**. Use v1 field-matching for live enforcement until expression wiring ships.
+:::
 
 ```
 chain == "ethereum" && value_wei > "500000000000000000" && to in ["0xabc...", "0xdef..."]
@@ -25448,9 +25971,13 @@ Walks the organization's audit chain and reports:
 | Tier | Engine | Status | Capability |
 |------|--------|--------|------------|
 | All tiers | `tx_conditions` (JSON) | **Live** | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
-| All tiers (v2 schema) | Expression engine | **Live** | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget; fail-closed |
+| All tiers (v2 schema) | Expression engine | **Schema-only** — stored, signing-time enforcement in progress | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget |
 | Team+ | Cedar | **Live** (shadow/enforce modes) | AWS Cedar policy language with full RBAC |
 | Business+ | OPA | **Live** (shadow/enforce modes) | Open Policy Agent Rego for arbitrary authorization logic |
+
+:::caution Expression engine status
+`policy_schema_version: 2` and `tx_conditions.expression` are accepted by the API and persisted. The evaluator is implemented in `domain/expression_engine.rs` but **not yet called** during transaction/sign policy checks. Do not rely on expressions to gate signing until enforcement wiring ships.
+:::
 
 **Security hardening (expression engine):**
 - Expression length cap: 4096 bytes
@@ -25577,6 +26104,12 @@ curl -X POST https://api.1claw.xyz/v1/org/cedar-policies/test \
 ---
 
 ## Why 1Claw for Embedded Wallets
+
+---
+title: Why 1Claw for Embedded Wallets
+description: "How 1Claw embedded wallets fit into a unified agent-security platform — policy engine, Shroud LLM inspection, spend controls, and live verification endpoints."
+sidebar_position: 11
+---
 
 # Why 1Claw for Embedded Wallets
 
@@ -26569,7 +27102,7 @@ Get your users a wallet with just an email address. No browser extensions, no se
 
 ## Prerequisites
 
-- A 1Claw account with a Pro+ plan
+- A 1Claw account with a **Pro+** plan
 - A platform app (`plt_` API key) — [create one in the dashboard](https://1claw.xyz/platform)
 
 ## Install
@@ -26578,29 +27111,36 @@ Get your users a wallet with just an email address. No browser extensions, no se
 npm install @1claw/sdk
 ```
 
-## 5 Lines to a Wallet
+## Email OTP flow
 
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz", apiKey: "plt_..." });
+const client = createClient({ baseUrl: "https://api.1claw.xyz" });
 
-// 1. Send a login code to the user's email
+// 1. Send a login code
 await client.auth.sendEmailOtp({ email: "user@example.com" });
 
-// 2. User enters the 6-digit code they received
-const { token, wallet_address } = await client.auth.verifyEmailOtp({
+// 2. Verify the code — returns JWT + provisions wallets
+const { data } = await client.auth.verifyEmailOtp({
   email: "user@example.com",
   code: "123456",
   auto_provision_chains: ["ethereum"],
 });
 
-// 3. That's it — they have a wallet. Send funds:
-await client.treasuryWallets.sendFromWallet("ethereum", {
-  to: "0x...",
-  amount: "0.01",
-}, password);
+client.http.setToken(data.token);
+
+// 3. Send funds (requires password re-auth)
+await client.treasuryWallets.sendFromWallet(
+  "ethereum",
+  { to: "0x...", amount: "0.01" },
+  userPassword,
+);
 ```
+
+:::tip API response fields
+Email OTP verify returns `token` (JWT), `is_new_user`, `user_id`, `org_id`, and optional `wallet_address`. Call `client.http.setToken(data.token)` before treasury calls.
+:::
 
 ## React Widget (Even Simpler)
 
@@ -26613,8 +27153,9 @@ import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-reac
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." chains={["ethereum", "base"]}>
+    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
       <OneclawEmbeddedWallet
+        chains={["ethereum", "base"]}
         features={["send", "swap", "receive", "buy"]}
         socialProviders={["google", "apple", "email"]}
       />
@@ -26628,16 +27169,23 @@ function App() {
 Control what your users can do with their wallets:
 
 ```typescript
-// Set app-wide defaults
-await client.platform.createSpendPolicy(appId, {
+import { createClient } from "@1claw/sdk";
+
+const platform = createClient({
+  baseUrl: "https://api.1claw.xyz",
+  apiKey: process.env.PLATFORM_KEY!, // plt_...
+});
+
+// App-wide defaults
+await platform.platform.createSpendPolicy(appId, {
   max_value_per_tx_eth: "0.1",
   daily_limit_eth: "1.0",
   allowed_chains: ["ethereum", "base"],
   to_allowlist: ["0xYourContract..."],
 });
 
-// Override for a specific user
-await client.platform.setUserSpendPolicy(connectionId, {
+// Per-user override
+await platform.platform.setUserSpendPolicy(connectionId, {
   max_value_per_tx_eth: "0.5",
   daily_limit_eth: "5.0",
 });
@@ -26645,26 +27193,27 @@ await client.platform.setUserSpendPolicy(connectionId, {
 
 ## Sign in with 1Claw (OAuth2)
 
-Let users sign in with their existing 1Claw account:
-
 ```typescript
-// Redirect user to 1Claw login
-const authorizeUrl = "https://1claw.xyz/oauth/authorize?" + new URLSearchParams({
-  client_id: "your-app-slug",
-  redirect_uri: "https://yourapp.com/callback",
-  response_type: "code",
-  scope: "openid email wallet",
-  code_challenge: challenge,
-  code_challenge_method: "S256",
-});
-window.location.href = authorizeUrl;
+import { createClient, generatePKCE, buildAuthorizeUrl } from "@1claw/sdk";
 
-// In your callback handler:
-const { access_token, id_token } = await client.auth.exchangeOAuthCode({
-  code: searchParams.get("code"),
+const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const { codeVerifier, codeChallenge } = await generatePKCE();
+
+const url = buildAuthorizeUrl("https://1claw.xyz", {
+  clientId: "your-app-slug",
+  redirectUri: "https://yourapp.com/callback",
+  scopes: ["openid", "email"],
+  codeChallenge,
+  codeChallengeMethod: "S256",
+  state: crypto.randomUUID(),
+});
+
+// After redirect back:
+const { data } = await client.auth.exchangeOAuthCode({
+  code: callbackCode,
   client_id: "your-app-slug",
   redirect_uri: "https://yourapp.com/callback",
-  code_verifier: storedVerifier,
+  code_verifier: codeVerifier,
 });
 ```
 
@@ -26676,19 +27225,19 @@ const { access_token, id_token } = await client.auth.exchangeOAuthCode({
 | Social login | Google, Apple, Discord |
 | Sign in with 1Claw | Full OAuth2 + PKCE |
 | Multi-chain wallets | Ethereum, Bitcoin, Solana, XRP, Cardano, Tron |
-| Gasless transactions | ERC-4337 sponsored gas |
+| Gasless transactions | ERC-4337 sponsored gas (`gasless: true`) |
 | Spend policies | Per-app defaults + per-user overrides |
 | Passkey tx auth | WebAuthn for transaction signing |
 | Fiat on/off ramps | Buy/sell crypto via partner widgets |
 
 ## Next Steps
 
-- **[Embedded Wallets guide series](/docs/guides/embedded-wallets)** — full documentation (auth, multi-chain, spend policies, Platform API, fiat ramps, advanced)
-- [Platform API guide](/docs/platform-api/overview) — full platform developer documentation
-- [@1claw/wallet-react](/docs/treasury/wallet-react) — React component documentation
-- [Security overview](/docs/security/security-overview) — custody, attestation, audit verification
-- [API reference](/docs/reference/api-reference) — full API reference
-- [OpenAPI spec](https://github.com/1clawAI/1claw/tree/main/packages/openapi-spec) — OpenAPI 3.1 specification
+- **[Embedded Wallets guide series](/docs/guides/embedded-wallets)** — full documentation
+- [Platform API guide](/docs/platform-api/overview)
+- [@1claw/wallet-react](/docs/treasury/wallet-react)
+- [Security and custody](/docs/guides/embedded-wallets/security-and-custody)
+- [Testing and production](/docs/guides/embedded-wallets/testing-production)
+- [API reference](/docs/reference/api-reference)
 
 
 ---
@@ -26750,12 +27299,16 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 | GET    | `/v1/treasury/wallets`                  | List all active wallets              |
 | GET    | `/v1/treasury/wallets/{chain}`          | Get wallet for a specific chain      |
 | GET    | `/v1/treasury/wallets/{chain}/balance`  | Query native + ERC-20 balances       |
+| GET    | `/v1/treasury/wallets/spend-policy`     | Effective spend policy (user JWT)    |
 | POST   | `/v1/treasury/wallets/{chain}/send`     | Send tokens (password re-auth)       |
 | POST   | `/v1/treasury/wallets/{chain}/swap`     | Swap tokens via DEX (password re-auth)|
 | POST   | `/v1/treasury/wallets/{chain}/export`   | Export wallet (password re-auth)     |
 | POST   | `/v1/treasury/wallets/{chain}/import`   | Import existing wallet (BYOK, password re-auth) |
 | POST   | `/v1/treasury/wallets/{chain}/rotate`   | Rotate keypair                       |
 | DELETE | `/v1/treasury/wallets/{chain}`          | Deactivate wallet                    |
+| POST   | `/v1/treasury/wallets/access-policies`  | Create wallet access policy (Pro+)   |
+| GET    | `/v1/treasury/wallets/access-policies`  | List wallet access policies          |
+| DELETE | `/v1/treasury/wallets/access-policies/{id}` | Delete wallet access policy      |
 
 ### Generate wallets
 
@@ -26890,10 +27443,8 @@ Response:
 ```json
 {
   "chain": "ethereum",
-  "curve": "secp256k1",
-  "private_key": "0xabc123...",
-  "public_key": "04abcdef...",
-  "address": "0x4e83..."
+  "address": "0x4e83...",
+  "private_key_hex": "0xabc123..."
 }
 ```
 
@@ -27174,6 +27725,9 @@ Failed deliveries are retried up to 5 times with exponential backoff.
 
 ## See also
 
+- [Embedded Wallets guide](/docs/guides/embedded-wallets) — platform integrator flow
+- [Spend policies](/docs/treasury/spend-policies) — app and per-user caps
+- [Wallet access policies](/docs/treasury/wallet-access-policies) — role-based grants
 - [Intents API](/docs/agents/intents/overview) — agent transaction signing
 - [Multi-Party Computation (MPC)](/docs/vaults/mpc) — how MPC custody works under the hood
 - [Billing and usage](/docs/guides/billing-and-usage) — tier requirements
@@ -27814,6 +28368,57 @@ Set `deep_inspect: true` on the consensus trigger to also evaluate conditions ag
 }
 ```
 
+## Expression engine (schema v2)
+
+Set `policy_schema_version: 2` on access policies to enable the mini DSL in `tx_conditions.expression`. The evaluator runs at **signing time** (wired in `policy_engine.rs` via `evaluate_expression_fail_closed`) and is **AND-combined** with v1 field-matching when both are present.
+
+```json
+{
+  "policy_schema_version": 2,
+  "tx_conditions": {
+    "chain_in": ["ethereum"],
+    "expression": "value_gwei > 1000000000 && function_name != 'approve'"
+  }
+}
+```
+
+**Security properties (fail-closed):**
+
+| Property | Limit |
+| -------- | ----- |
+| Step budget | 1000 evaluation steps |
+| AST depth | 16 levels |
+| Expression length | 1024 characters |
+| On parse/eval error | Deny for allow-policies; effect-aware for deny-policies |
+
+Supported operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `&&`, `||`, `!`, `in`, `contains`. Context fields include `chain`, `chain_family`, `intent_type`, `to`, `value_wei`, `value_gwei`, `function_name`, `function_selector`, `decode_failed`, and ERC-20 lift fields. Set `policy_schema_version: 2` on the policy to enable the expression engine (see above).
+
+## Attribute conditions
+
+`attribute_conditions` JSON on access policies (Policy Engine v2) gates access by caller metadata — evaluated alongside glob path match, IP/time conditions, and `effect`/`priority`.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `required_tags` | string[] | Caller must have all listed secret/principal tags |
+| `principal_role` | string[] | Required org role (`owner`, `admin`, `member`) |
+| `auth_method` | string[] | Required auth method (`api_key`, `mtls`, `oidc_client_credentials`) |
+| `risk_verdict_max` | string | Max acceptable risk verdict (`low`, `medium`, `high`, `critical`) — fail-closed when no risk context |
+| `device_known` | boolean | When `true`, require a known/registered mobile device |
+
+```json
+{
+  "effect": "deny",
+  "priority": 10,
+  "attribute_conditions": {
+    "risk_verdict_max": "medium",
+    "auth_method": ["api_key"],
+    "device_known": true
+  }
+}
+```
+
+Also supported in `conditions.environment_in` (string array) for agent environment scoping on secret reads.
+
 ## Confidence builders
 
 | Feature | Status |
@@ -28167,6 +28772,186 @@ If you already manage a Safe through the Safe app (app.safe.global), you can con
 
 ---
 
+## Treasury Spend Policies
+
+---
+title: Treasury Spend Policies
+description: App-level and per-user spend caps for treasury wallet sends and swaps — API reference from the treasury perspective.
+sidebar_position: 18
+---
+
+# Treasury Spend Policies
+
+Spend policies constrain treasury wallet **sends** and **swaps** before the server signs. Platform developers set app-level defaults; optional per-user overrides apply to individual connected users.
+
+Full field reference and examples: **[Embedded wallets — Spend policies](/docs/guides/embedded-wallets/spend-policies)**.
+
+## Quick reference
+
+| Endpoint | Who | Purpose |
+| -------- | --- | ------- |
+| `POST /v1/platform/apps/{id}/spend-policies` | `plt_` or user JWT | App-level default |
+| `GET /v1/platform/apps/{id}/spend-policies` | `plt_` or user JWT | List app policies |
+| `PUT /v1/platform/connections/{id}/spend-policy` | `plt_` or user JWT | Per-user override |
+| `GET /v1/treasury/wallets/spend-policy` | **User JWT** | Effective policy for caller |
+| `DELETE /v1/platform/apps/{id}/spend-policies/{pid}` | `plt_` or user JWT | Deactivate policy |
+
+## Effective policy resolution
+
+1. Per-user override (most recently updated active row for that user)
+2. App-level default (`user_id = null`)
+3. No policy → unrestricted (subject to step-up auth only)
+
+Override **replaces** the app default — fields are not merged.
+
+## User-facing read
+
+```bash
+curl "https://api.1claw.xyz/v1/treasury/wallets/spend-policy" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+Response:
+
+```json
+{
+  "policy": {
+    "max_value_per_tx_eth": "0.1",
+    "daily_limit_eth": "1.0",
+    "allowed_chains": ["ethereum", "base"],
+    "to_allowlist": [],
+    "is_active": true
+  }
+}
+```
+
+Or `{ "policy": null }` when no policy applies.
+
+## SDK
+
+```typescript
+// Platform operator
+await platform.platform.createSpendPolicy(appId, {
+  max_value_per_tx_eth: "0.1",
+  daily_limit_eth: "1.0",
+  allowed_chains: ["ethereum", "base"],
+});
+
+// End-user effective policy
+const { data } = await userClient.treasuryWallets.getEffectiveSpendPolicy();
+// data.policy may be null
+```
+
+:::note SDK response shape
+The HTTP API wraps the policy in `{ "policy": ... }`. The SDK `getEffectiveSpendPolicy()` returns the inner policy object directly when present.
+:::
+
+## Enforcement
+
+`validate_wallet_send()` runs on:
+
+- `POST /v1/treasury/wallets/{chain}/send`
+- `POST /v1/treasury/wallets/{chain}/swap`
+
+Violations return **403** with a descriptive `detail` message. Sends and swaps are recorded in `wallet_send_ledger` for rolling 24-hour limits.
+
+## Related
+
+- [Send, swap, receive](/docs/guides/embedded-wallets/send-swap-receive)
+- [Platform API for embedded wallets](/docs/guides/embedded-wallets/platform-api)
+- [Treasury wallets overview](/docs/treasury/overview)
+
+
+---
+
+## Wallet Access Policies
+
+---
+title: Wallet Access Policies
+description: Role-based treasury wallet permissions for users, agents, and role tags — create, list, and revoke grants.
+sidebar_position: 17
+---
+
+# Wallet Access Policies
+
+Wallet access policies control **who** may send, swap, view balances, export, or sign with treasury wallets in your org. They complement [spend policies](/docs/guides/embedded-wallets/spend-policies) (platform-app caps on embedded end-users) and [transaction guardrails](/docs/agents/intents/guardrails) (agent Intents API limits).
+
+:::info Requirements
+- **Pro or higher** plan
+- **Human JWT** only — agents receive 403 on policy CRUD
+:::
+
+## When to use
+
+| Scenario | Policy type |
+| -------- | ----------- |
+| Cap consumer wallet spend in your app | [Spend policies](/docs/guides/embedded-wallets/spend-policies) |
+| Let a specific agent view treasury balances | Wallet access (`can_view_balance`) |
+| Restrict which chains an ops role can send on | Wallet access (`allowed_chains`) |
+| Autonomous agent on-chain actions | [Agent signing keys](/docs/agents/intents/multi-chain-signing) + guardrails |
+
+## Endpoints
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/v1/treasury/wallets/access-policies` | Create policy |
+| `GET` | `/v1/treasury/wallets/access-policies` | List (`?scope_type=`, `?scope_id=`) |
+| `DELETE` | `/v1/treasury/wallets/access-policies/{id}` | Soft-delete |
+
+## Create example
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/access-policies" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope_type": "org",
+    "principal_type": "user",
+    "principal_id": "USER_UUID",
+    "can_send": true,
+    "can_swap": true,
+    "can_view_balance": true,
+    "can_export": false,
+    "allowed_chains": ["ethereum", "solana"],
+    "max_value_per_tx_eth": "0.25",
+    "daily_limit_eth": "1.0"
+  }'
+```
+
+### Scope types
+
+| `scope_type` | `scope_id` | Applies to |
+| ------------ | ---------- | ---------- |
+| `wallet` | Treasury wallet UUID | One wallet |
+| `platform_app` | Platform app UUID | Wallets provisioned by that app |
+| `org` | (omit) | All org treasury wallets |
+
+### Principal types
+
+| `principal_type` | `principal_id` |
+| ---------------- | -------------- |
+| `user` | User UUID |
+| `agent` | Agent UUID |
+| `role` | Role tag (matches `wallet_roles` on user/agent) |
+| `platform_app` | Platform app UUID |
+
+## Dashboard
+
+**Settings → Wallet Access** (`/settings/wallet-access`) — create and revoke policies with a visual form.
+
+## Enforcement status
+
+Policy CRUD and dashboard management are live in v0.53.1. Runtime evaluation (`evaluate_wallet_access`) is implemented in the domain layer; wiring into every treasury send/swap path is part of the v0.53.1 parity sprint. **Spend policies remain the primary enforcement path for embedded wallet end-user sends today.**
+
+## Related
+
+- [Embedded wallet access guide](/docs/guides/embedded-wallets/wallet-access-policies)
+- [Treasury wallets overview](/docs/treasury/overview)
+- [Spend policies (embedded)](/docs/guides/embedded-wallets/spend-policies)
+
+
+---
+
 ## @1claw/wallet-react
 
 ---
@@ -28339,14 +29124,9 @@ If you want to show a custom UI instead of a raw redirect (e.g., an in-app modal
 
 ```tsx
 <OneclawEmbeddedWallet
-  appId="plt_..."
   onLinkRequired={(authorizeUrl, appSlug) => {
-    // Show a modal explaining the user needs to connect their account
-    showModal({
-      title: "Connect your 1Claw account",
-      message: "You already have a 1Claw account. Approve the connection to use your existing wallet.",
-      onConfirm: () => window.open(authorizeUrl, "_blank"),
-    });
+    // Custom modal, or:
+    window.location.href = authorizeUrl;
   }}
 />
 ```
@@ -28547,6 +29327,7 @@ This release includes 8 authentication and session management fixes:
 ## Further reading
 
 - [Embedded Wallets Quickstart](/docs/treasury/embedded-wallets) — the 2-minute version
+- [Embedded Wallets guide](/docs/guides/embedded-wallets) — full integrator series
 - [Platform API](/docs/platform-api/overview) — full platform developer documentation
 - [Treasury Wallets](/docs/treasury/overview) — the underlying treasury wallet system
 - [GitHub: @1claw/wallet-react](https://github.com/1clawAI/wallet-react) — source code and README

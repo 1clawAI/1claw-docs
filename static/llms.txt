@@ -579,7 +579,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 162 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
 
 ### Introduction (1)
 
@@ -601,7 +601,7 @@ Complete index of 162 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
 
-### Guides (22)
+### Guides (25)
 
 - [Agent Environment Tagging](https://docs.1claw.xyz/docs/guides/agent-environment-tagging)
 - [Audit and compliance](https://docs.1claw.xyz/docs/guides/audit-and-compliance)
@@ -616,8 +616,11 @@ Complete index of 162 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets/overview)
 - [Platform API for Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/platform-api)
 - [React Integration](https://docs.1claw.xyz/docs/guides/embedded-wallets/react-integration)
+- [Security and Custody](https://docs.1claw.xyz/docs/guides/embedded-wallets/security-and-custody)
 - [Send, Swap, and Receive](https://docs.1claw.xyz/docs/guides/embedded-wallets/send-swap-receive)
 - [Wallet Spend Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/spend-policies)
+- [Testing and Production](https://docs.1claw.xyz/docs/guides/embedded-wallets/testing-production)
+- [Wallet Access Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/wallet-access-policies)
 - [Environment Variables](https://docs.1claw.xyz/docs/guides/environment-variables)
 - [5-minute walkthrough: vault, key, transaction](https://docs.1claw.xyz/docs/guides/five-minute-walkthrough)
 - [Policy Engine v2](https://docs.1claw.xyz/docs/guides/policy-engine-v2)
@@ -689,7 +692,7 @@ Complete index of 162 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [wagmi + RainbowKit integration](https://docs.1claw.xyz/docs/integrations/wagmi-rainbowkit)
 - [Web3Auth integration](https://docs.1claw.xyz/docs/integrations/web3auth)
 
-### Treasury Policy (9)
+### Treasury Policy (11)
 
 - [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/treasury/account-abstraction)
 - [Human-in-the-loop approvals](https://docs.1claw.xyz/docs/treasury/approvals)
@@ -699,6 +702,8 @@ Complete index of 162 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Policy cookbooks](https://docs.1claw.xyz/docs/treasury/policy-examples)
 - [Policy language](https://docs.1claw.xyz/docs/treasury/policy-language)
 - [Safe (Gnosis Safe) integration](https://docs.1claw.xyz/docs/treasury/safe-multisig)
+- [Treasury Spend Policies](https://docs.1claw.xyz/docs/treasury/spend-policies)
+- [Wallet Access Policies](https://docs.1claw.xyz/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.xyz/docs/treasury/wallet-react)
 
 ### Other (69)

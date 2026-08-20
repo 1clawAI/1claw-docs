@@ -318,9 +318,7 @@ Set `policy_schema_version: 2` on access policies to enable the mini DSL in `tx_
 | Expression length | 1024 characters |
 | On parse/eval error | Deny for allow-policies; effect-aware for deny-policies |
 
-Supported operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `&&`, `||`, `!`, `in`, `contains`. Context fields include `chain`, `chain_family`, `intent_type`, `to`, `value_wei`, `value_gwei`, `function_name`, `function_selector`, `decode_failed`, and ERC-20 lift fields.
-
-See [Policy schema versioning](/docs/security/policy-schema-versioning) for the full operator and field reference.
+Supported operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `&&`, `||`, `!`, `in`, `contains`. Context fields include `chain`, `chain_family`, `intent_type`, `to`, `value_wei`, `value_gwei`, `function_name`, `function_selector`, `decode_failed`, and ERC-20 lift fields. Set `policy_schema_version: 2` on the policy to enable the expression engine (see above).
 
 ## Attribute conditions
 
