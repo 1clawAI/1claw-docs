@@ -37,7 +37,7 @@ Two separate products with different meters:
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
 
-**Binding types:** Pro — HTTP + GraphQL (live executors today). Team+ — all binding types (postgres, redis, grpc, etc. return "not yet implemented" until wired). Business+ — TEE execution mode (`execution_mode: "tee"`).
+**Binding types:** Pro+ — all binding types (http, graphql, postgres, mysql, redis, grpc, smtp, cloud_sdk, s3, custom). Business+ — TEE execution mode (`execution_mode: "tee"`) for HTTP/GraphQL when Shroud execution URL is configured.
 
 Signatures = on-chain signing. Executions = HTTP/GraphQL binding calls.
 
