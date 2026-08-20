@@ -8,6 +8,23 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.3 (2026-08-20) {#v0533-2026-08-20}
+
+**Execution Intents parity**
+- All ten binding type executors are live on **Pro+** (HTTP, GraphQL, Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- Production regression script section 30 supports optional `EXEC_*` real-service smoke tests
+- Dashboard Security settings: env policy, credential recovery, and Shamir KEK endpoints wired correctly
+
+**1claw.co domain parity**
+- `api.1claw.co`, `mcp.1claw.co`, `shroud.1claw.co`, `intents.1claw.co`, and `run.1claw.co` mirror `.xyz` routing
+- Smoke and Shroud prod scripts validate `.co` health endpoints
+
+**Docs & packages**
+- SDK, CLI, MCP (`io.github.1clawAI/1claw-mcp` / `@1claw/mcp`), OpenAPI spec, Python SDK bumped to **0.53.3**
+- Marketing copy and agent skills updated for Pro+ binding tier gating
+
+---
+
 ### v0.53.2 (2026-08-19) {#v0532-2026-08-19}
 
 **Release engineering & OpenAPI sync**
