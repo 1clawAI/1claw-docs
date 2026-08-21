@@ -7784,7 +7784,7 @@ Two separate products with different meters:
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
 
-**Binding types:** Pro — HTTP + GraphQL (live executors today). Team+ — all binding types (postgres, redis, grpc, etc. return "not yet implemented" until wired). Business+ — TEE execution mode (`execution_mode: "tee"`).
+**Binding types:** Pro+ — all binding types (http, graphql, postgres, mysql, redis, grpc, smtp, cloud_sdk, s3, custom). Business+ — TEE execution mode (`execution_mode: "tee"`) for HTTP/GraphQL when Shroud execution URL is configured.
 
 Signatures = on-chain signing. Executions = HTTP/GraphQL binding calls.
 
@@ -21644,6 +21644,23 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.3 (2026-08-20) {#v0533-2026-08-20}
+
+**Execution Intents parity**
+- All ten binding type executors are live on **Pro+** (HTTP, GraphQL, Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- Production regression script section 30 supports optional `EXEC_*` real-service smoke tests
+- Dashboard Security settings: env policy, credential recovery, and Shamir KEK endpoints wired correctly
+
+**1claw.co domain parity**
+- `api.1claw.co`, `mcp.1claw.co`, `shroud.1claw.co`, `intents.1claw.co`, and `run.1claw.co` mirror `.xyz` routing
+- Smoke and Shroud prod scripts validate `.co` health endpoints
+
+**Docs & packages**
+- SDK, CLI, MCP (`io.github.1clawAI/1claw-mcp` / `@1claw/mcp`), OpenAPI spec, Python SDK bumped to **0.53.3**
+- Marketing copy and agent skills updated for Pro+ binding tier gating
+
+---
+
 ### v0.53.2 (2026-08-19) {#v0532-2026-08-19}
 
 **Release engineering & OpenAPI sync**
@@ -24982,7 +24999,7 @@ When you [register an agent](/docs/vaults/human-api/agents/register-agent) via `
 | Key | Algorithm | Purpose | Storage |
 |-----|-----------|---------|---------|
 | **API key** | `ocv_...` (random, argon2-hashed) | Authentication — token exchange via `POST /v1/auth/agent-token` | Hash in DB; plaintext returned once at creation |
-| **Signing key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
+| **SSH identity key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
 
 Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/agents/intents/signing#signing-keys).
@@ -25046,12 +25063,18 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/<agent-keys-vault-id>/policies" \
 Then the agent can read its private keys:
 
 ```bash
-# Ed25519 signing key
+# Ed25519 SSH identity key
 GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ssh/private_key
 
 # P-256 ECDH key
 GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ecdh/private_key
 ```
+
+:::warning Intents API blocks raw key reads
+When `intents_api_enabled` is true on the agent, `get_secret` returns **403** for `private_key` and `ssh_key` type secrets even with a read policy. Agents must use the transaction/sign proxy instead of exfiltrating raw keys.
+:::
+
+Humans can resolve the `__agent-keys` vault id via `GET /v1/org/agent-keys-vault` and reveal keys in the dashboard Agent Identity card.
 
 :::tip
 The `ecdh:setup-agents` script in the [Google A2A example](/docs/vaults/golden-path) automates this: it creates agents and grants each one read access to its own keys.
@@ -25110,7 +25133,7 @@ sidebar_position: 3
 Every audit event in 1Claw is linked to the previous event in the same organization via `prev_event_id` and an `integrity_hash`. Together they form a tamper-evident chain scoped to your org.
 
 :::info Status — **Live**
-The hash chain is written on every audit insert. `GET /v1/audit/verify` is available today for org-authenticated callers. Full client-side HMAC recomputation requires the server-held audit key and is **not** performed by the verify endpoint (see [Limitations](#limitations)).
+The hash chain is written on every audit insert. `GET /v1/audit/verify` is available today for org-authenticated callers. The endpoint **recomputes HMAC-SHA256** server-side and compares against stored hashes for events in the query window.
 :::
 
 ## Chain structure
@@ -25146,7 +25169,7 @@ integrity_hash = HMAC-SHA256(
 The result is stored as a lowercase hex string in `integrity_hash`.
 
 :::note Historical docs vs live scheme
-Some older references describe `SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)`. The **live** scheme uses **HMAC-SHA256** over the JSON array above (including `org_id`, `actor_type`, and `metadata` rather than `resource_type` / `resource_id`). The verify API's `scheme` object in the response reflects the current algorithm.
+Some older references describe `SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)`. The **live** scheme uses **HMAC-SHA256** over the JSON array above (including `org_id`, `actor_type`, and `metadata` rather than `resource_type` / `resource_id`). The verify API's `scheme` object reflects the current algorithm.
 :::
 
 ## Calling `GET /v1/audit/verify`
@@ -25179,12 +25202,17 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   "chain_valid": true,
   "events_verified": 4821,
   "events_checked": 4821,
+  "tampered_events": [],
+  "unverifiable_events": [],
   "broken_at_event_id": null,
+  "legacy_cutoff": "2026-08-21T00:00:00Z",
+  "note": "Verification covers the requested range only; events outside this window are not checked. Events before legacy_cutoff may be listed as unverifiable rather than tampered.",
   "scheme": {
     "algorithm": "HMAC-SHA256",
     "chain_structure": "prev_hash | org_id | actor_type | actor_id | action | metadata | timestamp",
     "hash_field": "integrity_hash",
     "link_field": "prev_event_id",
+    "genesis_prev_hash": "",
     "documentation": "https://docs.1claw.xyz/security/audit-verification"
   }
 }
@@ -25192,25 +25220,26 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ## What `chain_valid` means
 
-`chain_valid: true` when, for the events returned in the query window:
+`chain_valid: true` when, for the events in the query window:
 
 1. Every event has a non-null `integrity_hash`.
-2. Linkage rules hold: the chronologically first event has `prev_event_id = null`; later events have `prev_event_id` set.
+2. Recomputed HMAC matches the stored `integrity_hash` (for events at or after `legacy_cutoff`).
+3. `prev_event_id` linkage is consistent within the window (each event's predecessor hash chains correctly).
 
-`chain_valid: false` when the walk hits an event missing `integrity_hash`, or linkage breaks (`broken_at_event_id` identifies the first failing event).
+`chain_valid: false` when any event fails HMAC verification (`tampered_events`), has broken linkage (`broken_at_event_id`), or falls into the legacy bucket incorrectly.
 
-:::warning What verify does **not** do today
-The endpoint walks the chain in timestamp order and checks **presence and linkage** of hash fields. It does **not** recompute HMAC-SHA256 over event payloads on the server or in your client — that would require `ONECLAW_AUDIT_HMAC_KEY`, which stays server-side. Treat `chain_valid` as a structural integrity check within the returned window, not a full independent cryptographic audit you can reproduce offline without operator cooperation.
-:::
+### Legacy cutoff
+
+Events before **`2026-08-21T00:00:00Z`** used a separate Rust-side timestamp in the HMAC pre-image while the DB row used `DEFAULT NOW()`. Those events may appear in `unverifiable_events` rather than `tampered_events` when recomputation does not match. This is a known migration artifact, not necessarily tampering.
 
 ## Limitations
 
 | Limitation | Detail |
 |------------|--------|
 | **Org-scoped** | You only verify your org's events. Platform admins have separate cross-org audit tooling. |
-| **Windowed** | Default limit is 1000 events. Use `limit` and `from`/`to` for larger or bounded checks. |
-| **No client-side HMAC recompute** | Independent verification requires the audit HMAC key or an export API that returns recomputed digests — not available to customers today. |
-| **Best-effort insert** | Audit logging is awaited but failures are logged without failing the underlying operation (availability trade-off). A missing event would appear as a chain gap if inserts fail silently. |
+| **Windowed** | Default limit is 1000 events. Use `limit` and `from`/`to` for larger or bounded checks. Events outside the window are not checked even if the chain continues beyond it. |
+| **No client-side HMAC recompute** | The server holds `ONECLAW_AUDIT_HMAC_KEY`. Customers cannot independently reproduce digests offline without operator cooperation or a future export API. |
+| **Best-effort insert** | Audit logging is awaited but failures are logged without failing the underlying operation. A missing event would appear as a chain gap. |
 | **Metadata in hash** | Because `metadata` is part of the HMAC input, post-insert metadata mutation would break the chain. Events should be append-only. |
 
 ## Related endpoints
@@ -25237,25 +25266,27 @@ sidebar_position: 3
 
 # Compliance
 
-1claw supports common compliance requirements by design:
+1Claw supports common compliance requirements by design:
 
-- **Encryption at rest** — All secrets are encrypted with HSM-backed keys (envelope encryption). Keys never leave the HSM. This supports requirements for strong encryption and key management.
+- **Encryption at rest** — All secrets use envelope encryption with a per-org shared KEK in KMS (HSM for paid tiers). Optional CMEK adds a client-side AES-256-GCM layer (Business+). Keys never leave the HSM for wrap/unwrap operations.
 
-- **Access control** — Access is granted only via explicit policies. No default read; every request is authorized. Supports least-privilege and access review.
+- **Access control** — Access is granted only via explicit policies. No default read; every request is authorized. Supports least privilege and access review. Vault owners bypass policy checks for their own vaults.
 
-- **Audit trail** — All access (and failures) can be recorded. Secret values are never logged. You can export or forward events to your SIEM or compliance tooling. Supports accountability and incident response.
+- **Audit trail** — Access and failures are recorded. Secret values are never logged. Export events via `GET /v1/audit/events` or forward to your SIEM. Supports accountability and incident response.
 
-- **Revocation** — Policies can be deleted and agents deactivated immediately. When an agent's access policy is created, updated, or deleted, all of that agent's active JWTs are automatically revoked — the agent must re-authenticate to get a fresh token with updated scopes. Supports "revoke access when needed" and offboarding.
+- **Revocation** — Policies can be deleted and agents deactivated immediately. Policy changes for an agent revoke all active JWTs. Password change invalidates human sessions via `tokens_revoked_before`.
 
-- **No long-term secret storage in clients** — Agents fetch secrets at runtime and do not need to store them. Reduces exposure in agent environments.
+- **No long-term secret storage in clients** — Agents fetch secrets at runtime. MCP defaults to exfil protection mode `block`.
 
-- **GDPR data portability** — `POST /v1/auth/export-data` returns a JSON archive of the calling user's personal data (profile, org membership, vaults, agents, policies, audit events, shares, billing). `DELETE /v1/auth/me` handles account deletion with cascade cleanup. Supports data portability and right-to-erasure requirements.
+- **GDPR data portability** — `POST /v1/auth/export-data` returns a JSON archive of the calling user's personal data (profile, org membership, vault metadata, agents, policies, audit events, shares, billing). Requires step-up authentication (`X-Auth-Confirm` with purpose `account.export`, or passkey/TOTP when enrolled). Account deletion: `DELETE /v1/auth/me` with body `{ "confirmation": "DELETE MY ACCOUNT" }` and the same step-up policy.
 
-- **Tamper-resistant audit log** — Audit events are chained via SHA-256 hashes (`prev_event_id` + `integrity_hash`). The application database role (`vault_app`) cannot insert directly into the audit table — all writes go through a `SECURITY DEFINER` function that enforces the hash chain, preventing log fabrication from compromised connections.
+- **Tamper-resistant audit log** — Events are chained via `prev_event_id` and **HMAC-SHA256** `integrity_hash`. The `vault_app` role cannot insert directly into `audit_events`. `GET /v1/audit/verify` recomputes HMACs server-side and checks linkage within a query window.
 
-- **KMS key rotation** — GCP KMS vault KEKs are created with a 365-day rotation period (NIST SP 800-57). A nightly cleanup job schedules destruction of old key versions (keeping the two most recent). CRC32C checksums are verified on all KMS encrypt, decrypt, and sign operations to detect in-transit corruption or tampering.
+- **KMS key rotation** — Org KEKs use a 365-day rotation period. Nightly DEK re-wrap migrates secrets to the current primary version. A nightly cleanup job schedules destruction of KMS versions older than `KEEP_RECENT=1` (current primary plus one prior version). CRC32C checksums are verified on all KMS encrypt, decrypt, and sign operations.
 
-Use the [Audit API](/docs/guides/audit-and-compliance) and policy model to document who had access to what and when. For specific standards (e.g. SOC 2, HIPAA), work with your compliance team to map controls to 1claw's capabilities and your deployment (e.g. GCP and Supabase compliance offerings).
+Use the [Audit API](/docs/guides/audit-and-compliance) and policy model to document who had access to what and when. For specific standards (e.g. SOC 2, HIPAA), work with your compliance team to map controls to 1Claw's capabilities and your deployment (GCP, Supabase, Vercel compliance offerings).
+
+Contact **ops@1claw.xyz** for current SOC 2 status and attestation letters.
 
 
 ---
@@ -25308,36 +25339,78 @@ See [Key hierarchy](/docs/security/key-hierarchy) and [HSM architecture](/docs/c
 
 ---
 title: Key hierarchy
-description: KEK per vault in HSM; DEK per secret (or operation); DEK wraps plaintext, KEK wraps DEK; JWT key is separate Ed25519 in same key ring.
+description: Per-org shared KEK in HSM; DEK per secret; separate asymmetric JWT signing keys; envelope encryption with optional MPC and CMEK layers.
 sidebar_position: 1
 ---
 
 # Key hierarchy
 
-1. **JWT signing key (Ed25519)** — One per deployment. Lives in the same KMS key ring. Used only to sign and verify JWTs. Public key is used by the API to validate tokens; private key never leaves KMS.
+1Claw uses envelope encryption for secrets. Signing keys for JWTs and transaction keys are separate from the symmetric KEK/DEK stack.
 
-2. **KEK (Key Encryption Key)** — One per vault. Symmetric key in KMS. Created when the vault is created. Used only to:
-   - **Wrap** a DEK (encrypt the DEK) when storing a secret.
-   - **Unwrap** a DEK (decrypt the DEK) when reading a secret.
+## Layers
 
-3. **DEK (Data Encryption Key)** — Random 256-bit key generated per secret (or per write). Used with AES-256-GCM to encrypt the secret value. The DEK is then wrapped by the vault’s KEK and stored with the ciphertext. It exists in plain form only inside the API during the encrypt/decrypt operation and is never persisted in the clear.
+### 1. JWT signing keys (asymmetric, KMS)
 
-## Flow summary
+Two asymmetric KMS keys, separate from envelope KEKs:
 
-- **Write:** Generate DEK → Encrypt plaintext with DEK (AES-GCM) → Wrap DEK with KEK (KMS) → Store ciphertext + wrapped DEK + IV + tag.
-- **Read:** Load ciphertext + wrapped DEK → Unwrap DEK with KEK (KMS) → Decrypt ciphertext with DEK → Return plaintext.
+| Key | Algorithm | Purpose |
+|-----|-----------|---------|
+| `1claw-jwt-eddsa-signer` | Ed25519 (EC_SIGN_ED25519) | Agent and human session JWTs (`EdDSA` in header, `kid` like `eddsa-v1`) |
+| `1claw-jwt-rs256-signer` | RSA-2048 (HSM) | OIDC federation tokens and OAuth id_tokens (`RS256`, `kid` like `rs256-v3`) |
 
-This is standard **envelope encryption**. Compromise of the database or application does not reveal secrets without KMS access.
+Private signing material never leaves KMS. Public keys are published at `GET /.well-known/jwks.json`.
 
-## Automatic rotation
+### 2. Organization KEK (symmetric, KMS)
 
-KEKs in GCP KMS are created with a **365-day** rotation period (NIST SP 800-57 maximum for symmetric KEKs). When a key rotates, KMS creates a new version and uses it for future wraps. Existing wrapped DEKs remain decryptable — KMS retains all prior versions and selects the correct one automatically based on ciphertext metadata. No re-encryption migration is required.
+One **shared KEK per organization** (`organizations.kek_id`, migration 122). All vaults in the org reference this KEK via `vaults.kek_id`, including system vaults `__agent-keys` and `__treasury-keys`.
 
-A nightly cleanup job (`kms_cleanup`) schedules destruction of old key versions, keeping the two most recent versions active. Scheduled-for-destruction versions can be restored within the 7-day destroy window.
+- **Protection level:** HSM (FIPS 140-2 Level 3) for Pro/Team/Business/Enterprise; SOFTWARE for Free.
+- **Purpose:** Wrap and unwrap per-secret DEKs only. The KEK never encrypts plaintext secrets directly.
+- **Rotation:** 365-day KMS rotation period. A nightly DEK re-wrap job moves secrets to the current primary version so old KMS versions can be destroyed.
+
+Optional org-level Shamir custody (migration 203) splits the org KEK across HSM providers. Reconstruction for sensitive operations is forwarded to the Shroud TEE (`POST /v1/admin/shamir/reconstruct`). Vault-level MPC (`POST /v1/vaults/{id}/mpc`) is a separate feature that splits **per-secret DEKs**, not signing keys.
+
+### 3. DEK (Data Encryption Key)
+
+A random 256-bit AES key generated for each secret version. Used with **AES-256-GCM** to encrypt the secret value. The DEK is wrapped by the org KEK (or MPC provider KEKs when MPC is enabled) and stored with ciphertext, IV, and auth tag.
+
+The DEK exists in plaintext only briefly inside the API during encrypt/decrypt. A `DekCache` (300s TTL, 5,000 entries) reduces KMS unwrap calls on hot paths.
+
+## Write and read flow
+
+**Write:**
+
+1. Generate random DEK
+2. Encrypt plaintext with DEK (AES-256-GCM, AAD bound to `vault_id:path`)
+3. Wrap DEK with org KEK via KMS
+4. Store ciphertext + wrapped DEK + IV + tag
+
+**Read:**
+
+1. Load ciphertext + wrapped DEK
+2. Unwrap DEK with org KEK (KMS)
+3. Decrypt ciphertext with DEK
+4. Return plaintext to authorized caller
+
+Compromise of the database or application memory dumps does not reveal secrets without KMS access and a valid authorization path.
+
+## Optional layers on top
+
+| Layer | What it adds |
+|-------|--------------|
+| **CMEK** (Business+) | Client-side AES-256-GCM before HSM envelope encryption. Only a SHA-256 fingerprint is stored server-side. |
+| **Vault MPC** | Shamir or XOR split of per-secret DEK shares across GCP/AWS/Azure (and optional client share). |
+| **Org Shamir KEK** | 2-of-3 split of the org KEK across HSM providers; reconstruction in Shroud TEE. |
+
+These protect **encryption keys and ciphertext**. Agent and treasury **signing keys** use standard envelope encryption in `__agent-keys` / `__treasury-keys`, gated by policies and guardrails. 1Claw does not offer threshold transaction signing (no Turnkey-style MPC-CMP).
+
+## KMS version cleanup
+
+A nightly job calls `destroy_old_versions(kek_id, KEEP_RECENT=1)` for each distinct KEK. That keeps the current primary plus one prior enabled version (safety margin for in-flight wraps). Older versions are scheduled for destruction with a **7-day** destroy window.
 
 ## Integrity verification
 
-All KMS requests include CRC32C checksums. The API verifies response checksums after every encrypt, decrypt, and sign call. A mismatch (indicating corruption or tampering in transit) causes an immediate failure.
+All KMS requests include CRC32C checksums. The API verifies response checksums after every encrypt, decrypt, and sign call. A mismatch causes an immediate failure.
 
 
 ---
@@ -25350,38 +25423,34 @@ All KMS requests include CRC32C checksums. The API verifies response checksums a
 
 1Claw uses versioned policy schemas to ensure backward compatibility as the policy engine evolves. Every policy carries a `policy_schema_version` field that determines which evaluation features are available.
 
-:::caution Expression engine — stored, not yet enforced at signing time
-`policy_schema_version: 2` and `tx_conditions.expression` are **persisted** in the database and accepted by the policy CRUD API. The expression evaluator (`domain/expression_engine.rs`) is implemented and unit-tested, but it is **not wired into signing-time policy evaluation** yet. At signing time, only v1 field-matching (`chain_in`, `to_address_in`, etc.), Cedar/OPA backends (when enabled), and built-in consensus triggers are enforced today.
-
-**Status:** Schema + storage = **Live** · Signing-time expression evaluation = **Enforcement wiring in progress**
+:::info Expression engine — **Live at signing time**
+`policy_schema_version: 2` and `tx_conditions.expression` are persisted and **evaluated during transaction and sign policy checks** via `domain/policy_engine.rs` and `domain/expression_engine.rs`. Expressions are AND-combined with v1 field-matching when both are present on the same policy.
 :::
 
 ## Schema Versions
 
 ### Version 1 (Legacy)
 
-The original field-matching schema. All policies created before the expression engine was introduced default to version 1.
+The original field-matching schema. All policies created before the expression engine default to version 1.
 
 **Features:**
 - `tx_conditions` JSON with field-level matching (`function_name_in`, `chain_in`, `to_address_in`, etc.)
 - `match_mode` (`all` / `any`)
-- `consensus_trigger` with `action_in` conditions
+- `consensus_trigger` with structured conditions
 - `skip_when` / `require_when` composability
 
-**Evaluation:** Each field in `tx_conditions` is matched independently against the `TransactionContext`. All fields combined per `match_mode`.
+**Evaluation:** Each field in `tx_conditions` is matched against the `TransactionContext`. All fields combined per `match_mode`.
 
-### Version 2 (Schema — expression enforcement in progress)
+### Version 2 (Expression + field matching)
 
-Adds storage for the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
+Adds the expression engine and `action_kind` matching. Backward compatible — all v1 fields continue to work unchanged.
 
-**New features (stored today):**
+**Additional features:**
 - `tx_conditions.expression` — mini-DSL for predicate logic (see below)
 - `action_kind_in` on consensus triggers — version-agnostic action matching (e.g. `signing_key` matches `signing_key.export`, `.import`, `.rotate`, `.deactivate`)
-- Expanded `CONTROL_PLANE_ACTIONS` taxonomy (29 actions across 15 kinds)
+- Expanded control-plane action taxonomy
 
-**Evaluation today:** v1 field-matching in `tx_conditions` is enforced at signing time as before. The `expression` field is **not** evaluated during transaction/sign requests yet — policies that rely solely on expressions will not gate signing until enforcement wiring ships.
-
-**Planned evaluation (when wired):** Expression and field-matching will be AND-combined. The expression engine has security hardening designed in: step budget (1000), AST depth cap (16), string length cap (1024), fail-closed on errors.
+**Evaluation:** When both field conditions and an expression are present, **both must pass** (AND). Expression-only policies (no field conditions that match) evaluate the expression alone. Fail-closed behavior is effect-aware: parse/eval errors cause **deny** policies to match and **allow** policies to not grant access.
 
 ## Migration Guide
 
@@ -25391,7 +25460,7 @@ All existing policies automatically operate at version 1. No migration is needed
 
 ### Upgrading to version 2
 
-When creating new policies, set `policy_schema_version: 2` to unlock expression support. Existing v1 policies can remain unchanged indefinitely.
+When creating new policies, set `policy_schema_version: 2` to enable expression support. Existing v1 policies can remain unchanged indefinitely.
 
 **Example — v1 field-matching:**
 ```json
@@ -25413,9 +25482,9 @@ When creating new policies, set `policy_schema_version: 2` to unlock expression 
 }
 ```
 
-### Combining field-matching and expressions (planned)
+### Combining field-matching and expressions
 
-When expression enforcement is wired, both will be AND-combined — the transaction must satisfy field-level conditions **and** the expression. Until then, only field-matching applies at signing time:
+Both are AND-combined at signing time:
 
 ```json
 {
@@ -25426,6 +25495,8 @@ When expression enforcement is wired, both will be AND-combined — the transact
   }
 }
 ```
+
+The transaction must satisfy the field-level conditions **and** the expression.
 
 ### `action_kind` for consensus triggers
 
@@ -25442,7 +25513,7 @@ Use `action_kind_in` for forward-compatible governance policies that automatical
 }
 ```
 
-This matches `signing_key.export`, `signing_key.import`, `signing_key.rotate`, `signing_key.deactivate`, `credential.create`, and `credential.delete` — including any future actions added to these kinds.
+This matches `signing_key.export`, `signing_key.import`, `signing_key.rotate`, `signing_key.deactivate`, `credential.create`, and `credential.delete`, including future actions added to these kinds.
 
 ## Expression Engine Reference
 
@@ -25480,7 +25551,7 @@ This matches `signing_key.export`, `signing_key.import`, `signing_key.rotate`, `
 
 ### Security properties
 
-- **Fail-closed:** Parse or evaluation errors return `false` (deny access for allow-policies)
+- **Fail-closed:** Parse or evaluation errors deny allow-policies and match deny-policies (effect-aware)
 - **Step budget:** Max 1000 evaluation steps prevents DoS
 - **Depth cap:** Max 16 levels of AST nesting
 - **Length cap:** Max 1024 characters per expression
@@ -25501,7 +25572,7 @@ This matches `signing_key.export`, `signing_key.import`, `signing_key.rotate`, `
 
 # 1Claw Security Overview
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Date:** 2026-08  
 **Classification:** Public  
 **Contact:** ops@1claw.xyz
@@ -25541,45 +25612,57 @@ Agent Runtime (untrusted)
 Shroud runs on GKE Confidential Nodes with AMD SEV-SNP. Verify the deployment:
 
 ```bash
-# Fetch attestation proof (public endpoint, no API key needed)
-curl https://shroud.1claw.xyz/v1/shroud/attestation | jq .
+curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 ```
 
-**Verification steps:**
-1. Decode the `identity_token` as a JWT (do not verify yet)
-2. Fetch Google's public keys from `https://www.googleapis.com/oauth2/v3/certs`
-3. Verify the JWT signature against Google's keys
-4. Confirm the `aud` claim is `https://api.1claw.xyz`
-5. Compare `image_hash` against the published Docker digest
-6. (Optional) Verify SEV-SNP measurement via AMD attestation report
+**Response fields:**
+
+| Field | Meaning |
+|-------|---------|
+| `attestation_level` | `none`, `identity`, `confidential`, or `sev_snp` |
+| `identity_token` | GCE metadata JWT (verify against Google JWKS) |
+| `image_hash` | Published container digest |
+| `confidential_claims` | `secboot`, `hwmodel`, `instance_confidentiality`, `sw_name` when present |
+| `verification.steps` | Level-specific checklist returned by the endpoint |
+
+**Verification steps (summary):**
+
+1. Decode `identity_token` as a JWT (do not trust before signature verify)
+2. Fetch Google public keys from `https://www.googleapis.com/oauth2/v3/certs`
+3. Verify the JWT signature
+4. Confirm `aud` is `https://api.1claw.xyz` (see `verification.expected_audience` in the response)
+5. Compare `image_hash` against the published Docker digest (`ghcr.io/1clawai/shroud`)
+6. At `sev_snp` level, confirm measurement/digest claims match your expected build
 
 ### Audit Hash Chain (Org-Scoped, Authenticated)
 
-Every audit event is linked to the previous via `prev_event_id` and an HMAC-SHA256 `integrity_hash`, forming a tamper-evident chain:
+Every audit event is linked to the previous via `prev_event_id` and an HMAC-SHA256 `integrity_hash`:
 
 ```bash
-# Verify your org's audit chain integrity
-curl -H "Authorization: Bearer $TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.xyz/v1/audit/verify | jq .
 ```
 
-**Chain structure:** `integrity_hash = HMAC-SHA256(key, [prev_hash, org_id, actor_type, actor_id, action, metadata, timestamp])`
+The verify endpoint **recomputes HMAC-SHA256 server-side** for events in the query window and checks `prev_event_id` linkage. It returns `chain_valid`, `tampered_events`, and `unverifiable_events` (for pre-2026-08-21 legacy rows).
 
-See [Audit hash chain verification](/docs/security/audit-verification) for the full algorithm, response fields, and limitations (org-scoped window; verify checks linkage, not full client-side HMAC recompute).
+**Chain structure:** `integrity_hash = HMAC-SHA256(key, JSON.stringify([prev_hash, org_id, actor_type, actor_id, action, metadata, timestamp]))`
+
+See [Audit hash chain verification](/docs/security/audit-verification) for limits (org-scoped window; no offline client recompute without the server key).
 
 ### Envelope Encryption
 
 - Every secret gets a unique Data Encryption Key (AES-256-GCM)
-- DEKs are wrapped by a Key Encryption Key stored in hardware (GCP Cloud HSM)
-- Tier-aware protection: paid plans get HSM-grade; free tier uses software keys
+- DEKs are wrapped by a **per-org shared KEK** in KMS (HSM for paid tiers)
 - Optional CMEK (Customer-Managed Encryption Keys) for Business/Enterprise
+- Optional vault MPC splits DEK shares across HSM providers
 
 ### Policy Enforcement
 
 - **Deny-by-default:** agents have zero access until a human creates an explicit policy
-- **Scope-bound JWTs:** agent tokens carry only the permissions granted by policies
-- **Token revocation on policy change:** stale permissions are immediately invalidated
-- **Control-plane consensus:** sensitive admin operations can require multi-party approval
+- **Scope-bound JWTs:** agent tokens carry path scopes derived from policies when `agents.scopes` is empty
+- **Token revocation on policy change:** stale permissions are invalidated via `agent_active_tokens`
+- **Control-plane consensus:** sensitive admin operations can require multi-party approval (202 + `pending_approval_id`)
+- **Expression policies (v2):** `tx_conditions.expression` evaluated at signing time alongside field matching
 
 ---
 
@@ -25591,22 +25674,22 @@ See [Audit hash chain verification](/docs/security/audit-verification) for the f
 | Shroud LLM inspection | Redact secrets from prompts, detect injection, enforce output policies |
 | Deep transaction inspection | `deep_inspect` decodes multicall, Safe execTransaction, ERC-4337 inner calls |
 | Consensus composability | `skip_when` / `require_when` on policies prevent automation breakage |
-| Hash-chained audit | Every event cryptographically linked; `payload_hash` binds approvals to actions |
-| Shamir-split key custody | Org KEK and optional vault DEK shares split across HSM providers (envelope encryption — not threshold transaction signing) |
+| Hash-chained audit | Every event cryptographically linked; `payload_hash` binds pending approvals to actions |
+| Shamir-split key custody | Org KEK and optional vault DEK shares split across HSM providers (envelope encryption, not threshold signing) |
 
 ### MPC and Shamir key custody (not threshold signing)
 
 1Claw uses Shamir secret sharing for **encryption key custody**, not for multi-party **transaction signing**:
 
 | Layer | What is split | Where shares live | Where reconstruction happens |
-|-------|----------------|-------------------|----------------------------|
-| **Vault MPC** (`2of3_multi_hsm`, optional per vault) | Per-secret **DEK** (data encryption key) | GCP KMS, AWS KMS, Azure Key Vault (wrapped Shamir shares) | Vault API during secret read/write — any 2-of-3 HSM shares reconstruct the DEK in memory for AES-GCM decrypt |
-| **Org Shamir KEK** (Team+ / Business+, migration 203) | Organization **KEK** (key encryption key) | GCP + AWS (+ optional client share on Business/Enterprise) | Sensitive org-KEK reconstruction is designed for the **Shroud TEE** boundary; Vault orchestrates share storage and forwarding |
-| **Treasury / agent signing keys** | N/A (single HSM envelope) | `__treasury-keys` / `__agent-keys` vaults | Standard envelope encryption — signing uses one HSM-protected key, gated by policies |
+|-------|----------------|-------------------|------------------------------|
+| **Vault MPC** (`2of3_multi_hsm`, optional per vault) | Per-secret **DEK** | GCP KMS, AWS KMS, Azure Key Vault | Vault API during authorized secret read/write |
+| **Org Shamir KEK** (Team+ / Business+, migration 203) | Organization **KEK** | GCP + AWS (+ optional client share on Business/Enterprise) | Shroud TEE via `POST .../shamir/reconstruct` (501 when Shroud unconfigured) |
+| **Treasury / agent signing keys** | N/A (single HSM envelope) | `__treasury-keys` / `__agent-keys` vaults | Standard envelope encryption, gated by policies |
 
 This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-style MPC-CMP **threshold signing**, where multiple parties co-sign a transaction without assembling the full private key.
 
-**Turnkey comparison:** Turnkey's QuorumOS performs n-of-m **signature** quorum on private keys. 1Claw's Shamir modes ensure no single cloud HSM provider holds a complete DEK or org KEK — but transaction signatures are produced by a single signing key after policy checks, not by a distributed signing ceremony.
+**Turnkey comparison:** Turnkey's QuorumOS performs n-of-m **signature** quorum on private keys. 1Claw's Shamir modes ensure no single cloud HSM provider holds a complete DEK or org KEK, but transaction signatures are produced by a single signing key after policy checks.
 
 ---
 
@@ -25614,9 +25697,9 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 
 | Framework | Status |
 |-----------|--------|
-| SOC 2 Type II | [Status TBD — contact ops@1claw.xyz] |
-| GDPR | Data export endpoint available (`POST /v1/auth/export-data`) |
-| PCI DSS | Reference-mode card storage; PAN never persisted for partner cards |
+| SOC 2 Type II | Contact ops@1claw.xyz for current status |
+| GDPR | Data export (`POST /v1/auth/export-data`) and account deletion (`DELETE /v1/auth/me`) with step-up auth |
+| PCI DSS | Reference-mode card storage; PAN never persisted for Laso partner cards |
 
 ---
 
@@ -25642,43 +25725,43 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 
 Turnkey-style platforms govern **signing** — they protect private keys and gate transaction authorization. 1Claw governs the **whole agent** — secrets, LLM traffic, runtimes, memory, channels, automations, and signing under a single policy and audit plane.
 
-This is a structural difference, not a feature delta. An agent that can exfiltrate secrets through its LLM context, leak credentials via a webhook automation, or bypass spend policies through an unmonitored channel is not secured by signing-only controls — regardless of how hardened the signer is.
+This is a structural difference, not a feature delta. An agent that can exfiltrate secrets through its LLM context, leak credentials via a webhook automation, or bypass spend policies through an unmonitored channel is not secured by signing-only controls, regardless of how hardened the signer is.
 
 ## What "Don't Trust Us, Verify Us" Means at 1Claw
 
 ### TEE Attestation (Live)
 
 ```bash
-curl https://shroud.1claw.xyz/v1/shroud/attestation
+curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 ```
 
-Returns a GCE identity token signed by Google's Confidential Computing attestation service. Verify the JWT against Google's well-known JWKS to confirm:
+Returns a GCE identity token signed by Google's Confidential Computing attestation service. The response includes `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify the JWT against Google's JWKS to confirm:
 
-- The Shroud enclave is running on AMD SEV-SNP hardware
+- The Shroud enclave is running on confidential hardware
 - The measured image hash matches the published build
-- The signing key never leaves the attested boundary
+- Signing and redaction happen inside the attested boundary when level is `confidential` or `sev_snp`
 
 ### Audit Hash Chain (Live)
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/audit/verify | jq .
 ```
 
-Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint walks the chain and reports linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details and limitations.
+Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint **recomputes HMACs** and walks linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details, legacy cutoff, and limitations.
 
 ### OIDC Federation (Live)
 
 ```bash
-curl https://api.1claw.xyz/.well-known/openid-configuration
-curl https://api.1claw.xyz/.well-known/jwks.json
+curl -s https://api.1claw.xyz/.well-known/openid-configuration | jq .
+curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
 ```
 
 1Claw-issued agent JWTs are verifiable by any OIDC relying party (Anthropic WIF, GCP/AWS STS). Public JWKS with EdDSA + RS256 keys, 5-minute cache.
 
 ## MPC vs Shamir key custody
 
-Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation — 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
+Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation. 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
 
 | | Turnkey | 1Claw |
 |---|---------|-------|
@@ -25694,11 +25777,11 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **Policy scope** | Transaction parameters | Transaction parameters + secret access + LLM content + execution intents + control-plane actions |
 | **TEE boundary** | Signs inside enclave | Signs inside enclave AND inspects LLM traffic inside enclave (Shroud) |
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
-| **Audit integrity** | Event log | Hash-chained event log with independent verification API |
+| **Audit integrity** | Event log | Hash-chained event log with HMAC verification API |
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
-| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**schema-only**) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
+| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` + expression engine (v2) + Cedar (Team+) + OPA (Business+) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
-| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
+| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy), not MPC threshold signatures |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
 | **LLM security** | Not applicable | Shroud: PII redaction, injection scoring, secret redaction, tool call inspection, semantic policy |
 | **Agent memory** | Not applicable | Encrypted scratch/durable/semantic memory with namespace isolation |
@@ -25717,7 +25800,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 
 **1Claw cannot (yet):**
 
-- Provide reproducible builds from source (planned — currently attested image hash)
+- Provide reproducible builds from source (attested image hash is the current trust anchor)
 - Open-source the TEE enclave code (Shroud is proprietary)
 
 ## Policy Expressiveness Comparison
@@ -25743,14 +25826,24 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
 }
 ```
 
-### 1Claw Expression Engine (v2 policies — schema-only today)
+### 1Claw Expression Engine (v2 policies, live at signing time)
 
-:::caution Status — stored, not enforced at signing time
-Expressions in `tx_conditions.expression` are persisted when `policy_schema_version: 2`, but signing-time evaluation is **not wired yet**. Use v1 field-matching for live enforcement until expression wiring ships.
-:::
+Set `policy_schema_version: 2` and add an expression. Field matching and expressions are AND-combined:
 
 ```
-chain == "ethereum" && value_wei > "500000000000000000" && to in ["0xabc...", "0xdef..."]
+chain == "ethereum" && value_gwei > 500000000 && to in ["0xabc...", "0xdef..."]
+```
+
+Example policy fragment:
+
+```json
+{
+  "policy_schema_version": 2,
+  "tx_conditions": {
+    "chain_in": ["ethereum"],
+    "expression": "value_gwei > 500000000 && function_name != 'approve'"
+  }
+}
 ```
 
 ### 1Claw Cedar (Team+ tier)
@@ -25771,8 +25864,8 @@ when {
 
 ## Verification Steps
 
-1. **Verify TEE attestation**: `GET /v1/shroud/attestation` → validate GCE identity token JWT
-2. **Verify audit integrity**: `GET /v1/audit/verify` → confirm unbroken hash chain
+1. **Verify TEE attestation**: `GET /v1/shroud/attestation` → validate GCE identity token JWT and check `attestation_level`
+2. **Verify audit integrity**: `GET /v1/audit/verify` → confirm `chain_valid: true` for your query window
 3. **Verify OIDC keys**: `GET /.well-known/jwks.json` → validate against published key IDs
 4. **Verify policy enforcement**: Create a policy with `tx_conditions`, attempt a violating transaction → confirm 403
 5. **Verify consensus**: Set `consensus_trigger` on a policy, attempt a control-plane action → confirm 202 pending approval
@@ -25794,11 +25887,11 @@ sidebar_position: 5
 
 # Two-factor authentication (2FA)
 
-1Claw supports TOTP-based two-factor authentication for human user accounts. When enabled, logging in requires both your password (or Google OAuth) **and** a 6-digit code from an authenticator app such as Google Authenticator, Authy, or 1Password.
+1Claw supports TOTP-based two-factor authentication for human user accounts. When enabled, logging in requires both your primary credential (password, passkey, or social login) **and** a 6-digit code from an authenticator app such as Google Authenticator, Authy, or 1Password.
 
-2FA is optional but recommended. It can be enabled and disabled from **Settings → Security** in the dashboard.
+2FA is optional but recommended. Enable and disable it from **Settings → Security** in the dashboard.
 
-**Availability:** TOTP 2FA is available on **every plan**, including Free. There is no tier gate.
+**Availability:** TOTP 2FA is available on **every plan**, including Free. The API field `eligible` in `MfaStatusResponse` is always `true` (kept for client compatibility). There is no tier gate.
 
 ## How it works
 
@@ -25812,16 +25905,22 @@ sidebar_position: 5
 
 ### Login with 2FA
 
-1. Enter your email/password or sign in with Google as usual.
-2. If 2FA is enabled, the server responds with a short-lived MFA challenge token instead of a session JWT.
+1. Sign in with email/password, Google, Apple, Discord, passkey, or email OTP as usual.
+2. If TOTP is enabled, the server responds with a short-lived MFA challenge token instead of a session JWT.
 3. The dashboard prompts you for a 6-digit code from your authenticator app.
-4. Enter the code (or a recovery code) to complete sign-in.
+4. Enter the code (or a recovery code) to complete sign-in via `POST /v1/auth/mfa/verify`.
 
 ### Disabling 2FA
 
+Disabling requires proof of the factor you are removing, not your account password alone.
+
 1. Navigate to **Settings → Security**.
 2. Click **Disable 2FA**.
-3. Confirm by entering your current TOTP code or your account password.
+3. Confirm with **either**:
+   - A current TOTP code or unused recovery code in the request body (`{ "code": "123456" }`), **or**
+   - Step-up authentication via `X-Auth-Confirm` (purpose `security.mfa.disable`) with a passkey or TOTP when either is enrolled.
+
+A stolen session plus password is **not** sufficient to strip 2FA.
 
 ## Technical details
 
@@ -25839,15 +25938,15 @@ sidebar_position: 5
 
 | Endpoint                         | Auth                  | Description                                                |
 | -------------------------------- | --------------------- | ---------------------------------------------------------- |
-| `GET /v1/auth/mfa/status`        | Bearer JWT            | Returns whether MFA is enabled                             |
+| `GET /v1/auth/mfa/status`        | Bearer JWT            | Returns `{ enabled, eligible }` (`eligible` always true)   |
 | `POST /v1/auth/mfa/setup`        | Bearer JWT            | Generates TOTP secret and returns QR code URI              |
 | `POST /v1/auth/mfa/verify-setup` | Bearer JWT            | Verifies initial code, enables MFA, returns recovery codes |
 | `POST /v1/auth/mfa/verify`       | None (uses MFA token) | Validates TOTP code during login, returns session JWT      |
-| `DELETE /v1/auth/mfa`            | Bearer JWT            | Disables MFA (requires TOTP code or password)              |
+| `DELETE /v1/auth/mfa`            | Bearer JWT            | Disables MFA (requires TOTP/recovery code or passkey step-up) |
 
 ### MFA challenge flow
 
-When a user with 2FA enabled authenticates via `POST /v1/auth/token` or `POST /v1/auth/google`, the server returns:
+When a user with 2FA enabled authenticates via `POST /v1/auth/token` (email/password), the server returns:
 
 ```json
 {
@@ -25863,15 +25962,18 @@ The client then calls `POST /v1/auth/mfa/verify` with the `mfa_token` and the us
 
 ### Encryption
 
-TOTP secrets and recovery codes are encrypted with AES-256-GCM using a server-side key configured via the `ONECLAW_TOTP_ENCRYPTION_KEY` environment variable (64 hex characters = 32 bytes). In development mode, if the variable is not set, a key is derived automatically.
+TOTP secrets and recovery codes are encrypted with AES-256-GCM using `ONECLAW_TOTP_ENCRYPTION_KEY` (64 hex characters = 32 bytes). In development, if the variable is not set, a key is derived automatically.
 
 ## Scope
 
-2FA applies only to **human user logins** (email/password and Google OAuth). It does not apply to:
+2FA applies only to **human user logins** (email/password and flows that issue a user JWT after primary auth). It does not apply to:
 
-- Agent authentication (agents use API keys, not passwords)
+- Agent authentication (`ocv_` API keys and agent JWTs from `POST /v1/auth/agent-token`)
 - Personal API key authentication (`1ck_` keys)
+- Platform API keys (`plt_` keys)
 - MCP server connections (token-based)
+
+Passkey-only login bypasses the password path but still goes through MFA when TOTP is enabled on the account.
 
 
 ---
@@ -25880,7 +25982,7 @@ TOTP secrets and recovery codes are encrypted with AES-256-GCM using a server-si
 
 # 1Claw Security Architecture Whitepaper
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** August 2026  
 **Classification:** Public
 
@@ -25894,32 +25996,31 @@ TOTP secrets and recovery codes are encrypted with AES-256-GCM using a server-si
 
 | Boundary | What runs inside | Trust assumption |
 |----------|-----------------|-----------------|
-| **HSM boundary** (GCP Cloud KMS, FIPS 140-2 Level 3) | Key wrapping, DEK generation, KEK management | Google cannot extract keys; customers verify via FIPS certification |
-| **TEE boundary** (AMD SEV-SNP via GKE Confidential Computing) | LLM traffic inspection, transaction signing, secret redaction, Shamir reconstruction | Google/hypervisor cannot read enclave memory; customers verify via remote attestation |
+| **HSM boundary** (GCP Cloud KMS, FIPS 140-2 Level 3) | Key wrapping, DEK generation, KEK management, JWT asymmetric signing | Cloud provider cannot extract key material; customers verify via FIPS certification |
+| **TEE boundary** (AMD SEV-SNP via GKE Confidential Computing) | LLM traffic inspection, transaction signing, secret redaction, org-KEK Shamir reconstruction | Hypervisor cannot read enclave memory; customers verify via remote attestation |
 
 **Attack surface partitioning:**
 
 - **Outside both boundaries:** API handlers, auth middleware, policy evaluation, DB queries. Protected by standard application security (rate limiting, input validation, RBAC).
-- **Inside HSM only:** KEK operations, DEK wrap/unwrap. Protected by GCP KMS access controls + HSM hardware.
-- **Inside TEE only:** Plaintext secrets during redaction, signing key material during signing, LLM request/response content. Protected by AMD SEV-SNP memory encryption + attestation.
+- **Inside HSM only:** KEK wrap/unwrap, JWT signing. Protected by KMS access controls + HSM hardware.
+- **Inside TEE only:** Plaintext secrets during redaction, signing key material during signing, LLM request/response content, org-KEK reconstruction. Protected by AMD SEV-SNP memory encryption + attestation.
 
 ### 2. Cryptographic Key Hierarchy
 
 ```
-Organization KEK (GCP KMS / Shamir 2-of-3 across HSMs)
+Organization KEK (one shared KMS key per org; optional Shamir 2-of-3 across HSMs)
   └── Per-secret DEK (AES-256-GCM, unique per secret version)
         └── Secret value (encrypted at rest)
+
+Separate asymmetric keys (not envelope KEKs):
+  └── Ed25519 JWT signer + RS256 OIDC federation signer
 ```
 
-- **Per-org shared KEK:** All vaults in an org share a single KMS CryptoKey (or Shamir-split org KEK on Team+). Envelope encryption isolation at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
-- **KEK protection level:** HSM for paid tiers (FIPS 140-2 Level 3), SOFTWARE for free tier.
-- **Shamir custody (Team+ org KEK; optional vault DEK MPC):** Shamir 2-of-3 splits **encryption keys** (org KEK or per-vault DEK shares) across GCP KMS + AWS KMS (+ Azure for vault-level `2of3_multi_hsm`; optional client share on Business/Enterprise org KEK). Reconstruction of org KEK material for sensitive operations is intended inside the **Shroud TEE** only; vault-level DEK reconstruction occurs in the Vault API during authorized secret access.
-
-:::info Org Shamir KEK status — **Schema / domain module**
-Migration 203 and `domain/shamir_kek.rs` define org-level Shamir KEK custody modes. **Vault MPC** (`2of2_client_custody`, `2of3_multi_hsm`, `2of3_client_custody`) on individual vaults is **Live** via `POST /v1/vaults/{id}/mpc`. Org-wide Shamir KEK orchestration beyond storage/orchestration stubs is **not fully wired** to production key paths yet — treat as **in progress** unless your deployment explicitly enables it.
-:::
-- **Not threshold transaction signing:** Agent and treasury **signing keys** use standard HSM envelope encryption. Policy consensus (`consensus_trigger`) gates who may authorize a sign/export action — it does not split a secp256k1/Ed25519 private key across signers the way Turnkey QuorumOS does.
-- **Auto-rotation:** 365-day rotation period on KEKs. Nightly DEK re-wrap ensures old versions can be destroyed.
+- **Per-org shared KEK:** All vaults in an org share `organizations.kek_id`. Envelope isolation is at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
+- **KEK protection level:** HSM for paid tiers (FIPS 140-2 Level 3), SOFTWARE for Free.
+- **Shamir custody:** Org-level Shamir (migration 203) splits the **org KEK** across GCP + AWS (+ optional client share on Business/Enterprise). Vault-level MPC splits **per-secret DEKs**. Reconstruction of org KEK material is forwarded to the **Shroud TEE**; returns 501 when Shroud is not configured.
+- **Not threshold transaction signing:** Agent and treasury signing keys use standard HSM envelope encryption. Policy consensus gates who may authorize a sign/export action; it does not split a secp256k1/Ed25519 private key across signers.
+- **Auto-rotation:** 365-day rotation period on KEKs. Nightly DEK re-wrap ensures old versions can be destroyed (`KEEP_RECENT=1`).
 - **CMEK (opt-in):** Customer-managed AES-256-GCM layer on top of HSM envelope encryption. Key never touches server.
 
 ### 3. TEE Attestation & Verification
@@ -25930,15 +26031,15 @@ Migration 203 and `domain/shamir_kek.rs` define org-level Shamir KEK custody mod
 GET https://shroud.1claw.xyz/v1/shroud/attestation
 ```
 
-Returns a GCE identity token signed by Google's Confidential Computing attestation service. Verification steps:
+Returns `attestation_level`, `identity_token`, `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
 
-1. Decode JWT from response
-2. Validate signature against Google's well-known JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
-3. Confirm `swname: "CONFIDENTIAL_SPACE"` in claims
-4. Confirm `eat_nonce` contains the Shroud image digest
-5. Confirm `aud` matches the 1Claw service account
+1. Decode JWT from `identity_token`
+2. Validate signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
+3. Confirm `aud` is `https://api.1claw.xyz`
+4. At `confidential` / `sev_snp` levels, verify Confidential Computing claims (`secboot`, `hwmodel`, etc.)
+5. At `sev_snp`, verify image digest / measurement match
 
-This proves the Shroud enclave is running on AMD SEV-SNP hardware with the published image hash.
+This proves Shroud is running on AMD SEV-SNP hardware with the published image hash when `attestation_level` is `sev_snp`.
 
 ### 4. Audit Log Integrity
 
@@ -25948,21 +26049,18 @@ Every audit event is hash-chained:
 integrity_hash = HMAC-SHA256(key, [prev_hash, org_id, actor_type, actor_id, action, metadata, timestamp])
 ```
 
-:::info Status — **Live** (structural verify)
-Hash chaining is written on every insert. `GET /v1/audit/verify` checks linkage within an org-scoped window. Full client-side HMAC recompute is not available without the server audit key. See [Audit verification](/docs/security/audit-verification).
+:::info Status — **Live**
+Hash chaining is written on every insert. `GET /v1/audit/verify` recomputes HMACs and checks linkage within an org-scoped window. See [Audit verification](/docs/security/audit-verification).
 :::
 
-**Independent verification endpoint:**
+**Verification endpoint:**
 
 ```
 GET /v1/audit/verify
 Authorization: Bearer <token>
 ```
 
-Walks the organization's audit chain and reports:
-- Total events verified
-- Any gaps (missing `integrity_hash` or broken `prev_event_id` linkage)
-- `chain_valid` boolean for the queried window
+Returns `chain_valid`, `tampered_events`, `unverifiable_events` (legacy pre-2026-08-21 rows), and `broken_at_event_id`.
 
 ### 5. Policy Engine
 
@@ -25971,26 +26069,21 @@ Walks the organization's audit chain and reports:
 | Tier | Engine | Status | Capability |
 |------|--------|--------|------------|
 | All tiers | `tx_conditions` (JSON) | **Live** | Field matching: `chain_in`, `to_address_in`, `value_above`, `function_selector_in`, `deep_inspect` |
-| All tiers (v2 schema) | Expression engine | **Schema-only** — stored, signing-time enforcement in progress | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget |
-| Team+ | Cedar | **Live** (shadow/enforce modes) | AWS Cedar policy language with full RBAC |
-| Business+ | OPA | **Live** (shadow/enforce modes) | Open Policy Agent Rego for arbitrary authorization logic |
+| All tiers (v2 schema) | Expression engine | **Live** | Predicate logic: `&&`, `\|\|`, `>`, `<`, `in`, `contains` with 1000-step budget, 1024-char cap |
+| Team+ | Cedar | **Live** (shadow/enforce modes) | AWS Cedar policy language with unified evaluator |
+| Business+ | OPA | **Live** (shadow/enforce modes) | Open Policy Agent Rego |
 
-:::caution Expression engine status
-`policy_schema_version: 2` and `tx_conditions.expression` are accepted by the API and persisted. The evaluator is implemented in `domain/expression_engine.rs` but **not yet called** during transaction/sign policy checks. Do not rely on expressions to gate signing until enforcement wiring ships.
-:::
-
-**Security hardening (expression engine):**
-- Expression length cap: 4096 bytes
+**Expression engine hardening:**
+- Expression length cap: **1024** bytes
 - AST depth cap: 16 levels
 - Evaluation step budget: 1000 operations
-- Fail-closed on any parse or eval error
-- No recursion, no side effects
-- Whitelisted field set only
+- Fail-closed on parse/eval errors (effect-aware for allow vs deny policies)
+- Whitelisted context fields only
 
 **Deep transaction inspection:**
 - `deep_inspect: true` unwraps multicall, Safe `execTransaction`, ERC-4337 `handleOps`
 - Conditions evaluated against inner calls, not just the outer wrapper
-- Per-chain struct depth: full decode for Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
+- Multi-chain decoders feed `TransactionContext` for Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
 
 ### 6. Control-Plane Governance
 
@@ -25999,30 +26092,34 @@ Administrative mutations (policy CRUD, key export, member changes) can require m
 ```json
 {
   "consensus_trigger": {
-    "action_in": ["signing_key.export", "policy.delete"],
-    "min_approvals": 2,
-    "required_roles": ["admin"],
-    "require_credential_types": ["passkey"]
+    "conditions": [
+      { "type": "action_in", "actions": ["signing_key.export", "policy.delete"] }
+    ],
+    "approval": {
+      "min_approvals": 2,
+      "required_roles": ["admin"],
+      "require_credential_types": ["passkey"]
+    }
   }
 }
 ```
 
 **Composability:** `skip_when` and `require_when` arrays enable conditional consensus (e.g., skip for pre-approved automation identities; require for high-value transactions).
 
-**Credential recovery:** Solo-owner orgs bypass consensus for credential recovery actions automatically. Small orgs use time-delayed recovery (72-hour window + notification) to prevent lockout.
+**Credential recovery:** Solo-owner orgs bypass consensus for credential recovery actions automatically. Multi-owner orgs use time-delayed recovery (default **72-hour** window + owner notification) to prevent lockout.
 
 ### 7. Embedded Wallet Custody
 
 - **6-chain support:** Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
-- **HSM-backed generation:** Private keys generated and stored via envelope encryption with the org KEK
-- **MPC custody (Pro+ vault option; org KEK Shamir on Team+):** Tier-based **encryption key** custody — XOR 2-of-2 client share (Pro/Team vault MPC) or Shamir 2-of-3 DEK shares across GCP/AWS/Azure (`2of3_multi_hsm`). Org-level Shamir KEK (migration 203) splits the **KEK**, not signing keys. This protects ciphertext at rest; it is not multi-party transaction signing.
-- **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth` — **Live** via `validate_wallet_send()` on treasury send/swap
-- **Role-based access:** `wallet_access_policies` table and `domain/wallet_access.rs` evaluator — **Schema-only / domain module**; not yet wired to treasury wallet handlers. Use spend policies for embedded wallet constraints today.
-- **System vault isolation:** `__treasury-keys` vault blocks direct API reads — private keys accessible only through designated export endpoints with password re-authentication
+- **HSM-backed generation:** Private keys stored via envelope encryption with the org KEK in `__treasury-keys`
+- **MPC custody (vault-level option; org Shamir on Team+):** Tier-based **encryption key** custody. Org Shamir splits the **KEK**, not signing keys.
+- **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth` via `validate_wallet_send()` on treasury send/swap
+- **Role-based wallet access:** `wallet_access_policies` enforced via `enforce_wallet_access()` on send/swap/export
+- **System vault isolation:** `__treasury-keys` blocks direct API reads; export requires password or passkey step-up
 
 ### 8. LLM Security (Shroud)
 
-All agent LLM traffic passes through the Shroud TEE proxy:
+All agent LLM traffic can pass through the Shroud TEE proxy when `shroud_enabled`:
 
 - **Secret redaction:** Per-org Aho-Corasick automata redact secrets before upstream transmission
 - **Injection scoring:** Bi-directional prompt injection detection (request + response)
@@ -26048,19 +26145,11 @@ All agent LLM traffic passes through the Shroud TEE proxy:
 
 **Scope:** Expression evaluator, public attestation endpoint, Shamir reconstruction path, audit hash chain verification.
 
-**Status:** Engagement scoped. Review targets:
-- Expression evaluator parser correctness and DoS resistance
-- Attestation endpoint replay/forgery resistance
-- Shamir share confidentiality and reconstruction boundary enforcement
-- Audit chain tamper detection completeness
-
-**Findings:** [To be included upon review completion]
+**Status:** Engagement scoped. Contact ops@1claw.xyz for published findings.
 
 ### SOC 2
 
-**Status:** [Document current status — in flight / Type II achieved / planned quarter]
-
-Contact ops@1claw.xyz for compliance attestation details.
+Contact ops@1claw.xyz for current compliance attestation status.
 
 ---
 
@@ -26070,10 +26159,10 @@ Contact ops@1claw.xyz for compliance attestation details.
 |-----------|------------------------------|-------|
 | Governance scope | Transaction signing | Whole agent (secrets + LLM + runtimes + memory + channels + automations + signing) |
 | Policy evaluation point | Before signing | Before signing AND before secret access AND before LLM forwarding AND before execution |
-| TEE usage | Signing enclave | Signing + LLM inspection + secret redaction + org-KEK Shamir reconstruction (TEE boundary) |
-| Audit integrity | Event log | Hash-chained log with public verification API |
+| TEE usage | Signing enclave | Signing + LLM inspection + secret redaction + org-KEK Shamir reconstruction |
+| Audit integrity | Event log | Hash-chained log with server-side HMAC verification API |
 | Consensus composability | n-of-m quorum | `skip_when` / `require_when` with per-role minimums and credential-type requirements |
-| Policy language | Proprietary DSL | Expression engine (open) + Cedar (standard) + OPA (standard) |
+| Policy language | Proprietary DSL | Expression engine + Cedar + OPA + built-in `tx_conditions` |
 | Deep inspection | Per-chain structs | Per-chain structs + multicall/Safe/4337 wrapper unwrapping |
 
 ---
@@ -26082,17 +26171,19 @@ Contact ops@1claw.xyz for compliance attestation details.
 
 ```bash
 # 1. Verify TEE attestation
-curl https://shroud.1claw.xyz/v1/shroud/attestation
+curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 
 # 2. Verify audit hash chain
-curl -H "Authorization: Bearer $TOKEN" https://api.1claw.xyz/v1/audit/verify
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/audit/verify | jq .
 
 # 3. Verify OIDC public keys
-curl https://api.1claw.xyz/.well-known/jwks.json
+curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
 
-# 4. Test policy enforcement
+# 4. Dry-run Cedar policy (Team+)
 curl -X POST https://api.1claw.xyz/v1/org/cedar-policies/test \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"policy": "...", "context": {...}}'
 ```
 
@@ -26120,11 +26211,11 @@ sidebar_position: 11
 When you choose 1Claw for embedded wallets, you get:
 
 - **Secrets + signing under one roof**: API keys, database credentials, signing keys, and wallet keys all protected by the same HSM-backed envelope encryption and policy engine
-- **LLM traffic inspection (Shroud)**: Every agent request to an LLM passes through an AMD SEV-SNP enclave that redacts secrets, scores for prompt injection, enforces content policies, and blocks credential exfiltration — before the request reaches the model
+- **LLM traffic inspection (Shroud)**: Agent LLM requests pass through an AMD SEV-SNP enclave that redacts secrets, scores for prompt injection, enforces content policies, and blocks credential exfiltration before upstream transmission
 - **Control-plane governance**: Policy changes, key exports, and member mutations can require multi-party approval with per-role minimums and credential-type requirements
 - **Deep transaction inspection**: `deep_inspect` unwraps multicall, Safe `execTransaction`, and ERC-4337 `handleOps` to evaluate conditions against inner calls
-- **Multi-chain coverage**: Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron with full transaction decoding for each chain family
-- **Agent memory, automations, and channels**: Persistent encrypted memory, cron/webhook/event workflows, and Telegram/WhatsApp/Discord channels — all audited and policy-gated
+- **Multi-chain coverage**: Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron with transaction decoding for each chain family
+- **Agent memory, automations, and channels**: Persistent encrypted memory, cron/webhook/event workflows, and Telegram/WhatsApp/Discord channels, all audited and policy-gated
 
 ## What Signing-Only Infrastructure Misses
 
@@ -26134,9 +26225,10 @@ A signing-only platform protects the moment of key usage. It does not protect:
 |--------------|-------------|-------|
 | Secret leakage via LLM context | Unprotected | Shroud redacts before upstream |
 | Prompt injection → unauthorized action | Unprotected | Injection scoring + semantic policy |
-| Credential exfiltration via tool calls | Unprotected | Tool call inspection + exfil protection |
-| Policy change without approval | Typically unprotected | `consensus_trigger` with `action_in` |
-| Spend policy bypass on token transfers | Varies | `allowed_tokens` enforcement in `validate_wallet_send` |
+| Credential exfiltration via tool calls | Unprotected | Tool call inspection + MCP exfil protection (default `block`) |
+| Policy change without approval | Typically unprotected | `consensus_trigger` with `action_in` / `action_kind_in` |
+| Spend policy bypass on token transfers | Varies | `allowed_tokens` + `validate_wallet_send()` on treasury send/swap |
+| Wallet role bypass | Varies | `wallet_access_policies` on send/swap/export |
 | Agent memory poisoning | Not applicable | Encrypted, namespace-isolated, org-scoped |
 | Automation webhook abuse | Not applicable | SSRF protection + host allowlists + rate limits |
 
@@ -26144,11 +26236,11 @@ A signing-only platform protects the moment of key usage. It does not protect:
 
 ### Social Login + Email OTP
 
-Google, Apple, Discord social login. Email OTP passwordless flow. All auth methods provision treasury wallets automatically.
+Google, Apple, and Discord social login. Email OTP passwordless flow. New users can auto-provision treasury wallets on first login.
 
 ### Spend Policies
 
-Per-app and per-user spend policies with `to_allowlist`, `to_denylist`, `max_value_per_tx_eth`, `daily_limit_eth`, `allowed_chains`, `allowed_tokens`, and `max_transactions_per_day`. Strictest policy wins.
+Per-app and per-user spend policies with `to_allowlist`, `to_denylist`, `max_value_per_tx_eth`, `daily_limit_eth`, `allowed_chains`, `allowed_tokens`, and `max_transactions_per_day`. Per-user overrides beat app defaults. Strictest effective policy wins at send/swap time.
 
 ### Sub-Organizations
 
@@ -26156,11 +26248,11 @@ Hierarchical org management for isolating resources per end-user or business uni
 
 ### Multi-Chain Treasury Wallets
 
-HSM-backed wallet generation for 6 chains. Send, swap (via 0x DEX aggregator), receive, import, export. MPC custody auto-configured per billing tier.
+HSM-backed wallet generation for 6 chains. Send, swap (via 0x DEX aggregator), receive, import, export. Vault-level MPC custody optional; org Shamir KEK on Team+.
 
 ### OAuth2 / "Sign in with 1Claw"
 
-Full OAuth2 authorization server. Third-party apps implement "Sign in with 1Claw" to access user wallets with scoped consent.
+Full OAuth2 authorization server. Third-party apps implement "Sign in with 1Claw" to access user wallets with scoped consent. React component: `<SignInWith1Claw />` in `@1claw/wallet-react`.
 
 ### Fiat On/Off Ramps
 
@@ -26168,27 +26260,28 @@ Coinbase Onramp + MoonPay widget integration for fiat-to-crypto and crypto-to-fi
 
 ### Platform API
 
-Developers build on 1Claw via the Platform API: provision users, bootstrap resources from declarative templates, issue claim tokens, and manage connected users — all with custody guarantees (platform operators cannot read end-user secret values).
+Developers build on 1Claw via the Platform API (Pro+): provision users, bootstrap resources from declarative templates, issue claim tokens, and manage connected users. When `platform_locked = true`, platform operators cannot read end-user secret values.
 
 ## Security Verification
 
 Unlike proprietary infrastructure where trust is assumed, 1Claw provides live verification endpoints:
 
 ```bash
-# Verify TEE attestation
-curl https://shroud.1claw.xyz/v1/shroud/attestation
+# Verify TEE attestation (public)
+curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 
-# Verify audit hash chain integrity
-curl -H "Authorization: Bearer $TOKEN" https://api.1claw.xyz/v1/audit/verify
+# Verify audit hash chain integrity (authenticated)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/audit/verify | jq .
 
-# Verify OIDC public keys
-curl https://api.1claw.xyz/.well-known/jwks.json
+# Verify OIDC public keys (public)
+curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
 ```
 
 ## Getting Started
 
 1. Create a platform app: `POST /v1/platform/apps`
-2. Define a bootstrap template with wallet provisioning
+2. Define a bootstrap template with wallet provisioning (`provision_eoa: true` or treasury wallet generation)
 3. Provision users via `POST /v1/platform/users/upsert`
 4. Bootstrap resources: `POST /v1/platform/connections/{id}/bootstrap`
 5. Embed `<OneclawEmbeddedWallet />` or `<SignInWith1Claw />` in your app
@@ -26208,33 +26301,50 @@ sidebar_position: 2
 
 # Zero trust
 
-1claw is designed with zero-trust principles: no implicit trust of the network or the database; every access is authenticated and authorized, and secrets are protected at rest and in use.
+1Claw is designed with zero-trust principles: no implicit trust of the network or the database; every access is authenticated and authorized, and secrets are protected at rest and in use.
 
 ## Secrets at rest
 
-- Every secret is encrypted with a DEK; the DEK is wrapped by a KEK that never leaves the HSM. The database stores only ciphertext and wrapped DEKs. There is no “master key” in the app; decryption requires a successful KMS unwrap.
+Every secret is encrypted with a unique DEK. The DEK is wrapped by the org's shared KEK in KMS (HSM for paid tiers). The database stores only ciphertext and wrapped DEKs. There is no application-level master key; decryption requires a successful KMS unwrap plus policy authorization.
+
+System vaults `__agent-keys` and `__treasury-keys` use the same org KEK. Direct `get_secret` reads from those vaults return **403**; private key material is only reachable through designated export/reveal endpoints with step-up authentication.
 
 ## No implicit access
 
-- Every request must present a valid JWT. There is no “open” read. Policies explicitly grant read/write to principals for path patterns. Vault owners have full access to their vault; everyone else needs a policy. Agents have no access until a human creates a policy.
+Every request must present a valid JWT or API key (`1ck_`, `ocv_`, `plt_`). There is no open read path. Policies explicitly grant read/write to principals for path patterns. Vault owners have full access to their vaults; everyone else needs a policy. Agents have **zero access** until a human creates a policy.
+
+When `intents_api_enabled` is true, agents are also blocked from reading `private_key` and `ssh_key` type secrets even with a read policy, forcing use of the transaction proxy instead of raw key exfiltration.
 
 ## Revocation is immediate
 
-- Deleting a policy removes access on the next request. When an agent's access policy is created, updated, or deleted, all of that agent's active JWTs are **automatically revoked** — the agent must re-exchange credentials to obtain a fresh token with updated scopes. This eliminates the window where an agent retains stale permissions from a prior token.
-- Deactivating an agent prevents new tokens. Rotating an agent key invalidates the old key. There is no long-lived cache of secrets in the API.
+Deleting a policy removes access on the next request. When an agent's access policy is created, updated, or deleted, all active JWTs for that agent are revoked via `agent_active_tokens` and `revoked_tokens`. The agent must re-exchange its API key at `POST /v1/auth/agent-token` to get fresh scopes.
+
+Deactivating an agent prevents new tokens. Rotating an agent API key invalidates the old key. Human password change sets `tokens_revoked_before`, invalidating all existing session JWTs.
 
 ## Audit
 
-- Access (and relevant failures) are logged. Secret values are never written to the audit log. You can use the log for compliance and incident response.
-- The audit log uses a tamper-evident hash chain (SHA-256). The application database role is restricted from inserting directly into audit tables — all writes go through a `SECURITY DEFINER` function, preventing log fabrication.
+Access and relevant failures are logged. Secret values are never written to the audit log.
+
+Each event is linked via `prev_event_id` and an **HMAC-SHA256** `integrity_hash` (key = `ONECLAW_AUDIT_HMAC_KEY`, not exposed to clients). The application DB role `vault_app` cannot insert directly into `audit_events`; writes go through a `SECURITY DEFINER` function.
+
+Verify your org's chain:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/audit/verify | jq .
+```
+
+See [Audit hash chain verification](/docs/security/audit-verification) for what `chain_valid` means and known limitations.
 
 ## In transit
 
-- Clients must use HTTPS. The API is served over TLS. Do not send tokens or secrets over plain HTTP.
+Clients must use HTTPS. The API is served over TLS. Do not send tokens or secrets over plain HTTP.
 
 ## Production deployment
 
-- **`ONECLAW_PROXY_SECRET`** (required in production): shared secret used to validate trusted proxy headers (`X-Forwarded-For`, etc.) for IP-based policy conditions and rate limiting. Without it, the IP filter middleware cannot safely trust client IPs behind a load balancer. Set via Terraform / Cloud Run env (see internal runbooks).
+**`ONECLAW_PROXY_SECRET`** (required in production when `hsm_provider=gcp`): shared secret used to validate trusted proxy headers for IP-based policy conditions and rate limiting. Without it, the IP filter middleware cannot safely trust `X-Forwarded-For` behind a load balancer.
+
+**DPoP** (optional org setting): JWTs can be bound to a client keypair via `cnf.jkt`. When enabled at `required`, requests with a `cnf` claim must include a valid `DPoP` proof header.
 
 See [Trust model](/docs/concepts/trust-model) for a short summary.
 

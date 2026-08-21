@@ -11,7 +11,7 @@ When you [register an agent](/docs/vaults/human-api/agents/register-agent) via `
 | Key | Algorithm | Purpose | Storage |
 |-----|-----------|---------|---------|
 | **API key** | `ocv_...` (random, argon2-hashed) | Authentication — token exchange via `POST /v1/auth/agent-token` | Hash in DB; plaintext returned once at creation |
-| **Signing key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
+| **SSH identity key** | Ed25519 | Message signing, identity verification | Private key in `__agent-keys` vault; public key on agent record (`ssh_public_key`) |
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
 
 Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/agents/intents/signing#signing-keys).
@@ -75,12 +75,18 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/<agent-keys-vault-id>/policies" \
 Then the agent can read its private keys:
 
 ```bash
-# Ed25519 signing key
+# Ed25519 SSH identity key
 GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ssh/private_key
 
 # P-256 ECDH key
 GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ecdh/private_key
 ```
+
+:::warning Intents API blocks raw key reads
+When `intents_api_enabled` is true on the agent, `get_secret` returns **403** for `private_key` and `ssh_key` type secrets even with a read policy. Agents must use the transaction/sign proxy instead of exfiltrating raw keys.
+:::
+
+Humans can resolve the `__agent-keys` vault id via `GET /v1/org/agent-keys-vault` and reveal keys in the dashboard Agent Identity card.
 
 :::tip
 The `ecdh:setup-agents` script in the [Google A2A example](/docs/vaults/golden-path) automates this: it creates agents and grants each one read access to its own keys.

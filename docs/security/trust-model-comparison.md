@@ -4,43 +4,43 @@
 
 Turnkey-style platforms govern **signing** — they protect private keys and gate transaction authorization. 1Claw governs the **whole agent** — secrets, LLM traffic, runtimes, memory, channels, automations, and signing under a single policy and audit plane.
 
-This is a structural difference, not a feature delta. An agent that can exfiltrate secrets through its LLM context, leak credentials via a webhook automation, or bypass spend policies through an unmonitored channel is not secured by signing-only controls — regardless of how hardened the signer is.
+This is a structural difference, not a feature delta. An agent that can exfiltrate secrets through its LLM context, leak credentials via a webhook automation, or bypass spend policies through an unmonitored channel is not secured by signing-only controls, regardless of how hardened the signer is.
 
 ## What "Don't Trust Us, Verify Us" Means at 1Claw
 
 ### TEE Attestation (Live)
 
 ```bash
-curl https://shroud.1claw.xyz/v1/shroud/attestation
+curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 ```
 
-Returns a GCE identity token signed by Google's Confidential Computing attestation service. Verify the JWT against Google's well-known JWKS to confirm:
+Returns a GCE identity token signed by Google's Confidential Computing attestation service. The response includes `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify the JWT against Google's JWKS to confirm:
 
-- The Shroud enclave is running on AMD SEV-SNP hardware
+- The Shroud enclave is running on confidential hardware
 - The measured image hash matches the published build
-- The signing key never leaves the attested boundary
+- Signing and redaction happen inside the attested boundary when level is `confidential` or `sev_snp`
 
 ### Audit Hash Chain (Live)
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://api.1claw.xyz/v1/audit/verify | jq .
 ```
 
-Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint walks the chain and reports linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details and limitations.
+Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint **recomputes HMACs** and walks linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details, legacy cutoff, and limitations.
 
 ### OIDC Federation (Live)
 
 ```bash
-curl https://api.1claw.xyz/.well-known/openid-configuration
-curl https://api.1claw.xyz/.well-known/jwks.json
+curl -s https://api.1claw.xyz/.well-known/openid-configuration | jq .
+curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
 ```
 
 1Claw-issued agent JWTs are verifiable by any OIDC relying party (Anthropic WIF, GCP/AWS STS). Public JWKS with EdDSA + RS256 keys, 5-minute cache.
 
 ## MPC vs Shamir key custody
 
-Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation — 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
+Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation. 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
 
 | | Turnkey | 1Claw |
 |---|---------|-------|
@@ -56,11 +56,11 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **Policy scope** | Transaction parameters | Transaction parameters + secret access + LLM content + execution intents + control-plane actions |
 | **TEE boundary** | Signs inside enclave | Signs inside enclave AND inspects LLM traffic inside enclave (Shroud) |
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
-| **Audit integrity** | Event log | Hash-chained event log with independent verification API |
+| **Audit integrity** | Event log | Hash-chained event log with HMAC verification API |
 | **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
-| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` (**Live**) + expression engine (**schema-only**) + Cedar (Team+, **Live**) + OPA (Business+, **Live**) |
+| **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` + expression engine (v2) + Cedar (Team+) + OPA (Business+) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
-| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy) — not MPC threshold signatures on-chain |
+| **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy), not MPC threshold signatures |
 | **Control-plane governance** | — | `action_in` / `action_kind_in` gates policy CRUD, key export, member mutations |
 | **LLM security** | Not applicable | Shroud: PII redaction, injection scoring, secret redaction, tool call inspection, semantic policy |
 | **Agent memory** | Not applicable | Encrypted scratch/durable/semantic memory with namespace isolation |
@@ -79,7 +79,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 
 **1Claw cannot (yet):**
 
-- Provide reproducible builds from source (planned — currently attested image hash)
+- Provide reproducible builds from source (attested image hash is the current trust anchor)
 - Open-source the TEE enclave code (Shroud is proprietary)
 
 ## Policy Expressiveness Comparison
@@ -105,14 +105,24 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
 }
 ```
 
-### 1Claw Expression Engine (v2 policies — schema-only today)
+### 1Claw Expression Engine (v2 policies, live at signing time)
 
-:::caution Status — stored, not enforced at signing time
-Expressions in `tx_conditions.expression` are persisted when `policy_schema_version: 2`, but signing-time evaluation is **not wired yet**. Use v1 field-matching for live enforcement until expression wiring ships.
-:::
+Set `policy_schema_version: 2` and add an expression. Field matching and expressions are AND-combined:
 
 ```
-chain == "ethereum" && value_wei > "500000000000000000" && to in ["0xabc...", "0xdef..."]
+chain == "ethereum" && value_gwei > 500000000 && to in ["0xabc...", "0xdef..."]
+```
+
+Example policy fragment:
+
+```json
+{
+  "policy_schema_version": 2,
+  "tx_conditions": {
+    "chain_in": ["ethereum"],
+    "expression": "value_gwei > 500000000 && function_name != 'approve'"
+  }
+}
 ```
 
 ### 1Claw Cedar (Team+ tier)
@@ -133,8 +143,8 @@ when {
 
 ## Verification Steps
 
-1. **Verify TEE attestation**: `GET /v1/shroud/attestation` → validate GCE identity token JWT
-2. **Verify audit integrity**: `GET /v1/audit/verify` → confirm unbroken hash chain
+1. **Verify TEE attestation**: `GET /v1/shroud/attestation` → validate GCE identity token JWT and check `attestation_level`
+2. **Verify audit integrity**: `GET /v1/audit/verify` → confirm `chain_valid: true` for your query window
 3. **Verify OIDC keys**: `GET /.well-known/jwks.json` → validate against published key IDs
 4. **Verify policy enforcement**: Create a policy with `tx_conditions`, attempt a violating transaction → confirm 403
 5. **Verify consensus**: Set `consensus_trigger` on a policy, attempt a control-plane action → confirm 202 pending approval

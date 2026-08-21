@@ -9,7 +9,7 @@ sidebar_position: 3
 Every audit event in 1Claw is linked to the previous event in the same organization via `prev_event_id` and an `integrity_hash`. Together they form a tamper-evident chain scoped to your org.
 
 :::info Status — **Live**
-The hash chain is written on every audit insert. `GET /v1/audit/verify` is available today for org-authenticated callers. Full client-side HMAC recomputation requires the server-held audit key and is **not** performed by the verify endpoint (see [Limitations](#limitations)).
+The hash chain is written on every audit insert. `GET /v1/audit/verify` is available today for org-authenticated callers. The endpoint **recomputes HMAC-SHA256** server-side and compares against stored hashes for events in the query window.
 :::
 
 ## Chain structure
@@ -45,7 +45,7 @@ integrity_hash = HMAC-SHA256(
 The result is stored as a lowercase hex string in `integrity_hash`.
 
 :::note Historical docs vs live scheme
-Some older references describe `SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)`. The **live** scheme uses **HMAC-SHA256** over the JSON array above (including `org_id`, `actor_type`, and `metadata` rather than `resource_type` / `resource_id`). The verify API's `scheme` object in the response reflects the current algorithm.
+Some older references describe `SHA-256(prev_hash | event_id | actor_id | action | resource_type | resource_id | timestamp)`. The **live** scheme uses **HMAC-SHA256** over the JSON array above (including `org_id`, `actor_type`, and `metadata` rather than `resource_type` / `resource_id`). The verify API's `scheme` object reflects the current algorithm.
 :::
 
 ## Calling `GET /v1/audit/verify`
@@ -78,12 +78,17 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   "chain_valid": true,
   "events_verified": 4821,
   "events_checked": 4821,
+  "tampered_events": [],
+  "unverifiable_events": [],
   "broken_at_event_id": null,
+  "legacy_cutoff": "2026-08-21T00:00:00Z",
+  "note": "Verification covers the requested range only; events outside this window are not checked. Events before legacy_cutoff may be listed as unverifiable rather than tampered.",
   "scheme": {
     "algorithm": "HMAC-SHA256",
     "chain_structure": "prev_hash | org_id | actor_type | actor_id | action | metadata | timestamp",
     "hash_field": "integrity_hash",
     "link_field": "prev_event_id",
+    "genesis_prev_hash": "",
     "documentation": "https://docs.1claw.xyz/security/audit-verification"
   }
 }
@@ -91,25 +96,26 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ## What `chain_valid` means
 
-`chain_valid: true` when, for the events returned in the query window:
+`chain_valid: true` when, for the events in the query window:
 
 1. Every event has a non-null `integrity_hash`.
-2. Linkage rules hold: the chronologically first event has `prev_event_id = null`; later events have `prev_event_id` set.
+2. Recomputed HMAC matches the stored `integrity_hash` (for events at or after `legacy_cutoff`).
+3. `prev_event_id` linkage is consistent within the window (each event's predecessor hash chains correctly).
 
-`chain_valid: false` when the walk hits an event missing `integrity_hash`, or linkage breaks (`broken_at_event_id` identifies the first failing event).
+`chain_valid: false` when any event fails HMAC verification (`tampered_events`), has broken linkage (`broken_at_event_id`), or falls into the legacy bucket incorrectly.
 
-:::warning What verify does **not** do today
-The endpoint walks the chain in timestamp order and checks **presence and linkage** of hash fields. It does **not** recompute HMAC-SHA256 over event payloads on the server or in your client — that would require `ONECLAW_AUDIT_HMAC_KEY`, which stays server-side. Treat `chain_valid` as a structural integrity check within the returned window, not a full independent cryptographic audit you can reproduce offline without operator cooperation.
-:::
+### Legacy cutoff
+
+Events before **`2026-08-21T00:00:00Z`** used a separate Rust-side timestamp in the HMAC pre-image while the DB row used `DEFAULT NOW()`. Those events may appear in `unverifiable_events` rather than `tampered_events` when recomputation does not match. This is a known migration artifact, not necessarily tampering.
 
 ## Limitations
 
 | Limitation | Detail |
 |------------|--------|
 | **Org-scoped** | You only verify your org's events. Platform admins have separate cross-org audit tooling. |
-| **Windowed** | Default limit is 1000 events. Use `limit` and `from`/`to` for larger or bounded checks. |
-| **No client-side HMAC recompute** | Independent verification requires the audit HMAC key or an export API that returns recomputed digests — not available to customers today. |
-| **Best-effort insert** | Audit logging is awaited but failures are logged without failing the underlying operation (availability trade-off). A missing event would appear as a chain gap if inserts fail silently. |
+| **Windowed** | Default limit is 1000 events. Use `limit` and `from`/`to` for larger or bounded checks. Events outside the window are not checked even if the chain continues beyond it. |
+| **No client-side HMAC recompute** | The server holds `ONECLAW_AUDIT_HMAC_KEY`. Customers cannot independently reproduce digests offline without operator cooperation or a future export API. |
+| **Best-effort insert** | Audit logging is awaited but failures are logged without failing the underlying operation. A missing event would appear as a chain gap. |
 | **Metadata in hash** | Because `metadata` is part of the HMAC input, post-insert metadata mutation would break the chain. Events should be append-only. |
 
 ## Related endpoints
