@@ -162,8 +162,8 @@ The `chain` field determines which signing module is used. 1Claw automatically f
 | `token_mint` | Solana, Tron, Cardano, EVM | Token contract/mint for token transfers |
 | `token_decimals` | Solana, Tron | Token decimals (default 6) |
 | `ttl` | Cardano | Time-to-live in absolute slots (default: current + 7200) |
-| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/agents/intents/guardrails#xrpl-tx-types) |
-| `memo` | Solana | On-chain memo (Memo Program v2) |
+| `xrpl_tx_json` | XRP | Full XRPL transaction JSON for one of [1Claw's 31 supported types](/docs/agents/intents/guardrails#xrpl-tx-types). Submit/sign still require top-level `to` and `value` (use `"0"` for non-Payment types). |
+| `memo` | Solana | On-chain memo (Memo Program v2). On XRP the top-level field is not applied — put `Memos` inside `xrpl_tx_json`. |
 
 ---
 
@@ -282,12 +282,14 @@ Solana SPL transfers auto-create the recipient's Associated Token Account if it 
 
 ## XRPL advanced transactions
 
-For any of the 30+ XRPL transaction types beyond simple Payment, use the `xrpl_tx_json` field:
+For any of 1Claw's **31 supported** XRPL types beyond simple Payment, use `xrpl_tx_json`. This is a 1Claw subset — types the ledger accepts but 1Claw does not (DID, oracles, Batch, …) are rejected. Submit/sign still require top-level `to` and `value` (use `"0"` when the JSON is not a Payment).
 
 ```typescript
 // TrustSet — allow up to 1000 USD from an issuer
 const trustSet = await client.agents.submitTransaction(agentId, {
   chain: "xrp-testnet",
+  to: "rIssuer...",
+  value: "0",
   xrpl_tx_json: {
     TransactionType: "TrustSet",
     LimitAmount: {
@@ -299,7 +301,7 @@ const trustSet = await client.agents.submitTransaction(agentId, {
 });
 ```
 
-1Claw auto-fills `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey`. The full list of supported types includes Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, EscrowCreate/Finish/Cancel, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw, and many more.
+1Claw auto-fills `Account`, `Sequence`, `Fee` (`"12"` drops), `LastLedgerSequence` (current ledger + 20), `SigningPubKey`, `Flags` (`tfFullyCanonicalSig`), and `SourceTag` `482684816` (caller-supplied value wins). `SetRegularKey`, `SignerListSet`, `AccountSet`, and `AccountDelete` are blocked unless explicitly listed in `xrpl_allowed_tx_types`. See [XRP transaction type allowlist](/docs/agents/intents/guardrails#xrpl-tx-types).
 
 ---
 
@@ -311,8 +313,9 @@ Per-agent controls enforced before signing. Configure via the dashboard, SDK, or
 | --- | --- |
 | `tx_allowed_chains` | Restrict to specific chains |
 | `tx_to_allowlist` | Permitted destination addresses |
-| `tx_max_value_eth` | Max value per transaction (native major units) |
-| `tx_daily_limit_eth` | Rolling 24h cumulative spend |
+| `tx_max_value` | Max value per transaction (native major units). Deprecated alias: `tx_max_value_eth`. |
+| `tx_daily_limit` | Rolling 24h cumulative spend per chain family. Deprecated alias: `tx_daily_limit_eth`. |
+| `xrpl_allowed_tx_types` | Allowed XRPL `TransactionType`s. Empty = all supported except four dangerous types. |
 | `tx_token_allowlist` | Allowed token contracts/mints |
 | `tx_max_per_day` | Max transactions per UTC day |
 | `per_chain_guardrails` | Chain-specific overrides (JSON) |
@@ -322,8 +325,8 @@ await client.agents.update(agentId, {
   intents_api_enabled: true,
   tx_allowed_chains: ["ethereum", "solana"],
   tx_to_allowlist: ["0x...", "9xQ..."],
-  tx_max_value_eth: "1.0",
-  tx_daily_limit_eth: "10.0",
+  tx_max_value: "1.0",
+  tx_daily_limit: "10.0",
 });
 ```
 
@@ -343,7 +346,7 @@ Concurrent transactions are serialized via UTXO locks to prevent double-spends. 
 | --- | --- |
 | Bitcoin Signet | [faucet.coinbin.org](https://faucet.coinbin.org/) |
 | Solana Devnet | [faucet.solana.com](https://faucet.solana.com/) or `solana airdrop` |
-| XRP Testnet | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| XRP Testnet | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) (default **10 XRP**) |
 | Cardano Preprod | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
 | Tron Shasta | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
 

@@ -24,7 +24,7 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
 | `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |
 | `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
-| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all supported types. |
+| `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all **supported** types **except** four dangerous ones (`SetRegularKey`, `SignerListSet`, `AccountSet`, `AccountDelete`), which are always blocked unless explicitly listed. |
 | `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
 
 <Tabs groupId="code-examples">
@@ -69,8 +69,8 @@ client.agents.update(
     agent_id,
     tx_allowed_chains=["ethereum", "base"],
     tx_to_allowlist=["0xSafeAddress1", "0xSafeAddress2"],
-    tx_max_value_eth="0.5",
-    tx_daily_limit_eth="5.0",
+    tx_max_value="0.5",
+    tx_daily_limit="5.0",
 )
 ```
 
@@ -118,7 +118,9 @@ Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_a
 
 ### XRP transaction type allowlist {#xrpl-tx-types}
 
-When using `xrpl_tx_json` for advanced XRP transactions, you can restrict which transaction types are permitted:
+1Claw signs **31** XRPL transaction types via `xrpl_tx_json` — a supported subset, not every type the ledger accepts (DID, oracles, Batch, and others are rejected).
+
+When using `xrpl_tx_json`, you can restrict which of those types an agent may submit:
 
 ```bash
 curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
@@ -128,6 +130,10 @@ curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
 ```
 
 If the agent submits an `xrpl_tx_json` with a `TransactionType` not in the allowlist, the request is rejected with 403.
+
+**Deny-by-default dangerous types.** `SetRegularKey`, `SignerListSet`, `AccountSet`, and `AccountDelete` can transfer account control. They are **always blocked** unless the agent's `xrpl_allowed_tx_types` explicitly includes that type — even when the allowlist is empty (empty otherwise means “all other supported types”).
+
+Submit/sign still require top-level `to` and `value` even when `xrpl_tx_json` is present (use `"0"` for non-Payment types). The signed body is taken from `xrpl_tx_json`. Auto-filled when omitted: `Account`, `Sequence`, `Fee` (`"12"` drops), `LastLedgerSequence` (current ledger + 20), `SigningPubKey`, `Flags` (`0x80000000` / `tfFullyCanonicalSig`), and `SourceTag` `482684816` (caller-supplied value wins; explicit `0` suppresses the default).
 
 ### Known tokens registry {#token-registry}
 

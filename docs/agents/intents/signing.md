@@ -92,7 +92,7 @@ If you're using the [Platform API](/docs/platform-api/overview), signing keys ca
 
 The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
 
-Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl) for 30+ transaction types.
+Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl-rust) for **31 supported transaction types** — a 1Claw subset, not the full XRPL catalog.
 
 1claw fetches the chain-specific data it needs automatically (UTXOs and fee rate for Bitcoin, latest blockhash for Solana, account sequence for XRP, protocol parameters and UTXOs for Cardano, the reference block for Tron), signs, and (unless you use the sign-only endpoint) broadcasts via the chain's RPC.
 
@@ -114,14 +114,14 @@ All fields are optional and ignored on chains where they don't apply:
 
 | Field | Type | Chain | Purpose |
 | --- | --- | --- | --- |
-| `destination_tag` | number | XRP | Destination tag for exchange deposits |
-| `memo` | string | XRP, Solana | Optional memo (planned; currently accepted but not applied — use `Memos` inside `xrpl_tx_json` for XRP) |
+| `destination_tag` | number | XRP | Signed as `DestinationTag` on Payment (legacy path). Ignored when `xrpl_tx_json` already sets `DestinationTag`. |
+| `memo` | string | Solana | Applied via Memo Program v2. On XRP the top-level field is accepted but **not applied** — put `Memos` inside `xrpl_tx_json`. |
 | `fee_rate_sat_per_vbyte` | number | Bitcoin | Override the fetched fee rate |
 | `fee_limit_sun` | number | Tron | TRC-20 energy fee limit (default: 100,000,000 = 100 TRX) |
 | `token_mint` | string | Solana (SPL), Tron (TRC-20) | Token mint / contract address |
 | `token_decimals` | number | Solana, Tron | Token decimals (default 6) |
 | `ttl` | number | Cardano | Time-to-live (absolute slot; default: current slot + 7200) |
-| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for [30+ transaction types](/docs/agents/intents/guardrails#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Overrides `to`/`value`/`destination_tag` when present. |
+| `xrpl_tx_json` | object | XRP | Full XRPL transaction JSON for one of [1Claw's 31 supported types](/docs/agents/intents/guardrails#xrpl-tx-types) (e.g. TrustSet, OfferCreate, NFTokenMint). Drives the signed body; submit/sign still **require** top-level `to` and `value` (use `"0"` for non-Payment types). |
 
 For a token transfer, set `token_mint` (and `token_decimals`); omit it for a native transfer.
 
@@ -133,7 +133,7 @@ All non-EVM chains support both mainnet and testnet signing. Use the `chain` fie
 | --- | --- | --- | --- | --- |
 | Bitcoin | `bitcoin` | `bitcoin-testnet`, `bitcoin-signet` | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (signet, no captcha, 0.001–0.09 sBTC), [signetfaucet.com](https://signetfaucet.com/) (captcha) |
 | Solana | `solana` | `solana-devnet`, `solana-testnet` | [explorer.solana.com/?cluster=devnet](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) (GitHub login), `solana airdrop <SOL> <address> --url devnet` |
-| XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| XRP | `xrp` | `xrp-testnet` | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) (default **10 XRP**; base reserve is 1 XRP) |
 | Cardano | `cardano` | `cardano-preprod`, `cardano-preview` | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [faucet.preprod.world.dev.cardano.org](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (web or API) |
 | Tron | `tron` | `tron-shasta`, `tron-nile` | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) (2,000 TRX + 1,000 USDT) |
 
@@ -572,7 +572,7 @@ You can always fetch the live list with `GET /v1/chains`. The response includes 
 | Bitcoin | `bitcoin-signet` | sBTC | [mempool.space/signet](https://mempool.space/signet) | [faucet.coinbin.org](https://faucet.coinbin.org/) (no captcha), [signetfaucet.com](https://signetfaucet.com/) |
 | Bitcoin | `bitcoin-testnet` | tBTC | [mempool.space/testnet](https://mempool.space/testnet) | — (testnet3 faucets are scarce) |
 | Solana | `solana-devnet` | SOL | [explorer.solana.com (devnet)](https://explorer.solana.com/?cluster=devnet) | [faucet.solana.com](https://faucet.solana.com/) |
-| XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| XRP | `xrp-testnet` | XRP | [testnet.xrpl.org](https://testnet.xrpl.org/) | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) (default 10 XRP) |
 | Cardano | `cardano-preprod` | tADA | [explorer.cardano.org/preprod](https://explorer.cardano.org/preprod) | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) |
 | Tron | `tron-shasta` | TRX | [shasta.tronscan.org](https://shasta.tronscan.org/) | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) |
 | Tron | `tron-nile` | TRX | [nile.tronscan.org](https://nile.tronscan.org/) | [nileex.io](https://nileex.io/join/getJoinPage) |

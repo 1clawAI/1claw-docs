@@ -22,7 +22,7 @@ Treasury wallet APIs enforce `require_human()`. Agents always receive **403**. A
 | **Ethereum** | secp256k1 | `0x4e83…` (EIP-55) | EIP-1559, ERC-20, ERC-4337 gasless |
 | **Bitcoin** | secp256k1 | `bc1q…` (bech32) | UTXO model, fee rate in sat/vB |
 | **Solana** | Ed25519 | `7xKX…` (base58) | SPL tokens, memo program |
-| **XRP** | Ed25519 | `rN7d…` | 30+ tx types via `xrpl_tx_json` |
+| **XRP** | Ed25519 | `rN7d…` | 31 supported types via `xrpl_tx_json` (agent Intents API; four dangerous types deny-by-default) |
 | **Cardano** | Ed25519 | `addr1…` | Native multi-asset, min-ADA |
 | **Tron** | secp256k1 | `T9yD…` | TRC-20, energy limits |
 
