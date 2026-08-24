@@ -131,10 +131,14 @@ const config: Config = {
             },
         },
         navbar: {
-            title: "1claw",
+            title: "1Claw",
             logo: {
-                alt: "1claw",
+                alt: "1Claw",
                 src: "img/logo.svg",
+                srcDark: "img/logo-dark.svg",
+                height: 22,
+                width: 22,
+                href: "https://1claw.xyz",
             },
             items: [
                 { to: "/docs/intro", label: "Docs", position: "left" },

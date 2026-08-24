@@ -3,6 +3,21 @@
  * Light and dark mode: darker red #b80030 / #990029, deep blacks or light surfaces.
  */
 
+@import url("https://fonts.googleapis.com/css2?family=Bakbak+One&display=swap");
+
+/* Navbar brand — match dashboard LogoLockup (22px mark + Bakbak One wordmark) */
+.navbar__title {
+  font-family: "Bakbak One", system-ui, sans-serif;
+  font-size: 1.125rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.navbar__logo img {
+  height: 22px;
+}
+
 /* Light mode */
 :root,
 [data-theme="light"] {
