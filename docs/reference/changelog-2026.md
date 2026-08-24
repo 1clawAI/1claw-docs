@@ -8,6 +8,18 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.56.3 (2026-08-24) {#v0563-2026-08-24}
+
+**Cumulative gas budget & outbound idempotency**
+- **`gas_daily_budget_native`:** Per-chain guardrail field in `per_chain_guardrails` — UTC-day cumulative EVM gas (sum of `gas_limit × max_fee`) enforced alongside per-tx `max_fee_per_gas_gwei` / `max_gas_limit`. Tracked in `agent_gas_ledger` (migration 213).
+- **`inject_idempotency_key`:** Binding guardrail — when `true`, Vault injects a deterministic `Idempotency-Key` on outbound HTTP/GraphQL execute requests (hash of binding, method, path, body; 5-min window). Wired in `domain/execution/http.rs` and `graphql.rs`.
+- **Push notifications (stub):** `domain/push_notify.rs` scaffolding for approval/HITL mobile alerts (Expo push wiring in progress).
+
+**Packages**
+- Vault API, OpenAPI spec, SDK bumped to **0.56.3**
+
+---
+
 ### v0.56.2 (2026-08-24) {#v0562-2026-08-24}
 
 **Guardrail widening approvals & treasury HFA passkey parity**
