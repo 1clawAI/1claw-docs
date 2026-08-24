@@ -14,6 +14,7 @@ sidebar_label: "2026"
 - **`gas_daily_budget_native`:** Per-chain guardrail field in `per_chain_guardrails` — UTC-day cumulative EVM gas (sum of `gas_limit × max_fee`) enforced alongside per-tx `max_fee_per_gas_gwei` / `max_gas_limit`. Tracked in `agent_gas_ledger` (migration 213).
 - **`inject_idempotency_key`:** Binding guardrail — when `true`, Vault injects a deterministic `Idempotency-Key` on outbound HTTP/GraphQL execute requests (hash of binding, method, path, body; 5-min window). Wired in `domain/execution/http.rs` and `graphql.rs`.
 - **Push notifications (stub):** `domain/push_notify.rs` scaffolding for approval/HITL mobile alerts (Expo push wiring in progress).
+- **Passkey for login 2FA (migration 214):** Per-user `require_passkey_for_mfa` via `GET/PATCH /v1/auth/settings`. When enabled, password/social/email-OTP login returns `mfa_method: "passkey"` and completes via `POST /v1/auth/mfa/passkey/begin` + `.../complete` instead of TOTP. Disabling requires step-up (`X-Auth-Confirm`, purpose `security.mfa_passkey.disable`). Dashboard toggle on Settings → Security MFA card.
 
 **Packages**
 - Vault API, OpenAPI spec, SDK bumped to **0.56.3**
