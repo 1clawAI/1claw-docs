@@ -8,6 +8,24 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.58.0 (2026-08-24) {#v0580-2026-08-24}
+
+**Platform API control plane (Fathom bundled release)**
+- **SIWE recovery ids:** Accept EIP-191 signatures with recovery byte **27 or 28** (MetaMask/viem) in addition to 0/1.
+- **App-scoped reads (`plt_`):** `GET /v1/platform/connections/{id}/approvals`, `.../approvals/{approval_id}`, `.../pending-approvals` (includes `payload_hash`), `.../spend-policy`.
+- **Spend policy:** `GET /v1/platform/apps/{id}/spend-policies/{policy_id}`; `PUT .../connections/{id}/spend-policy` supports optional **`Idempotency-Key`** (24h body-hash replay).
+- **App lifecycle:** `PATCH` slug changes → **400**; `DELETE` soft-deactivates and returns `{ id, slug, deleted_at }`; `GET` inactive app → **404**; slugs unique **per org** (migration 216).
+- **Ownership transfer:** `POST /v1/platform/apps/{id}/transfer-ownership` with step-up auth.
+
+**Packages**
+- Vault API **0.58.0** (migrations 216–217)
+- CLI, MCP, Python SDK, Go SDK → **0.58.0** with Platform control-plane parity
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.58.0**
+- New MCP tools: `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_list_connection_pending_approvals`, `platform_get_connection_spend_policy`, `platform_get_spend_policy`, `platform_transfer_ownership`, `platform_delete_app`
+- Prod tests extended: `scripts/test-platform-api.sh`, `scripts/test-platform-expansion-prod.sh`
+
+---
+
 ### v0.57.0 (2026-08-24) {#v0570-2026-08-24}
 
 **Platform API expansion (migration 215)**
