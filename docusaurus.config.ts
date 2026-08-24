@@ -15,7 +15,7 @@ function gitRepoAvailable(): boolean {
 const config: Config = {
     title: "1claw Docs",
     tagline: "Cloud HSM Secrets Manager for Humans & AI Agents",
-    favicon: "img/logo.svg",
+    favicon: "favicon.ico",
     url: "https://docs.1claw.xyz",
     baseUrl: "/",
     organizationName: "1claw",
@@ -61,6 +61,31 @@ const config: Config = {
         ],
     ],
     headTags: [
+        {
+            tagName: "link",
+            attributes: {
+                rel: "apple-touch-icon",
+                href: "/favicon/apple-touch-icon.png",
+            },
+        },
+        {
+            tagName: "link",
+            attributes: {
+                rel: "icon",
+                type: "image/png",
+                sizes: "32x32",
+                href: "/favicon/favicon-32.png",
+            },
+        },
+        {
+            tagName: "link",
+            attributes: {
+                rel: "icon",
+                type: "image/png",
+                sizes: "16x16",
+                href: "/favicon/favicon-16.png",
+            },
+        },
         {
             tagName: "script",
             attributes: { type: "application/ld+json" },
