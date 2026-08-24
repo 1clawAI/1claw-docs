@@ -8,6 +8,31 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.56.2 (2026-08-24) {#v0562-2026-08-24}
+
+**Guardrail widening approvals & treasury HFA passkey parity**
+- **Guardrail widening queue:** Binding and agent guardrail edits that widen access now require `policy_change` approval with step-up re-auth (`X-Auth-Confirm`). PATCH handlers return **202** with `pending_approval_id` until approved.
+- **Treasury HFA passkey parity:** Swap operations support passkey tx-assert digests (`treasury_swap_digest`); send/swap/export honor Human Factor Auth with passkey-only flows in dashboard and `@1claw/wallet-react`.
+- **HFA audit events:** `human_factor_auth.satisfied` / `human_factor_auth.denied` emitted on treasury wallet operations.
+
+**Phase 5 Safe foundation (counterfactual)**
+- **Agent accounts API:** `GET/POST /v1/agents/{id}/accounts`, `POST .../accounts/migrate`, `POST .../accounts/{chain}/deprecate-eoa` — counterfactual Safe provisioning, EOA→Safe migration wizard, execTransaction signing path.
+- **Module registry:** `GET /v1/safe/module-registry/{chain}` — pinned Safe v1.4.1 + Zodiac module addresses per chain.
+- **Org allowance sync:** `POST /v1/org/safe/sync-allowances` — compiles allowance targets from agent guardrails; returns drift report (`onchain_sync: counterfactual`).
+- **Guard.sol:** Foundry scaffold with tests; on-chain deploy/cosign/passkey/timelock/4337 stubs return **501** pending external audit.
+- **Dashboard:** Safe migration wizard at `/agents/[agentId]/migrate-safe`.
+
+**Tests & tooling**
+- HFA unit tests (`human_factor_auth.rs`); guardrail shadow/revisions/replay checks in `scripts/test-guardrails-prod.sh`.
+- CLI: `1claw agent accounts list|migrate|deprecate-eoa`, `1claw safe module-registry|sync-allowances`.
+- Prod smoke: `scripts/test-safe-prod.sh`.
+
+**Packages**
+- Vault API, OpenAPI spec, SDK bumped to **0.56.2**
+- MCP: `list_agent_accounts`, `migrate_agent_to_safe`, `deprecate_agent_eoa`, `get_safe_module_registry`, `sync_org_safe_allowances`
+
+---
+
 ### v0.56.0 (2026-08-24) {#v0560-2026-08-24}
 
 **Guardrail governance, HFA, Safe foundation (Phases 3–6)**

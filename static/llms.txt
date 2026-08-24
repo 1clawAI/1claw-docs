@@ -61,12 +61,12 @@ First-class per-key env vars on vaults with Vercel-style environment scoping. Pe
 ### Agent Environment Tagging (v0.52)
 Agents can be tagged with a named environment (`production`, `preview`, `development`, or custom) for policy scoping and env var resolution. Fields on `agents`: `environment`, `environment_locked` (immutable after bootstrap), `env_auto_resolve` (resolve endpoint auto-fills from agent tag), `per_environment_guardrails` (JSONB overrides per environment). JWT includes `environment` claim when set. Policy conditions support `environment_in` array for environment-scoped access. When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` omits the `environment` query param and uses the agent's tag. Org setting `env.enforce_agent_environment_scope` blocks agents from resolving vars outside their tagged environment. CLI: `--environment`, `--environment-locked`, `--env-auto-resolve` on `agent create`; `--environment`, `--environment-locked`, `--env-auto-resolve`, `--per-environment-guardrails` on `agent update`. Dashboard: environment tag selector on agent create/detail pages. Migration 201. Guide: https://docs.1claw.xyz/docs/guides/agent-environment-tagging
 
-### v0.53.1 Sprint Enhancements
-- Raw transaction deep decode for pre-built Solana/Bitcoin/Tron transactions (`raw_transaction` base64, `tron_transaction` JSON on sign/submit DTOs — enables policy enforcement on pre-built non-EVM transactions)
-- Shamir KEK TEE-forwarded reconstruction (Business+ tier; returns 501 when Shroud not configured)
-- Credential recovery with configurable delay window (default 72h) and admin/owner approval; split into approve + execute steps (`POST /v1/auth/credential-recovery/requests/{id}/execute`)
-- Wallet access policies per-chain CRUD (`POST/GET/DELETE /v1/wallets/access-policies`)
-- Expression engine evaluated at signing time for policy schema v2 (`evaluate_expression_fail_closed` in policy engine)
+### Guardrail Governance & HFA (v0.56)
+**Guardrail governance:** Convention 6 execution guardrail shadow mode (`enforcement: log|enforce`); audit `guardrail_shadow.would_deny`; `GET /v1/org/guardrail-shadow-report`, `GET /v1/org/guardrail-revisions`, `POST /v1/agents/{id}/guardrails/replay` (dry-run against recent txs). Dashboard: Settings → Security → Guardrails tab. CLI: `1claw guardrails shadow-report|revisions|replay`. SDK: `client.org.getGuardrailShadowReport()`, `.listGuardrailRevisions()`, `client.agents.replayGuardrails()`. MCP: guardrail governance tools.
+**Address screening:** Per-agent `address_screening_policy` JSON (`mode`: `off`|`deny`|`approve`) screens transaction recipients at signing time. CLI: `--address-screening-policy` on `agent create|update`.
+**Human Factor Auth (HFA):** Treasury wallet send/swap/export require password or passkey per configurable policy. Resolution: user `human_factor_auth_policies` → `wallet_spend_policies.human_factor_auth` → defaults. Endpoints: `GET/PUT /v1/auth/human-factor-auth`. Spend policies accept optional `human_factor_auth` JSON. Webhooks: `human_factor_auth.denied`, `human_factor_auth.satisfied`, `guardrail_shadow.would_deny`. Dashboard: Settings → Security → Wallet human factor auth card. v0.56.2 adds swap passkey digests and passkey-only send/swap in dashboard + wallet-react.
+**Guardrail widening (v0.56.2):** Binding/agent guardrail edits that widen access queue behind `policy_change` approval with step-up re-auth.
+**Safe foundation (v0.56.2, Phase 5):** Counterfactual Safe provisioning — `GET/POST /v1/agents/{id}/accounts`, `POST .../accounts/migrate`, `POST .../accounts/{chain}/deprecate-eoa`, `GET /v1/safe/module-registry/{chain}`, `POST /v1/org/safe/sync-allowances`. On-chain deploy/cosign/passkey/timelock/4337 stubs return 501 pending Guard audit. CLI: `1claw agent accounts list|migrate|deprecate-eoa`, `1claw safe module-registry|sync-allowances`. MCP: `list_agent_accounts`, `migrate_agent_to_safe`, `deprecate_agent_eoa`, `get_safe_module_registry`, `sync_org_safe_allowances`. Dashboard: Safe migration wizard.
 
 ### Agents
 AI agent identities registered via the dashboard or API. Agents support three authentication methods: `api_key` (default, generates `ocv_` prefixed key), `mtls` (client certificate fingerprint), and `oidc_client_credentials` (OIDC issuer + client ID). All agents automatically receive an Ed25519 SSH keypair stored in a dedicated `__agent-keys` vault for future encrypted A2A messaging. Agents can be scoped to specific vaults (`vault_ids`), specific secret paths (via policies), and have a custom token TTL (`token_ttl_seconds`). Agents cannot access anything not explicitly granted by a human.
@@ -99,7 +99,7 @@ Enterprise opt-in feature. The human generates a 256-bit AES key in the dashboar
 Vault-level opt-in. Splits secret DEKs across multiple HSM providers so no single provider holds the complete key. Three custody modes: `2of2_client_custody` (XOR split, one share returned to client), `2of3_multi_hsm` (Shamir 2-of-3 across GCP/AWS/Azure HSMs), `2of3_client_custody` (Shamir 2-of-3 with one client-held share). Enable via `POST /v1/vaults/{id}/mpc`. Client-custody modes return `client_share` on secret creation and require `X-Client-Share` header on read.
 
 ### Intents API
-Agents can sign and broadcast EVM and non-EVM transactions without seeing private keys. Keys stay in the HSM. Per-agent guardrails: allowed chains, recipient allowlists, per-tx value caps, daily spending limits. **29 supported EVM mainnets** (all with dRPC managed RPC when `DRPC_API_KEY` is configured): Ethereum, Base, Optimism, Arbitrum One, Polygon, Avalanche C-Chain, BNB Smart Chain, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sonic, World Chain, Polygon zkEVM, Sei, Kaia, Mode, Arbitrum Nova, Berachain, Taiko, Zora, and Robinhood Chain (chain ID 4663). **EVM testnets:** Sepolia, Base Sepolia, Holesky, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy, Arc Testnet (stablecoin-native L2, chain ID 5042002), and Robinhood Testnet (chain ID 46630). **Non-EVM chains:** Bitcoin (via official `rust-bitcoin` crate — P2PKH, P2SH, P2WPKH, P2WSH, P2TR recipient support), Solana (via official `solana-sdk` crate — native PDA derivation, SPL token transfers), XRP, Cardano, Tron. **XRP supports 30+ transaction types** (Payment, TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.) via the `xrpl_tx_json` field — pass a raw XRPL transaction JSON object and the server uses the xrpl-rust binary codec to encode and sign it; `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. **Non-EVM testnets and faucets:**
+Agents can sign and broadcast EVM and non-EVM transactions without seeing private keys. Keys stay in the HSM. Per-agent **hard guardrails**: allowed chains, recipient allowlists, per-tx value caps, daily spending limits. **Graduated HITL (v0.54–0.55):** `tx_approval_policy` JSON routes matching txs to **202** `awaiting_approval`; `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` escalate EIP-712, simulation failures, and raw digest signing to HITL or deny. Extended guardrails (v0.55): unlimited ERC-20 approval blocking, per-recipient limits, USD caps, `allow_erc4337`, `allow_eip7702`, in-flight daily budget holds. Circuit breaker may set `auto_suspended`; org emergency freeze via `POST /v1/org/freeze`. **29 supported EVM mainnets** (all with dRPC managed RPC when `DRPC_API_KEY` is configured): Ethereum, Base, Optimism, Arbitrum One, Polygon, Avalanche C-Chain, BNB Smart Chain, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sonic, World Chain, Polygon zkEVM, Sei, Kaia, Mode, Arbitrum Nova, Berachain, Taiko, Zora, and Robinhood Chain (chain ID 4663). **EVM testnets:** Sepolia, Base Sepolia, Holesky, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy, Arc Testnet (stablecoin-native L2, chain ID 5042002), and Robinhood Testnet (chain ID 46630). **Non-EVM chains:** Bitcoin (via official `rust-bitcoin` crate — P2PKH, P2SH, P2WPKH, P2WSH, P2TR recipient support), Solana (via official `solana-sdk` crate — native PDA derivation, SPL token transfers), XRP, Cardano, Tron. **XRP supports 30+ transaction types** (Payment, TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.) via the `xrpl_tx_json` field — pass a raw XRPL transaction JSON object and the server uses the xrpl-rust binary codec to encode and sign it; `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. **Non-EVM testnets and faucets:**
 | Chain | Testnet chain value | Faucet |
 | --- | --- | --- |
 | Bitcoin | `bitcoin-signet` | [faucet.coinbin.org](https://faucet.coinbin.org/) |
@@ -579,7 +579,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 146 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
 
 ### Introduction (1)
 
@@ -601,26 +601,13 @@ Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
 
-### Guides (25)
+### Guides (12)
 
 - [Agent Environment Tagging](https://docs.1claw.xyz/docs/guides/agent-environment-tagging)
 - [Audit and compliance](https://docs.1claw.xyz/docs/guides/audit-and-compliance)
 - [Billing & Usage](https://docs.1claw.xyz/docs/guides/billing-and-usage)
 - [Deploying Updates](https://docs.1claw.xyz/docs/guides/deploying-updates)
 - [Email Notifications](https://docs.1claw.xyz/docs/guides/email-notifications)
-- [Advanced Embedded Wallet Features](https://docs.1claw.xyz/docs/guides/embedded-wallets/advanced)
-- [Embedded Wallet Authentication](https://docs.1claw.xyz/docs/guides/embedded-wallets/authentication)
-- [Fiat On and Off Ramps](https://docs.1claw.xyz/docs/guides/embedded-wallets/fiat-ramps)
-- [Getting Started with Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/getting-started)
-- [Multi-Chain Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/multi-chain-wallets)
-- [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets/overview)
-- [Platform API for Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/platform-api)
-- [React Integration](https://docs.1claw.xyz/docs/guides/embedded-wallets/react-integration)
-- [Security and Custody](https://docs.1claw.xyz/docs/guides/embedded-wallets/security-and-custody)
-- [Send, Swap, and Receive](https://docs.1claw.xyz/docs/guides/embedded-wallets/send-swap-receive)
-- [Wallet Spend Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/spend-policies)
-- [Testing and Production](https://docs.1claw.xyz/docs/guides/embedded-wallets/testing-production)
-- [Wallet Access Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/wallet-access-policies)
 - [Environment Variables](https://docs.1claw.xyz/docs/guides/environment-variables)
 - [5-minute walkthrough: vault, key, transaction](https://docs.1claw.xyz/docs/guides/five-minute-walkthrough)
 - [Policy Engine v2](https://docs.1claw.xyz/docs/guides/policy-engine-v2)
@@ -637,19 +624,13 @@ Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [SDKs overview](https://docs.1claw.xyz/docs/sdks/overview)
 - [Python SDK](https://docs.1claw.xyz/docs/sdks/python)
 
-### Security (12)
+### Security (6)
 
 - [Agent keys](https://docs.1claw.xyz/docs/security/agent-keys)
-- [Audit Hash Chain Verification](https://docs.1claw.xyz/docs/security/audit-verification)
 - [Compliance](https://docs.1claw.xyz/docs/security/compliance)
 - [HSM overview](https://docs.1claw.xyz/docs/security/hsm-overview)
 - [Key hierarchy](https://docs.1claw.xyz/docs/security/key-hierarchy)
-- [Policy Schema Versioning](https://docs.1claw.xyz/docs/security/policy-versioning)
-- [1Claw Security Overview](https://docs.1claw.xyz/docs/security/security-overview)
-- [Trust Model Comparison: 1Claw vs Signing-Only Infrastructure](https://docs.1claw.xyz/docs/security/trust-model-comparison)
 - [Two-factor authentication](https://docs.1claw.xyz/docs/security/two-factor-auth)
-- [1Claw Security Architecture Whitepaper](https://docs.1claw.xyz/docs/security/whitepaper)
-- [Why 1Claw for Embedded Wallets](https://docs.1claw.xyz/docs/security/why-1claw-embedded-wallets)
 - [Zero trust](https://docs.1claw.xyz/docs/security/zero-trust)
 
 ### Reference (9)
@@ -683,7 +664,7 @@ Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [MCP integration](https://docs.1claw.xyz/docs/integrations/mcp-integration)
 - [Migrate from Dynamic](https://docs.1claw.xyz/docs/integrations/migrate-from-dynamic)
 - [Migrate from Privy](https://docs.1claw.xyz/docs/integrations/migrate-from-privy)
-- [Migrate From Turnkey to 1Claw](https://docs.1claw.xyz/docs/integrations/migrate-from-turnkey)
+- [Migrate from Turnkey](https://docs.1claw.xyz/docs/integrations/migrate-from-turnkey)
 - [1claw OpenClaw Plugin](https://docs.1claw.xyz/docs/integrations/openclaw-plugin)
 - [Using 1claw with OpenClaw](https://docs.1claw.xyz/docs/integrations/openclaw)
 - [Integrations overview](https://docs.1claw.xyz/docs/integrations/overview)
@@ -692,7 +673,7 @@ Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [wagmi + RainbowKit integration](https://docs.1claw.xyz/docs/integrations/wagmi-rainbowkit)
 - [Web3Auth integration](https://docs.1claw.xyz/docs/integrations/web3auth)
 
-### Treasury Policy (11)
+### Treasury Policy (9)
 
 - [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/treasury/account-abstraction)
 - [Human-in-the-loop approvals](https://docs.1claw.xyz/docs/treasury/approvals)
@@ -702,8 +683,6 @@ Complete index of 167 doc pages on docs.1claw.xyz. Full content: https://docs.1c
 - [Policy cookbooks](https://docs.1claw.xyz/docs/treasury/policy-examples)
 - [Policy language](https://docs.1claw.xyz/docs/treasury/policy-language)
 - [Safe (Gnosis Safe) integration](https://docs.1claw.xyz/docs/treasury/safe-multisig)
-- [Treasury Spend Policies](https://docs.1claw.xyz/docs/treasury/spend-policies)
-- [Wallet Access Policies](https://docs.1claw.xyz/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.xyz/docs/treasury/wallet-react)
 
 ### Other (69)
