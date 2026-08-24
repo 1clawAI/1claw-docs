@@ -8,6 +8,22 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.53.4 (2026-08-23) {#v0534-2026-08-23}
+
+**Execution guardrails (Phase 0)**
+- Machine-readable `guardrail_violation` JSON on execute denials (`reason_code`, optional `limit` / `current` / `attempted`)
+- Per-binding guardrails: `max_request_bytes`, `max_response_bytes`, `allowed_request_headers`, GraphQL depth/mutation/introspection limits, DNS-pinned HTTP/GraphQL clients
+- Per-binding and per-agent `max_requests_per_minute` — denied executions do not count toward RPM
+- `GET /v1/approvals/{approval_id}/status` — agent-only lightweight approval poll
+- Production script: `scripts/test-execution-guardrails-prod.sh`
+
+**Packages**
+- Vault API, OpenAPI spec, SDK, CLI, MCP (`io.github.1clawAI/1claw-mcp` / `@1claw/mcp`) bumped to **0.53.4**
+- MCP tool: `get_approval_status`
+- SDK: `client.approvals.getStatus()`
+
+---
+
 ### v0.53.3 (2026-08-20) {#v0533-2026-08-20}
 
 **Execution Intents parity**
