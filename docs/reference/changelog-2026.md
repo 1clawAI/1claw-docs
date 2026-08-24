@@ -8,6 +8,25 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.57.0 (2026-08-24) {#v0570-2026-08-24}
+
+**Platform API expansion (migration 215)**
+- **SIWE wallet provisioning:** `POST /v1/platform/siwe/challenge` + upsert with `subject_token_type: urn:1claw:params:oauth:token-type:siwe`, `siwe_message`, `siwe_signature`. Atomic DB nonces; `siwe_domain` on platform apps.
+- **Parameterized bootstrap:** `parameters` on bootstrap requests; `POST .../templates/{id}/preview` for dry-run; params-aware bootstrap idempotency via `Idempotency-Key` + body hash.
+- **Connection polling:** `GET /v1/platform/connections/{id}` returns claim status, `entitlement_status`, `wallet_address`, resource IDs.
+- **Per-connection usage:** `GET .../connections/{id}/usage` — monthly `inference_spent_usd`.
+- **On-chain entitlements:** Template `entitlements[]`; `GET/POST .../entitlements` + refresh; background monitor; webhooks `platform.entitlement.granted/revoked`.
+- **Inference budgets:** Spend policy fields (`inference_allowance_usd`, `max_request_cost_usd`, etc.); JWT `inference_budget` claim; Shroud per-request cap; `GET /v1/treasury/wallets/inference-budget`.
+- **Claim expiry webhook:** Background worker fires `platform.claim.expired` when 10-min claim tokens lapse unclaimed.
+
+**Packages**
+- Vault API, OpenAPI spec, SDK, CLI, MCP bumped to **0.57.0**
+- Python SDK tag **0.57.0** (CI publish)
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.57.0**
+- New prod tests: `scripts/test-platform-expansion-prod.sh`
+
+---
+
 ### v0.56.3 (2026-08-24) {#v0563-2026-08-24}
 
 **Cumulative gas budget & outbound idempotency**
