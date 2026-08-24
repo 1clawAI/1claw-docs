@@ -8,6 +8,26 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.56.0 (2026-08-24) {#v0560-2026-08-24}
+
+**Guardrail governance, HFA, Safe foundation (Phases 3–6)**
+- **Convention 6 shadow/enforce** on execution guardrails — `enforcement: "log"|"enforce"` on bindings and agents; audit `guardrail_shadow.would_deny`.
+- **Address screening** — per-agent `address_screening_policy` (`mode`: off | deny | approve); env deny list `ONECLAW_SCREENING_DENY_LIST`.
+- **Solana simulate_first** on non-EVM submit/sign when configured.
+- **Governance APIs:** `GET /v1/org/guardrail-shadow-report`, `GET /v1/org/guardrail-revisions`, `POST /v1/agents/{id}/guardrails/replay`.
+- **Guardrail revisions** recorded on agent/binding guardrail PATCH.
+- **Org unfreeze** T3 step-up; webhook `org.unfrozen`.
+- **Execution honeytoken** on vault-ref credential loads.
+- **Shroud tx escalation** — `POST /v1/admin/shroud/tx-escalations`; Shroud heuristics escalate to HITL.
+- **HFA** on treasury send/swap/export; **Safe stubs** — agent accounts + module registry.
+
+**Packages**
+- Vault API, OpenAPI spec, SDK, CLI, MCP bumped to **0.56.0**
+- CLI: `1claw guardrails shadow-report|revisions|replay`
+- Dashboard: Settings → Security → Guardrails tab
+
+---
+
 ### v0.55.0 (2026-08-24) {#v0550-2026-08-24}
 
 **Guardrail phases 1.3–2.7 (extended HITL & enforcement)**
