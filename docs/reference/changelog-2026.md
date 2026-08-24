@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.55.0 (2026-08-24) {#v0550-2026-08-24}
+
+**Guardrail phases 1.3–2.7 (extended HITL & enforcement)**
+- **Sign HITL:** EIP-712 typed data and raw digest signing can route to **202** `awaiting_approval` when `typed_data_policy` or `raw_signing_policy` is `approve`. Webhook: `sign.awaiting_approval`. Approve via `/v1/approvals/{id}/decide` auto-executes stored sign intent.
+- **Simulation HITL:** Tenderly revert can route to tx HITL when `simulation_failure_policy` is `approve` (instead of 422).
+- **Extended tx guardrails:** `tx_block_unlimited_approvals`, per-recipient daily limits, new-recipient caps, USD caps (`tx_max_value_usd`, `tx_daily_limit_usd`), gas budget checks, in-flight daily budget reservations (`tx_budget_reservations`).
+- **Signing policies:** `raw_signing_policy` (allow/deny/approve), `personal_sign_policy` JSON, `allow_erc4337`, `allow_eip7702`.
+- **Execution guardrails (2.4–2.7):** binding time windows + source IP (`execution_conditions`), outbound secret pattern scan, per-binding concurrency cap.
+- **Org freeze:** `POST /v1/org/freeze` and `POST /v1/org/unfreeze` (owner/admin emergency stop).
+
+**Packages**
+- Vault API, OpenAPI spec, SDK, CLI, MCP bumped to **0.55.0**
+
+---
+
 ### v0.54.0 (2026-08-24) {#v0540-2026-08-24}
 
 **Graduated guardrails & HITL (Phase 1–2)**
