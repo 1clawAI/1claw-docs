@@ -19,7 +19,7 @@ sidebar_label: "2026"
 
 **Packages**
 - Vault API **0.58.0** (migrations 216–217)
-- CLI, MCP, Python SDK, Go SDK → **0.58.0** with Platform control-plane parity
+- OpenAPI spec, SDK, CLI, MCP, Python SDK, Go SDK → **0.58.0** with Platform control-plane parity
 - MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.58.0**
 - New MCP tools: `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_list_connection_pending_approvals`, `platform_get_connection_spend_policy`, `platform_get_spend_policy`, `platform_transfer_ownership`, `platform_delete_app`
 - Prod tests extended: `scripts/test-platform-api.sh`, `scripts/test-platform-expansion-prod.sh`
