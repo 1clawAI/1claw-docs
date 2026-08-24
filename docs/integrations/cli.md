@@ -310,6 +310,30 @@ Human-in-the-loop approval workflow for agent actions.
 1claw approval decide <id> reject --reason "Not needed"
 ```
 
+## Guardrail governance (v0.56)
+
+```bash
+1claw guardrails shadow-report
+1claw guardrails revisions
+1claw guardrails replay <agent-id> --days 7 --draft-guardrails '{"tx_max_value_eth":"0.1"}'
+```
+
+Widening agent or binding guardrails may return **202** with `pending_approval_id`. Approve via `1claw approval decide`, then resubmit with `--approval-id`.
+
+See [Guardrail governance](/docs/agents/guardrail-governance).
+
+## Agent Safe accounts (v0.56)
+
+```bash
+1claw agent accounts list <agent-id>
+1claw agent accounts migrate <agent-id> --chain ethereum [--deprecate-eoa]
+1claw agent accounts deprecate-eoa <agent-id> --chain ethereum
+1claw safe module-registry ethereum
+1claw safe sync-allowances
+```
+
+See [Agent Safe accounts](/docs/agents/safe-accounts).
+
 ## Execution Intents (bindings)
 
 HTTP and GraphQL calls through named bindings — credentials stay server-side. Requires Pro+ tier and `execution_intents_enabled` on the agent.

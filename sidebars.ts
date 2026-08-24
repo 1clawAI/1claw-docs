@@ -133,6 +133,8 @@ const sidebars: SidebarsConfig = {
                         "agents/discovery",
                         "agents/oidc-federation",
                         "agents/bankr-keys",
+                        "agents/guardrail-governance",
+                        "agents/safe-accounts",
                     ],
                 },
                 {
@@ -364,6 +366,7 @@ const sidebars: SidebarsConfig = {
                 "security/agent-keys",
                 "security/zero-trust",
                 "security/two-factor-auth",
+                "security/human-factor-auth",
                 "security/compliance",
             ],
         },

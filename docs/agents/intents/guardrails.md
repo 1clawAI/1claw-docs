@@ -77,7 +77,13 @@ client.agents.update(
 </TabItem>
 </Tabs>
 
+| `address_screening_policy` | `object` | Recipient screening at signing: `{ "mode": "off" \| "deny" \| "approve" }`. Env deny list: `ONECLAW_SCREENING_DENY_LIST`. |
+| `tx_approval_policy` | `object` | Graduated tx HITL thresholds (v0.54+) — matching txs return **202** `awaiting_approval`. |
+| `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` | `string` | `"deny"` (default) or `"approve"` for EIP-712, simulation revert, or raw digest HITL. |
+
 When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
+
+See [Guardrail governance](/docs/agents/guardrail-governance) for Convention 6 execution shadow mode, widening approvals, revision history, and replay.
 
 ### Token guardrails {#token-guardrails}
 
@@ -108,7 +114,7 @@ Override global guardrails on a per-chain basis using `per_chain_guardrails`. Th
 }
 ```
 
-Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist` (legacy `*_eth` keys accepted). Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins. Daily limits compare against **that chain family's** spend today (`tx_spent_today_by_chain`), not a cross-chain total.
+Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_allowlist`, `max_per_day`, `overhead_budget`, `max_ata_creates_per_day`, `max_fee_per_gas_gwei`, `max_gas_limit`, **`gas_daily_budget_native`** (v0.56.3 — UTC-day cumulative EVM gas budget). Legacy `*_eth` keys accepted. Keys are signing chains: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`. When both global and per-chain values are set, the **strictest** wins.
 
 ### XRP transaction type allowlist {#xrpl-tx-types}
 
@@ -543,5 +549,7 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 - **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
 - **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.
 - **TEE mode (Business+):** Optional TEE execution inside Shroud's confidential enclave. Set `ONECLAW_EXECUTION_TEE_REQUIRE_SHROUD=true` to return 501 when TEE is requested but no enclave endpoint is configured (fail-closed).
+- **Convention 6 shadow/enforce (v0.56):** Binding `guardrails.enforcement` and agent `execution_guardrails.enforcement` — `"log"` (audit `guardrail_shadow.would_deny`) or `"enforce"` (403). See [Guardrail governance](/docs/agents/guardrail-governance).
+- **Outbound idempotency (v0.56.3):** Binding guardrail `inject_idempotency_key: true` injects deterministic `Idempotency-Key` (SHA-256 of binding id, method, path, body) on HTTP/GraphQL execute when absent.
 
 ## Next steps

@@ -192,6 +192,19 @@ Per-key encrypted env vars on vaults replace path-based `config/prod/*` bundles 
 |------|-------------|
 | `lease_bankr_key` | Lease a scoped Bankr wallet API key (metadata only — key never in tool output) |
 
+### Safe accounts & guardrail governance (v0.56+)
+
+| Tool | What it does |
+|------|-------------|
+| `list_agent_accounts` | List agent EOA/Safe accounts per chain |
+| `migrate_agent_to_safe` | Build EOA→Safe migration plan (human-only) |
+| `deprecate_agent_eoa` | Deprecate agent EOA signing path (human-only) |
+| `get_safe_module_registry` | Pinned Safe/Zodiac module addresses (public) |
+| `sync_org_safe_allowances` | Org allowance reconciliation report (owner/admin) |
+| `get_guardrail_shadow_report` | Convention 6 shadow would-deny aggregate |
+| `list_guardrail_revisions` | Guardrail change audit trail |
+| `replay_agent_guardrails` | Dry-run draft guardrails against recent txs |
+
 ### Security
 
 | Tool | What it does |
