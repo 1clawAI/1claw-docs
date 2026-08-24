@@ -8,6 +8,22 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.54.0 (2026-08-24) {#v0540-2026-08-24}
+
+**Graduated guardrails & HITL (Phase 1–2)**
+- **Transaction HITL:** `agents.tx_approval_policy` JSON — graduated thresholds (`require_above_native`, `require_for_chains`, `require_for_new_recipients`, unlimited ERC-20 approve detection). Matching txs return **202** `awaiting_approval` with `approval_id`; humans approve via `/v1/approvals/{id}/decide` to resume signing.
+- **Execution HITL:** Binding `guardrails.approval_policy` (`mode`: `off` | `always` | `conditional`) and `allowed_methods`. Execute returns **202** `approval_required` when policy matches; approve auto-runs the intent.
+- **`dry_run` on execute:** Validates guardrails and approval policy without side effects (`status: dry_run`).
+- **Circuit breaker:** Repeated guardrail denials can auto-suspend agents (`auto_suspended`); org-level `frozen_at`. Webhooks: `tx.awaiting_approval`, `execution.pending`, `agent.suspended`, `org.frozen`.
+- **Agent API:** `tx_approval_policy`, `typed_data_policy`, `simulation_failure_policy`, `auto_suspended` on GET; PATCH supports `clear_auto_suspended` (owner/admin).
+- Production scripts: `scripts/test-guardrail-hitl-prod.sh`; extended `scripts/test-execution-guardrails-prod.sh` (`allowed_methods`, `dry_run`).
+
+**Packages**
+- Vault API, OpenAPI spec, SDK, CLI, MCP bumped to **0.54.0**
+- MCP: `execute_intent` accepts `dry_run`; CLI: `1claw approval status <id>`
+
+---
+
 ### v0.53.4 (2026-08-23) {#v0534-2026-08-23}
 
 **Execution guardrails (Phase 0)**
