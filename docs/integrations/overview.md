@@ -15,6 +15,7 @@ sidebar_position: 0
 | [LangChain](/docs/integrations/langchain) | `langchain-1claw` on PyPI |
 | [CrewAI](/docs/integrations/crewai) | `1claw-crewai-tools` on PyPI |
 | [MCP integration](/docs/integrations/mcp-integration) | Claude Desktop, Cursor setup |
+| [Agent discovery](/docs/integrations/agent-discovery) | OIDC, auth.md, MCP card, x402, ARD |
 | [MCP deep dive](/docs/integrations/mcp-deep-dive) | All MCP-compatible editors |
 | [CLI](/docs/integrations/cli) | CI/CD, `env run`, device auth |
 

@@ -39,6 +39,8 @@ The fastest way to connect an AI agent to your vault:
 
 That's it. The server automatically exchanges the API key for a short-lived JWT, refreshes it before expiry, and auto-discovers the vault when the agent is bound to exactly one. No manual token rotation needed.
 
+For OIDC, MCP server cards, auth.md, x402, and other machine-readable endpoints, see [Agent discovery](/docs/integrations/agent-discovery) and [1claw.xyz/for-ai](https://1claw.xyz/for-ai).
+
 :::tip Vault override
 If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"` to the headers to pick one explicitly.
 :::

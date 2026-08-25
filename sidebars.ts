@@ -318,6 +318,7 @@ const sidebars: SidebarsConfig = {
                     collapsed: true,
                     items: [
                         "integrations/mcp-integration",
+                        "integrations/agent-discovery",
                         "integrations/mcp-deep-dive",
                         "integrations/cli",
                         "integrations/agent-frameworks",
