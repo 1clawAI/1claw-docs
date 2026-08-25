@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.58.1 (2026-08-25) {#v0581-2026-08-25}
+
+**Agent-created automations (chat/runtime)**
+- **`POST /v1/agents/{agent_id}/automations`** — agent-token only. Simple manual/webhook workflows with guardrailed steps (`log`, `notify`, `memory_get`, `memory_put`, `wait`; max 10 steps, 25 per agent). Optional `auto_trigger` for manual runs. Humans remain on `POST /v1/automations` (agents get **403**).
+- **`created_by_type`** on automations (`human` | `agent`, migration 218). Dashboard shows an **Agent-created** badge.
+- **Runtime tools:** `create_automation`, `create_test_automation`, agent-access tools (`request_access`, `request_approval`, `request_binding`, `request_signing_key`, `request_guardrail_change`), `forget`, capabilities prompt injection across Hermes/OpenClaw/OpenClaude/OpenCode templates.
+- **Vault:** `request_timeout` middleware, runtime chat cold-start improvements.
+
+**Packages**
+- OpenAPI spec, SDK (`agents.createAutomation()`), MCP (`create_agent_automation`), Python SDK (`agents.create_automation()`), Go SDK (`Agents.CreateAutomation()`), CLI (`1claw agent automation create`) → **0.58.1**
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.58.0** (tool shipped in prior release)
+- Prod tests: `scripts/test-automations-prod.sh` §24 (agent-scoped create + human-route 403)
+
+---
+
 ### v0.58.0 (2026-08-24) {#v0580-2026-08-24}
 
 **Platform API control plane (Fathom bundled release)**
