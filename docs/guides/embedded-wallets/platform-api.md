@@ -56,6 +56,7 @@ Declarative JSON spec creates resources atomically:
 
 ```json
 {
+  "plan": "pro",
   "vault": { "name": "user-vault" },
   "agents": [{
     "name": "companion",
@@ -73,6 +74,10 @@ Declarative JSON spec creates resources atomically:
   "automations": []
 }
 ```
+
+When `billing_model` is **`platform_pays`**, bootstrap applies the template **`plan`** tier to the connected user's org (default **`pro`**, capped by your platform org's tier). This unlocks Cloud Runtimes, chat, and other Pro+ gates without requiring each end-user to subscribe. The granted tier is returned on `GET /v1/platform/connections/{id}` as `provisioned_tier`.
+
+Valid `plan` values: `pro`, `team`, `business`, `enterprise`.
 
 Bootstrap call:
 
