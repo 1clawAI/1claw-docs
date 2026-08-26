@@ -17,6 +17,7 @@ sidebar_position: 0
 | [MCP integration](/docs/integrations/mcp-integration) | Claude Desktop, Cursor setup |
 | [Agent discovery](/docs/integrations/agent-discovery) | OIDC, auth.md, MCP card, x402, ARD |
 | [MCP deep dive](/docs/integrations/mcp-deep-dive) | All MCP-compatible editors |
+| [GitHub Action](/docs/integrations/github-action) | CI vault secrets — `1clawAI/1claw-action@v1` |
 | [CLI](/docs/integrations/cli) | CI/CD, `env run`, device auth |
 
 ## Agent frameworks

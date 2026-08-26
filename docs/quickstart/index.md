@@ -200,6 +200,17 @@ Use the SDK or REST API with a personal API key (`1ck_`) for human operations, o
 
 **3. CI/CD pipeline**
 
+On **GitHub Actions**, use the official [1Claw Secrets action](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0) — see [GitHub Action integration](/docs/integrations/github-action):
+
+```yaml
+- uses: 1clawAI/1claw-action@v1
+  with:
+    api-key: ${{ secrets.ONECLAW_AGENT_API_KEY }}
+    secrets: DB_URL=prod/config/db-url
+```
+
+Elsewhere, use the CLI:
+
 ```bash
 export ONECLAW_TOKEN="${{ secrets.ONECLAW_TOKEN }}"
 1claw env pull -o .env.production
@@ -245,5 +256,6 @@ The shortest manual path if you are not using `1claw setup`:
 - [Give an agent access](/docs/vaults/golden-path) — golden path with policies
 - [Parts of 1Claw](/docs/concepts/parts-of-1claw) — Vault, Shroud, Intents, and all interfaces
 - [CLI](/docs/integrations/cli) — full command reference, Docker runtime, local daemon
+- [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions (`1clawAI/1claw-action@v1`)
 - [MCP overview](/docs/vaults/mcp/overview) — tools your AI assistant can call
 - [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples

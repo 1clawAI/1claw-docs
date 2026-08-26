@@ -320,6 +320,7 @@ const sidebars: SidebarsConfig = {
                         "integrations/mcp-integration",
                         "integrations/agent-discovery",
                         "integrations/mcp-deep-dive",
+                        "integrations/github-action",
                         "integrations/cli",
                         "integrations/agent-frameworks",
                         "integrations/ai-sdk-integration",

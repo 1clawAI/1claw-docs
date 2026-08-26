@@ -927,7 +927,28 @@ The CLI generates a P-256 ECDSA keypair on first use and persists it at `~/.conf
 
 ## CI/CD examples
 
-### GitHub Actions
+### GitHub Actions (recommended)
+
+Use the official [**1Claw Secrets**](https://github.com/1clawAI/1claw-action) action ([v1.0.0](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0)) — one agent key in GitHub Secrets, policy-gated vault reads, automatic log masking. Full reference: [GitHub Action integration](/docs/integrations/github-action).
+
+```yaml
+- name: Load secrets from 1Claw
+  id: vault
+  uses: 1clawAI/1claw-action@v1
+  with:
+    api-key: ${{ secrets.ONECLAW_AGENT_API_KEY }}
+    secrets: |
+      DB_URL=prod/config/db-url
+      NPM_TOKEN=ci/tokens/npm
+
+- name: Deploy
+  run: npm run deploy
+  # DB_URL and NPM_TOKEN are masked job env vars
+```
+
+### GitHub Actions (CLI alternative)
+
+For full CLI surface area (e.g. `env pull` with environment scoping), use `@1claw/cli` directly:
 
 ```yaml
 - name: Deploy with secrets
@@ -977,6 +998,7 @@ This flow does not require typing your password in the terminal.
 
 ## See also
 
+- [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions
 - [JavaScript SDK](/docs/sdks/javascript) — Programmatic access from Node.js or browsers
 - [MCP Server](/docs/vaults/mcp/overview) — AI agents accessing secrets via tools
 - [Two-factor authentication](/docs/security/two-factor-auth) — Optional 2FA for human logins
