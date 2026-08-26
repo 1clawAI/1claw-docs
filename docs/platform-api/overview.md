@@ -319,29 +319,45 @@ Array of access policies linking agents to vault paths.
 }
 ```
 
-### `runtimes` (v0.44+)
+### `runtimes` (v0.44+; bootstrap wiring v0.58.2)
 
-Array of runtime definitions. Each entry creates a managed container for the agent.
+Runtimes can be declared three ways in a bootstrap template:
+
+1. **Top-level `runtimes` array** — each entry binds to `agents[agent_ref]` (default `0`)
+2. **Nested `agents[].runtime`** — one runtime per agent entry
+3. **`provision_runtime: true`** — shorthand that creates a default runtime for the first agent (`runtime_preset` default `"medium"`, `runtime_template` default `"openclaw"`)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | string | required | Runtime name |
+| `name` | string | `"default"` | Runtime name |
+| `template` | string | — | Agent template (`hermes`, `openclaw`, `openclaude`, …) |
 | `preset` | string | `"small"` | Compute preset: `small`, `medium`, `large`, `small-cc`, `medium-cc`, `large-cc` |
-| `image` | string | `""` | Container image |
-| `expose_http` | boolean | `false` | Enable public URL |
+| `expose_http` | boolean | `false` | Enable public URL at `{slug}.run.1claw.xyz` |
+| `agent_ref` | integer | `0` | Index into `agents[]` (top-level `runtimes` only) |
+| `idle_timeout_secs` | integer | `1800` | Idle auto-stop timeout |
+| `startup_command` | string | — | Optional container startup override |
 
 ```json
 {
+  "provision_runtime": true,
+  "runtime_preset": "medium",
+  "runtime_template": "openclaw",
+  "agents": [{ "name": "defi-bot", "intents": { "enabled": true } }],
   "runtimes": [
     {
       "name": "trading-runtime",
       "preset": "medium",
-      "image": "ghcr.io/myapp/agent:latest",
-      "expose_http": true
+      "template": "openclaw",
+      "expose_http": true,
+      "agent_ref": 0
     }
   ]
 }
 ```
+
+After bootstrap, create additional runtimes with **`POST /v1/platform/connections/{id}/runtimes`** (plt_ key). Do **not** use `POST /v1/runtimes` with a plt_ key — that resolves to the platform org and returns 404 for user-org agents.
+
+Bootstrapped runtime and automation IDs are tracked on the connection record (`runtime_ids`, `automation_ids`) and returned by `GET /v1/platform/connections/{id}`.
 
 ### `automations` (v0.44+)
 
@@ -372,6 +388,64 @@ Array of automation definitions. Each entry creates a scheduled, webhook-trigger
 ```
 
 Bootstrapped runtime and automation IDs are tracked on the `platform_user_connections` record (`runtime_ids`, `automation_ids`).
+
+---
+
+## Connection-scoped operations (plt_ key)
+
+Platform apps act on behalf of a **connected end-user**. These endpoints scope actions to a single connection — no user JWT, no `POST /grant`, and no `X-Platform-Connection` delegation header required. Your app must verify user intent out-of-band (e.g. wallet signature / mandate) before calling write endpoints.
+
+### Inspect template
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/templates/TEMPLATE_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+### Poll connection state
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { status, vault_ids, agent_ids, runtime_ids, automation_ids, claim, ... }
+```
+
+### Create a runtime for a provisioned agent
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "agent-runtime",
+    "agent_id": "AGENT_UUID",
+    "template": "openclaw",
+    "preset": "medium"
+  }'
+```
+
+### Chat with a provisioned agent
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_ID/chat" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "message": "Hello", "model": "gpt-4o", "provider": "openai" }'
+```
+
+Use this instead of `POST /v1/agents/{id}/chat` with a plt_ key (403 human-only).
+
+### Spend policy, approvals, signing keys
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/v1/platform/connections/{id}/spend-policy` | Effective spend policy for connection user |
+| PUT | `/v1/platform/connections/{id}/spend-policy` | Set per-user spend policy (Idempotency-Key supported) |
+| GET | `/v1/platform/connections/{id}/pending-approvals` | Hash-bound consensus/HITL queue (`payload_hash` on each row) |
+| GET | `/v1/platform/connections/{id}/pending-approvals/{aid}` | Single pending approval |
+| POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | Vote approve/reject with matching `payload_hash` |
+| POST | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Mobile approval queue decide |
+| DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
 
 ---
 
@@ -1026,11 +1100,18 @@ policy = client.platform.create_spend_policy(app_id, {
 | DELETE | `/v1/platform/apps/{id}` | User JWT | Delete platform app |
 | POST | `/v1/platform/apps/{id}/rotate-key` | User JWT | Rotate `plt_` API key |
 | POST | `/v1/platform/apps/{id}/templates` | User JWT | Create bootstrap template |
-| GET | `/v1/platform/apps/{id}/templates` | User JWT | List templates |
-| PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Update template |
-| DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Delete template |
+| GET | `/v1/platform/apps/{id}/templates` | User JWT or `plt_` | List templates |
+| GET | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Get template by ID |
+| PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Update template |
+| DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Delete template |
 | POST | `/v1/platform/users/upsert` | `plt_` key | Provision or find user |
+| GET | `/v1/platform/connections/{id}` | `plt_` key | Connection status + resource IDs |
 | POST | `/v1/platform/connections/{id}/bootstrap` | `plt_` key | Bootstrap resources from template |
+| POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
+| POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat with connection agent |
+| GET | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | List hash-bound pending approvals |
+| POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | `plt_` key | Vote on pending approval |
+| DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
 | POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
 | GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
 | POST | `/v1/platform/claim/{token}` | None (public) | Redeem claim token |
@@ -1044,7 +1125,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/apps/{id}/spend-policies` | User JWT | Create app-level spend policy |
 | GET | `/v1/platform/apps/{id}/spend-policies` | User JWT | List spend policies |
 | DELETE | `/v1/platform/apps/{id}/spend-policies/{pid}` | User JWT | Deactivate spend policy |
-| PUT | `/v1/platform/connections/{id}/spend-policy` | User JWT | Set per-user spend policy override |
+| PUT | `/v1/platform/connections/{id}/spend-policy` | `plt_` key or User JWT | Set per-user spend policy override |
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
 | GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
 | GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |

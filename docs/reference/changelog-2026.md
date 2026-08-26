@@ -8,6 +8,20 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.58.2 (2026-08-26) {#v0582-2026-08-26}
+
+**Platform connection control plane (runtime + chat)**
+- **Bootstrap runtimes:** Top-level `runtimes[]`, nested `agents[].runtime`, and `provision_runtime: true` (+ `runtime_preset` / `runtime_template`) now create Cloud Runtimes during bootstrap. Connection detail includes `runtime_ids` and `automation_ids`.
+- **`GET /v1/platform/apps/{id}/templates/{tid}`** — plt_ or user JWT; inspect template spec after bootstrap.
+- **`POST /v1/platform/connections/{id}/runtimes`** — create runtime in end-user org (fixes plt_ → `POST /v1/runtimes` 404).
+- **`POST /v1/platform/connections/{id}/agents/{aid}/chat`** — connection-scoped agent chat (fixes plt_ → `POST /v1/agents/{id}/chat` 403).
+- **Spend-policy PUT replace** — second write no longer 500 (unique per-user app policy).
+- **Connection-scoped control:** pending-approval get/decide, mobile approval decide, signing-key deactivate (v0.58.0 continued).
+
+**Tests:** `scripts/test-platform-expansion-prod.sh` covers template GET, spend-policy replace, control-plane routes, bootstrap `provision_runtime`, connection runtime create, connection chat.
+
+---
+
 ### v0.58.1 (2026-08-25) {#v0581-2026-08-25}
 
 **Agent-created automations (chat/runtime)**
