@@ -110,6 +110,6 @@ Review downstream steps that consume these env vars — masking reduces accident
 ## See also
 
 - [CLI](/docs/integrations/cli) — `env pull`, `env run`, and non-GitHub CI
-- [Quickstart — CI/CD](/docs/quickstart/index#3-cicd-pipeline)
+- [Quickstart — CI/CD](/docs/quickstart#common-integration-patterns)
 - [Scoped permissions](/docs/vaults/scoped-permissions)
 - [1claw.xyz/for-ai](https://1claw.xyz/for-ai) — MCP config, discovery endpoints, and package links
