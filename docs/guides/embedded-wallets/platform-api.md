@@ -122,6 +122,20 @@ await userClient.platform.grantAccess(connectionId, {
 
 List/revoke: `listGrants`, `revokeGrant`.
 
+## Fathom / connection-scoped operations (v0.59)
+
+Use these with **`plt_`** auth when building embedded wallet or agent products (e.g. Fathom):
+
+| Operation | Endpoint | SDK |
+| --------- | -------- | --- |
+| Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
+| Passkey enroll (begin) | `POST .../passkeys/enroll/begin` | `platform.connectionPasskeyEnrollBegin()` |
+| Passkey enroll (complete) | `POST .../passkeys/enroll/complete` | `platform.connectionPasskeyEnrollComplete()` |
+| Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]` |
+| Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |
+
+Set default agent behavior at bootstrap via template `agents[].system_prompt` or on agents with `system_prompt` on create/update. Connection chat uses the agent default when the request does not override.
+
 ## Platform delegation (optional)
 
 Enable ongoing backend operations on connected resources:
@@ -175,6 +189,10 @@ platform.platform.claimRedeem(token)
 platform.platform.createSpendPolicy(appId, ...)
 platform.platform.setUserSpendPolicy(connectionId, ...)
 platform.platform.grantAccess(connectionId, ...)
+platform.platform.getConnection(connectionId) // includes provisioned_tier
+platform.platform.getConnectionRuntime(connectionId, runtimeId)
+platform.platform.connectionPasskeyEnrollBegin(connectionId)
+platform.platform.connectionAgentChat(connectionId, agentId, { message, system_prompt })
 platform.platform.withConnection(connectionId) // delegated client
 ```
 

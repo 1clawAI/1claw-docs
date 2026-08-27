@@ -8,6 +8,25 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.59.0 (2026-08-27) {#v0590-2026-08-27}
+
+**Fathom platform integration (migration 221)**
+- **`agents.system_prompt`** — default chat system prompt on create/update and template `agents[].system_prompt` at bootstrap.
+- **Connection chat** — `POST /v1/platform/connections/{id}/agents/{aid}/chat` accepts `system`, `system_prompt`, and `messages[]` with `role: system`; billing failures return **402** (not 500).
+- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users (replaces user-only `/v1/auth/passkeys/register/*`).
+- **Connection runtime GET** — `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` (plt_ scoped; use instead of `GET /v1/runtimes/{id}`).
+- **`platform_pays` tier inheritance (migration 220)** — Template `plan` at bootstrap grants tier to end-user org; `GET /v1/platform/connections/{id}` returns `provisioned_tier`.
+- **Bootstrap runtime fix** — `provision_runtime` uses valid Cloud Run provider and respects tier limits.
+- **OpenAPI** — `GET /v1/platform/apps/{id}/users` response wraps `{ users: [] }`; passkey enroll schemas added.
+
+**Packages**
+- OpenAPI spec, SDK, CLI, MCP, Python SDK, Go SDK → **0.59.0**
+- New SDK/MCP/CLI methods: `getConnectionRuntime`, `connectionPasskeyEnrollBegin|Complete`, `system_prompt` types
+- MCP tools: `platform_get_connection_runtime`, `platform_connection_passkey_enroll_begin`
+- Prod tests: `scripts/test-platform-expansion-prod.sh` (passkey begin, runtime GET, system_prompt chat)
+
+---
+
 ### v0.58.2 (2026-08-26) {#v0582-2026-08-26}
 
 **Platform connection control plane (runtime + chat)**
