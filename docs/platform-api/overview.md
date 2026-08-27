@@ -753,7 +753,9 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
 
 **Signature format:** 65-byte ECDSA (`r‖s‖v`). MetaMask, viem, and ethers emit **v=27/28** (EIP-191); legacy **0/1** is also accepted. Invalid recovery bytes return **400** with `expected recovery id 0, 1, 27, or 28, got {v}`.
 
-Synthetic email: `wallet+{hash}@platform.1claw.local`. Connection detail includes `wallet_address` when provisioned via SIWE.
+Synthetic email: `wallet+{hash}@platform.1claw.local`. Connection detail includes `wallet_address` when provisioned via SIWE — the **staker identity wallet**, not the agent signing key (see warning above).
+
+`siwe_domain` is returned on `GET /v1/platform/apps/{id}`. Platform keys may **PATCH** only `siwe_domain` on the app record (human JWT can update all fields).
 
 ---
 
@@ -1258,6 +1260,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
+| PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` |
 | POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
 | GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
 | POST | `/v1/platform/claim/{token}` | None (public) | Redeem claim token |

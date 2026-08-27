@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.59.3 (2026-08-27) {#v0593-2026-08-27}
+
+**Platform connection operations (Fathom parity)**
+- **`GET /v1/platform/connections/{id}/signing-keys`** — list agent signing keys (public metadata: chain, address, public_key, curve). Optional `?agent_id=`. Use instead of org-scoped `GET /v1/agents/{id}/signing-keys` with plt_ keys.
+- **`GET .../signing-keys/{chain}`** — single-chain lookup with same metadata.
+- **`PATCH /v1/platform/connections/{id}/agents/{agent_id}`** — enable `intents_api_enabled`, `execution_intents_enabled`, or update `system_prompt` on existing bootstrapped agents without re-bootstrap.
+- **Docs:** Platform API overview clarifies **`wallet_address`** (SIWE staker identity) vs **agent signing key address** (`signing-keys` endpoints / bootstrap `summary.signing_keys`).
+- **Template aliases:** `intents: true`, `intents: { enabled: true }`, `intents_api_enabled: true` (and execution equivalents) documented in overview.
+
+**Packages**
+- OpenAPI spec, SDK (`listConnectionSigningKeys`, `getConnectionSigningKey`, `patchConnectionAgent`), CLI, MCP → **0.59.3**
+- Python SDK (`oneclaw`) → **0.59.3**
+
+---
+
 ### v0.59.2 (2026-08-27) {#v0592-2026-08-27}
 
 **Onboarding golden path (MCP stdio)**

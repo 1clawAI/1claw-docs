@@ -122,17 +122,36 @@ await userClient.platform.grantAccess(connectionId, {
 
 List/revoke: `listGrants`, `revokeGrant`.
 
-## Fathom / connection-scoped operations (v0.59)
+## Fathom / connection-scoped operations (v0.58–v0.59)
 
 Use these with **`plt_`** auth when building embedded wallet or agent products (e.g. Fathom):
 
 | Operation | Endpoint | SDK |
 | --------- | -------- | --- |
+| Agent signing keys (list) | `GET /v1/platform/connections/{id}/signing-keys?agent_id=` | `platform.listConnectionSigningKeys()` |
+| Agent signing key (one chain) | `GET .../signing-keys/{chain}?agent_id=` | `platform.getConnectionSigningKey()` |
+| Enable Intents post-bootstrap | `PATCH .../agents/{agent_id}` | `platform.patchConnectionAgent()` |
 | Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
 | Passkey enroll (begin) | `POST .../passkeys/enroll/begin` | `platform.connectionPasskeyEnrollBegin()` |
 | Passkey enroll (complete) | `POST .../passkeys/enroll/complete` | `platform.connectionPasskeyEnrollComplete()` |
-| Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]` |
+| Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]`; billing errors **402** |
+| Template GET | `GET /v1/platform/apps/{appId}/templates/{templateId}` | `platform.getTemplate()` |
 | Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |
+| SIWE staker wallet | `GET /v1/platform/connections/{id}` → `wallet_address` | `platform.getConnection()` |
+
+**`wallet_address` vs agent address:** On SIWE connections, `wallet_address` is the **user's Sign-In with Ethereum wallet** (identity). The **agent's on-chain signing address** is under `GET .../signing-keys` or bootstrap `summary.signing_keys`. Do not send deposits or read Intents balances from `wallet_address`.
+
+**Enable Intents without re-bootstrap:**
+
+```typescript
+await platform.platform.patchConnectionAgent(connectionId, agentId, {
+  intents_api_enabled: true,
+  execution_intents_enabled: true,
+  system_prompt: "You are a helpful trading assistant.",
+});
+```
+
+At bootstrap, template aliases work too: `intents: true`, `intents: { enabled: true }`, or `intents_api_enabled: true` (same for `execution` / `execution_intents_enabled`).
 
 Set default agent behavior at bootstrap via template `agents[].system_prompt` or on agents with `system_prompt` on create/update. Connection chat uses the agent default when the request does not override.
 
@@ -189,7 +208,10 @@ platform.platform.claimRedeem(token)
 platform.platform.createSpendPolicy(appId, ...)
 platform.platform.setUserSpendPolicy(connectionId, ...)
 platform.platform.grantAccess(connectionId, ...)
-platform.platform.getConnection(connectionId) // includes provisioned_tier
+platform.platform.getConnection(connectionId) // includes provisioned_tier, wallet_address (SIWE staker — not agent key)
+platform.platform.listConnectionSigningKeys(connectionId, { agent_id })
+platform.platform.getConnectionSigningKey(connectionId, chain, { agent_id })
+platform.platform.patchConnectionAgent(connectionId, agentId, { intents_api_enabled, system_prompt })
 platform.platform.getConnectionRuntime(connectionId, runtimeId)
 platform.platform.connectionPasskeyEnrollBegin(connectionId)
 platform.platform.connectionAgentChat(connectionId, agentId, { message, system_prompt })
