@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.59.4 (2026-08-27) {#v0594-2026-08-27}
+
+**Platform connection expansion**
+- **`GET /v1/platform/connections/{id}/portfolio`** (alias `GET .../balances`) — unified balances for connection agents (`?chains=`, `?include_tokens=`).
+- **`POST /v1/platform/connections/{id}/pending-approvals`** — create consensus/HITL pending approval for connection agent (**202**).
+- **Connection automations** — `GET/POST .../automations`, `POST .../automations/{aid}/runs/{rid}/cancel` (plt_-scoped; not org `/v1/automations`).
+- **Connection memory** — `GET/PUT/DELETE .../memory/{namespace}/{key}` (optional `?agent_id=`).
+- **`POST /v1/shroud/inspect-content`** — REST parity with MCP `inspect_content` (fail-closed threat scan).
+- **Docs sync** — webhook events (`pending_approval.created`, `tx.awaiting_approval`, `sign.awaiting_approval`, `automation.run.failed`), idempotency matrix, `siwe_domain`, `provisioned_tier` / `platform_pays`.
+
+**Packages**
+- OpenAPI spec, SDK, CLI, MCP, Python SDK → **0.59.4**
+
+---
+
 ### v0.59.3 (2026-08-27) {#v0593-2026-08-27}
 
 **Platform connection operations (Fathom parity)**

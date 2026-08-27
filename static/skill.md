@@ -1,6 +1,6 @@
 ---
 name: 1claw
-version: 1.15.0
+version: 1.24.0
 description: HSM-backed secret management for AI agents — store, retrieve, rotate, and share secrets via the 1Claw vault without exposing them in context. 1Claw is also a JWKS-published OIDC issuer for Workload Identity Federation (Anthropic WIF, GCP STS, AWS STS).
 homepage: https://1claw.xyz
 repository: https://github.com/1clawAI/1claw
@@ -71,7 +71,7 @@ metadata:
 - You need to sign or simulate an EVM transaction without exposing private keys
 - You need to sign an EIP-191 personal message or EIP-712 typed data
 - You want to provision multi-chain signing keys (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron)
-- You want to sign arbitrary XRPL transaction types (TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.) via `xrpl_tx_json`
+- You want to sign any of 1Claw's 31 supported XRPL types via `xrpl_tx_json` (SetRegularKey, SignerListSet, AccountSet, AccountDelete need explicit `xrpl_allowed_tx_types`)
 - You want TEE-grade key isolation for transaction signing (use Shroud at `shroud.1claw.xyz`)
 - Your vault uses **MPC secret storage** — DEKs split across GCP/AWS/Azure HSMs (Shamir 2-of-3) or XOR 2-of-2 client custody; provide `X-Client-Share` header when reading from client-custody vaults
 - Your org uses **LLM token billing** (Stripe AI Gateway): enable in the dashboard; agent JWTs include `llm_token_billing` / `stripe_customer_id` for Shroud routing
@@ -84,6 +84,8 @@ metadata:
 - You want to approve or reject pending agent actions from the mobile app (approval queue with risk tiers)
 - You are working with the 1Claw mobile companion app (Expo, React Native, passkey/biometric auth)
 - You want to sign in with a passkey (WebAuthn, passwordless) or manage passkey credentials
+- You want passkey-based login MFA instead of TOTP after password/social login (`require_passkey_for_mfa` via `GET/PATCH /v1/auth/settings`; complete via `POST /v1/auth/mfa/passkey/begin` + `complete`)
+- You want mobile approval push alerts when `ONECLAW_EXPO_ACCESS_TOKEN` is configured (Expo push on pending approvals/HITL)
 - You want to request a policy change as an agent (approval workflow, human-in-the-loop)
 - You want to register webhooks for wallet, proposal, transaction, policy, or signing key events (live async delivery with retries)
 - You want to check the balance of a treasury wallet or an agent's signing key address
@@ -97,12 +99,71 @@ metadata:
 - You want to check the risk verdict for a principal (`GET /v1/risk/verdicts/{type}/{id}`)
 - You want to enable DPoP token binding for proof-of-possession security (`dpop: true` in SDK config, `ONECLAW_DPOP=true` in MCP/CLI)
 - You want an agent to make HTTP calls or API requests through pre-configured bindings without exposing credentials (Execution Intents via `POST /v1/agents/{id}/execute`)
-- You want to set up execution intent bindings for an agent (HTTP, GraphQL, database, etc.) — human-only via `POST /v1/agents/{id}/bindings`
+- You want to set up execution intent bindings for an agent (HTTP, GraphQL) — human-only via `POST /v1/agents/{id}/bindings`
 - You want to list or test configured execution intent bindings (`list_bindings` MCP tool, `POST .../bindings/{id}/test`)
 - You want a binding credential to stay in sync with a vault secret automatically (use `credential_source: { type: "vault_ref", vault_id, path }` — live pointer, resolved at execution time)
 - You want an agent to order a prepaid or gift card and pay for it with USDC via x402 without ever exposing the card number (Payment Card Vault: `order_card` / `POST /v1/agents/{id}/cards/order`)
 - You want to list, refresh, void, or reveal a payment card (reveal requires human `X-Auth-Confirm` re-auth or an explicit per-card agent reveal policy)
 - You want to bound how much an agent can spend ordering cards (per-agent `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd`, `card_payto_allowlist`)
+- You want to store or retrieve agent memory across sessions (scratch, durable, semantic tiers via `POST/GET /v1/agents/{id}/memory`)
+- You want to search agent memory using semantic similarity (`POST /v1/agents/{id}/memory/search`)
+- You want to create or manage automations with AI steps, conditional logic, and variable passing (`POST /v1/automations` requires `workflow_spec` + `agent_id`; 14 step types including `ai_generate`, `memory_get/put/search`, `notify`, `approval_request`, `condition`)
+- You want to browse automation presets or use the NL assist to draft workflows (`GET /v1/automations/presets`, `POST /v1/automations/assist/draft`)
+- You want to deploy an agent in a managed cloud runtime (`POST /v1/runtimes`, `POST /v1/runtimes/{id}/start`)
+- You want an interactive shell into a running runtime (`POST /v1/runtimes/{id}/shell/session` — human step-up auth; dashboard Terminal tab)
+- You want to stream logs from a running cloud runtime (`GET /v1/runtimes/{id}/logs`)
+- You want to make an agent discoverable in the public directory (`POST /v1/agents/{id}/discovery`, `POST /v1/discovery/agents`)
+- You want to search or browse the agent directory (`GET /v1/discovery/agents`)
+- You are building a platform integration that needs to perform CRUD on connected user resources (Platform Delegation via `X-Platform-Connection` header)
+- You want to configure OAuth2 credential bindings for Execution Intents (authorization_code or client_credentials grant with automatic token refresh)
+- You want to connect an agent to external services (Google, GitHub, Slack, Discord, etc.) via OAuth — human initiates flow, agent uses tokens via execution intents (`GET /v1/oauth/providers`, `POST /v1/agents/{id}/oauth/connect`, `list_oauth_providers` MCP tool)
+- You want to manage OAuth app credentials for your org (`POST /v1/agents/{id}/oauth/app-credentials`)
+- You want to chat with an agent via the Shroud LLM proxy with persistent conversation history (`send_chat_message`, `list_chat_conversations` MCP tools; `POST /v1/agents/{id}/chat` SSE streaming)
+- You want to connect an agent to Telegram, WhatsApp, or Discord for bi-directional messaging (`create_channel`, `list_channels`, `send_channel_message` MCP tools)
+- You want to send images via agent channels (DALL-E generation + Telegram `sendPhoto` delivery)
+- You want to use slash commands in messaging channels (12 built-in commands: /help, /new, /model, /personality, /retry, /undo, /compress, /stop, /status, /skills, /usage, /sethome; enable via `slash_commands_enabled`)
+- You want voice memo transcription in Telegram channels (Whisper API auto-transcription; enable via `voice_transcription_enabled`)
+- You want cross-platform conversation continuity (`unified_conversation_id` links channels to a shared conversation context)
+- You want to use the runtime tool registry to configure which tools are available to your deployed agent (12 pluggable modules: image-gen, web-search, memory-tools, file-handler, code-exec, google-tools, github-tools, slack-tools, social-tools, vault-tools, notify-tools, sub-agents)
+- You want to set up sub-agent orchestration (discover agents, delegate tasks, list org agents, create sub-tasks via automations)
+- You want an agent to communicate with another agent (agent-to-agent chat via `delegate_task` runtime tool or direct `POST /v1/agents/{id}/chat`)
+- You want to set up human-controlled agent-to-agent delegation (`POST /v1/agents/{id}/delegations` — human-only creation; agents cannot create/modify/revoke delegations)
+- You want to control which tools a delegated agent can use (tool allowlist/blocklist on `agent_delegations`)
+- You want to limit delegation depth to prevent recursive chains (`max_depth` 1–10 on delegation records)
+- You want to rate-limit how often an agent delegates to another (`max_daily_delegations` on delegation records)
+- You want to choose delegation execution mode — `caller` (delegate uses own credentials), `target` (delegate uses target config), or `both` (per-invocation choice)
+- You want to create a sub-agent with pre-configured delegation rules (dashboard wizard at `/agents/sub-agent-wizard` with 6 role presets)
+- You want to check which agents your agent is authorized to delegate to (`GET /v1/agents/{id}/delegations/effective`)
+- You want to implement "Sign in with 1Claw" with refresh tokens and token revocation (OAuth2 with `offline_access` scope, `POST /v1/oauth/revoke`, `DELETE /v1/oauth/consent/{app_slug}`)
+- You want to manage per-key environment variables on a vault with environment scoping (`GET/POST /v1/vaults/{id}/env-vars`, `resolve_env` MCP tool)
+- You want to resolve the final KEY=VALUE set for a specific environment and branch (`GET /v1/vaults/{id}/env-vars/resolve?environment=preview&git_branch=feat/x`)
+- You want to manage org-level shared env vars linked to multiple vaults (`GET/POST /v1/org/env-vars`, `POST /v1/org/env-vars/{id}/link`)
+- You want to create or manage named environments on a vault (production, preview, development, custom) (`GET/POST /v1/vaults/{id}/environments`)
+- You want to tag an agent with an environment (`production`, `preview`, `development`, or custom) for policy scoping and env var resolution (`environment`, `environment_locked`, `env_auto_resolve` on create/update)
+- You want an agent to auto-resolve vault env vars from its environment tag without passing `?environment=` (`env_auto_resolve: true` on the agent; JWT includes `environment` claim)
+- You want environment-scoped access policies (`environment_in` in policy conditions — policy matches only when caller's environment is in the list)
+- You want per-environment transaction guardrail overrides on an agent (`per_environment_guardrails` JSONB — e.g. stricter limits in production than preview)
+- You want graduated transaction HITL (v0.54–0.55): set `tx_approval_policy` JSON so matching txs return **202** `awaiting_approval`; humans approve via `/v1/approvals/{id}/decide`
+- You want EIP-712, simulation failure, or raw digest signing routed to HITL (`typed_data_policy`, `simulation_failure_policy`, `raw_signing_policy` — `deny` or `approve`)
+- You want extended v0.55 guardrails: unlimited ERC-20 approval blocking, per-recipient limits, USD caps, `allow_erc4337`, `allow_eip7702`, in-flight daily budget holds
+- You want v0.56 guardrail governance: Convention 6 execution shadow mode (`enforcement: log|enforce` on bindings/agents), shadow report (`GET /v1/org/guardrail-shadow-report`), revision history (`GET /v1/org/guardrail-revisions`), dry-run replay (`POST /v1/agents/{id}/guardrails/replay`)
+- You want recipient address screening on agents (`address_screening_policy`: `mode` off | deny | approve; env deny list `ONECLAW_SCREENING_DENY_LIST`)
+- You want wallet Human Factor Auth (HFA) on treasury send/swap/export (`GET/PUT /v1/auth/human-factor-auth`; optional `human_factor_auth` on spend policies; v0.56.2 passkey-only send/swap in dashboard and wallet-react)
+- You want guardrail widening approval when relaxing binding or agent guardrails (PATCH returns **202** `pending_approval_id` until human approves `policy_change`)
+- You want cumulative EVM gas caps per chain (`gas_daily_budget_native` in `per_chain_guardrails`; UTC-day sum via `agent_gas_ledger`)
+- You want outbound HTTP/GraphQL idempotency on execute (`inject_idempotency_key: true` on binding guardrails — Vault injects deterministic `Idempotency-Key`)
+- You want to migrate an agent EOA to a counterfactual Safe (`POST /v1/agents/{id}/accounts/migrate`; MCP `migrate_agent_to_safe`; dashboard wizard at `/agents/[agentId]/migrate-safe`)
+- You want to list agent EOA/Safe accounts per chain (`GET /v1/agents/{id}/accounts`; MCP `list_agent_accounts`) or deprecate an EOA signing path (`POST .../accounts/{chain}/deprecate-eoa`; MCP `deprecate_agent_eoa`)
+- You want pinned Safe module addresses for a chain (`GET /v1/safe/module-registry/{chain}`; MCP `get_safe_module_registry`) or org-wide allowance reconciliation (`POST /v1/org/safe/sync-allowances`; MCP `sync_org_safe_allowances`)
+- You want org-wide emergency freeze during incident response (`POST /v1/org/freeze` / `POST /v1/org/unfreeze` — owner/admin; unfreeze requires T3 step-up)
+- You want to enforce that agents only resolve env vars for their tagged environment (org setting `env.enforce_agent_environment_scope`)
+- You want to browse the platform marketplace for approved apps (`GET /v1/platform/marketplace`)
+- You want to check platform app statistics (`GET /v1/platform/apps/{id}/stats`)
+- You want to rotate a webhook's HMAC signing secret (`POST /v1/webhooks/{id}/rotate-secret`)
+- You want to submit a pre-built Solana/Bitcoin/Tron transaction for deep policy decode and signing (`raw_transaction` base64 field on sign/submit, `tron_transaction` JSON for Tron)
+- You want to manage wallet access policies per-chain (`POST/GET/DELETE /v1/wallets/access-policies`)
+- You want to initiate or execute credential recovery with a delay window (`POST /v1/auth/credential-recovery/requests/{id}/execute` — requires admin/owner role, 72h default delay)
+- You want to reconstruct a Shamir KEK via TEE (`POST /v1/admin/shamir/reconstruct` — forwarded to Shroud; Business+ tier)
 
 ---
 
@@ -152,7 +213,7 @@ Add to your MCP client configuration. Only the API key is required — agent ID 
     "mcpServers": {
         "1claw": {
             "command": "npx",
-            "args": ["-y", "@1claw/mcp"],
+            "args": ["-y", "@1claw/mcp@0.43.4"],
             "env": {
                 "ONECLAW_AGENT_API_KEY": "<agent-api-key>"
             }
@@ -214,10 +275,10 @@ curl -H "Authorization: Bearer $TOKEN" https://api.1claw.xyz/v1/vaults
 
 1. Human registers an agent in the dashboard or via `POST /v1/agents` with an `auth_method` (`api_key` default, `mtls`, or `oidc_client_credentials`). For `api_key` agents → receives `agent_id` + `api_key` (prefix `ocv_`). For mTLS/OIDC agents → receives `agent_id` only (no API key).
 2. All agents auto-receive an Ed25519 SSH keypair (public key on agent record, private key in `__agent-keys` vault).
-3. API key agents exchange credentials: `POST /v1/auth/agent-token` with `{ "api_key": "<key>" }` (or `{ "agent_id": "<uuid>", "api_key": "<key>" }`) → returns `{ "access_token": "<jwt>", "expires_in": 3600, "agent_id": "<uuid>", "vault_ids": ["..."] }`. Agent ID is optional — the server resolves it from the key prefix.
+3. API key agents exchange credentials: `POST /v1/auth/agent-token` with `{ "api_key": "<key>" }` (or `{ "agent_id": "<uuid>", "api_key": "<key>" }`) → returns `{ "access_token": "<jwt>", "expires_in": 900, "agent_id": "<uuid>", "vault_ids": ["..."] }`. Agent ID is optional — the server resolves it from the key prefix.
 4. Agent uses `Authorization: Bearer <jwt>` on all subsequent requests.
 5. JWT scopes derive from the agent's access policies (path patterns). If no policies exist, scopes are empty (zero access). The agent's `vault_ids` are also included in the JWT — requests to unlisted vaults are rejected.
-6. Token TTL defaults to ~1 hour but can be set per-agent via `token_ttl_seconds`. The MCP server auto-refreshes 60s before expiry.
+6. Token TTL defaults to ~15 minutes (900s) but can be set per-agent via `token_ttl_seconds`. The MCP server auto-refreshes 60s before expiry.
 
 ### API key auth
 
@@ -236,6 +297,7 @@ All three key types support optional expiration via `api_key_expires_at`. Expire
 ### Shroud & Intents hosts
 
 - **Shroud** (`shroud.1claw.xyz`): TEE LLM proxy + transaction signing; full Intents API surface. Supported providers: OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, OpenRouter, Darkbloom (E2E encrypted Apple Silicon TEE), Venice AI (zero-retention + TEE/E2EE), Bankr LLM Gateway (`X-Shroud-Provider: bankr`), Stripe AI Gateway.
+- **TEE attestation:** `GET https://shroud.1claw.xyz/v1/shroud/attestation` (public) returns `attestation_level` (`none` | `identity` | `confidential` | `sev_snp`), `confidential_claims`, GCE identity JWT, and image hash for SEV-SNP verification before contract signing.
 - **Intents** (`intents.1claw.xyz`): Additional ingress for signing/health checks; production smoke tests hit `/healthz`.
 
 ---
@@ -264,7 +326,7 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 **Shroud fallback order** (`X-Shroud-Provider: bankr`): (1) active lease, (2) `providers/bankr/api-key`, (3) `X-Shroud-Api-Key` header.
 
-**Docs:** https://docs.1claw.xyz/docs/agents/bankr-keys
+**Docs:** https://docs.1claw.xyz/docs/guides/bankr-key-vending
 
 ---
 
@@ -403,13 +465,13 @@ Submit a transaction for signing and optional broadcast. Requires `intents_api_e
 | `simulate_first`           | boolean | no       | true                  | Run Tenderly simulation before signing (EVM-only; no-op on non-EVM) |
 | `gasless`                  | boolean | no       | false                 | Sponsor gas via Pimlico paymaster (ERC-4337) |
 | `destination_tag`          | number  | no       |                       | **XRP** destination tag                   |
-| `memo`                     | string  | no       |                       | **XRP / Solana** memo                     |
+| `memo`                     | string  | no       |                       | **Solana** Memo Program v2. XRP: accepted but not applied — use `Memos` inside `xrpl_tx_json` |
 | `fee_rate_sat_per_vbyte`   | number  | no       | fetched               | **Bitcoin** fee rate override             |
 | `fee_limit_sun`            | number  | no       |                       | **Tron** TRC-20 energy fee limit          |
 | `token_mint`               | string  | no       |                       | **Solana (SPL) / Tron (TRC-20)** token mint/contract; omit for native transfer |
 | `token_decimals`           | number  | no       | 6                     | **Solana / Tron** token decimals          |
 | `ttl`                      | number  | no       |                       | **Cardano** time-to-live (absolute slot)  |
-| `xrpl_tx_json`             | object  | no       |                       | **XRP** raw XRPL transaction JSON for full tx type coverage (TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.). Account/Sequence/Fee/SigningPubKey are auto-filled. |
+| `xrpl_tx_json`             | object  | no       |                       | **XRP** raw JSON for one of 1Claw's 31 supported types. `to`/`value` still required (use `"0"` for non-Payment). Auto-fills Account, Sequence, Fee, LastLedgerSequence, SigningPubKey, Flags, SourceTag. |
 
 Non-EVM responses use `raw_tx` for the signed payload and a chain-native `tx_hash` (reversed-hex txid for Bitcoin, base58 signature for Solana, uppercase hex for XRP, blake2b-256 hex for Cardano, SHA-256 txID hex for Tron).
 
@@ -420,7 +482,7 @@ Sign a transaction without broadcasting (EVM or non-EVM). Returns `signed_tx`/`r
 | Parameter                  | Type    | Required | Default               | Description                               |
 | -------------------------- | ------- | -------- | --------------------- | ----------------------------------------- |
 | `to`                       | string  | yes      |                       | Destination address                       |
-| `value`                    | string  | yes      |                       | Value in ETH                              |
+| `value`                    | string  | yes      |                       | Value in the chain's major unit as a decimal string |
 | `chain`                    | string  | yes      |                       | Chain name or chain ID                    |
 | `data`                     | string  | no       |                       | Hex-encoded calldata                      |
 | `signing_key_path`         | string  | no       | auto-resolved         | Vault path to signing key (auto-resolves per-chain key) |
@@ -595,6 +657,45 @@ List proposals for a treasury, optionally filtered by status.
 | `treasury_id`  | string | yes      | Treasury UUID                                   |
 | `status`       | string | no       | Filter: `pending`, `approved`, `executed`, etc. |
 
+### list_agent_accounts
+
+List agent on-chain accounts (EOA and Safe) per chain.
+
+| Parameter   | Type   | Required | Description                                      |
+| ----------- | ------ | -------- | ------------------------------------------------ |
+| `agent_id`  | string | no       | Agent UUID (defaults to authenticated agent)     |
+
+### migrate_agent_to_safe
+
+Build an EOA→Safe migration plan and provision a counterfactual Safe (human-only). No on-chain deploy broadcast.
+
+| Parameter       | Type    | Required | Description                                           |
+| --------------- | ------- | -------- | ----------------------------------------------------- |
+| `agent_id`      | string  | yes      | Agent UUID                                            |
+| `chain`         | string  | yes      | Chain name (e.g. `ethereum`, `base`, `sepolia`)       |
+| `deprecate_eoa` | boolean | no       | Mark the EOA account deprecated after migration       |
+
+### deprecate_agent_eoa
+
+Mark the agent EOA account deprecated for a chain (human-only). Blocks direct EOA signing path.
+
+| Parameter  | Type   | Required | Description                                |
+| ---------- | ------ | -------- | ------------------------------------------ |
+| `agent_id` | string | yes      | Agent UUID                                 |
+| `chain`    | string | yes      | Chain name (e.g. `ethereum`, `base`)       |
+
+### get_safe_module_registry
+
+List pinned Safe module addresses for a chain (public, no auth required).
+
+| Parameter | Type   | Required | Description                                |
+| --------- | ------ | -------- | ------------------------------------------ |
+| `chain`   | string | yes      | Chain name (e.g. `ethereum`, `base`)       |
+
+### sync_org_safe_allowances
+
+Reconcile org Safe allowance configs against agent guardrails (owner/admin only). Counterfactual — reports drift without on-chain broadcast. No parameters.
+
 ### platform_list_apps
 
 List all platform apps registered in the current organization. No parameters.
@@ -620,6 +721,48 @@ Bootstrap a connected platform user — provisions vaults, agents, policies, and
 | `connection_id` | string | yes      | Connection ID from upsert_user or list_users              |
 | `template_id`   | string | no       | Template ID to provision from (uses app default if omitted) |
 | `return_to`     | string | no       | URL to redirect the user to after claiming                |
+| `parameters`    | object | no       | Template variable map for bootstrap (v0.57+)              |
+
+### platform_siwe_challenge
+
+Get a Sign-In with Ethereum (SIWE) message + nonce for wallet-based user provisioning. Requires `plt_` platform key. Set `siwe_domain` on the platform app via `PATCH /v1/platform/apps/{id}` (human JWT for full update; **plt_ keys may only set `siwe_domain`**). Upsert with `subject_token_type: urn:1claw:params:oauth:token-type:siwe`, `siwe_message`, `siwe_signature`. Signatures accept recovery id **0/1** or **27/28** (MetaMask/viem).
+
+| Parameter | Type   | Required | Description                    |
+| --------- | ------ | -------- | ------------------------------ |
+| `address` | string | yes      | EVM wallet address (0x…)       |
+
+### platform_get_connection
+
+Fetch connection detail (status, resource IDs, metadata). Requires `plt_` key.
+
+| Parameter       | Type   | Required | Description   |
+| --------------- | ------ | -------- | ------------- |
+| `connection_id` | string | yes      | Connection UUID |
+
+### platform_connection_usage
+
+Usage attribution for a connected user (API calls, inference spend). Requires `plt_` key.
+
+| Parameter       | Type   | Required | Description   |
+| --------------- | ------ | -------- | ------------- |
+| `connection_id` | string | yes      | Connection UUID |
+
+### platform_list_entitlements
+
+List on-chain entitlement watches for a connection. Requires `plt_` key.
+
+| Parameter       | Type   | Required | Description   |
+| --------------- | ------ | -------- | ------------- |
+| `connection_id` | string | yes      | Connection UUID |
+
+### platform_preview_template
+
+Dry-run a bootstrap template with parameters (no resources created). Requires `plt_` key.
+
+| Parameter    | Type   | Required | Description                          |
+| ------------ | ------ | -------- | ------------------------------------ |
+| `template_id`| string | yes      | Template UUID                        |
+| `parameters` | object | no       | Template variable map                |
 
 ### order_card
 
@@ -663,6 +806,360 @@ Get a single card's status and balance (masked). Never returns a PAN.
 | `card_id` | string | yes      | Card UUID    |
 
 Note: revealing full card details is intentionally **not** an MCP tool (to avoid PAN exposure in the model context window). Reveal is human-gated via the dashboard, SDK, or CLI with password re-authentication.
+
+### get_signing_key_balance
+
+Get the native and token balances of an agent's signing key address on a specific chain.
+
+| Parameter | Type   | Required | Description                                                       |
+| --------- | ------ | -------- | ----------------------------------------------------------------- |
+| `chain`   | string | yes      | Chain name (e.g. ethereum, solana, bitcoin)                       |
+| `tokens`  | string | no       | Comma-separated token contract addresses for ERC-20/SPL balances  |
+
+### execute_intent
+
+Execute an intent through a pre-configured binding of any type. For plain HTTP prefer `execute_http`. Requires `execution_intents_enabled` on the agent.
+
+| Parameter        | Type   | Required | Default | Description                                                              |
+| ---------------- | ------ | -------- | ------- | ------------------------------------------------------------------------ |
+| `binding`        | string | yes      |         | Binding name (as configured by human)                                    |
+| `intent_type`    | string | no       | `http`  | Intent type matching the binding (e.g. `http`, `graphql`)                |
+| `params`         | object | no       | `{}`    | Executor params (e.g. `{ query, variables }` for graphql)                |
+| `execution_mode` | string | no       | `vault` | Execution surface: `vault` (standard) or `tee` (Shroud TEE, Business+)  |
+
+### create_binding
+
+Create a binding (credential handle) for the current agent. **Human-only** — the backend rejects agent-authenticated callers.
+
+| Parameter           | Type   | Required | Default | Description                                                                 |
+| ------------------- | ------ | -------- | ------- | --------------------------------------------------------------------------- |
+| `name`              | string | yes      |         | Binding name (alphanumeric, `-`, `_`; 1–64 chars)                           |
+| `binding_type`      | string | no       | `http`  | Binding type: http, graphql, etc.                                           |
+| `config`            | object | no       | `{}`    | Binding config (e.g. `{ base_url, auth_type, auth_header }`)               |
+| `guardrails`        | object | no       |         | Guardrails: `allowed_hosts`, `max_duration_ms`, `max_requests_per_minute`   |
+| `credential`        | object | no       |         | Legacy inline credential (prefer `credential_source`)                       |
+| `credential_source` | object | no       |         | `{ type: "inline", value }` or `{ type: "vault_ref", vault_id, path }`     |
+
+### test_binding
+
+Test connectivity for a binding. Runs through the same SSRF/allowlist checks as execution.
+
+| Parameter    | Type   | Required | Description                                      |
+| ------------ | ------ | -------- | ------------------------------------------------ |
+| `binding_id` | string | yes      | The binding's UUID                               |
+| `timeout_ms` | number | no       | Connectivity timeout in milliseconds (default 5000) |
+
+### list_executions
+
+List recent execution-intent events for the current agent: status, intent_type, duration, cost, and redactions.
+
+| Parameter | Type   | Required | Default | Description           |
+| --------- | ------ | -------- | ------- | --------------------- |
+| `limit`   | number | no       | 50      | Max events to return  |
+| `offset`  | number | no       | 0       | Pagination offset     |
+
+### platform_reissue_claim
+
+Reissue a claim URL for an already-bootstrapped connection. Use when the original 10-minute claim token has expired — no resources are re-provisioned.
+
+| Parameter       | Type   | Required | Description                                        |
+| --------------- | ------ | -------- | -------------------------------------------------- |
+| `connection_id` | string | yes      | The connection ID to reissue a claim for            |
+| `return_to`     | string | no       | URL to redirect the user to after claiming          |
+
+### platform_rotate_key
+
+Rotate the API key for a platform app. Returns a new one-time API key.
+
+| Parameter            | Type   | Required | Description                                              |
+| -------------------- | ------ | -------- | -------------------------------------------------------- |
+| `app_id`             | string | yes      | The platform app ID whose key should be rotated          |
+| `api_key_expires_at` | string | no       | ISO 8601 expiration timestamp for the new key            |
+
+### list_approvals
+
+List approval requests. Returns approvals awaiting human decision.
+
+| Parameter | Type   | Required | Description                                                 |
+| --------- | ------ | -------- | ----------------------------------------------------------- |
+| `status`  | string | no       | Filter: `pending`, `approved`, `rejected`, `expired`        |
+| `limit`   | number | no       | Max approvals to return (default 20)                        |
+
+### get_approval
+
+Get details of a specific approval request.
+
+| Parameter     | Type   | Required | Description                    |
+| ------------- | ------ | -------- | ------------------------------ |
+| `approval_id` | string | yes      | UUID of the approval request   |
+
+### request_approval
+
+Request human approval for a policy change or sensitive action. Agent-only — creates a pending approval directed to the agent's creator.
+
+| Parameter     | Type   | Required | Default | Description                                                                   |
+| ------------- | ------ | -------- | ------- | ----------------------------------------------------------------------------- |
+| `action`      | string | yes      |         | Action type (e.g. `policy_change`, `access_request`)                          |
+| `target_type` | string | yes      |         | Target resource type (e.g. `policy`, `vault`, `secret`)                       |
+| `target_id`   | string | yes      |         | ID of the target resource                                                     |
+| `summary`     | object | yes      |         | JSON summary of the change (for `policy_change`: `{ vault_id, paths, ... }`)  |
+| `reason`      | string | no       |         | Human-readable reason                                                         |
+| `risk_tier`   | number | no       | 1       | Risk level 1–5 (1=low, 5=critical)                                           |
+
+### memory_put
+
+Store a memory entry for the agent (scratch, durable, or semantic tier).
+
+| Parameter | Type   | Required | Default    | Description                                          |
+| --------- | ------ | -------- | ---------- | ---------------------------------------------------- |
+| `key`     | string | yes      |            | Memory key identifier                                |
+| `value`   | string | yes      |            | Memory value (text content)                          |
+| `tier`    | string | no       | `durable`  | Memory tier: `scratch`, `durable`, or `semantic`     |
+| `metadata`| object | no       |            | Optional JSON metadata                               |
+
+### memory_get
+
+Retrieve a memory entry by key.
+
+| Parameter | Type   | Required | Description      |
+| --------- | ------ | -------- | ---------------- |
+| `key`     | string | yes      | Memory key       |
+
+### memory_list
+
+List memory entries, optionally filtered by tier.
+
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| `tier`    | string | no       | Filter by tier: `scratch`, `durable`, `semantic` |
+| `limit`   | number | no       | Max entries to return (default 50)               |
+
+### memory_search
+
+Semantic vector search over agent memory entries (semantic tier only).
+
+| Parameter   | Type   | Required | Default | Description                             |
+| ----------- | ------ | -------- | ------- | --------------------------------------- |
+| `query`     | string | yes      |         | Natural language search query           |
+| `limit`     | number | no       | 10      | Max results                             |
+| `threshold` | number | no       | 0.7     | Minimum similarity score (0.0–1.0)      |
+
+### delete_memory
+
+Delete a memory entry by key.
+
+| Parameter | Type   | Required | Description      |
+| --------- | ------ | -------- | ---------------- |
+| `key`     | string | yes      | Memory key       |
+
+### list_automations
+
+List automations for the org.
+
+| Parameter | Type   | Required | Description                                   |
+| --------- | ------ | -------- | --------------------------------------------- |
+| `status`  | string | no       | Filter: `active`, `paused`, `disabled`        |
+
+### trigger_automation
+
+Manually trigger an automation run.
+
+| Parameter       | Type   | Required | Description              |
+| --------------- | ------ | -------- | ------------------------ |
+| `automation_id` | string | yes      | UUID of the automation   |
+| `payload`       | object | no       | Optional trigger payload |
+
+### create_agent_automation
+
+Create a simple automation for the calling agent (manual/webhook; log, notify, memory, wait steps only).
+
+| Parameter        | Type    | Required | Description                                      |
+| ---------------- | ------- | -------- | ------------------------------------------------ |
+| `name`           | string  | yes      | Short automation name                            |
+| `trigger_type`   | string  | no       | `manual` (default) or `webhook`                  |
+| `workflow_spec`  | object  | yes      | Steps array or `{ "steps": [...] }`              |
+| `auto_trigger`   | boolean | no       | Run immediately after create (manual only)       |
+
+### list_runtimes
+
+List cloud runtimes for the org.
+
+| Parameter | Type   | Required | Description                                          |
+| --------- | ------ | -------- | ---------------------------------------------------- |
+| `status`  | string | no       | Filter: `running`, `stopped`, `deploying`, `error`   |
+
+### manage_runtime
+
+Start or stop a cloud runtime.
+
+| Parameter    | Type   | Required | Description                    |
+| ------------ | ------ | -------- | ------------------------------ |
+| `runtime_id` | string | yes      | UUID of the runtime            |
+| `action`     | string | yes      | `start` or `stop`             |
+
+### runtime_status
+
+Get the current status and health of a runtime.
+
+| Parameter    | Type   | Required | Description         |
+| ------------ | ------ | -------- | ------------------- |
+| `runtime_id` | string | yes      | UUID of the runtime |
+
+### runtime_logs
+
+Stream recent logs from a cloud runtime.
+
+| Parameter    | Type   | Required | Default | Description                    |
+| ------------ | ------ | -------- | ------- | ------------------------------ |
+| `runtime_id` | string | yes      |         | UUID of the runtime            |
+| `lines`      | number | no       | 100     | Number of recent lines         |
+| `follow`     | boolean| no       | false   | Stream new logs in real-time   |
+
+### Runtime Tool Registry (v0.45)
+
+Cloud Runtimes include 12 pluggable tool modules that can be enabled/disabled per runtime template:
+
+| Module | Description |
+| ------ | ----------- |
+| `image-gen` | Image generation (DALL-E, Stable Diffusion) |
+| `web-search` | Web search and URL fetching |
+| `memory-tools` | Agent memory read/write/search |
+| `file-handler` | File upload, download, and processing |
+| `code-exec` | Code execution sandbox |
+| `google-tools` | Google Workspace integration (Docs, Sheets, Calendar) |
+| `github-tools` | GitHub API access (issues, PRs, repos) |
+| `slack-tools` | Slack messaging and channel management |
+| `social-tools` | Social media integrations (X/Twitter, LinkedIn) |
+| `vault-tools` | 1Claw vault secret access |
+| `notify-tools` | Notifications (email, SMS, push) |
+| `sub-agents` | Sub-agent discovery, delegation, and task management |
+
+Per-template tool configs (`hermes`, `openclaw`, `openclaude`) define default enabled tools for each runtime template. Dashboard `RuntimeToolsCard` shows active tools and allows toggling per runtime.
+
+### Sub-Agent Framework & Delegation (v0.46)
+
+Runtime tools for inter-agent coordination (requires the `sub-agents` tool module):
+
+| Tool | Description |
+| ---- | ----------- |
+| `discover_agents` | Search the org agent directory for agents with specific capabilities |
+| `delegate_task` | Send a task to another agent via agent-to-agent chat (requires active delegation) |
+| `list_my_sub_agents` | List agents in the same org with delegation authorization status |
+| `create_sub_task` | Trigger an automation on a sub-agent (orchestrator pattern) |
+| `get_delegation_status` | Check which agents the caller is authorized to delegate to |
+
+The sub-agent framework enables orchestrator-worker patterns where a primary agent discovers specialist agents via `GET /v1/agents/org-directory`, delegates tasks via agent-to-agent chat (`POST /v1/agents/{id}/chat`), and supervises execution.
+
+#### Agent-to-Agent Delegation (v0.46)
+
+Human-controlled authorization framework. Agents **cannot** delegate to other agents without an explicit `agent_delegations` record created by a human. Agents cannot create, modify, or revoke their own delegations (403).
+
+**Delegation modes:**
+- `caller` (default) — delegate executes with its own credentials and tools (most secure)
+- `target` — delegate executes with the target agent's configuration
+- `both` — either mode can be requested per invocation
+
+**Security model:**
+- Self-delegation is rejected (400)
+- Tool allowlist/blocklist enforced per delegation
+- Daily rate limit (`max_daily_delegations`) enforced via `delegation_events` count
+- Depth limit (`max_depth`, 1–10) prevents recursive delegation chains (tracked via `X-Delegation-Depth` header)
+- Expired delegations rejected (403)
+- All mutations audit-logged: `agent.delegation.created`, `.updated`, `.revoked`, `.invoked`, `.blocked`
+
+**Chat enforcement:** Cross-agent `POST /v1/agents/{id}/chat` requires active, non-expired delegation from caller to target. Delegation engine checks tool allowlist, daily rate limit, and depth limit.
+
+**Endpoints:**
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/v1/agents/{id}/delegations` | Create delegation (human-only) |
+| `GET` | `/v1/agents/{id}/delegations` | List delegations (human: all; agent: own) |
+| `GET` | `/v1/agents/{id}/delegations/effective` | Agent-callable — delegations where agent is delegator |
+| `GET` | `/v1/agents/{id}/delegations/{did}` | Get delegation details |
+| `PATCH` | `/v1/agents/{id}/delegations/{did}` | Update delegation (human-only) |
+| `DELETE` | `/v1/agents/{id}/delegations/{did}` | Revoke delegation (human-only) |
+
+**SDK:** `client.agents.createDelegation()`, `.listDelegations()`, `.getDelegation()`, `.updateDelegation()`, `.revokeDelegation()`, `.getEffectiveDelegations()`.
+
+**MCP:** `list_delegations`, `create_delegation`, `get_effective_delegations`.
+
+**CLI:** `1claw agent delegation create|list|get|update|revoke <agent-id>`.
+
+**Dashboard:** Sub-agent creation wizard at `/agents/sub-agent-wizard` (4-step flow, 6 role presets: Research, Image Gen, Treasury, Comms, Code, Custom). Delegations tab on agent detail page (outbound/inbound tables with create/edit/revoke dialogs). Sub-Agents card on runtime detail page with authorization badges.
+
+### search_directory
+
+Search the public agent discovery directory.
+
+| Parameter  | Type   | Required | Description                                |
+| ---------- | ------ | -------- | ------------------------------------------ |
+| `query`    | string | no       | Search term                                |
+| `category` | string | no       | Filter by category                         |
+| `limit`    | number | no       | Max results (default 20)                   |
+
+### send_chat_message
+
+Send a message to an agent and get a response via Shroud LLM proxy.
+
+| Parameter         | Type   | Required | Description                                |
+| ----------------- | ------ | -------- | ------------------------------------------ |
+| `agent_id`        | string | yes      | Agent UUID                                 |
+| `message`         | string | yes      | Message content                            |
+| `conversation_id` | string | no       | Existing conversation (creates new if omitted) |
+| `model`           | string | no       | LLM model override                         |
+| `provider`        | string | no       | LLM provider override                      |
+
+### list_chat_conversations
+
+List chat conversations for an agent.
+
+| Parameter  | Type   | Required | Description                                |
+| ---------- | ------ | -------- | ------------------------------------------ |
+| `agent_id` | string | yes      | Agent UUID                                 |
+
+### create_channel
+
+Create a messaging channel for an agent (Telegram, WhatsApp, or Discord).
+
+| Parameter       | Type   | Required | Description                                |
+| --------------- | ------ | -------- | ------------------------------------------ |
+| `agent_id`      | string | yes      | Agent UUID                                 |
+| `channel_type`  | string | yes      | `telegram`, `whatsapp`, or `discord`       |
+| `channel_name`  | string | yes      | Display name for the channel               |
+| `metadata`      | object | no       | Platform-specific config (bot token, etc.) |
+
+### list_channels
+
+List messaging channels for an agent.
+
+| Parameter  | Type   | Required | Description                                |
+| ---------- | ------ | -------- | ------------------------------------------ |
+| `agent_id` | string | yes      | Agent UUID                                 |
+
+### send_channel_message
+
+Send a message via a configured messaging channel.
+
+| Parameter    | Type   | Required | Description                                |
+| ------------ | ------ | -------- | ------------------------------------------ |
+| `agent_id`   | string | yes      | Agent UUID                                 |
+| `channel_id` | string | yes      | Channel UUID                               |
+| `message`    | string | yes      | Message content                            |
+
+### list_oauth_providers
+
+List all available OAuth providers from the registry (Google, GitHub, Slack, etc.).
+
+No parameters required.
+
+### list_oauth_connections
+
+List OAuth connected accounts for an agent.
+
+| Parameter    | Type   | Required | Description                                |
+| ------------ | ------ | -------- | ------------------------------------------ |
+| `agent_id`   | string | yes      | Agent UUID                                 |
 
 ---
 
@@ -711,7 +1208,24 @@ Base URL: `https://api.1claw.xyz`. All authenticated endpoints require `Authoriz
 | `GET`    | `/v1/oauth/authorize`      | Get OAuth consent info (app_name, scopes, already_consented)     |
 | `POST`   | `/v1/oauth/authorize`      | Approve/deny OAuth authorization (issues authorization code)     |
 | `POST`   | `/v1/oauth/token`          | Exchange authorization code for access_token + id_token (public) |
-| `GET`    | `/v1/oauth/userinfo`       | Get user info (sub, email, name, wallet_address)                 |
+| `GET`    | `/v1/oauth/userinfo`       | Get user info (sub, email, name, wallet_address; scope-filtered) |
+| `POST`   | `/v1/oauth/revoke`         | Revoke access_token or refresh_token (RFC 7009, public)          |
+| `DELETE`  | `/v1/oauth/consent/{app_slug}` | Revoke all consent and tokens for an app (user-only)         |
+
+**OAuth2 refresh tokens:** Request `offline_access` scope during authorization to receive a `refresh_token` alongside `access_token` + `id_token`. Exchange refresh tokens via `POST /v1/oauth/token` with `grant_type=refresh_token`. Each exchange returns a new access/refresh token pair (rotation). Revoke any token via `POST /v1/oauth/revoke` with `{ token, token_type_hint? }`. UserInfo (`GET /v1/oauth/userinfo`) filters returned fields by scopes granted during authorization — `email` scope for email, `profile` scope for name.
+
+### OAuth Connected Accounts
+
+| Method   | Path                                                     | Description                                                     |
+| -------- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| `GET`    | `/v1/oauth/providers`                                    | List available OAuth providers (public, no auth)                |
+| `POST`   | `/v1/agents/{id}/oauth/connect`                          | Initiate OAuth flow for agent (human-only, returns auth URL)    |
+| `GET`    | `/v1/agents/{id}/oauth/connections`                      | List agent's OAuth connections                                  |
+| `POST`   | `/v1/agents/{id}/oauth/disconnect/{bindingId}`           | Revoke tokens and delete binding (human-only)                   |
+| `POST`   | `/v1/agents/{id}/oauth/app-credentials`                  | Save OAuth app credentials (human-only, secret encrypted)       |
+| `GET`    | `/v1/agents/{id}/oauth/app-credentials`                  | List OAuth app credentials (secrets redacted)                   |
+| `DELETE` | `/v1/agents/{id}/oauth/app-credentials/{providerSlug}`   | Delete OAuth app credentials                                    |
+| `GET`    | `/v1/oauth/callback`                                     | Public OAuth provider redirect callback                         |
 
 ### Vaults
 
@@ -798,7 +1312,7 @@ Base URL: `https://api.1claw.xyz`. All authenticated endpoints require `Authoriz
 
 | Method   | Path                                  | Description                                                                                     |
 | -------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `POST`   | `/v1/agents/{id}/cards/order`         | Order a prepaid/gift card via x402 (agent; requires `cards_enabled` + `Idempotency-Key`; returns **202** `awaiting_approval` when `card_require_approval` is true, else pays immediately) |
+| `POST`   | `/v1/agents/{id}/cards/order`         | Order a prepaid/gift card via x402 (agent; requires `cards_enabled` + `Idempotency-Key`; masked response, no PAN) |
 | `GET`    | `/v1/cards`                           | List payment cards (masked to last4)                                                            |
 | `GET`    | `/v1/cards/{card_id}`                 | Get a payment card (masked)                                                                      |
 | `POST`   | `/v1/cards/{card_id}/reveal`          | Reveal full card details — human: `X-Auth-Confirm` password; agent: only if per-card reveal policy allows; audit-logged |
@@ -808,7 +1322,7 @@ Base URL: `https://api.1claw.xyz`. All authenticated endpoints require `Authoriz
 | `POST`   | `/v1/cards/import`                    | Manually import a card — human-only, full encrypted storage (CVV one-time-read)                 |
 | `POST`   | `/v1/cards/gift-cards/search`         | Search available Laso gift-card brands/servers                                                  |
 
-Ordering guardrails (per-agent, human-set, all tiers): `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd` (atomic 24h window), `card_payto_allowlist`, `card_reveal_enabled`, **`card_require_approval`** (default **true**). When approval is required, humans approve via dashboard (`/approvals`), mobile push, or email one-click (`GET /v1/approvals/quick-decide`, proxied at `https://1claw.xyz/api/approvals/quick-decide`). Risk tiers: T1 (≤$25), T2 ($25–$100, re-auth), T3 (>$100, TOTP). Reveal supports password, passkey, or TOTP re-auth (`POST /v1/auth/reauth/begin` + `complete` → `rat_` token in `X-Auth-Confirm`). Free tier defaults: $25/order, $25/day, 5 cards/month. Pro: 50/mo. Team: 200/mo. Business/Enterprise: unlimited. A 3% platform fee per order is debited from prepaid credits.
+Ordering guardrails (per-agent, human-set, all tiers): `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd` (atomic 24h window), `card_payto_allowlist`, `card_reveal_enabled`. Free tier defaults: $25/order, $25/day, 5 cards/month. Pro: 50/mo. Team: 200/mo. Business/Enterprise: unlimited. A 3% platform fee per order is debited from prepaid credits. These bound the purchase, not how a revealed card is later spent — after reveal, a card can be used anywhere up to its balance and 1Claw has no further control.
 
 ### Shroud Activity
 
@@ -823,9 +1337,8 @@ Ordering guardrails (per-agent, human-set, all tiers): `cards_enabled`, `card_ma
 | Method | Path                        | Description                                                    |
 | ------ | --------------------------- | -------------------------------------------------------------- |
 | `GET`  | `/v1/approvals`             | List approval requests (user-only, filterable by status)       |
-| `GET`  | `/v1/approvals/{id}`        | Get approval details (includes `card_order` summary when applicable) |
-| `POST` | `/v1/approvals/{id}/decide` | Approve or reject (auto-executes `policy_change` and `card_order`; risk tier 2+ needs `X-Auth-Confirm`) |
-| `GET`  | `/v1/approvals/quick-decide`| Public one-click approve/deny from email (`token` + `decision`; redirects to dashboard) |
+| `GET`  | `/v1/approvals/{id}`        | Get approval details                                           |
+| `POST` | `/v1/approvals/{id}/decide` | Approve or reject (auto-executes policy changes on approval)   |
 | `POST` | `/v1/approvals/request`     | Agent-initiated approval request (agent-only)                  |
 
 ### Audit
@@ -914,6 +1427,7 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 | `DELETE` | `/v1/platform/apps/{id}`                         | Delete platform app                                    |
 | `POST`   | `/v1/platform/apps/{id}/templates`               | Create bootstrap template (JSON spec)                  |
 | `GET`    | `/v1/platform/apps/{id}/templates`               | List templates → `{ templates: [...] }`                |
+| `GET`    | `/v1/platform/apps/{id}/templates/{tid}`         | Get template by ID                                     |
 | `PATCH`  | `/v1/platform/apps/{id}/templates/{tid}`         | Update template                                        |
 | `DELETE` | `/v1/platform/apps/{id}/templates/{tid}`         | Delete template                                        |
 | `POST`   | `/v1/platform/users/upsert`                      | Provision/find user (platform-only, OIDC or email)     |
@@ -931,7 +1445,145 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 | `POST`   | `/v1/platform/apps/{id}/spend-policies`          | Create app-level wallet spend policy (platform-only)   |
 | `GET`    | `/v1/platform/apps/{id}/spend-policies`          | List active spend policies for the app                 |
 | `PUT`    | `/v1/platform/connections/{id}/spend-policy`     | Set per-user spend policy override                     |
+| `GET`    | `/v1/platform/connections/{id}/approvals`        | List mobile approvals (plt_ auth)                      |
+| `POST`   | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Decide mobile approval (plt_ auth)                 |
+| `GET`    | `/v1/platform/connections/{id}/pending-approvals`  | List consensus pending approvals (plt_ auth)           |
+| `POST`   | `/v1/platform/connections/{id}/pending-approvals`  | Create pending approval for connection agent (plt_; **202**) |
+| `POST`   | `/v1/platform/connections/{id}/pending-approvals/{pid}/decide` | Vote on pending approval (payload_hash) |
+| `GET`    | `/v1/platform/connections/{id}/portfolio`        | Agent portfolio/balances for connection (plt_ auth)    |
+| `GET`    | `/v1/platform/connections/{id}/automations`      | List automations for connection agents (plt_ auth)     |
+| `POST`   | `/v1/platform/connections/{id}/automations`      | Create automation for connection agent (plt_ auth)   |
+| `GET/PUT/DELETE` | `/v1/platform/connections/{id}/memory/{ns}/{key}` | Connection-scoped agent memory (plt_; optional `?agent_id=`) |
+| `POST`   | `/v1/shroud/inspect-content`                     | Standalone content threat scan (plt_ / agent / user JWT) |
+| `POST`   | `/v1/platform/connections/{id}/runtimes`         | Create runtime for connection agent (plt_ auth)        |
+| `GET`    | `/v1/platform/connections/{id}/runtimes/{rid}`   | Get connection-scoped runtime (plt_ auth; not `/v1/runtimes/{id}`) |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/begin`   | Start WebAuthn registration for connected end-user (plt_ auth) |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/complete`  | Complete passkey registration for connected end-user |
+| `POST`   | `/v1/platform/connections/{id}/agents/{aid}/chat`  | Chat with connection agent (plt_ auth; `system`, `system_prompt`, `messages[]`; 402 on billing errors) |
+| `GET`    | `/v1/platform/connections/{id}/signing-keys`      | List agent signing keys — public metadata only (plt_; optional `?agent_id=`) |
+| `GET`    | `/v1/platform/connections/{id}/signing-keys/{chain}` | Single-chain agent signing key (plt_; optional `?agent_id=`) |
+| `PATCH`  | `/v1/platform/connections/{id}/agents/{aid}`       | Patch `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` (plt_) |
+| `DELETE` | `/v1/platform/connections/{id}/signing-keys/{chain}` | Deactivate signing key for connection agent        |
 | `DELETE` | `/v1/platform/apps/{id}/spend-policies/{pid}`    | Deactivate a spend policy                              |
+| `GET`    | `/v1/platform/marketplace`                       | List approved platform apps (public, with category/tags/screenshots) |
+| `GET`    | `/v1/platform/apps/{id}/stats`                   | Get app stats (connected users, bootstraps, active connections) |
+| `POST`   | `/v1/webhooks/{id}/rotate-secret`                | Rotate webhook HMAC signing secret                     |
+
+**Platform expansion (v0.57–v0.59.4):** `GET /v1/platform/connections/{id}` returns `provisioned_tier` (effective billing tier when `billing_model` is `platform_pays` — set from template `plan` at bootstrap) and `wallet_address` (SIWE **staker identity** — not the agent signing key). Use **`GET .../signing-keys`** for agent on-chain addresses. Template spec supports `agents[].system_prompt`, `intents: true` / `intents_api_enabled`, and `agents[].runtime` / top-level `runtimes[]` / `provision_runtime: true`. **`PATCH .../agents/{aid}`** enables Intents on existing agents without re-bootstrap. **`POST .../pending-approvals`** creates consensus approvals; **`GET .../portfolio`** returns balances; **`GET/POST .../automations`** and **`GET/PUT/DELETE .../memory/{ns}/{key}`** are plt_-scoped. **`POST /v1/shroud/inspect-content`** mirrors MCP `inspect_content`. Connection chat accepts `system`, `system_prompt`, or inline `messages` with `role: "system"`. **`siwe_domain`** on platform apps (plt_ may PATCH only this field). Spend-policy PUT and bootstrap accept **`Idempotency-Key`** (24h body-hash replay). Platform webhooks add `pending_approval.created`, `tx.awaiting_approval`, `sign.awaiting_approval`, `automation.run.failed`. SDK: `platform.getConnection()`, `listConnectionSigningKeys()`, `patchConnectionAgent()`, `createConnectionPendingApproval()`, `getConnectionPortfolio()`, `listConnectionAutomations()`, `putConnectionMemory()`, `getConnectionRuntime()`, `connectionPasskeyEnrollBegin()`, `connectionPasskeyEnrollComplete()`, `connectionAgentChat()`.
+
+**Platform configuration fields:** `max_connected_users` (INTEGER) on `platform_apps` — enforced; new connections rejected when limit reached. `max_requests_per_minute` — per-app rate limits on platform API endpoints.
+
+**Platform delegation scopes (for `delegation_scopes` on connections):** `vaults:read`, `vaults:write`, `agents:read`, `agents:write`, `secrets:read`, `secrets:write`, `automations:*`, `runtimes:*`, `memory:read`, `memory:write`, `chat:read`, `chat:write`.
+
+**Platform webhook events:** `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`, `platform.claim.expired`, `platform.entitlement.granted`, `platform.entitlement.revoked`, `pending_approval.created`, `tx.awaiting_approval`, `sign.awaiting_approval`, `automation.run.failed`.
+
+### Agent Chat (v0.43+)
+
+| Method   | Path                                                | Description                                    |
+| -------- | --------------------------------------------------- | ---------------------------------------------- |
+| `POST`   | `/v1/agents/{id}/chat`                              | Send message (SSE streaming response)          |
+| `POST`   | `/v1/agents/{id}/chat/unlock`                       | Step-up auth to unlock chat                    |
+| `GET`    | `/v1/agents/{id}/chat/conversations`                | List conversations                             |
+| `GET`    | `/v1/agents/{id}/chat/conversations/{cid}`          | Get conversation with messages                 |
+| `DELETE` | `/v1/agents/{id}/chat/conversations/{cid}`          | Delete conversation                            |
+| `POST`   | `/v1/runtimes/{id}/chat`                            | Runtime chat (SSE streaming)                   |
+| `POST`   | `/v1/runtimes/{id}/chat/unlock`                     | Unlock runtime chat                            |
+
+### Messaging Channels (v0.43+)
+
+| Method   | Path                                                | Description                                    |
+| -------- | --------------------------------------------------- | ---------------------------------------------- |
+| `POST`   | `/v1/agents/{id}/channels`                          | Create messaging channel (Telegram/WhatsApp/Discord) |
+| `GET`    | `/v1/agents/{id}/channels`                          | List agent channels                            |
+| `PATCH`  | `/v1/agents/{id}/channels/{cid}`                    | Update channel config                          |
+| `DELETE` | `/v1/agents/{id}/channels/{cid}`                    | Delete channel                                 |
+| `POST`   | `/v1/agents/{id}/channels/{cid}/send`               | Send message via channel                       |
+| `POST`   | `/v1/agents/{id}/channels/{cid}/test`               | Test connectivity                              |
+| `POST`   | `/v1/agents/{id}/channels/{cid}/refresh-webhook`    | Refresh webhook registration                   |
+| `GET`    | `/v1/agents/{id}/channels/{cid}/messages`           | List channel messages                          |
+
+**Hermes-native channel features (v0.45):** Channels support `slash_commands_enabled` (12 built-in commands), `voice_transcription_enabled` (Telegram voice→text via Whisper), `unified_conversation_id` (cross-platform continuity), `auto_respond_in_progress` (concurrency guard), and `is_home_platform` (primary interface marker set via /sethome). The `notify` automation step supports `channel` type for delivering outputs to messaging channels.
+
+### Billing quotas (v0.47.3)
+
+Wallet quota (treasury wallets + signing keys + smart accounts + agent EOAs): Free 10, Pro 10,000, Team 250,000, Business 1,000,000. Signature quota: Free 100, Pro 20,000, Team 200,000, Business 1,000,000. Signature overage is a flat per-signature charge (not a percent of transaction value). Signing POSTs do not consume the API Calls meter. Treasury wallets are available on all tiers.
+
+`GET /v1/billing/subscription` `usage` includes `requests`, `wallets`, and `intent_transactions` (`{ used, limit }`).
+
+### Policy Engine v2 — Cedar & OPA (v0.47+)
+
+| Method   | Path                               | Description                                    |
+| -------- | ---------------------------------- | ---------------------------------------------- |
+| `POST`   | `/v1/org/cedar-policies`           | Create Cedar policy (Team+)                    |
+| `GET`    | `/v1/org/cedar-policies`           | List Cedar policies                            |
+| `GET`    | `/v1/org/cedar-policies/{id}`      | Get Cedar policy                               |
+| `DELETE` | `/v1/org/cedar-policies/{id}`      | Delete Cedar policy                            |
+| `POST`   | `/v1/org/cedar-policies/test`      | Dry-run Cedar policy evaluation                |
+| `POST`   | `/v1/org/opa-policies`             | Create OPA policy (Business+)                  |
+| `GET`    | `/v1/org/opa-policies`             | List OPA policies                              |
+| `GET`    | `/v1/org/opa-policies/{id}`        | Get OPA policy                                 |
+| `DELETE` | `/v1/org/opa-policies/{id}`        | Delete OPA policy                              |
+| `POST`   | `/v1/org/opa-policies/test`        | Dry-run OPA policy evaluation                  |
+
+Built-in glob policies have new fields: `effect` (allow/deny, default allow), `priority` (higher wins), `attribute_conditions` (JSONB).
+
+**Cedar/OPA enforcement v2 (v0.48):** Org-level backend config with shadow mode (default), enforce mode, and fail-closed circuit breaker. Cedar/OPA policy responses include dynamic `enforcement_status` (`shadow` | `enforce` | `inactive`).
+
+| Method   | Path                               | Description                                    |
+| -------- | ---------------------------------- | ---------------------------------------------- |
+| `GET`    | `/v1/org/settings/policy-backend`  | Get backend, mode, scope, breaker behavior     |
+| `PATCH`  | `/v1/org/settings/policy-backend`  | Update policy backend settings                 |
+| `GET`    | `/v1/org/policy-shadow-report`     | Shadow mode divergence report                  |
+| `POST`   | `/v1/org/contract-abis`            | Register contract ABI (chain + address)        |
+| `GET`    | `/v1/org/contract-abis`            | List contract ABIs                             |
+| `GET`    | `/v1/org/contract-abis/{id}`       | Get contract ABI                               |
+| `DELETE` | `/v1/org/contract-abis/{id}`       | Delete contract ABI                            |
+| `POST`   | `/v1/pending-approvals`            | Submit action for consensus approval           |
+| `GET`    | `/v1/pending-approvals`            | List pending approvals                         |
+| `GET`    | `/v1/pending-approvals/{id}`       | Get pending approval                           |
+| `POST`   | `/v1/pending-approvals/{id}/approve` | Approve (collect signatures)                 |
+| `POST`   | `/v1/pending-approvals/{id}/execute` | Execute approved action                      |
+| `POST`   | `/v1/pending-approvals/{id}/cancel`  | Cancel pending approval                      |
+
+Access policies support `consensus_trigger` — when matched, signing returns **202** pending multi-party approval instead of signing immediately.
+
+**v0.50 Policy Parity:** Consensus supports `threshold_wei` (wei-precision), `required_roles`, `per_role_minimums`, `require_credential_types` on approvals, and `action_in` for control-plane governance. `tx_conditions` adds EIP-712 per-field (`eip712_verifying_contract_in`, etc.) and EIP-7702 (`eip7702_authorized_addresses_in`) conditions. Org setting `control_plane_consensus_policy_id` gates policy/key/member mutations.
+
+**MCP tools (v0.50):** `get_policy_backend_settings`, `update_policy_backend_settings`, `get_shadow_report`, `list_contract_abis`, `create_contract_abi`, `delete_contract_abi`, `list_pending_approvals`, `approve_pending_approval` (supports `credential_type`), `execute_pending_approval`.
+
+### Sub-Organizations (v0.47)
+
+| Method   | Path                                               | Description                                    |
+| -------- | -------------------------------------------------- | ---------------------------------------------- |
+| `POST`   | `/v1/org/sub-orgs`                                 | Create sub-organization                        |
+| `GET`    | `/v1/org/sub-orgs`                                 | List sub-organizations                         |
+| `GET`    | `/v1/org/sub-orgs/{id}`                            | Get sub-organization                           |
+| `DELETE` | `/v1/org/sub-orgs/{id}`                            | Archive sub-organization                       |
+| `POST`   | `/v1/org/sub-orgs/{id}/permissions`                | Grant permission in sub-org                    |
+| `DELETE` | `/v1/org/sub-orgs/{id}/permissions/{permission}`   | Revoke permission                              |
+| `POST`   | `/v1/org/sub-orgs/{id}/users`                      | Add user to sub-org                            |
+| `POST`   | `/v1/org/sub-orgs/{id}/wallets/generate`           | Generate treasury wallets for sub-org          |
+
+Tier limits: Free=0, Pro=10, Team=50, Business=500, Enterprise=unlimited.
+
+### Portfolio (v0.47)
+
+| Method | Path            | Description                                                               |
+| ------ | --------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/v1/portfolio` | Unified balance across treasury wallets, signing keys, smart accounts. Query: `?chains=`, `?include_tokens=` |
+
+### Smart Account Import (v0.47)
+
+| Method | Path                                           | Description                                    |
+| ------ | ---------------------------------------------- | ---------------------------------------------- |
+| `POST` | `/v1/agents/{id}/smart-accounts/import`        | Import existing Gnosis Safe (optional on-chain verify) |
+
+### Key Import — BYOK (v0.47)
+
+| Method | Path                                                      | Description                                                |
+| ------ | --------------------------------------------------------- | ---------------------------------------------------------- |
+| `POST` | `/v1/agents/{id}/signing-keys/{chain}/import`             | Import signing key (human-only, `X-Auth-Confirm`)          |
+| `POST` | `/v1/treasury/wallets/{chain}/import`                     | Import treasury wallet key (human-only, `X-Auth-Confirm`)  |
 
 ### Other
 
@@ -942,6 +1594,10 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 | `GET`              | `/v1/webhooks/{id}`            | Get webhook details                                |
 | `PATCH`            | `/v1/webhooks/{id}`            | Update webhook (URL, events, active status)        |
 | `DELETE`           | `/v1/webhooks/{id}`            | Delete webhook registration                        |
+| `POST`             | `/v1/webhooks/{id}/rotate-secret` | Rotate webhook HMAC signing secret              |
+
+**Supported webhook events:** `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created`, `proposal.signed`, `proposal.executed`, `proposal.cancelled`, `agent.transaction.broadcast`, `agent.transaction.signed`, `signing_key.rotated`, `policy.created`, `policy.updated`, `policy.deleted`, `platform.user.connected`, `platform.user.disconnected`, `platform.bootstrap.completed`, `platform.grant.created`, `platform.grant.revoked`, `platform.claim.redeemed`.
+
 | `GET`              | `/v1/health`                   | Health check → `{ status, service, version }`      |
 | `GET`              | `/v1/health/hsm`               | HSM health → `{ status, hsm_provider, connected }` |
 | `POST/GET/DELETE`  | `/v1/auth/api-keys[/{id}]`     | Manage personal API keys                           |
@@ -1011,6 +1667,11 @@ All methods return `Promise<OneclawResponse<T>>`. Access via `client.<resource>.
 | `auth`    | `verifyEmailOtp({ email, code, platform_app_id?, auto_provision_chains? })`                                   | Verify OTP → JWT + wallet_address      |
 | `auth`    | `socialLogin({ provider, id_token, ... })`                                                                    | Social login (Google/Apple/Discord)    |
 | `auth`    | `exchangeOAuthCode({ code, redirect_uri, code_verifier? })`                                                  | Exchange OAuth authorization code      |
+| `auth`    | `generatePKCE()`                                                                                             | Generate PKCE code_verifier + code_challenge (S256) |
+| `auth`    | `buildAuthorizeUrl({ app_slug, redirect_uri, scopes?, state?, code_challenge? })`                            | Build OAuth2 authorize URL with params |
+| `auth`    | `getUserInfo(accessToken)`                                                                                   | Get user info from OAuth access token  |
+| `auth`    | `revokeToken({ token, token_type_hint? })`                                                                   | Revoke an OAuth access/refresh token (RFC 7009) |
+| `auth`    | `revokeConsent(appSlug)`                                                                                     | Revoke all consent + tokens for an app |
 | `apiKeys` | `create({ name, scopes?, expires_at? })`                                                                     | Create personal API key                |
 | `apiKeys` | `list()`                                                                                                     | List API keys                          |
 | `apiKeys` | `revoke(keyId)`                                                                                              | Revoke key                             |
@@ -1057,9 +1718,24 @@ All methods return `Promise<OneclawResponse<T>>`. Access via `client.<resource>.
 | `platform`| `listSpendPolicies(appId)`                                                                                   | List active spend policies             |
 | `platform`| `setUserSpendPolicy(connectionId, { ... })`                                                                  | Set per-user spend policy override     |
 | `platform`| `deleteSpendPolicy(appId, policyId)`                                                                         | Deactivate a spend policy              |
+| `platform`| `rotateWebhookSecret(webhookId)`                                                                             | Rotate webhook HMAC signing secret     |
+| `platform`| `getAppStats(appId)`                                                                                         | Get app stats (users, bootstraps, active connections) |
+| `platform`| `marketplace()`                                                                                              | List approved marketplace apps (public) |
+| `oauthConnect` | `listProviders()`                                                                                     | List available OAuth providers (public) |
+| `oauthConnect` | `listConnections(agentId)`                                                                            | List agent's OAuth connections         |
+| `oauthConnect` | `connect(agentId, { provider_slug, scopes?, redirect_after? })`                                       | Initiate OAuth flow (human-only)       |
+| `oauthConnect` | `disconnect(agentId, bindingId)`                                                                      | Disconnect OAuth binding               |
+| `oauthConnect` | `saveAppCredentials(agentId, { provider_slug, client_id, client_secret, redirect_uri? })`             | Save org OAuth credentials             |
+| `oauthConnect` | `listAppCredentials(agentId)`                                                                         | List app credentials (secrets redacted) |
+| `oauthConnect` | `deleteAppCredentials(agentId, providerSlug)`                                                         | Delete app credentials                 |
 | `org`     | `listMembers()`                                                                                              | List org members                       |
 | `org`     | `updateMemberRole(userId, role)`                                                                             | Update member role                     |
 | `org`     | `removeMember(userId)`                                                                                       | Remove member                          |
+| `cedarPolicies` | `create({ policy_text, description? })`, `list()`, `get(id)`, `delete(id)`, `test({ ... })`           | Cedar policy CRUD + dry-run (Team+)    |
+| `opaPolicies` | `create({ rego, description? })`, `list()`, `get(id)`, `delete(id)`, `test({ ... })`                    | OPA policy CRUD + dry-run (Business+)  |
+| `subOrgs` | `create({ name, description? })`, `list()`, `get(id)`, `delete(id)`                                          | Sub-organization management            |
+| `portfolio` | `get({ chains?, include_tokens? })`                                                                         | Unified balance aggregator             |
+| `agents`  | `importSmartAccount(agentId, { chain, chain_id, safe_address, verify? })`                                    | Import existing Gnosis Safe            |
 
 ### OpenAPI spec for custom SDKs
 
@@ -1159,7 +1835,7 @@ Default signing key path auto-resolves: if the agent has a per-chain signing key
 
 #### Multi-chain signing keys (v0.18)
 
-Agents can have per-chain signing keys for 6 blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519, **30+ transaction types** via `xrpl_tx_json`), Cardano (Ed25519), Tron (secp256k1). All six chains support **on-chain transaction signing + broadcast** through the Intents API (`submit_transaction` / `sign_transaction`) — 1claw dispatches by chain family, auto-fetches chain data (Bitcoin UTXOs/fee, Solana blockhash, XRP sequence, Cardano protocol params, Tron ref block), signs in the HSM/TEE, and broadcasts. `value` is the major-unit decimal string. **XRP**: Pass `xrpl_tx_json` with any supported XRPL `TransactionType` (Payment, TrustSet, OfferCreate, OfferCancel, AccountSet, AccountDelete, EscrowCreate, EscrowFinish, EscrowCancel, PaymentChannelCreate/Fund/Claim, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw/Bid/Delete/Vote, SetRegularKey, SignerListSet, DepositPreauth, CheckCreate/Cash/Cancel, TicketCreate, Clawback); Account/Sequence/Fee/LastLedgerSequence/SigningPubKey are auto-filled. Private keys stored in `__agent-keys` vault at `agents/{id}/chains/{chain}/private_key`. Provisioned by humans only. Use `provision_signing_key` MCP tool or `client.signingKeys.create()`. **Export**: `POST /v1/agents/{id}/signing-keys/{chain}/export` — human-only, requires `X-Auth-Confirm` password header; returns `{ private_key, public_key, address, curve, chain }`; audit-logged; failed re-auth triggers account lockout.
+Agents can have per-chain signing keys for 6 blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519, **31 supported types** via `xrpl_tx_json` — a 1Claw subset, not the full XRPL catalog), Cardano (Ed25519), Tron (secp256k1). All six chains support **on-chain transaction signing + broadcast** through the Intents API (`submit_transaction` / `sign_transaction`) — 1claw dispatches by chain family, auto-fetches chain data (Bitcoin UTXOs/fee, Solana blockhash, XRP sequence, Cardano protocol params, Tron ref block), signs in the HSM/TEE, and broadcasts. `value` is the major-unit decimal string. **XRP**: `to` and `value` remain required on submit/sign even with `xrpl_tx_json` (use `"0"` for non-Payment types). Pass `xrpl_tx_json` with one of 1Claw's 31 supported types (Payment, TrustSet, OfferCreate, OfferCancel, EscrowCreate/Finish/Cancel, PaymentChannelCreate/Fund/Claim, NFTokenMint/Burn/CreateOffer/AcceptOffer/CancelOffer, AMMCreate/Deposit/Withdraw/Bid/Delete/Vote, DepositPreauth, CheckCreate/Cash/Cancel, TicketCreate, Clawback; plus SetRegularKey, SignerListSet, AccountSet, AccountDelete which are **blocked unless** explicitly listed in `xrpl_allowed_tx_types`). Auto-fills Account, Sequence, Fee (`"12"` drops), LastLedgerSequence (ledger + 20), SigningPubKey, Flags (`0x80000000`), and SourceTag `482684816` (caller-supplied wins). Top-level `memo` is not applied on XRP — put `Memos` inside `xrpl_tx_json`. Private keys stored in `__agent-keys` vault at `agents/{id}/chains/{chain}/private_key`. Provisioned by humans only. Use `provision_signing_key` MCP tool or `client.signingKeys.create()`. **Export**: `POST /v1/agents/{id}/signing-keys/{chain}/export` — human-only, requires `X-Auth-Confirm` password header; returns `{ private_key, public_key, address, curve, chain }`; audit-logged; failed re-auth triggers account lockout.
 
 #### Extended signing intents (v0.18)
 
@@ -1196,6 +1872,7 @@ Human-configured, server-enforced limits on what the Intents API allows:
 | Daily tx count       | `tx_max_per_day`     | Max transactions per UTC calendar day. NULL = unlimited |
 | Overhead budget      | `tx_overhead_budget` | Per-chain daily budget for non-value costs (rent, fees, energy) in native units |
 | ATA allowlist        | `solana_ata_allowlist` | Only listed Solana addresses may have ATAs created. Empty = unrestricted |
+| XRPL tx types        | `xrpl_allowed_tx_types` | Restrict XRPL `TransactionType`. Empty = all supported *except* SetRegularKey, SignerListSet, AccountSet, AccountDelete (those need explicit listing) |
 
 Per-chain overrides via `per_chain_guardrails` also support `max_per_day`, `overhead_budget`, and `max_ata_creates_per_day`.
 
@@ -1536,6 +2213,29 @@ Audit, org, security, chain, billing, and auth endpoints are **free and never co
 - **Idempotency body hash** (EXT-H3): Same `Idempotency-Key` with different body → 409 Conflict.
 - **Redaction entropy floor** (EXT-H4): Secrets < 8 chars or entropy < 3.0 excluded from Shroud automata.
 - **Bootstrap signing keys** (v0.20.3): Template `spec.signing_keys` auto-provisions per-chain keys.
+
+### Onboarding golden path (v0.59.2)
+
+- **`GET /v1/org/onboarding/status`** — welcome bundle progress (human JWT).
+- **`POST /v1/onboarding/provision`** — creates `default` vault, `examples/hello`, MCP agent, `**` policy; returns one-time `ocv_` key + stdio `mcp_stdio_config`.
+- **`1claw setup`** — login + provision + auto-configure Cursor/Claude/VS Code for stdio MCP (`npx @1claw/mcp` + `ONECLAW_AGENT_API_KEY`).
+- **Dashboard** — `/onboarding/connect` wizard after signup.
+- **Canonical stdio MCP config:**
+
+```json
+{
+  "mcpServers": {
+    "1claw": {
+      "command": "npx",
+      "args": ["-y", "@1claw/mcp"],
+      "env": {
+        "ONECLAW_AGENT_API_KEY": "ocv_...",
+        "ONECLAW_BASE_URL": "https://api.1claw.xyz"
+      }
+    }
+  }
+}
+```
 
 ### Local Vault & Daemon (v0.34.2)
 

@@ -499,6 +499,7 @@ Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flow
 | GET | `/v1/platform/connections/{id}/spend-policy` | Effective spend policy for connection user |
 | PUT | `/v1/platform/connections/{id}/spend-policy` | Set per-user spend policy (Idempotency-Key supported) |
 | GET | `/v1/platform/connections/{id}/pending-approvals` | Hash-bound consensus/HITL queue (`payload_hash` on each row) |
+| POST | `/v1/platform/connections/{id}/pending-approvals` | **Create** pending approval (auto-resolves `policy_id` from agent consensus policies) |
 | GET | `/v1/platform/connections/{id}/pending-approvals/{aid}` | Single pending approval |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | Vote approve/reject with matching `payload_hash` |
 | POST | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Mobile approval queue decide |
@@ -506,6 +507,11 @@ Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flow
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
 | PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents or update `system_prompt` |
+| GET | `/v1/platform/connections/{id}/portfolio` | Agent portfolio/balances (`?chains=`, `?include_tokens=`) |
+| GET | `/v1/platform/connections/{id}/balances` | Alias for portfolio |
+| GET/POST | `/v1/platform/connections/{id}/automations` | List/create automations for connection agents |
+| POST | `/v1/platform/connections/{id}/automations/{aid}/runs/{rid}/cancel` | Cancel automation run |
+| GET/PUT/DELETE | `/v1/platform/connections/{id}/memory/{namespace}/{key}` | Connection-scoped agent memory (optional `?agent_id=`) |
 
 ### Enable Intents on an existing agent (no re-bootstrap)
 
@@ -529,9 +535,71 @@ await client.platform.patchConnectionAgent(connectionId, agentId, {
   intents_api_enabled: true,
   system_prompt: "You are a DeFi trading assistant.",
 });
+
+// v0.59.4 — portfolio, pending-approval create, automations, memory
+const portfolio = await client.platform.getConnectionPortfolio(connectionId, {
+  include_tokens: true,
+});
+const pending = await client.platform.createConnectionPendingApproval(connectionId, {
+  agent_id: agentId,
+  action: "transaction",
+  action_payload: { chain: "ethereum", to: "0x...", value: "0.1" },
+});
 ```
 
 At **bootstrap** time, the same flags can be set via template aliases: `intents: true`, `intents: { enabled: true }`, or `intents_api_enabled: true` (and `execution` / `execution_intents_enabled` equivalents).
+
+### Create a pending approval (over-cap / consensus)
+
+When a transfer exceeds spend caps or matches a consensus policy, create a hash-bound pending approval for the connected user's agent — no need to pass `policy_id` if the agent already has a matching `consensus_trigger` policy:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/pending-approvals" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "AGENT_UUID",
+    "action": "transaction",
+    "summary": "Transfer 0.5 ETH to treasury",
+    "action_payload": {
+      "chain": "base",
+      "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+      "value": "0.5"
+    }
+  }'
+# → 202 { pending_approval_id, payload_hash, required_approvals, expires_at, ... }
+```
+
+Then decide with `POST .../pending-approvals/{id}/decide` using the returned `payload_hash`. Re-submit the original transaction with `approval_id` after approval executes.
+
+Optional explicit policy:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/pending-approvals" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "policy_id": "POLICY_UUID",
+    "action": "transaction",
+    "action_payload": { "chain": "ethereum", "to": "0x...", "value": "1.0" }
+  }'
+```
+
+---
+
+## Content inspection (REST)
+
+MCP `inspect_content` parity for platform backends:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/shroud/inspect-content" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "content": "user-supplied text", "context": "input" }'
+# → { safe, verdict, threat_count, threats[] }
+```
+
+Accepts plt_ keys, agent JWTs, and user JWTs. Fail-closed when high/critical threats match.
 
 ---
 
@@ -917,16 +985,35 @@ Returns `connected_user_count`, `bootstrap_count`, and `active_connections`.
 
 ## Platform Webhook Events
 
-Platform apps can subscribe to lifecycle events via [webhooks](/docs/platform-api/webhooks). The following platform-specific events are available:
+Platform apps receive lifecycle events at `platform_apps.webhook_url` (set via `PATCH /v1/platform/apps/{id}`). Deliveries include `X-Webhook-Signature` (HMAC-SHA256) and `X-Webhook-Event`. **Connection-scoped events include `connection_id` in the JSON body** so your backend can route to the correct end-user session.
+
+List configured delivery and event catalog:
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/webhooks" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { webhook_configured, webhook_url_host, platform_events[], org_webhooks_note }
+```
+
+Org-level webhook subscriptions (`POST /v1/webhooks`, human JWT) are **separate** — they deliver end-user org events (transactions, policies, etc.) and do not replace the platform app webhook.
+
+The following events are delivered to the platform app webhook:
 
 | Event | Description |
 |---|---|
-| `platform.user.connected` | A new user was connected to your app |
+| `platform.user.connected` | A new user was connected (`connection_id`, `user_id`, `is_new`) |
 | `platform.user.disconnected` | A user disconnected from your app |
-| `platform.bootstrap.completed` | Bootstrap finished for a connected user |
+| `platform.bootstrap.completed` | Bootstrap finished (`connection_id`, resource summary) |
 | `platform.grant.created` | A user granted your app access to resources |
 | `platform.grant.revoked` | A user revoked a resource grant |
 | `platform.user.claimed` | User claimed bootstrapped resources |
+| `platform.claim.expired` | Claim token expired unclaimed |
+| `platform.entitlement.granted` | On-chain entitlement satisfied |
+| `platform.entitlement.revoked` | Entitlement revoked |
+| `pending_approval.created` | Consensus pending approval created (`connection_id`, `payload_hash`, `agent_id`) |
+| `tx.awaiting_approval` | Transaction HITL gate (when wired for connection agents) |
+| `sign.awaiting_approval` | Sign intent HITL gate |
+| `automation.run.failed` | Automation run failed for a connection agent |
 
 ### Webhook signing secrets
 
@@ -938,6 +1025,30 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secre
 ```
 
 The new secret is returned once — store it securely. All subsequent deliveries use the new `X-Webhook-Signature` HMAC.
+
+---
+
+## Idempotency-Key (platform writes)
+
+Fathom and other platform clients should send `Idempotency-Key` on provisioning and write endpoints. Replays within 24h return the cached response when the body hash matches; mismatched body → **409**.
+
+| Endpoint | Idempotency behavior |
+|---|---|
+| `POST /v1/platform/connections/{id}/bootstrap` | 24h replay via `platform_bootstrap_idempotency` (same body → cached `BootstrapResponse`) |
+| `PUT /v1/platform/connections/{id}/spend-policy` | 24h replay via `platform_spend_policy_idempotency` |
+| `POST /v1/platform/users/upsert` | Safe to retry (upsert by `external_subject` / email — no dedicated key table) |
+| `POST /v1/platform/connections/{id}/runtimes` | Not idempotent — use unique names or client-side dedup |
+| Agent `POST /v1/agents/{id}/transactions` | `Idempotency-Key` on Intents API (agent JWT) — 24h transaction replay |
+
+Bootstrap example:
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONN_ID/bootstrap" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Idempotency-Key: bootstrap-user-123-v1" \
+  -H "Content-Type: application/json" \
+  -d '{ "template_id": "TEMPLATE_UUID" }'
+```
 
 ---
 
@@ -1256,11 +1367,19 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
 | GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |
 | GET | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | List hash-bound pending approvals |
+| POST | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | Create pending approval (consensus / over-cap) |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | `plt_` key | Vote on pending approval |
+| POST | `/v1/shroud/inspect-content` | Any JWT / `plt_` | Standalone content threat scan |
+| GET | `/v1/platform/apps/{id}/webhooks` | `plt_` or User JWT | Platform webhook catalog |
 | GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
 | PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` |
+| GET | `/v1/platform/connections/{id}/portfolio` | `plt_` key | Agent portfolio/balances for connection |
+| GET | `/v1/platform/connections/{id}/balances` | `plt_` key | Alias for portfolio |
+| GET/POST | `/v1/platform/connections/{id}/automations` | `plt_` key | List/create connection-scoped automations |
+| POST | `/v1/platform/connections/{id}/automations/{aid}/runs/{rid}/cancel` | `plt_` key | Cancel automation run |
+| GET/PUT/DELETE | `/v1/platform/connections/{id}/memory/{namespace}/{key}` | `plt_` key | Connection-scoped agent memory |
 | POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
 | GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
 | POST | `/v1/platform/claim/{token}` | None (public) | Redeem claim token |
