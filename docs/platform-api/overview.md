@@ -494,6 +494,8 @@ Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flow
 | GET | `/v1/platform/connections/{id}/pending-approvals/{aid}` | Single pending approval |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | Vote approve/reject with matching `payload_hash` |
 | POST | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Mobile approval queue decide |
+| GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (address/public metadata only) |
+| GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
 
 ---
@@ -1218,6 +1220,8 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |
 | GET | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | List hash-bound pending approvals |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | `plt_` key | Vote on pending approval |
+| GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
+| GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
 | POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
 | GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
