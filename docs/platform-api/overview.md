@@ -171,15 +171,23 @@ curl -X POST "https://api.1claw.xyz/v1/auth/agent-token" \
 # → { "access_token": "eyJ...", "vault_ids": ["..."] }
 ```
 
-**Get the agent's wallet address:**
+**Get the agent's on-chain address (signing key):**
 
-The wallet addresses are returned in the bootstrap response under `summary.signing_keys`. You can also retrieve them later:
+Agent wallet addresses come from **signing keys** provisioned at bootstrap (`summary.signing_keys` or template `signing_keys[]`). Retrieve them later with the **connection-scoped** endpoint (plt_ auth — do not use `GET /v1/agents/{id}/signing-keys`, which is org-bound and returns 403 for platform keys):
 
 ```bash
-curl "https://api.1claw.xyz/v1/agents/AGENT_UUID/signing-keys" \
-  -H "Authorization: Bearer YOUR_USER_OR_PLATFORM_JWT"
-# → { "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "is_active": true }] }
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/signing-keys?agent_id=AGENT_UUID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1", "is_active": true }] }
+
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/signing-keys/ethereum?agent_id=AGENT_UUID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1" }
 ```
+
+:::warning `wallet_address` ≠ agent signing key
+`GET /v1/platform/connections/{id}` includes `wallet_address` when the user was provisioned via **SIWE** — that is the **staker's EIP-4361 wallet** (identity / upsert subject), **not** the agent's Intents signing address. For agent transactions, deposits, or balance checks, use **`GET .../signing-keys`** (or bootstrap `summary.signing_keys`).
+:::
 
 **Submit a transaction (Intents API):**
 
@@ -494,9 +502,36 @@ Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flow
 | GET | `/v1/platform/connections/{id}/pending-approvals/{aid}` | Single pending approval |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | Vote approve/reject with matching `payload_hash` |
 | POST | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Mobile approval queue decide |
-| GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (address/public metadata only) |
+| GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (public metadata only — never private keys) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
+| PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents or update `system_prompt` |
+
+### Enable Intents on an existing agent (no re-bootstrap)
+
+If an agent was bootstrapped before Intents were enabled, patch it in place — the agent must belong to the connection (`agent_ids`):
+
+```bash
+curl -X PATCH "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_UUID" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intents_api_enabled": true,
+    "execution_intents_enabled": false,
+    "system_prompt": "You are a DeFi trading assistant."
+  }'
+```
+
+Allowed fields: `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` only. Agents cannot self-enable these flags via agent JWT.
+
+```typescript
+await client.platform.patchConnectionAgent(connectionId, agentId, {
+  intents_api_enabled: true,
+  system_prompt: "You are a DeFi trading assistant.",
+});
+```
+
+At **bootstrap** time, the same flags can be set via template aliases: `intents: true`, `intents: { enabled: true }`, or `intents_api_enabled: true` (and `execution` / `execution_intents_enabled` equivalents).
 
 ---
 
