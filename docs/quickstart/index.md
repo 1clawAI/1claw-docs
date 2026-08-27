@@ -10,14 +10,16 @@ slug: /quickstart
 Get from zero to a working integration in a few minutes. **Start with the CLI** if you want the fastest path — one command provisions a vault, agent, access policy, and wires your AI tools (Cursor, Claude Desktop, VS Code, and more).
 
 :::tip Fastest path — recommended
-Install the CLI and run **`1claw setup`**. It logs you in, creates an agent + vault + policy, and configures MCP for every AI client it detects. No manual curl, no copy-pasting API keys into config files.
+Run **`npx @1claw/cli setup`** (or install globally: `npm install -g @1claw/cli` / `brew install 1clawAI/tap/1claw`). It logs you in, creates an agent + vault + policy + sample secret, and configures MCP for every AI client it detects.
 
 ```bash
-brew install 1clawAI/tap/oneclaw   # or: npm install -g @1claw/cli
-1claw setup
+npx @1claw/cli setup
+# or: 1claw setup --client cursor
 ```
 
-When setup finishes, your AI assistant can call 1Claw tools (`get_secret`, `list_secrets`, and more) at runtime — secrets stay in the vault, not in prompts or `.env` files. See the [CLI guide](/docs/integrations/cli) for all options (`--client cursor`, `--local`, existing agent keys).
+When setup finishes, ask your assistant: **"List my secrets in 1Claw"** — you should see `examples/hello`. Then store your real API keys via the dashboard or `1claw secret set`.
+
+See the [CLI guide](/docs/integrations/cli) for `--client`, `--project`, `--local`, and existing agent keys.
 :::
 
 ## How 1Claw works
@@ -76,7 +78,7 @@ brew install 1clawAI/tap/oneclaw
 What `setup` does in one flow:
 
 1. **Login** — browser device flow at [1claw.xyz](https://1claw.xyz) (no password in terminal)
-2. **Provision** — agent (Shroud + Intents enabled), vault, and read/write policy on `secrets/*`
+2. **Provision** — agent, vault, read/write policy on `**`, and sample secret `examples/hello`
 3. **Configure** — writes MCP config for each detected AI client
 
 **Already have an agent key?** Skip provisioning:

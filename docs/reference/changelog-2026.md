@@ -8,6 +8,24 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.59.2 (2026-08-27) {#v0592-2026-08-27}
+
+**Onboarding golden path (MCP stdio)**
+- **`GET /v1/org/onboarding/status`** — human-only progress: welcome bundle, agent, policy, sample secret, first read.
+- **`POST /v1/onboarding/provision`** — idempotent welcome vault (`default`), `examples/hello`, MCP agent, `**` read/write policy, one-time `ocv_` key, and `mcp_stdio_config` (stdio `npx @1claw/mcp`).
+- **Signup hooks** — async welcome bundle after email verify, Google signup, social login, email OTP.
+- **Agent create** — `skip_default_policy` on `POST /v1/agents`; default onboarding applied on human create and enrollment approve unless skipped.
+- **Dashboard** — `/onboarding/connect` wizard, connect CTA on dashboard/sidebar/marketing; post-login redirect to connect flow.
+- **CLI** — `1claw setup` calls `/v1/onboarding/provision` instead of manual vault/policy steps.
+- **MCP** — vault auto-discovery prefers vault named `default`; `GET /.well-known/oauth-protected-resource` on httpStream (metadata).
+- **Tests** — `scripts/test-onboarding-prod.sh`; wired into `run-production-tests.sh` and OpenAPI contract checks.
+
+**Packages**
+- OpenAPI spec, SDK (`client.org.getOnboardingStatus()`, `.provisionOnboarding()`), CLI, MCP → **0.59.2**
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.59.2**
+
+---
+
 ### v0.59.0 (2026-08-27) {#v0590-2026-08-27}
 
 **Fathom platform integration (migration 221)**
