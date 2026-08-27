@@ -9681,6 +9681,7 @@ Declarative JSON spec creates resources atomically:
 
 ```json
 {
+  "plan": "pro",
   "vault": { "name": "user-vault" },
   "agents": [{
     "name": "companion",
@@ -9698,6 +9699,10 @@ Declarative JSON spec creates resources atomically:
   "automations": []
 }
 ```
+
+When `billing_model` is **`platform_pays`**, bootstrap applies the template **`plan`** tier to the connected user's org (default **`pro`**, capped by your platform org's tier). This unlocks Cloud Runtimes, chat, and other Pro+ gates without requiring each end-user to subscribe. The granted tier is returned on `GET /v1/platform/connections/{id}` as `provisioned_tier`.
+
+Valid `plan` values: `pro`, `team`, `business`, `enterprise`.
 
 Bootstrap call:
 
@@ -9741,6 +9746,20 @@ await userClient.platform.grantAccess(connectionId, {
 ```
 
 List/revoke: `listGrants`, `revokeGrant`.
+
+## Fathom / connection-scoped operations (v0.59)
+
+Use these with **`plt_`** auth when building embedded wallet or agent products (e.g. Fathom):
+
+| Operation | Endpoint | SDK |
+| --------- | -------- | --- |
+| Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
+| Passkey enroll (begin) | `POST .../passkeys/enroll/begin` | `platform.connectionPasskeyEnrollBegin()` |
+| Passkey enroll (complete) | `POST .../passkeys/enroll/complete` | `platform.connectionPasskeyEnrollComplete()` |
+| Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]` |
+| Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |
+
+Set default agent behavior at bootstrap via template `agents[].system_prompt` or on agents with `system_prompt` on create/update. Connection chat uses the agent default when the request does not override.
 
 ## Platform delegation (optional)
 
@@ -9795,6 +9814,10 @@ platform.platform.claimRedeem(token)
 platform.platform.createSpendPolicy(appId, ...)
 platform.platform.setUserSpendPolicy(connectionId, ...)
 platform.platform.grantAccess(connectionId, ...)
+platform.platform.getConnection(connectionId) // includes provisioned_tier
+platform.platform.getConnectionRuntime(connectionId, runtimeId)
+platform.platform.connectionPasskeyEnrollBegin(connectionId)
+platform.platform.connectionAgentChat(connectionId, agentId, { message, system_prompt })
 platform.platform.withConnection(connectionId) // delegated client
 ```
 
@@ -12097,6 +12120,74 @@ See [Billing & Usage](/docs/guides/billing-and-usage) for subscription tiers, pr
 
 ---
 
+## Agent discovery & machine-readable metadata
+
+---
+title: Agent discovery & machine-readable metadata
+description: OIDC, MCP, auth.md, x402, and ARD endpoints for AI agents and agent-readiness scanners on 1claw.xyz and 1claw.co.
+sidebar_position: 5
+---
+
+# Agent discovery
+
+1Claw exposes machine-readable discovery metadata on the marketing site (**1claw.xyz** and **1claw.co**) and on the Vault API (**api.1claw.xyz**). Live OIDC keys and federation metadata always come from Vault; the dashboard proxies or host-aware routes avoid drift.
+
+:::tip For AI page
+Copy-friendly URLs and MCP config live at [1claw.xyz/for-ai](https://1claw.xyz/for-ai).
+:::
+
+## Marketing origin (1claw.xyz / 1claw.co)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /.well-known/openid-configuration` | OIDC + OAuth AS metadata (proxied from Vault) |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 authorization server metadata |
+| `GET /.well-known/jwks.json` | Public JWKS (EdDSA + RS256) |
+| `GET /.well-known/oauth-protected-resource` | RFC 9728; `resource` matches scanned host |
+| `GET /.well-known/mcp.json` | Alias → MCP server card |
+| `GET /.well-known/mcp/server-card.json` | MCP server card (@1claw/mcp) |
+| `GET /.well-known/ai-catalog.json` | Agent Registry Directory |
+| `GET /auth.md` | Auth.md guide (`# auth.md` H1) |
+| `GET /openapi.json` | Redirect → `api.1claw.xyz/openapi.json` |
+| `GET /.well-known/x402` | x402 micropayment discovery |
+| `GET /api/v1/agent-readiness/x402-probe` | Returns **402** with valid `accepts[]` |
+| `GET /.well-known/ucp` | UCP discovery (x402 + Stripe; metadata only) |
+| `GET /.well-known/acp.json` | ACP discovery (Platform API; metadata only) |
+| `GET /robots.txt` | Includes `Content-Signal` and `Agentmap` |
+
+## API origin (api.1claw.xyz)
+
+Canonical issuer and protected-resource metadata for API clients:
+
+- `GET https://api.1claw.xyz/.well-known/openid-configuration`
+- `GET https://api.1claw.xyz/.well-known/oauth-protected-resource` — `resource` is `https://api.1claw.xyz`
+- `GET https://api.1claw.xyz/.well-known/jwks.json`
+- `GET https://api.1claw.xyz/openapi.json` — OpenAPI 3.1 with `x-payment-info` on x402-priced operations
+
+See [Authentication](/docs/vaults/human-api/authentication) and [OIDC federation](/docs/agents/oidc-federation) for usage.
+
+## DNS-AID (optional)
+
+Publish `_index._agents`, `_catalog._agents`, `_mcp._agents`, and `_a2a._agents` records at your DNS provider. Runbook: `infra/dns-aid-records.md` in the monorepo. Enable DNSSEC on both zones.
+
+## Verification
+
+After deploy:
+
+```bash
+./scripts/test-agent-readiness-prod.sh
+./scripts/check-discovery-parity.sh
+```
+
+Re-run the [Cloudflare Agent-Ready](https://developers.cloudflare.com/agents/) scan on both **1claw.xyz** and **1claw.co**.
+
+## WebMCP (Chrome)
+
+On [/for-ai](https://1claw.xyz/for-ai), when `navigator.modelContext` is available, read-only tools register: `searchDocs` (llms.txt), `getAuthGuide` (auth.md), `getMcpConfig` (MCP server card). No secrets are exposed.
+
+
+---
+
 ## Agent frameworks (Eliza, GOAT, LangChain, CrewAI)
 
 ---
@@ -14326,7 +14417,28 @@ The CLI generates a P-256 ECDSA keypair on first use and persists it at `~/.conf
 
 ## CI/CD examples
 
-### GitHub Actions
+### GitHub Actions (recommended)
+
+Use the official [**1Claw Secrets**](https://github.com/1clawAI/1claw-action) action ([v1.0.0](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0)) — one agent key in GitHub Secrets, policy-gated vault reads, automatic log masking. Full reference: [GitHub Action integration](/docs/integrations/github-action).
+
+```yaml
+- name: Load secrets from 1Claw
+  id: vault
+  uses: 1clawAI/1claw-action@v1
+  with:
+    api-key: ${{ secrets.ONECLAW_AGENT_API_KEY }}
+    secrets: |
+      DB_URL=prod/config/db-url
+      NPM_TOKEN=ci/tokens/npm
+
+- name: Deploy
+  run: npm run deploy
+  # DB_URL and NPM_TOKEN are masked job env vars
+```
+
+### GitHub Actions (CLI alternative)
+
+For full CLI surface area (e.g. `env pull` with environment scoping), use `@1claw/cli` directly:
 
 ```yaml
 - name: Deploy with secrets
@@ -14376,6 +14488,7 @@ This flow does not require typing your password in the terminal.
 
 ## See also
 
+- [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions
 - [JavaScript SDK](/docs/sdks/javascript) — Programmatic access from Node.js or browsers
 - [MCP Server](/docs/vaults/mcp/overview) — AI agents accessing secrets via tools
 - [Two-factor authentication](/docs/security/two-factor-auth) — Optional 2FA for human logins
@@ -15189,6 +15302,127 @@ The agent never stores the Fireblocks credentials locally. They are fetched just
 
 ---
 
+## GitHub Action
+
+---
+title: GitHub Action
+description: Fetch policy-gated vault secrets in GitHub Actions at CI runtime — one agent key, masked env vars, deny-by-default.
+sidebar_position: 3
+---
+
+# GitHub Action (1Claw Secrets)
+
+The official [**1Claw Secrets**](https://github.com/1clawAI/1claw-action) GitHub Action loads secrets from your vault **at workflow runtime** and exposes them as masked environment variables and step outputs. Pin [`1clawAI/1claw-action@v1`](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0) (also available as `@v1.0.0`).
+
+Instead of copying dozens of long-lived keys into GitHub repo settings, store **one** agent API key (`ocv_...`) in GitHub Secrets. The action exchanges it for a short-TTL JWT on each run, fetches only the refs you name, registers values with `::add-mask::` before export, and fails closed when policy denies access.
+
+The action is a thin wrapper over [`@1claw/sdk`](https://www.npmjs.com/package/@1claw/sdk) — same agent-key auth and Vault HTTP API as the CLI and MCP server.
+
+## When to use it
+
+| Approach | Best for |
+| -------- | -------- |
+| **GitHub Action** | GitHub Actions workflows — native step outputs, automatic log masking, no `npm install` on the runner |
+| **[CLI](/docs/integrations/cli)** `env pull` / `env run` | Other CI systems, local scripts, or when you need full CLI surface area |
+| **[MCP](/docs/vaults/mcp/overview)** | IDE agents (Cursor, Claude Desktop) at development time |
+
+## Quick start
+
+1. **Create a CI agent** in the [dashboard](https://1claw.xyz/agents/new) (or via `1claw agent create`). Scope a read policy to the secret paths your pipeline needs — see [golden path](/docs/vaults/golden-path).
+2. **Add the agent key** to GitHub: repository **Settings → Secrets and variables → Actions**, e.g. `ONECLAW_AGENT_API_KEY` = `ocv_...`.
+3. **Reference secrets** in your workflow:
+
+```yaml
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load secrets from 1Claw
+        id: vault
+        uses: 1clawAI/1claw-action@v1
+        with:
+          api-key: ${{ secrets.ONECLAW_AGENT_API_KEY }}
+          secrets: |
+            STRIPE_KEY=prod/api-keys/stripe
+            DB_URL=prod/config/db-url
+            NPM_TOKEN=ci/tokens/npm
+
+      - name: Deploy
+        run: ./deploy.sh
+        # STRIPE_KEY, DB_URL, NPM_TOKEN are job env vars (masked in logs)
+
+      - name: Publish (step output)
+        run: ./publish.sh
+        env:
+          NODE_AUTH_TOKEN: ${{ steps.vault.outputs.NPM_TOKEN }}
+```
+
+## Inputs
+
+| Input | Required | Default | Description |
+| ----- | -------- | ------- | ----------- |
+| `api-key` | Yes | — | Agent API key (`ocv_...`). Pass `${{ secrets.ONECLAW_AGENT_API_KEY }}`. Exchanged for a short-lived JWT at runtime. |
+| `secrets` | Yes | — | Newline- or comma-separated `ENV_NAME=vault/ref` mappings (see below). |
+| `mask` | No | `true` | Register each value with `::add-mask::` before export. Leave on. |
+| `api-base` | No | `https://api.1claw.xyz` | Vault API base URL (use for staging/self-hosted). |
+
+### Secret mapping format
+
+Each entry is `ENV_NAME=vault/ref`:
+
+- `ENV_NAME` — environment variable and step output name (`[A-Za-z_][A-Za-z0-9_]*`).
+- `vault` — vault **ID or name** the agent can access.
+- `ref` — secret path inside that vault. Split on the **first** `/`, so paths may contain slashes (e.g. `prod/api-keys/stripe` → vault `prod`, path `api-keys/stripe`).
+
+```yaml
+secrets: STRIPE_KEY=prod/api-keys/stripe, DB_URL=prod/config/db-url
+```
+
+## Outputs
+
+For each mapping, the action sets:
+
+- A **step output** under `steps.<id>.outputs.ENV_NAME` (masked).
+- A **job environment variable** via `$GITHUB_ENV` so later steps read `$ENV_NAME`.
+
+## Security
+
+- **Deny-by-default** — only listed refs are fetched; policy denial fails the step without leaking values.
+- **Masking first** — `::add-mask::` runs before export; keep `mask: true`.
+- **Short TTL** — per-run JWT from the agent key; scope the agent policy to minimum CI paths.
+- **Audited** — every read appears in the 1Claw audit trail.
+
+Review downstream steps that consume these env vars — masking reduces accidental log leakage but does not stop deliberate exfiltration in the same workflow.
+
+## Agent setup tips
+
+- Use a **dedicated CI agent** per repo or environment; set `token_ttl_seconds` low (e.g. `300`) for pipeline-only identity — see [securing access](/docs/vaults/securing-access).
+- Prefer **named vaults** in mappings (`prod/...`, `staging/...`) so the same workflow shape works across branches with different policies.
+- For Vercel-style scoped env vars instead of path-based secrets, see [environment variables](/docs/guides/environment-variables) and use `env pull` via CLI if you need resolve/precedence semantics.
+
+## Releases
+
+- **Repository:** [github.com/1clawAI/1claw-action](https://github.com/1clawAI/1claw-action)
+- **Latest stable:** [v1.0.0](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0) — pin `uses: 1clawAI/1claw-action@v1` or `@v1.0.0`
+
+## See also
+
+- [CLI](/docs/integrations/cli) — `env pull`, `env run`, and non-GitHub CI
+- [Quickstart — CI/CD](/docs/quickstart/index#3-cicd-pipeline)
+- [Scoped permissions](/docs/vaults/scoped-permissions)
+- [1claw.xyz/for-ai](https://1claw.xyz/for-ai) — MCP config, discovery endpoints, and package links
+
+
+---
+
 ## LangChain integration
 
 ---
@@ -15689,6 +15923,8 @@ The fastest way to connect an AI agent to your vault:
 ```
 
 That's it. The server automatically exchanges the API key for a short-lived JWT, refreshes it before expiry, and auto-discovers the vault when the agent is bound to exactly one. No manual token rotation needed.
+
+For OIDC, MCP server cards, auth.md, x402, and other machine-readable endpoints, see [Agent discovery](/docs/integrations/agent-discovery) and [1claw.xyz/for-ai](https://1claw.xyz/for-ai).
 
 :::tip Vault override
 If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"` to the headers to pick one explicitly.
@@ -16866,7 +17102,9 @@ sidebar_position: 0
 | [LangChain](/docs/integrations/langchain) | `langchain-1claw` on PyPI |
 | [CrewAI](/docs/integrations/crewai) | `1claw-crewai-tools` on PyPI |
 | [MCP integration](/docs/integrations/mcp-integration) | Claude Desktop, Cursor setup |
+| [Agent discovery](/docs/integrations/agent-discovery) | OIDC, auth.md, MCP card, x402, ARD |
 | [MCP deep dive](/docs/integrations/mcp-deep-dive) | All MCP-compatible editors |
+| [GitHub Action](/docs/integrations/github-action) | CI vault secrets — `1clawAI/1claw-action@v1` |
 | [CLI](/docs/integrations/cli) | CI/CD, `env run`, device auth |
 
 ## Agent frameworks
@@ -18505,7 +18743,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions/sign" \
 
 ## Template Spec Reference
 
-The `spec` field is a JSON object with five top-level keys: `vault`, `agents`, `policies`, `runtimes`, and `automations`. All are optional — include only what you need.
+The `spec` field is a JSON object with top-level keys: `vault`, `agents`, `policies`, `signing_keys`, `runtimes`, `automations`, and optional `plan`. All resource keys are optional — include only what you need.
+
+### Template field aliases
+
+Bootstrap templates accept **shorthand aliases** that map to agent API field names. Priority: direct API field name → boolean shorthand → `{ "enabled": true }` object.
+
+| Maps to (agent DB / API) | Accepted in template spec |
+|---|---|
+| `intents_api_enabled` | `intents_api_enabled`, `intents: true`, `intents: { "enabled": true }` |
+| `execution_intents_enabled` | `execution_intents_enabled`, `execution: true`, `execution: { "enabled": true }` |
+
+Direct field names win over conflicting shorthands (e.g. `intents_api_enabled: true` with `intents: false` still enables Intents API).
+
+### `plan` (platform_pays tier inheritance)
+
+When the platform app uses `billing_model: "platform_pays"`, an optional top-level `plan` in the template spec grants a billing tier to the end-user org at bootstrap (default **`pro`** if omitted). Valid values: `free`, `pro`, `team`, `business`, `enterprise` — capped to the platform org's effective tier. `GET /v1/platform/connections/{id}` returns `provisioned_tier` when set.
 
 ### `vault`
 
@@ -18533,7 +18786,9 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 |---|---|---|---|
 | `name` | string | `"primary"` | Agent name |
 | `description` | string | `""` | Agent description |
-| `intents.enabled` | boolean | `false` | Enable the Intents API (transaction signing) |
+| `system_prompt` | string | — | Default system prompt for agent chat (also on `POST/PATCH /v1/agents`) |
+| `intents.enabled` | boolean | `false` | Enable the Intents API (transaction signing); see aliases above |
+| `execution.enabled` | boolean | `false` | Enable Execution Intents bindings; see aliases above |
 | `shroud_enabled` | boolean | `false` | Route LLM traffic through Shroud TEE |
 | `shroud_config` | object | `null` | Per-agent Shroud policy (PII, injection thresholds, etc.) |
 
@@ -18556,8 +18811,8 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 }
 ```
 
-:::caution intents vs intents_api_enabled
-In the template spec, use `"intents": { "enabled": true }` (nested object). This is different from the direct agent creation API which uses `"intents_api_enabled": true` (flat boolean). The bootstrap engine translates between the two formats.
+:::tip Intents API in templates
+Prefer `"intents": true` or `"intents": { "enabled": true }` in templates — the bootstrap engine maps these to `intents_api_enabled`. The direct agent API uses the flat field `intents_api_enabled`.
 :::
 
 :::note Multi-agent templates
@@ -18598,29 +18853,45 @@ Array of access policies linking agents to vault paths.
 }
 ```
 
-### `runtimes` (v0.44+)
+### `runtimes` (v0.44+; bootstrap wiring v0.58.2)
 
-Array of runtime definitions. Each entry creates a managed container for the agent.
+Runtimes can be declared three ways in a bootstrap template:
+
+1. **Top-level `runtimes` array** — each entry binds to `agents[agent_ref]` (default `0`)
+2. **Nested `agents[].runtime`** — one runtime per agent entry
+3. **`provision_runtime: true`** — shorthand that creates a default runtime for the first agent (`runtime_preset` default `"medium"`, `runtime_template` default `"openclaw"`)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | string | required | Runtime name |
+| `name` | string | `"default"` | Runtime name |
+| `template` | string | — | Agent template (`hermes`, `openclaw`, `openclaude`, …) |
 | `preset` | string | `"small"` | Compute preset: `small`, `medium`, `large`, `small-cc`, `medium-cc`, `large-cc` |
-| `image` | string | `""` | Container image |
-| `expose_http` | boolean | `false` | Enable public URL |
+| `expose_http` | boolean | `false` | Enable public URL at `{slug}.run.1claw.xyz` |
+| `agent_ref` | integer | `0` | Index into `agents[]` (top-level `runtimes` only) |
+| `idle_timeout_secs` | integer | `1800` | Idle auto-stop timeout |
+| `startup_command` | string | — | Optional container startup override |
 
 ```json
 {
+  "provision_runtime": true,
+  "runtime_preset": "medium",
+  "runtime_template": "openclaw",
+  "agents": [{ "name": "defi-bot", "intents": { "enabled": true } }],
   "runtimes": [
     {
       "name": "trading-runtime",
       "preset": "medium",
-      "image": "ghcr.io/myapp/agent:latest",
-      "expose_http": true
+      "template": "openclaw",
+      "expose_http": true,
+      "agent_ref": 0
     }
   ]
 }
 ```
+
+After bootstrap, create additional runtimes with **`POST /v1/platform/connections/{id}/runtimes`** (plt_ key). Do **not** use `POST /v1/runtimes` with a plt_ key — that resolves to the platform org and returns 404 for user-org agents.
+
+Bootstrapped runtime and automation IDs are tracked on the connection record (`runtime_ids`, `automation_ids`) and returned by `GET /v1/platform/connections/{id}`.
 
 ### `automations` (v0.44+)
 
@@ -18651,6 +18922,96 @@ Array of automation definitions. Each entry creates a scheduled, webhook-trigger
 ```
 
 Bootstrapped runtime and automation IDs are tracked on the `platform_user_connections` record (`runtime_ids`, `automation_ids`).
+
+---
+
+## Connection-scoped operations (plt_ key)
+
+Platform apps act on behalf of a **connected end-user**. These endpoints scope actions to a single connection — no user JWT, no `POST /grant`, and no `X-Platform-Connection` delegation header required. Your app must verify user intent out-of-band (e.g. wallet signature / mandate) before calling write endpoints.
+
+### Inspect template
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/templates/TEMPLATE_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+### Poll connection state
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { status, vault_ids, agent_ids, runtime_ids, automation_ids, claim, ... }
+```
+
+### Create a runtime for a provisioned agent
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "agent-runtime",
+    "agent_id": "AGENT_UUID",
+    "template": "openclaw",
+    "preset": "medium"
+  }'
+```
+
+### Chat with a provisioned agent
+
+```bash
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_ID/chat" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Hello",
+    "system_prompt": "You are a helpful trading assistant.",
+    "model": "gpt-4o",
+    "provider": "openai"
+  }'
+```
+
+Accepts `message`, `system`, `system_prompt`, or `messages[]` (including `role: "system"`). Billing failures return **402** (not 500). Use this instead of `POST /v1/agents/{id}/chat` with a plt_ key (403 human-only).
+
+### Get a connection-scoped runtime
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIME_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+Do **not** use `GET /v1/runtimes/{id}` with a plt_ key — that resolves to the platform org.
+
+### Passkey enroll for connected end-users
+
+Register a WebAuthn passkey for the connected user without a human JWT:
+
+```bash
+# Begin
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# Complete (browser ceremony)
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "credential_id": "...", "attestation_object": "...", "client_data_json": "..." }'
+```
+
+Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flows.
+
+### Spend policy, approvals, signing keys
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/v1/platform/connections/{id}/spend-policy` | Effective spend policy for connection user |
+| PUT | `/v1/platform/connections/{id}/spend-policy` | Set per-user spend policy (Idempotency-Key supported) |
+| GET | `/v1/platform/connections/{id}/pending-approvals` | Hash-bound consensus/HITL queue (`payload_hash` on each row) |
+| GET | `/v1/platform/connections/{id}/pending-approvals/{aid}` | Single pending approval |
+| POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | Vote approve/reject with matching `payload_hash` |
+| POST | `/v1/platform/connections/{id}/approvals/{aid}/decide` | Mobile approval queue decide |
+| DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
 
 ---
 
@@ -18818,9 +19179,61 @@ Set `auth_mode` when creating your platform app:
 
 | Model | Description |
 |---|---|
-| `platform_pays` | All API usage is billed to the platform's subscription. |
+| `platform_pays` | All API usage is billed to the platform's subscription. Template `plan` can upgrade the end-user org tier at bootstrap (see [`plan`](#plan-platform_pays-tier-inheritance)). |
 | `user_pays` | Each connected user is billed individually. |
 | `hybrid` | Platform covers base usage; overages billed to users. |
+
+---
+
+## Sign-In with Ethereum (SIWE)
+
+Wallet-based user provisioning without email or OIDC.
+
+### Configure `siwe_domain`
+
+Set the hostname allowed in EIP-4361 messages (no scheme, path, or port):
+
+```bash
+# Human JWT
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "siwe_domain": "myapp.com" }'
+
+# Or plt_ key — platform keys may **only** update siwe_domain via PATCH
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "siwe_domain": "myapp.com" }'
+```
+
+First `POST /v1/platform/siwe/challenge` with optional `domain` in the body auto-persists `siwe_domain` when unset.
+
+### Challenge + upsert
+
+```bash
+# 1. Challenge (plt_ auth)
+curl -X POST "https://api.1claw.xyz/v1/platform/siwe/challenge" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "domain": "myapp.com" }'
+# → { "message": "...", "nonce": "...", "expires_at": "..." }
+
+# 2. User signs message in wallet, then upsert
+curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject_token_type": "urn:1claw:params:oauth:token-type:siwe",
+    "siwe_message": "<EIP-4361 message>",
+    "siwe_signature": "0x<65-byte ECDSA hex>",
+    "external_subject": "eip155:1:0x742d35cc6634c0532925a3b844bc9e7595f0beb0"
+  }'
+```
+
+**Signature format:** 65-byte ECDSA (`r‖s‖v`). MetaMask, viem, and ethers emit **v=27/28** (EIP-191); legacy **0/1** is also accepted. Invalid recovery bytes return **400** with `expected recovery id 0, 1, 27, or 28, got {v}`.
+
+Synthetic email: `wallet+{hash}@platform.1claw.local`. Connection detail includes `wallet_address` when provisioned via SIWE.
 
 ---
 
@@ -19301,15 +19714,28 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/apps` | User JWT | Register a platform app (returns `plt_` key one-time) |
 | GET | `/v1/platform/apps` | User JWT | List platform apps for org |
 | GET | `/v1/platform/apps/{id}` | User JWT | Get platform app details |
-| PATCH | `/v1/platform/apps/{id}` | User JWT | Update platform app |
+| PATCH | `/v1/platform/apps/{id}` | User JWT (full update) or `plt_` (**siwe_domain only**) | Update platform app |
 | DELETE | `/v1/platform/apps/{id}` | User JWT | Delete platform app |
 | POST | `/v1/platform/apps/{id}/rotate-key` | User JWT | Rotate `plt_` API key |
 | POST | `/v1/platform/apps/{id}/templates` | User JWT | Create bootstrap template |
-| GET | `/v1/platform/apps/{id}/templates` | User JWT | List templates |
-| PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Update template |
-| DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT | Delete template |
+| GET | `/v1/platform/apps/{id}/templates` | User JWT or `plt_` | List templates |
+| GET | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Get template by ID |
+| PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Update template |
+| DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Delete template |
 | POST | `/v1/platform/users/upsert` | `plt_` key | Provision or find user |
+| GET | `/v1/platform/connections/{id}` | `plt_` key | Connection status, resource IDs, `provisioned_tier`, `wallet_address` |
 | POST | `/v1/platform/connections/{id}/bootstrap` | `plt_` key | Bootstrap resources from template |
+| POST | `/v1/platform/siwe/challenge` | `plt_` key | SIWE nonce + message for wallet upsert |
+| POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
+| GET | `/v1/platform/connections/{id}/runtimes/{rid}` | `plt_` key | Get connection-scoped runtime |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | `plt_` key | Start passkey registration for connected user |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | `plt_` key | Complete passkey registration |
+| POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors) |
+| POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
+| GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |
+| GET | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | List hash-bound pending approvals |
+| POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | `plt_` key | Vote on pending approval |
+| DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
 | POST | `/v1/platform/connections/{id}/reissue-claim` | `plt_` key | Reissue expired claim URL |
 | GET | `/v1/platform/claim/{token}` | None (public) | Preview claim token |
 | POST | `/v1/platform/claim/{token}` | None (public) | Redeem claim token |
@@ -19323,7 +19749,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/apps/{id}/spend-policies` | User JWT | Create app-level spend policy |
 | GET | `/v1/platform/apps/{id}/spend-policies` | User JWT | List spend policies |
 | DELETE | `/v1/platform/apps/{id}/spend-policies/{pid}` | User JWT | Deactivate spend policy |
-| PUT | `/v1/platform/connections/{id}/spend-policy` | User JWT | Set per-user spend policy override |
+| PUT | `/v1/platform/connections/{id}/spend-policy` | `plt_` key or User JWT | Set per-user spend policy override |
 | GET | `/v1/treasury/wallets/spend-policy` | User JWT | View effective policy for calling user |
 | GET | `/v1/platform/marketplace` | None (public) | List approved apps in the marketplace |
 | GET | `/v1/platform/apps/{id}/stats` | `plt_` key or User JWT | App stats (connected users, bootstraps) |
@@ -20309,6 +20735,17 @@ Use the SDK or REST API with a personal API key (`1ck_`) for human operations, o
 
 **3. CI/CD pipeline**
 
+On **GitHub Actions**, use the official [1Claw Secrets action](https://github.com/1clawAI/1claw-action/releases/tag/v1.0.0) — see [GitHub Action integration](/docs/integrations/github-action):
+
+```yaml
+- uses: 1clawAI/1claw-action@v1
+  with:
+    api-key: ${{ secrets.ONECLAW_AGENT_API_KEY }}
+    secrets: DB_URL=prod/config/db-url
+```
+
+Elsewhere, use the CLI:
+
 ```bash
 export ONECLAW_TOKEN="${{ secrets.ONECLAW_TOKEN }}"
 1claw env pull -o .env.production
@@ -20354,6 +20791,7 @@ The shortest manual path if you are not using `1claw setup`:
 - [Give an agent access](/docs/vaults/golden-path) — golden path with policies
 - [Parts of 1Claw](/docs/concepts/parts-of-1claw) — Vault, Shroud, Intents, and all interfaces
 - [CLI](/docs/integrations/cli) — full command reference, Docker runtime, local daemon
+- [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions (`1clawAI/1claw-action@v1`)
 - [MCP overview](/docs/vaults/mcp/overview) — tools your AI assistant can call
 - [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples
 
@@ -21854,6 +22292,72 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-08 (latest)
+
+### v0.59.0 (2026-08-27) {#v0590-2026-08-27}
+
+**Fathom platform integration (migration 221)**
+- **`agents.system_prompt`** — default chat system prompt on create/update and template `agents[].system_prompt` at bootstrap.
+- **Connection chat** — `POST /v1/platform/connections/{id}/agents/{aid}/chat` accepts `system`, `system_prompt`, and `messages[]` with `role: system`; billing failures return **402** (not 500).
+- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users (replaces user-only `/v1/auth/passkeys/register/*`).
+- **Connection runtime GET** — `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` (plt_ scoped; use instead of `GET /v1/runtimes/{id}`).
+- **`platform_pays` tier inheritance (migration 220)** — Template `plan` at bootstrap grants tier to end-user org; `GET /v1/platform/connections/{id}` returns `provisioned_tier`.
+- **Bootstrap runtime fix** — `provision_runtime` uses valid Cloud Run provider and respects tier limits.
+- **OpenAPI** — `GET /v1/platform/apps/{id}/users` response wraps `{ users: [] }`; passkey enroll schemas added.
+
+**Packages**
+- OpenAPI spec, SDK, CLI, MCP, Python SDK, Go SDK → **0.59.0**
+- New SDK/MCP/CLI methods: `getConnectionRuntime`, `connectionPasskeyEnrollBegin|Complete`, `system_prompt` types
+- MCP tools: `platform_get_connection_runtime`, `platform_connection_passkey_enroll_begin`
+- Prod tests: `scripts/test-platform-expansion-prod.sh` (passkey begin, runtime GET, system_prompt chat)
+
+---
+
+### v0.58.2 (2026-08-26) {#v0582-2026-08-26}
+
+**Platform connection control plane (runtime + chat)**
+- **Bootstrap runtimes:** Top-level `runtimes[]`, nested `agents[].runtime`, and `provision_runtime: true` (+ `runtime_preset` / `runtime_template`) now create Cloud Runtimes during bootstrap. Connection detail includes `runtime_ids` and `automation_ids`.
+- **`GET /v1/platform/apps/{id}/templates/{tid}`** — plt_ or user JWT; inspect template spec after bootstrap.
+- **`POST /v1/platform/connections/{id}/runtimes`** — create runtime in end-user org (fixes plt_ → `POST /v1/runtimes` 404).
+- **`POST /v1/platform/connections/{id}/agents/{aid}/chat`** — connection-scoped agent chat (fixes plt_ → `POST /v1/agents/{id}/chat` 403).
+- **Spend-policy PUT replace** — second write no longer 500 (unique per-user app policy).
+- **Connection-scoped control:** pending-approval get/decide, mobile approval decide, signing-key deactivate (v0.58.0 continued).
+
+**Tests:** `scripts/test-platform-expansion-prod.sh` covers template GET, spend-policy replace, control-plane routes, bootstrap `provision_runtime`, connection runtime create, connection chat.
+
+---
+
+### v0.58.1 (2026-08-25) {#v0581-2026-08-25}
+
+**Agent-created automations (chat/runtime)**
+- **`POST /v1/agents/{agent_id}/automations`** — agent-token only. Simple manual/webhook workflows with guardrailed steps (`log`, `notify`, `memory_get`, `memory_put`, `wait`; max 10 steps, 25 per agent). Optional `auto_trigger` for manual runs. Humans remain on `POST /v1/automations` (agents get **403**).
+- **`created_by_type`** on automations (`human` | `agent`, migration 218). Dashboard shows an **Agent-created** badge.
+- **Runtime tools:** `create_automation`, `create_test_automation`, agent-access tools (`request_access`, `request_approval`, `request_binding`, `request_signing_key`, `request_guardrail_change`), `forget`, capabilities prompt injection across Hermes/OpenClaw/OpenClaude/OpenCode templates.
+- **Vault:** `request_timeout` middleware, runtime chat cold-start improvements.
+
+**Packages**
+- OpenAPI spec, SDK (`agents.createAutomation()`), MCP (`create_agent_automation`), Python SDK (`agents.create_automation()`), Go SDK (`Agents.CreateAutomation()`), CLI (`1claw agent automation create`) → **0.58.1**
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.58.0** (tool shipped in prior release)
+- Prod tests: `scripts/test-automations-prod.sh` §24 (agent-scoped create + human-route 403)
+
+---
+
+### v0.58.0 (2026-08-24) {#v0580-2026-08-24}
+
+**Platform API control plane (Fathom bundled release)**
+- **SIWE recovery ids:** Accept EIP-191 signatures with recovery byte **27 or 28** (MetaMask/viem) in addition to 0/1.
+- **App-scoped reads (`plt_`):** `GET /v1/platform/connections/{id}/approvals`, `.../approvals/{approval_id}`, `.../pending-approvals` (includes `payload_hash`), `.../spend-policy`.
+- **Spend policy:** `GET /v1/platform/apps/{id}/spend-policies/{policy_id}`; `PUT .../connections/{id}/spend-policy` supports optional **`Idempotency-Key`** (24h body-hash replay).
+- **App lifecycle:** `PATCH` slug changes → **400**; `DELETE` soft-deactivates and returns `{ id, slug, deleted_at }`; `GET` inactive app → **404**; slugs unique **per org** (migration 216).
+- **Ownership transfer:** `POST /v1/platform/apps/{id}/transfer-ownership` with step-up auth.
+
+**Packages**
+- Vault API **0.58.0** (migrations 216–217)
+- OpenAPI spec, SDK, CLI, MCP, Python SDK, Go SDK → **0.58.0** with Platform control-plane parity
+- MCP registry: `io.github.1clawAI/1claw-mcp` @ **0.58.0**
+- New MCP tools: `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_list_connection_pending_approvals`, `platform_get_connection_spend_policy`, `platform_get_spend_policy`, `platform_transfer_ownership`, `platform_delete_app`
+- Prod tests extended: `scripts/test-platform-api.sh`, `scripts/test-platform-expansion-prod.sh`
+
+---
 
 ### v0.57.0 (2026-08-24) {#v0570-2026-08-24}
 
