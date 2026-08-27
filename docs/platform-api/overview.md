@@ -226,7 +226,22 @@ curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions/sign" \
 
 ## Template Spec Reference
 
-The `spec` field is a JSON object with five top-level keys: `vault`, `agents`, `policies`, `runtimes`, and `automations`. All are optional — include only what you need.
+The `spec` field is a JSON object with top-level keys: `vault`, `agents`, `policies`, `signing_keys`, `runtimes`, `automations`, and optional `plan`. All resource keys are optional — include only what you need.
+
+### Template field aliases
+
+Bootstrap templates accept **shorthand aliases** that map to agent API field names. Priority: direct API field name → boolean shorthand → `{ "enabled": true }` object.
+
+| Maps to (agent DB / API) | Accepted in template spec |
+|---|---|
+| `intents_api_enabled` | `intents_api_enabled`, `intents: true`, `intents: { "enabled": true }` |
+| `execution_intents_enabled` | `execution_intents_enabled`, `execution: true`, `execution: { "enabled": true }` |
+
+Direct field names win over conflicting shorthands (e.g. `intents_api_enabled: true` with `intents: false` still enables Intents API).
+
+### `plan` (platform_pays tier inheritance)
+
+When the platform app uses `billing_model: "platform_pays"`, an optional top-level `plan` in the template spec grants a billing tier to the end-user org at bootstrap (default **`pro`** if omitted). Valid values: `free`, `pro`, `team`, `business`, `enterprise` — capped to the platform org's effective tier. `GET /v1/platform/connections/{id}` returns `provisioned_tier` when set.
 
 ### `vault`
 
@@ -254,7 +269,9 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 |---|---|---|---|
 | `name` | string | `"primary"` | Agent name |
 | `description` | string | `""` | Agent description |
-| `intents.enabled` | boolean | `false` | Enable the Intents API (transaction signing) |
+| `system_prompt` | string | — | Default system prompt for agent chat (also on `POST/PATCH /v1/agents`) |
+| `intents.enabled` | boolean | `false` | Enable the Intents API (transaction signing); see aliases above |
+| `execution.enabled` | boolean | `false` | Enable Execution Intents bindings; see aliases above |
 | `shroud_enabled` | boolean | `false` | Route LLM traffic through Shroud TEE |
 | `shroud_config` | object | `null` | Per-agent Shroud policy (PII, injection thresholds, etc.) |
 
@@ -277,8 +294,8 @@ Array of agent definitions. Each entry creates one agent with an auto-generated 
 }
 ```
 
-:::caution intents vs intents_api_enabled
-In the template spec, use `"intents": { "enabled": true }` (nested object). This is different from the direct agent creation API which uses `"intents_api_enabled": true` (flat boolean). The bootstrap engine translates between the two formats.
+:::tip Intents API in templates
+Prefer `"intents": true` or `"intents": { "enabled": true }` in templates — the bootstrap engine maps these to `intents_api_enabled`. The direct agent API uses the flat field `intents_api_enabled`.
 :::
 
 :::note Multi-agent templates
@@ -430,10 +447,42 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtim
 curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_ID/chat" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "message": "Hello", "model": "gpt-4o", "provider": "openai" }'
+  -d '{
+    "message": "Hello",
+    "system_prompt": "You are a helpful trading assistant.",
+    "model": "gpt-4o",
+    "provider": "openai"
+  }'
 ```
 
-Use this instead of `POST /v1/agents/{id}/chat` with a plt_ key (403 human-only).
+Accepts `message`, `system`, `system_prompt`, or `messages[]` (including `role: "system"`). Billing failures return **402** (not 500). Use this instead of `POST /v1/agents/{id}/chat` with a plt_ key (403 human-only).
+
+### Get a connection-scoped runtime
+
+```bash
+curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIME_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+```
+
+Do **not** use `GET /v1/runtimes/{id}` with a plt_ key — that resolves to the platform org.
+
+### Passkey enroll for connected end-users
+
+Register a WebAuthn passkey for the connected user without a human JWT:
+
+```bash
+# Begin
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# Complete (browser ceremony)
+curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "credential_id": "...", "attestation_object": "...", "client_data_json": "..." }'
+```
+
+Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flows.
 
 ### Spend policy, approvals, signing keys
 
@@ -613,9 +662,61 @@ Set `auth_mode` when creating your platform app:
 
 | Model | Description |
 |---|---|
-| `platform_pays` | All API usage is billed to the platform's subscription. |
+| `platform_pays` | All API usage is billed to the platform's subscription. Template `plan` can upgrade the end-user org tier at bootstrap (see [`plan`](#plan-platform_pays-tier-inheritance)). |
 | `user_pays` | Each connected user is billed individually. |
 | `hybrid` | Platform covers base usage; overages billed to users. |
+
+---
+
+## Sign-In with Ethereum (SIWE)
+
+Wallet-based user provisioning without email or OIDC.
+
+### Configure `siwe_domain`
+
+Set the hostname allowed in EIP-4361 messages (no scheme, path, or port):
+
+```bash
+# Human JWT
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer YOUR_USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "siwe_domain": "myapp.com" }'
+
+# Or plt_ key — platform keys may **only** update siwe_domain via PATCH
+curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "siwe_domain": "myapp.com" }'
+```
+
+First `POST /v1/platform/siwe/challenge` with optional `domain` in the body auto-persists `siwe_domain` when unset.
+
+### Challenge + upsert
+
+```bash
+# 1. Challenge (plt_ auth)
+curl -X POST "https://api.1claw.xyz/v1/platform/siwe/challenge" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "domain": "myapp.com" }'
+# → { "message": "...", "nonce": "...", "expires_at": "..." }
+
+# 2. User signs message in wallet, then upsert
+curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject_token_type": "urn:1claw:params:oauth:token-type:siwe",
+    "siwe_message": "<EIP-4361 message>",
+    "siwe_signature": "0x<65-byte ECDSA hex>",
+    "external_subject": "eip155:1:0x742d35cc6634c0532925a3b844bc9e7595f0beb0"
+  }'
+```
+
+**Signature format:** 65-byte ECDSA (`r‖s‖v`). MetaMask, viem, and ethers emit **v=27/28** (EIP-191); legacy **0/1** is also accepted. Invalid recovery bytes return **400** with `expected recovery id 0, 1, 27, or 28, got {v}`.
+
+Synthetic email: `wallet+{hash}@platform.1claw.local`. Connection detail includes `wallet_address` when provisioned via SIWE.
 
 ---
 
@@ -1096,7 +1197,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/apps` | User JWT | Register a platform app (returns `plt_` key one-time) |
 | GET | `/v1/platform/apps` | User JWT | List platform apps for org |
 | GET | `/v1/platform/apps/{id}` | User JWT | Get platform app details |
-| PATCH | `/v1/platform/apps/{id}` | User JWT | Update platform app |
+| PATCH | `/v1/platform/apps/{id}` | User JWT (full update) or `plt_` (**siwe_domain only**) | Update platform app |
 | DELETE | `/v1/platform/apps/{id}` | User JWT | Delete platform app |
 | POST | `/v1/platform/apps/{id}/rotate-key` | User JWT | Rotate `plt_` API key |
 | POST | `/v1/platform/apps/{id}/templates` | User JWT | Create bootstrap template |
@@ -1105,10 +1206,16 @@ policy = client.platform.create_spend_policy(app_id, {
 | PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Update template |
 | DELETE | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Delete template |
 | POST | `/v1/platform/users/upsert` | `plt_` key | Provision or find user |
-| GET | `/v1/platform/connections/{id}` | `plt_` key | Connection status + resource IDs |
+| GET | `/v1/platform/connections/{id}` | `plt_` key | Connection status, resource IDs, `provisioned_tier`, `wallet_address` |
 | POST | `/v1/platform/connections/{id}/bootstrap` | `plt_` key | Bootstrap resources from template |
+| POST | `/v1/platform/siwe/challenge` | `plt_` key | SIWE nonce + message for wallet upsert |
 | POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
-| POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat with connection agent |
+| GET | `/v1/platform/connections/{id}/runtimes/{rid}` | `plt_` key | Get connection-scoped runtime |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | `plt_` key | Start passkey registration for connected user |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | `plt_` key | Complete passkey registration |
+| POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors) |
+| POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
+| GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |
 | GET | `/v1/platform/connections/{id}/pending-approvals` | `plt_` key | List hash-bound pending approvals |
 | POST | `/v1/platform/connections/{id}/pending-approvals/{aid}/decide` | `plt_` key | Vote on pending approval |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
