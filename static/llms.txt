@@ -4,19 +4,19 @@
 
 ## Links
 
-- Website: https://1claw.xyz
-- API: https://api.1claw.xyz
-- Docs: https://docs.1claw.xyz
-- MCP Server: https://mcp.1claw.xyz
-- Shroud (TEE proxy): https://shroud.1claw.xyz
-- Dashboard: https://1claw.xyz (login required)
+- Website: https://1claw.co
+- API: https://api.1claw.co
+- Docs: https://docs.1claw.co
+- MCP Server: https://mcp.1claw.co
+- Shroud (TEE proxy): https://shroud.1claw.co
+- Dashboard: https://1claw.co (login required)
 - GitHub: https://github.com/1clawAI/1claw
 - npm SDK: https://www.npmjs.com/package/@1claw/sdk
 - npm CLI: https://www.npmjs.com/package/@1claw/cli
 - npm MCP: https://www.npmjs.com/package/@1claw/mcp
 - npm OpenAPI Spec: https://www.npmjs.com/package/@1claw/openapi-spec
 - npm elizaOS plugin: https://www.npmjs.com/package/@1claw/plugin-elizaos
-- Contact: ops@1claw.xyz
+- Contact: ops@1claw.co
 
 ## What 1Claw Does
 
@@ -24,17 +24,17 @@
 
 ## Architecture
 
-- **Vault API** (Rust/Axum) at api.1claw.xyz — RESTful API with JWT Bearer auth, HSM-backed signing
-- **Shroud** (Rust) at shroud.1claw.xyz — TEE-protected LLM proxy + transaction signing (GKE, AMD SEV-SNP)
-- **Dashboard** (Next.js) at 1claw.xyz — Web UI for humans, onboarding connect wizard (`/onboarding/connect`), setup wizards
-- **MCP Server** (TypeScript) at mcp.1claw.xyz — Model Context Protocol for AI agents; canonical local config is stdio `npx @1claw/mcp` + `ONECLAW_AGENT_API_KEY`
+- **Vault API** (Rust/Axum) at api.1claw.co — RESTful API with JWT Bearer auth, HSM-backed signing
+- **Shroud** (Rust) at shroud.1claw.co — TEE-protected LLM proxy + transaction signing (GKE, AMD SEV-SNP)
+- **Dashboard** (Next.js) at 1claw.co — Web UI for humans, onboarding connect wizard (`/onboarding/connect`), setup wizards
+- **MCP Server** (TypeScript) at mcp.1claw.co — Model Context Protocol for AI agents; canonical local config is stdio `npx @1claw/mcp` + `ONECLAW_AGENT_API_KEY`
 - **SDK** (@1claw/sdk) — TypeScript client library
 - **Wallet React** (@1claw/wallet-react v0.2.0) — Embeddable React treasury widget for Platform API apps. `<OneclawTreasuryWidget />` (Send/Swap/Receive) and `<OneclawEmbeddedWallet />` (social login + full wallet UI). `useOneclawWallet()` exposes `wallets`, `balances`, `send()`, `swap()`, `refresh()`. Social login via `POST /v1/auth/social-login`; Email OTP via `sendEmailOtp(email)` / `verifyEmailOtp(email, code, chains?)`; passkey tx auth via `tx-assert` endpoints.
 - **CLI** (@1claw/cli) — Command-line tool for CI/CD and DevOps
 - **elizaOS Plugin** (@1claw/plugin-elizaos) — 8 actions + context provider for elizaOS agents (vault secrets + multi-chain signing)
 - **Mobile App** (Expo/React Native) — Human-in-the-loop companion for iOS + Android: approval inbox with risk tiers, agent management, passkey/biometric auth, treasury wallets, activity feed. Beta.
 
-Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud adds TEE-grade key isolation, LLM traffic inspection (secret redaction, PII scrubbing, prompt injection defense), and intent validation for transactions.
+Both `api.1claw.co` and `shroud.1claw.co` serve the full Intents API. Shroud adds TEE-grade key isolation, LLM traffic inspection (secret redaction, PII scrubbing, prompt injection defense), and intent validation for transactions.
 
 ## Authentication
 
@@ -43,7 +43,7 @@ Both `api.1claw.xyz` and `shroud.1claw.xyz` serve the full Intents API. Shroud a
 - **MFA**: Optional TOTP 2FA for human logins (**all tiers**, including Free). Optional **passkey login MFA** (`require_passkey_for_mfa` via `GET/PATCH /v1/auth/settings`) completes via `POST /v1/auth/mfa/passkey/begin` + `.../complete` when enabled (takes precedence over TOTP when both are configured).
 - **Vault passkey unlock**: Optional per-user `require_passkey_for_vaults` — secret reads require `X-Passkey-Token` from `POST /v1/auth/passkeys/vault-assert/begin` + `complete` (5-minute reusable token). Dashboard: Settings → Security. Separate from passkey login MFA above.
 - **API keys**: `1ck_` keys work as Bearer tokens on all authenticated endpoints
-- **OIDC federation (1claw as IdP)**: 1claw publishes a standard OpenID Connect issuer at `https://api.1claw.xyz` so external relying parties (Anthropic Workload Identity Federation, GCP STS, AWS STS, etc.) can validate 1claw-issued JWTs without static API keys. Public endpoints: `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`. RFC 8693 token exchange: `POST /v1/auth/federated-token` (accepts JSON or form-encoded; takes `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`, `subject_token` (agent JWT or `ocv_` key), `subject_token_type`, `audience`; returns RS256 JWT signed by an HSM-backed RSA-2048 KMS key). Two KMS signing keys: existing `EC_SIGN_ED25519` for agent JWTs and new `RSA_SIGN_PKCS1_2048_SHA256` for federation tokens. Both publish every active version under a deterministic `kid` (`eddsa-vN`, `rs256-vN`). Agent fields: `federation_enabled` (default false — zero-trust), `federation_audiences` (TEXT[] allowlist; empty = deny all), `federated_token_ttl_seconds` (default 900s, hard cap 3600s).
+- **OIDC federation (1claw as IdP)**: 1claw publishes a standard OpenID Connect issuer at `https://api.1claw.co` so external relying parties (Anthropic Workload Identity Federation, GCP STS, AWS STS, etc.) can validate 1claw-issued JWTs without static API keys. Public endpoints: `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`. RFC 8693 token exchange: `POST /v1/auth/federated-token` (accepts JSON or form-encoded; takes `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`, `subject_token` (agent JWT or `ocv_` key), `subject_token_type`, `audience`; returns RS256 JWT signed by an HSM-backed RSA-2048 KMS key). Two KMS signing keys: existing `EC_SIGN_ED25519` for agent JWTs and new `RSA_SIGN_PKCS1_2048_SHA256` for federation tokens. Both publish every active version under a deterministic `kid` (`eddsa-vN`, `rs256-vN`). Agent fields: `federation_enabled` (default false — zero-trust), `federation_audiences` (TEXT[] allowlist; empty = deny all), `federated_token_ttl_seconds` (default 900s, hard cap 3600s).
 - **Email OTP (passwordless)**: `POST /v1/auth/email-otp/send` sends a 6-digit code to the user's email (5-min TTL). `POST /v1/auth/email-otp/verify` verifies the code and returns a JWT, auto-provisioning treasury wallets for embedded wallet flows. Supports `platform_app_id` for platform-scoped logins.
 - **OAuth2 authorization server ("Sign in with 1Claw")**: 1Claw acts as an OAuth2/OIDC authorization server. `GET/POST /v1/oauth/authorize` (consent + code issuance, PKCE S256 required), `POST /v1/oauth/token` (code → access_token + RS256 id_token), `GET /v1/oauth/userinfo` (sub, email, name, wallet_address). Dashboard consent page at `/oauth/authorize`.
 
@@ -58,10 +58,10 @@ Isolated containers for secrets. Each vault has its own HSM key encryption key (
 Key-value pairs stored in vaults, addressed by path (e.g., `api-keys/stripe`). Paths are validated server-side (no `..`, no zero-width/confusable bypass; list prefixes validated). Supports types: generic, password, api_key, certificate, private_key, ssh_key, env. Secrets are versioned. Optional metadata, expiry, and max access count.
 
 ### Environment Variables (v0.51)
-First-class per-key env vars on vaults with Vercel-style environment scoping. Per-vault `env_vars` table stores individual encrypted entries (`DATABASE_URL`, `STRIPE_KEY`, etc.) targeting specific environments (production, preview, development, custom). Org-level shared vars (`org_env_vars`) linked to multiple vaults; vault-level vars with the same key+environment always win. Branch overrides for preview/feature-branch deployments. Sensitive write-only mode (values non-readable after creation for humans; disallowed on Development-only; org setting `env.require_sensitive_prod` forces prod/preview vars sensitive). Resolution endpoint `GET /v1/vaults/{id}/env-vars/resolve?environment=preview&git_branch=feat/x` returns the final KEY=VALUE set with three-tier precedence: shared < vault < branch override. Cloud Runtime injection merges resolved env vars into the container environment at start/rebuild (64KB combined limit; restart required). Vault endpoints: `GET/POST /v1/vaults/{id}/env-vars`, `GET/PATCH/DELETE /v1/vaults/{id}/env-vars/{key}`, `GET/POST /v1/vaults/{id}/environments`, `DELETE /v1/vaults/{id}/environments/{slug}`. Org endpoints: `GET/POST /v1/org/env-vars`, `PATCH /v1/org/env-vars/{key}`, `DELETE /v1/org/env-vars/{id}`, `POST /v1/org/env-vars/{id}/link`, `DELETE /v1/org/env-vars/{id}/links/{vault_id}`. SDK: `client.envVars.list()`, `.create()`, `.get()`, `.update()`, `.delete()`, `.resolve()`. MCP: `resolve_env` tool. CLI: `env ls`, `env add`, `env rm`, `env environments ls|add|rm`, `-e` flag on `pull`/`push`/`run`. Dashboard: Env Variables tab on vault detail, Shared Env Vars in org settings, environment management dialog. Guide: https://docs.1claw.xyz/docs/guides/environment-variables
+First-class per-key env vars on vaults with Vercel-style environment scoping. Per-vault `env_vars` table stores individual encrypted entries (`DATABASE_URL`, `STRIPE_KEY`, etc.) targeting specific environments (production, preview, development, custom). Org-level shared vars (`org_env_vars`) linked to multiple vaults; vault-level vars with the same key+environment always win. Branch overrides for preview/feature-branch deployments. Sensitive write-only mode (values non-readable after creation for humans; disallowed on Development-only; org setting `env.require_sensitive_prod` forces prod/preview vars sensitive). Resolution endpoint `GET /v1/vaults/{id}/env-vars/resolve?environment=preview&git_branch=feat/x` returns the final KEY=VALUE set with three-tier precedence: shared < vault < branch override. Cloud Runtime injection merges resolved env vars into the container environment at start/rebuild (64KB combined limit; restart required). Vault endpoints: `GET/POST /v1/vaults/{id}/env-vars`, `GET/PATCH/DELETE /v1/vaults/{id}/env-vars/{key}`, `GET/POST /v1/vaults/{id}/environments`, `DELETE /v1/vaults/{id}/environments/{slug}`. Org endpoints: `GET/POST /v1/org/env-vars`, `PATCH /v1/org/env-vars/{key}`, `DELETE /v1/org/env-vars/{id}`, `POST /v1/org/env-vars/{id}/link`, `DELETE /v1/org/env-vars/{id}/links/{vault_id}`. SDK: `client.envVars.list()`, `.create()`, `.get()`, `.update()`, `.delete()`, `.resolve()`. MCP: `resolve_env` tool. CLI: `env ls`, `env add`, `env rm`, `env environments ls|add|rm`, `-e` flag on `pull`/`push`/`run`. Dashboard: Env Variables tab on vault detail, Shared Env Vars in org settings, environment management dialog. Guide: https://docs.1claw.co/docs/guides/environment-variables
 
 ### Agent Environment Tagging (v0.52)
-Agents can be tagged with a named environment (`production`, `preview`, `development`, or custom) for policy scoping and env var resolution. Fields on `agents`: `environment`, `environment_locked` (immutable after bootstrap), `env_auto_resolve` (resolve endpoint auto-fills from agent tag), `per_environment_guardrails` (JSONB overrides per environment). JWT includes `environment` claim when set. Policy conditions support `environment_in` array for environment-scoped access. When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` omits the `environment` query param and uses the agent's tag. Org setting `env.enforce_agent_environment_scope` blocks agents from resolving vars outside their tagged environment. CLI: `--environment`, `--environment-locked`, `--env-auto-resolve` on `agent create`; `--environment`, `--environment-locked`, `--env-auto-resolve`, `--per-environment-guardrails` on `agent update`. Dashboard: environment tag selector on agent create/detail pages. Migration 201. Guide: https://docs.1claw.xyz/docs/guides/agent-environment-tagging
+Agents can be tagged with a named environment (`production`, `preview`, `development`, or custom) for policy scoping and env var resolution. Fields on `agents`: `environment`, `environment_locked` (immutable after bootstrap), `env_auto_resolve` (resolve endpoint auto-fills from agent tag), `per_environment_guardrails` (JSONB overrides per environment). JWT includes `environment` claim when set. Policy conditions support `environment_in` array for environment-scoped access. When `env_auto_resolve` is true, `GET /v1/vaults/{id}/env-vars/resolve` omits the `environment` query param and uses the agent's tag. Org setting `env.enforce_agent_environment_scope` blocks agents from resolving vars outside their tagged environment. CLI: `--environment`, `--environment-locked`, `--env-auto-resolve` on `agent create`; `--environment`, `--environment-locked`, `--env-auto-resolve`, `--per-environment-guardrails` on `agent update`. Dashboard: environment tag selector on agent create/detail pages. Migration 201. Guide: https://docs.1claw.co/docs/guides/agent-environment-tagging
 
 ### Guardrail Governance & HFA (v0.56)
 **Guardrail governance:** Convention 6 execution guardrail shadow mode (`enforcement: log|enforce`); audit `guardrail_shadow.would_deny`; `GET /v1/org/guardrail-shadow-report`, `GET /v1/org/guardrail-revisions`, `POST /v1/agents/{id}/guardrails/replay` (dry-run against recent txs). Dashboard: Settings → Security → Guardrails tab. CLI: `1claw guardrails shadow-report|revisions|replay`. SDK: `client.org.getGuardrailShadowReport()`, `.listGuardrailRevisions()`, `client.agents.replayGuardrails()`. MCP: guardrail governance tools.
@@ -113,7 +113,7 @@ Agents can sign and broadcast EVM and non-EVM transactions without seeing privat
 
 Bitcoin testnet/signet uses `tb1q…` addresses. Cardano preprod uses `addr_test1…`. Solana, XRP, and Tron use the same address on all networks. Cardano broadcast requires `BLOCKFROST_PROJECT_ID` env var (free: 50k req/day at blockfrost.io).
 
-**TEE Enforcement (Pro+):** Two agent-level flags lock down signing/execution to hardware enclave only: `intents_require_tee` (rejects transaction/sign requests not routed through `shroud.1claw.xyz` — direct Vault calls get 403) and `execution_require_tee` (rejects execute requests not routed through Shroud, AND blocks all direct secret reads by the agent — forces use of Execution Intents bindings). Both require the base flag (`intents_api_enabled` / `execution_intents_enabled`) to be enabled first. Verification uses HMAC-SHA256 `X-1Claw-TEE-Origin` header set by Shroud (shared `ONECLAW_TEE_ORIGIN_SECRET`). SDK/CLI: `intents_require_tee`, `execution_require_tee` on create/update agent.
+**TEE Enforcement (Pro+):** Two agent-level flags lock down signing/execution to hardware enclave only: `intents_require_tee` (rejects transaction/sign requests not routed through `shroud.1claw.co` — direct Vault calls get 403) and `execution_require_tee` (rejects execute requests not routed through Shroud, AND blocks all direct secret reads by the agent — forces use of Execution Intents bindings). Both require the base flag (`intents_api_enabled` / `execution_intents_enabled`) to be enabled first. Verification uses HMAC-SHA256 `X-1Claw-TEE-Origin` header set by Shroud (shared `ONECLAW_TEE_ORIGIN_SECRET`). SDK/CLI: `intents_require_tee`, `execution_require_tee` on create/update agent.
 
 **Overhead Budget and Transaction Count Limits (v0.41.2):** Three new guardrails protect against non-value drain attacks (ATA rent drain, XRP reserve exhaustion, Tron energy drain, transaction fee storms):
 - `tx_max_per_day` (INTEGER): Daily transaction count cap (UTC calendar day). Prevents high-frequency attacks.
@@ -136,13 +136,13 @@ Unified `POST /v1/agents/{id}/sign` endpoint with `intent_type` dispatch:
 MCP tools: `sign_message` (EIP-191), `sign_typed_data` (EIP-712), `sign_digest` (raw digest). SDK: `client.agents.signIntent(agentId, { intent_type, chain, ... })`.
 
 ### Bankr Dynamic Key Vending
-Partner-key secret engine for short-lived Bankr wallet API keys — **preferred over static `put_secret` for Bankr credentials**. Store `bk_ptr_` server-side (`BANKR_PARTNER_KEY`); Vault issues scoped TTL-bound `bk_usr_` keys. **Deny-by-default:** agents need policy on `agents/{id}/bankr/*` in `__agent-keys`; agent lease responses omit `api_key` (Shroud resolves); MCP `lease_bankr_key` never returns the key in tool output. Recommend TTL 5–15 min; agent default 15 min; max 24h. Endpoints: `POST/GET/DELETE /v1/agents/{id}/bankr-keys/*`. SDK/CLI/MCP as above. Guide: https://docs.1claw.xyz/docs/agents/bankr-keys
+Partner-key secret engine for short-lived Bankr wallet API keys — **preferred over static `put_secret` for Bankr credentials**. Store `bk_ptr_` server-side (`BANKR_PARTNER_KEY`); Vault issues scoped TTL-bound `bk_usr_` keys. **Deny-by-default:** agents need policy on `agents/{id}/bankr/*` in `__agent-keys`; agent lease responses omit `api_key` (Shroud resolves); MCP `lease_bankr_key` never returns the key in tool output. Recommend TTL 5–15 min; agent default 15 min; max 24h. Endpoints: `POST/GET/DELETE /v1/agents/{id}/bankr-keys/*`. SDK/CLI/MCP as above. Guide: https://docs.1claw.co/docs/agents/bankr-keys
 
 ### Payment Card Vault (x402 Card Ordering — Laso)
 Agents can order prepaid and gift cards through 1Claw and never see the card number (PAN) or CVV by default. Ordering is paid with an **outbound x402 payment** the Vault constructs and signs using the agent's own Ethereum signing key (`agents/{id}/chains/ethereum/private_key`), which must hold USDC on Base. **PCI posture — reference mode:** for Laso cards only the Laso `card_id` and an encrypted Laso refresh token are stored; PAN/CVV are fetched just-in-time from Laso at reveal and never persisted. Manually imported cards use full encrypted storage (CVV honors one-time-read / 410-Gone semantics).
 
 - **Ordering guardrails (per-agent, human-set):** `cards_enabled`, `card_max_order_usd`, `card_daily_limit_usd` (enforced atomically over a rolling 24h window), `card_payto_allowlist` (allowed x402 recipients; empty = built-in Laso Base recipients), `card_reveal_enabled` (whether agents may reveal subject to per-card policy), **`card_require_approval`** (default **true** — when on, orders return **202** with `status: awaiting_approval` until a human approves). Available on all tiers. Free tier defaults: $25/order, $25/day, 5 cards/month. Pro: 50/mo. Team: 200/mo. Business/Enterprise: unlimited. A **3% platform fee** per order is debited from prepaid credits (best-effort). These bound the **purchase**, not how a revealed card is later spent.
-- **Human-in-the-loop approval:** When `card_require_approval` is true, `POST /v1/agents/{id}/cards/order` creates a pending approval (`action: card_order`) and a card row in `awaiting_approval` — **no x402 payment until approved**. Humans can approve via **dashboard** (`/approvals`), **mobile app** (push + risk-tier step-up), or **email one-click** (`GET /v1/approvals/quick-decide?token=...&decision=approved|rejected`, proxied at `https://1claw.xyz/api/approvals/quick-decide`). Risk tiers: T1 (≤$25), T2 ($25–$100, biometric/re-auth), T3 (>$100, TOTP + slide). Rejecting marks the card `rejected`. Webhooks: `approval.created`, `approval.decided`, `card.rejected`.
+- **Human-in-the-loop approval:** When `card_require_approval` is true, `POST /v1/agents/{id}/cards/order` creates a pending approval (`action: card_order`) and a card row in `awaiting_approval` — **no x402 payment until approved**. Humans can approve via **dashboard** (`/approvals`), **mobile app** (push + risk-tier step-up), or **email one-click** (`GET /v1/approvals/quick-decide?token=...&decision=approved|rejected`, proxied at `https://1claw.co/api/approvals/quick-decide`). Risk tiers: T1 (≤$25), T2 ($25–$100, biometric/re-auth), T3 (>$100, TOTP + slide). Rejecting marks the card `rejected`. Webhooks: `approval.created`, `approval.decided`, `card.rejected`.
 - **x402 client validation** (the payment security boundary): before signing an EIP-3009 `TransferWithAuthorization`, the Vault validates the 402 challenge — `payTo` in the allowlist, `network == eip155:8453` (Base), `maxAmountRequired` equals the requested USDC amount, and `asset` equals the pinned Base USDC contract (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`). The stored Laso bearer token may only ever reach a hardcoded card-endpoint path allowlist — never `/withdraw` or `/send-payment`.
 - **Order pipeline:** `POST /v1/agents/{id}/cards/order` (`{ kind, amount_usd, laso_server_id?, country? }`, **`Idempotency-Key` required**) returns **202** with `awaiting_approval` when `card_require_approval` is true, or journals payment immediately when false. On approval, x402 payment runs and status becomes `pending`; `card_monitor` (15s, advisory-lock leader election) polls Laso, fills `last4`/expiry/balance, stores gift-card redemption payloads as `gift_card` secrets, fires webhooks, auto-voids past `void_after`, and flags `ordering`-stuck rows as `orphaned_payment` for reconciliation.
 - **Reveal (hybrid access):** `POST /v1/cards/{id}/reveal` — humans re-authenticate with `X-Auth-Confirm` (account password, **`rat_` re-auth token** from `POST /v1/auth/reauth/begin` + `complete` with method `password`, `passkey`, or **`totp`**; social-login users without a password should set up passkey/TOTP at `/settings/security`); agents get 403 unless a human enabled a per-card `reveal_policy` (single-use, TTL, audit-logged). Every reveal is audit-logged and returns a **post-reveal disclaimer**.
@@ -278,7 +278,7 @@ Per-agent configuration: each agent has `shroud_enabled` (boolean) and `shroud_c
 
 ## API (OpenAPI 3.1)
 
-Base URL: `https://api.1claw.xyz`
+Base URL: `https://api.1claw.co`
 
 Key endpoints:
 - `POST /v1/auth/token` — Login
@@ -473,7 +473,7 @@ Full spec: https://www.npmjs.com/package/@1claw/openapi-spec
 Event-driven notifications for wallet, proposal, transaction, policy, and signing key events. Webhook delivery is wired end-to-end: `dispatch_event()` calls in treasury_wallets, policies, signing_keys, transactions, and treasury_proposals handlers feed a background worker (`process_pending_deliveries`, every 5s). 12 event types: `wallet.transfer.sent`, `wallet.transfer.received`, `proposal.created/signed/executed/cancelled`, `agent.transaction.broadcast/signed`, `signing_key.rotated`, `policy.created/updated/deleted`. Deliveries use HMAC-SHA256 signatures with 5 retries and exponential backoff. Endpoints: `POST/GET /v1/webhooks` (create/list), `GET/PATCH/DELETE /v1/webhooks/{id}` (manage individual registrations).
 
 ### Live Demo
-Interactive demo at https://1claw.xyz/demo — three panels (Vault, Shroud, Intents) with preset buttons, no signup required.
+Interactive demo at https://1claw.co/demo — three panels (Vault, Shroud, Intents) with preset buttons, no signup required.
 
 ### .env Import
 Vault detail page supports bulk secret creation from pasted `.env` file content.
@@ -493,7 +493,7 @@ Dashboard marketing page at `/embedded-wallets` — showcases embedded wallet ca
 ### Agent self-enrolls (API/CLI/SDK)
 1. `POST /v1/agents/enroll` with `{ name, human_email }` — no auth needed
 2. `npx @1claw/cli agent enroll my-agent --email alice@example.com`
-3. `AgentsResource.enroll("https://api.1claw.xyz", { name, human_email })`
+3. `AgentsResource.enroll("https://api.1claw.co", { name, human_email })`
 4. Human receives credentials by email, creates policies in dashboard
 5. Agent exchanges API key for JWT, reads/writes secrets, shares back to human
 
@@ -512,7 +512,7 @@ Dashboard marketing page at `/embedded-wallets` — showcases embedded wallet ca
 }
 ```
 
-Only `ONECLAW_AGENT_API_KEY` is required. Agent ID and vault are auto-discovered from the token exchange response. Optional overrides: `ONECLAW_AGENT_ID` (explicit agent), `ONECLAW_VAULT_ID` (explicit vault), `ONECLAW_BASE_URL` (default: https://api.1claw.xyz).
+Only `ONECLAW_AGENT_API_KEY` is required. Agent ID and vault are auto-discovered from the token exchange response. Optional overrides: `ONECLAW_AGENT_ID` (explicit agent), `ONECLAW_VAULT_ID` (explicit vault), `ONECLAW_BASE_URL` (default: https://api.1claw.co).
 
 Note: Key-only auth requires agents created or key-rotated after the prefix feature was deployed. Older agents should provide `ONECLAW_AGENT_ID` or rotate their key.
 
@@ -570,7 +570,7 @@ Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit
 
 ## MCP Tools (for AI agents)
 
-The MCP server at mcp.1claw.xyz provides **67 tools** (plus `vault://secrets` resource):
+The MCP server at mcp.1claw.co provides **67 tools** (plus `vault://secrets` resource):
 - list_secrets, get_secret, put_secret, delete_secret, describe_secret
 - rotate_and_store, rotate_generate, get_env_bundle, list_versions
 - create_vault, list_vaults, grant_access, share_secret
@@ -612,208 +612,208 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 172 doc pages on docs.1claw.xyz. Full content: https://docs.1claw.xyz/llms-full.txt
+Complete index of 172 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
-- [Introduction](https://docs.1claw.xyz/docs/intro)
+- [Introduction](https://docs.1claw.co/docs/intro)
 
 ### Quickstart (3)
 
-- [Quickstart for agents](https://docs.1claw.xyz/docs/quickstart/agents)
-- [Quickstart for humans](https://docs.1claw.xyz/docs/quickstart/humans)
-- [Quickstart](https://docs.1claw.xyz/docs/quickstart)
+- [Quickstart for agents](https://docs.1claw.co/docs/quickstart/agents)
+- [Quickstart for humans](https://docs.1claw.co/docs/quickstart/humans)
+- [Quickstart](https://docs.1claw.co/docs/quickstart)
 
 ### Concepts (7)
 
-- [HSM architecture](https://docs.1claw.xyz/docs/concepts/hsm-architecture)
-- [Human vs Agent API](https://docs.1claw.xyz/docs/concepts/human-vs-agent-api)
-- [Licensing](https://docs.1claw.xyz/docs/concepts/licensing)
-- [Parts of 1claw](https://docs.1claw.xyz/docs/concepts/parts-of-1claw)
-- [Secrets model](https://docs.1claw.xyz/docs/concepts/secrets-model)
-- [Trust model](https://docs.1claw.xyz/docs/concepts/trust-model)
-- [What is 1claw?](https://docs.1claw.xyz/docs/concepts/what-is-1claw)
+- [HSM architecture](https://docs.1claw.co/docs/concepts/hsm-architecture)
+- [Human vs Agent API](https://docs.1claw.co/docs/concepts/human-vs-agent-api)
+- [Licensing](https://docs.1claw.co/docs/concepts/licensing)
+- [Parts of 1claw](https://docs.1claw.co/docs/concepts/parts-of-1claw)
+- [Secrets model](https://docs.1claw.co/docs/concepts/secrets-model)
+- [Trust model](https://docs.1claw.co/docs/concepts/trust-model)
+- [What is 1claw?](https://docs.1claw.co/docs/concepts/what-is-1claw)
 
 ### Guides (25)
 
-- [Agent Environment Tagging](https://docs.1claw.xyz/docs/guides/agent-environment-tagging)
-- [Audit and compliance](https://docs.1claw.xyz/docs/guides/audit-and-compliance)
-- [Billing & Usage](https://docs.1claw.xyz/docs/guides/billing-and-usage)
-- [Deploying Updates](https://docs.1claw.xyz/docs/guides/deploying-updates)
-- [Email Notifications](https://docs.1claw.xyz/docs/guides/email-notifications)
-- [Advanced Embedded Wallet Features](https://docs.1claw.xyz/docs/guides/embedded-wallets/advanced)
-- [Embedded Wallet Authentication](https://docs.1claw.xyz/docs/guides/embedded-wallets/authentication)
-- [Fiat On and Off Ramps](https://docs.1claw.xyz/docs/guides/embedded-wallets/fiat-ramps)
-- [Getting Started with Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/getting-started)
-- [Multi-Chain Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/multi-chain-wallets)
-- [Embedded Wallets Overview](https://docs.1claw.xyz/docs/guides/embedded-wallets/overview)
-- [Platform API for Embedded Wallets](https://docs.1claw.xyz/docs/guides/embedded-wallets/platform-api)
-- [React Integration](https://docs.1claw.xyz/docs/guides/embedded-wallets/react-integration)
-- [Security and Custody](https://docs.1claw.xyz/docs/guides/embedded-wallets/security-and-custody)
-- [Send, Swap, and Receive](https://docs.1claw.xyz/docs/guides/embedded-wallets/send-swap-receive)
-- [Wallet Spend Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/spend-policies)
-- [Testing and Production](https://docs.1claw.xyz/docs/guides/embedded-wallets/testing-production)
-- [Wallet Access Policies](https://docs.1claw.xyz/docs/guides/embedded-wallets/wallet-access-policies)
-- [Environment Variables](https://docs.1claw.xyz/docs/guides/environment-variables)
-- [5-minute walkthrough: vault, key, transaction](https://docs.1claw.xyz/docs/guides/five-minute-walkthrough)
-- [Policy Engine v2](https://docs.1claw.xyz/docs/guides/policy-engine-v2)
-- [Principal-Type Audit](https://docs.1claw.xyz/docs/guides/principal-type-audit)
-- [Setup by client](https://docs.1claw.xyz/docs/guides/setup-by-client)
-- [Troubleshooting](https://docs.1claw.xyz/docs/guides/troubleshooting)
-- [x402 Micropayments](https://docs.1claw.xyz/docs/guides/x402)
+- [Agent Environment Tagging](https://docs.1claw.co/docs/guides/agent-environment-tagging)
+- [Audit and compliance](https://docs.1claw.co/docs/guides/audit-and-compliance)
+- [Billing & Usage](https://docs.1claw.co/docs/guides/billing-and-usage)
+- [Deploying Updates](https://docs.1claw.co/docs/guides/deploying-updates)
+- [Email Notifications](https://docs.1claw.co/docs/guides/email-notifications)
+- [Advanced Embedded Wallet Features](https://docs.1claw.co/docs/guides/embedded-wallets/advanced)
+- [Embedded Wallet Authentication](https://docs.1claw.co/docs/guides/embedded-wallets/authentication)
+- [Fiat On and Off Ramps](https://docs.1claw.co/docs/guides/embedded-wallets/fiat-ramps)
+- [Getting Started with Embedded Wallets](https://docs.1claw.co/docs/guides/embedded-wallets/getting-started)
+- [Multi-Chain Embedded Wallets](https://docs.1claw.co/docs/guides/embedded-wallets/multi-chain-wallets)
+- [Embedded Wallets Overview](https://docs.1claw.co/docs/guides/embedded-wallets/overview)
+- [Platform API for Embedded Wallets](https://docs.1claw.co/docs/guides/embedded-wallets/platform-api)
+- [React Integration](https://docs.1claw.co/docs/guides/embedded-wallets/react-integration)
+- [Security and Custody](https://docs.1claw.co/docs/guides/embedded-wallets/security-and-custody)
+- [Send, Swap, and Receive](https://docs.1claw.co/docs/guides/embedded-wallets/send-swap-receive)
+- [Wallet Spend Policies](https://docs.1claw.co/docs/guides/embedded-wallets/spend-policies)
+- [Testing and Production](https://docs.1claw.co/docs/guides/embedded-wallets/testing-production)
+- [Wallet Access Policies](https://docs.1claw.co/docs/guides/embedded-wallets/wallet-access-policies)
+- [Environment Variables](https://docs.1claw.co/docs/guides/environment-variables)
+- [5-minute walkthrough: vault, key, transaction](https://docs.1claw.co/docs/guides/five-minute-walkthrough)
+- [Policy Engine v2](https://docs.1claw.co/docs/guides/policy-engine-v2)
+- [Principal-Type Audit](https://docs.1claw.co/docs/guides/principal-type-audit)
+- [Setup by client](https://docs.1claw.co/docs/guides/setup-by-client)
+- [Troubleshooting](https://docs.1claw.co/docs/guides/troubleshooting)
+- [x402 Micropayments](https://docs.1claw.co/docs/guides/x402)
 
 ### SDKs (5)
 
-- [curl examples](https://docs.1claw.xyz/docs/sdks/curl-examples)
-- [Go SDK](https://docs.1claw.xyz/docs/sdks/go)
-- [JavaScript / TypeScript SDK](https://docs.1claw.xyz/docs/sdks/javascript)
-- [SDKs overview](https://docs.1claw.xyz/docs/sdks/overview)
-- [Python SDK](https://docs.1claw.xyz/docs/sdks/python)
+- [curl examples](https://docs.1claw.co/docs/sdks/curl-examples)
+- [Go SDK](https://docs.1claw.co/docs/sdks/go)
+- [JavaScript / TypeScript SDK](https://docs.1claw.co/docs/sdks/javascript)
+- [SDKs overview](https://docs.1claw.co/docs/sdks/overview)
+- [Python SDK](https://docs.1claw.co/docs/sdks/python)
 
 ### Security (13)
 
-- [Agent keys](https://docs.1claw.xyz/docs/security/agent-keys)
-- [Audit Hash Chain Verification](https://docs.1claw.xyz/docs/security/audit-verification)
-- [Compliance](https://docs.1claw.xyz/docs/security/compliance)
-- [HSM overview](https://docs.1claw.xyz/docs/security/hsm-overview)
-- [Human Factor Auth (HFA)](https://docs.1claw.xyz/docs/security/human-factor-auth)
-- [Key hierarchy](https://docs.1claw.xyz/docs/security/key-hierarchy)
-- [Policy Schema Versioning](https://docs.1claw.xyz/docs/security/policy-versioning)
-- [1Claw Security Overview](https://docs.1claw.xyz/docs/security/security-overview)
-- [Trust Model Comparison: 1Claw vs Signing-Only Infrastructure](https://docs.1claw.xyz/docs/security/trust-model-comparison)
-- [Two-factor authentication](https://docs.1claw.xyz/docs/security/two-factor-auth)
-- [1Claw Security Architecture Whitepaper](https://docs.1claw.xyz/docs/security/whitepaper)
-- [Why 1Claw for Embedded Wallets](https://docs.1claw.xyz/docs/security/why-1claw-embedded-wallets)
-- [Zero trust](https://docs.1claw.xyz/docs/security/zero-trust)
+- [Agent keys](https://docs.1claw.co/docs/security/agent-keys)
+- [Audit Hash Chain Verification](https://docs.1claw.co/docs/security/audit-verification)
+- [Compliance](https://docs.1claw.co/docs/security/compliance)
+- [HSM overview](https://docs.1claw.co/docs/security/hsm-overview)
+- [Human Factor Auth (HFA)](https://docs.1claw.co/docs/security/human-factor-auth)
+- [Key hierarchy](https://docs.1claw.co/docs/security/key-hierarchy)
+- [Policy Schema Versioning](https://docs.1claw.co/docs/security/policy-versioning)
+- [1Claw Security Overview](https://docs.1claw.co/docs/security/security-overview)
+- [Trust Model Comparison: 1Claw vs Signing-Only Infrastructure](https://docs.1claw.co/docs/security/trust-model-comparison)
+- [Two-factor authentication](https://docs.1claw.co/docs/security/two-factor-auth)
+- [1Claw Security Architecture Whitepaper](https://docs.1claw.co/docs/security/whitepaper)
+- [Why 1Claw for Embedded Wallets](https://docs.1claw.co/docs/security/why-1claw-embedded-wallets)
+- [Zero trust](https://docs.1claw.co/docs/security/zero-trust)
 
 ### Reference (9)
 
-- [API & MCP Testing](https://docs.1claw.xyz/docs/reference/api-mcp-testing)
-- [API reference](https://docs.1claw.xyz/docs/reference/api-reference)
-- [Changelog 2026](https://docs.1claw.xyz/docs/reference/changelog-2026)
-- [Changelog](https://docs.1claw.xyz/docs/reference/changelog)
-- [Error codes](https://docs.1claw.xyz/docs/reference/error-codes)
-- [Glossary](https://docs.1claw.xyz/docs/reference/glossary)
-- [Rate limits](https://docs.1claw.xyz/docs/reference/rate-limits)
-- [Request pipeline](https://docs.1claw.xyz/docs/reference/request-pipeline)
-- [Shroud supported models](https://docs.1claw.xyz/docs/reference/shroud-supported-models)
+- [API & MCP Testing](https://docs.1claw.co/docs/reference/api-mcp-testing)
+- [API reference](https://docs.1claw.co/docs/reference/api-reference)
+- [Changelog 2026](https://docs.1claw.co/docs/reference/changelog-2026)
+- [Changelog](https://docs.1claw.co/docs/reference/changelog)
+- [Error codes](https://docs.1claw.co/docs/reference/error-codes)
+- [Glossary](https://docs.1claw.co/docs/reference/glossary)
+- [Rate limits](https://docs.1claw.co/docs/reference/rate-limits)
+- [Request pipeline](https://docs.1claw.co/docs/reference/request-pipeline)
+- [Shroud supported models](https://docs.1claw.co/docs/reference/shroud-supported-models)
 
 ### Integrations (27)
 
-- [Agent discovery & machine-readable metadata](https://docs.1claw.xyz/docs/integrations/agent-discovery)
-- [Agent frameworks (Eliza, GOAT, LangChain, CrewAI)](https://docs.1claw.xyz/docs/integrations/agent-frameworks)
-- [Add an agent template](https://docs.1claw.xyz/docs/integrations/agent-templates)
-- [Vercel AI SDK and OpenAI Agents SDK](https://docs.1claw.xyz/docs/integrations/ai-sdk-integration)
-- [Base MCP, Secured](https://docs.1claw.xyz/docs/integrations/base-mcp-secure)
-- [Setup 1claw with Claude Code](https://docs.1claw.xyz/docs/integrations/claude-code)
-- [CLI](https://docs.1claw.xyz/docs/integrations/cli)
-- [Coinbase Wallet and Smart Wallet](https://docs.1claw.xyz/docs/integrations/coinbase-smart-wallet)
-- [CrewAI integration](https://docs.1claw.xyz/docs/integrations/crewai)
-- [Ecosystem & Integrations](https://docs.1claw.xyz/docs/integrations/ecosystem)
-- [elizaOS plugin](https://docs.1claw.xyz/docs/integrations/elizaos)
-- [Fireblocks integration](https://docs.1claw.xyz/docs/integrations/fireblocks)
-- [GitHub Action](https://docs.1claw.xyz/docs/integrations/github-action)
-- [LangChain integration](https://docs.1claw.xyz/docs/integrations/langchain)
-- [Magic integration](https://docs.1claw.xyz/docs/integrations/magic)
-- [MCP for AI coding tools](https://docs.1claw.xyz/docs/integrations/mcp-deep-dive)
-- [MCP integration](https://docs.1claw.xyz/docs/integrations/mcp-integration)
-- [Migrate from Dynamic](https://docs.1claw.xyz/docs/integrations/migrate-from-dynamic)
-- [Migrate from Privy](https://docs.1claw.xyz/docs/integrations/migrate-from-privy)
-- [Migrate From Turnkey to 1Claw](https://docs.1claw.xyz/docs/integrations/migrate-from-turnkey)
-- [1claw OpenClaw Plugin](https://docs.1claw.xyz/docs/integrations/openclaw-plugin)
-- [Using 1claw with OpenClaw](https://docs.1claw.xyz/docs/integrations/openclaw)
-- [Integrations overview](https://docs.1claw.xyz/docs/integrations/overview)
-- [Scaffold-Agent](https://docs.1claw.xyz/docs/integrations/scaffold-agent)
-- [Thirdweb integration](https://docs.1claw.xyz/docs/integrations/thirdweb)
-- [wagmi + RainbowKit integration](https://docs.1claw.xyz/docs/integrations/wagmi-rainbowkit)
-- [Web3Auth integration](https://docs.1claw.xyz/docs/integrations/web3auth)
+- [Agent discovery & machine-readable metadata](https://docs.1claw.co/docs/integrations/agent-discovery)
+- [Agent frameworks (Eliza, GOAT, LangChain, CrewAI)](https://docs.1claw.co/docs/integrations/agent-frameworks)
+- [Add an agent template](https://docs.1claw.co/docs/integrations/agent-templates)
+- [Vercel AI SDK and OpenAI Agents SDK](https://docs.1claw.co/docs/integrations/ai-sdk-integration)
+- [Base MCP, Secured](https://docs.1claw.co/docs/integrations/base-mcp-secure)
+- [Setup 1claw with Claude Code](https://docs.1claw.co/docs/integrations/claude-code)
+- [CLI](https://docs.1claw.co/docs/integrations/cli)
+- [Coinbase Wallet and Smart Wallet](https://docs.1claw.co/docs/integrations/coinbase-smart-wallet)
+- [CrewAI integration](https://docs.1claw.co/docs/integrations/crewai)
+- [Ecosystem & Integrations](https://docs.1claw.co/docs/integrations/ecosystem)
+- [elizaOS plugin](https://docs.1claw.co/docs/integrations/elizaos)
+- [Fireblocks integration](https://docs.1claw.co/docs/integrations/fireblocks)
+- [GitHub Action](https://docs.1claw.co/docs/integrations/github-action)
+- [LangChain integration](https://docs.1claw.co/docs/integrations/langchain)
+- [Magic integration](https://docs.1claw.co/docs/integrations/magic)
+- [MCP for AI coding tools](https://docs.1claw.co/docs/integrations/mcp-deep-dive)
+- [MCP integration](https://docs.1claw.co/docs/integrations/mcp-integration)
+- [Migrate from Dynamic](https://docs.1claw.co/docs/integrations/migrate-from-dynamic)
+- [Migrate from Privy](https://docs.1claw.co/docs/integrations/migrate-from-privy)
+- [Migrate From Turnkey to 1Claw](https://docs.1claw.co/docs/integrations/migrate-from-turnkey)
+- [1claw OpenClaw Plugin](https://docs.1claw.co/docs/integrations/openclaw-plugin)
+- [Using 1claw with OpenClaw](https://docs.1claw.co/docs/integrations/openclaw)
+- [Integrations overview](https://docs.1claw.co/docs/integrations/overview)
+- [Scaffold-Agent](https://docs.1claw.co/docs/integrations/scaffold-agent)
+- [Thirdweb integration](https://docs.1claw.co/docs/integrations/thirdweb)
+- [wagmi + RainbowKit integration](https://docs.1claw.co/docs/integrations/wagmi-rainbowkit)
+- [Web3Auth integration](https://docs.1claw.co/docs/integrations/web3auth)
 
 ### Treasury Policy (11)
 
-- [Account Abstraction (ERC-4337)](https://docs.1claw.xyz/docs/treasury/account-abstraction)
-- [Human-in-the-loop approvals](https://docs.1claw.xyz/docs/treasury/approvals)
-- [Embedded Wallets — 2-Minute Quickstart](https://docs.1claw.xyz/docs/treasury/embedded-wallets)
-- [Treasury Wallets](https://docs.1claw.xyz/docs/treasury/overview)
-- [Policy Engine — Cedar, OPA & Consensus](https://docs.1claw.xyz/docs/treasury/policy-engine)
-- [Policy cookbooks](https://docs.1claw.xyz/docs/treasury/policy-examples)
-- [Policy language](https://docs.1claw.xyz/docs/treasury/policy-language)
-- [Safe (Gnosis Safe) integration](https://docs.1claw.xyz/docs/treasury/safe-multisig)
-- [Treasury Spend Policies](https://docs.1claw.xyz/docs/treasury/spend-policies)
-- [Wallet Access Policies](https://docs.1claw.xyz/docs/treasury/wallet-access-policies)
-- [@1claw/wallet-react](https://docs.1claw.xyz/docs/treasury/wallet-react)
+- [Account Abstraction (ERC-4337)](https://docs.1claw.co/docs/treasury/account-abstraction)
+- [Human-in-the-loop approvals](https://docs.1claw.co/docs/treasury/approvals)
+- [Embedded Wallets — 2-Minute Quickstart](https://docs.1claw.co/docs/treasury/embedded-wallets)
+- [Treasury Wallets](https://docs.1claw.co/docs/treasury/overview)
+- [Policy Engine — Cedar, OPA & Consensus](https://docs.1claw.co/docs/treasury/policy-engine)
+- [Policy cookbooks](https://docs.1claw.co/docs/treasury/policy-examples)
+- [Policy language](https://docs.1claw.co/docs/treasury/policy-language)
+- [Safe (Gnosis Safe) integration](https://docs.1claw.co/docs/treasury/safe-multisig)
+- [Treasury Spend Policies](https://docs.1claw.co/docs/treasury/spend-policies)
+- [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
+- [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
 ### Other (71)
 
-- [Audit log (agents)](https://docs.1claw.xyz/docs/agents/api/audit-log)
-- [Agent authentication](https://docs.1claw.xyz/docs/agents/api/authentication)
-- [Agent API errors](https://docs.1claw.xyz/docs/agents/api/errors)
-- [Fetch a secret](https://docs.1claw.xyz/docs/agents/api/fetch-secret)
-- [List accessible secrets](https://docs.1claw.xyz/docs/agents/api/list-accessible-secrets)
-- [Agent API overview](https://docs.1claw.xyz/docs/agents/api/overview)
-- [Bankr Key Vending](https://docs.1claw.xyz/docs/agents/bankr-keys)
-- [Messaging Channels](https://docs.1claw.xyz/docs/agents/channels)
-- [Agent Communication — Chat & Channels](https://docs.1claw.xyz/docs/agents/communication)
-- [Agent-to-Agent Delegation](https://docs.1claw.xyz/docs/agents/delegation)
-- [Agent Discovery](https://docs.1claw.xyz/docs/agents/discovery)
-- [Managing Agent Fleets](https://docs.1claw.xyz/docs/agents/fleet-management)
-- [Guardrail governance](https://docs.1claw.xyz/docs/agents/guardrail-governance)
-- [Crypto Transaction Proxy (moved)](https://docs.1claw.xyz/docs/agents/intents/crypto-proxy-legacy)
-- [Intents API — Guardrails & Security](https://docs.1claw.xyz/docs/agents/intents/guardrails)
-- [Multi-Chain Signing](https://docs.1claw.xyz/docs/agents/intents/multi-chain-signing)
-- [Intents API](https://docs.1claw.xyz/docs/agents/intents/overview)
-- [Intents API — Signing](https://docs.1claw.xyz/docs/agents/intents/signing)
-- [Agent Memory](https://docs.1claw.xyz/docs/agents/memory)
-- [OIDC federation — use 1claw as an IdP for Anthropic WIF](https://docs.1claw.xyz/docs/agents/oidc-federation)
-- [Agents overview](https://docs.1claw.xyz/docs/agents/overview)
-- [Agent Safe accounts (Phase 5)](https://docs.1claw.xyz/docs/agents/safe-accounts)
-- [Agent Self-Onboarding](https://docs.1claw.xyz/docs/agents/self-enrollment)
-- [Shroud Configuration & Operations](https://docs.1claw.xyz/docs/agents/shroud/configuration)
-- [IDE & tool setup (Shroud proxy)](https://docs.1claw.xyz/docs/agents/shroud/ide-setup)
-- [Shroud](https://docs.1claw.xyz/docs/agents/shroud/overview)
-- [Shroud Threat Detection](https://docs.1claw.xyz/docs/agents/shroud/threat-detection)
-- [Automations](https://docs.1claw.xyz/docs/automations/overview)
-- [Payment Cards](https://docs.1claw.xyz/docs/cards/overview)
-- [Agents & policies](https://docs.1claw.xyz/docs/dashboard/agents-policies)
-- [Dashboard overview](https://docs.1claw.xyz/docs/dashboard/overview)
-- [Platform wizard](https://docs.1claw.xyz/docs/dashboard/platform-wizard)
-- [Settings & billing](https://docs.1claw.xyz/docs/dashboard/settings-billing)
-- [Treasury & cards](https://docs.1claw.xyz/docs/dashboard/treasury-cards)
-- [Vaults & secrets](https://docs.1claw.xyz/docs/dashboard/vaults-secrets)
-- [Platform API (multi-tenant)](https://docs.1claw.xyz/docs/platform-api/multi-tenant)
-- [OAuth Connected Accounts](https://docs.1claw.xyz/docs/platform-api/oauth-connections)
-- [Platform API](https://docs.1claw.xyz/docs/platform-api/overview)
-- [Webhooks](https://docs.1claw.xyz/docs/platform-api/webhooks)
-- [Risk Engine](https://docs.1claw.xyz/docs/risk-engine/overview)
-- [Runtime Hosting](https://docs.1claw.xyz/docs/runtimes/hosting)
-- [Cloud Runtimes](https://docs.1claw.xyz/docs/runtimes/overview)
-- [Sharing Secrets](https://docs.1claw.xyz/docs/sharing/overview)
-- [Customer-Managed Encryption Keys (CMEK)](https://docs.1claw.xyz/docs/vaults/cmek)
-- [Give an agent access](https://docs.1claw.xyz/docs/vaults/golden-path)
-- [Deactivate agent / Rotate key](https://docs.1claw.xyz/docs/vaults/human-api/agents/deactivate-agent)
-- [List agents](https://docs.1claw.xyz/docs/vaults/human-api/agents/list-agents)
-- [Register an agent](https://docs.1claw.xyz/docs/vaults/human-api/agents/register-agent)
-- [Authentication](https://docs.1claw.xyz/docs/vaults/human-api/authentication)
-- [Human API errors](https://docs.1claw.xyz/docs/vaults/human-api/errors)
-- [Create a policy (grant)](https://docs.1claw.xyz/docs/vaults/human-api/grants/create-grant)
-- [List policies (grants)](https://docs.1claw.xyz/docs/vaults/human-api/grants/list-grants)
-- [Revoke a policy (grant)](https://docs.1claw.xyz/docs/vaults/human-api/grants/revoke-grant)
-- [Human API overview](https://docs.1claw.xyz/docs/vaults/human-api/overview)
-- [Create or update a secret](https://docs.1claw.xyz/docs/vaults/human-api/secrets/create)
-- [Delete a secret](https://docs.1claw.xyz/docs/vaults/human-api/secrets/delete)
-- [Read a secret](https://docs.1claw.xyz/docs/vaults/human-api/secrets/read)
-- [Rotate a secret](https://docs.1claw.xyz/docs/vaults/human-api/secrets/rotate)
-- [Update a secret (new version)](https://docs.1claw.xyz/docs/vaults/human-api/secrets/update)
-- [MCP Deployment](https://docs.1claw.xyz/docs/vaults/mcp/deployment)
-- [MCP Server Overview](https://docs.1claw.xyz/docs/vaults/mcp/overview)
-- [MCP Security](https://docs.1claw.xyz/docs/vaults/mcp/security)
-- [MCP Setup Guide](https://docs.1claw.xyz/docs/vaults/mcp/setup)
-- [MCP Tool Reference](https://docs.1claw.xyz/docs/vaults/mcp/tools)
-- [Multi-Party Computation (MPC)](https://docs.1claw.xyz/docs/vaults/mpc)
-- [Vaults overview](https://docs.1claw.xyz/docs/vaults/overview)
-- [Revoking access](https://docs.1claw.xyz/docs/vaults/revoking-access)
-- [Rotating secrets](https://docs.1claw.xyz/docs/vaults/rotating-secrets)
-- [Secret rotation and bindings](https://docs.1claw.xyz/docs/vaults/rotation-bindings)
-- [Scoped permissions](https://docs.1claw.xyz/docs/vaults/scoped-permissions)
-- [Securing Agent Access](https://docs.1claw.xyz/docs/vaults/securing-access)
+- [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
+- [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
+- [Agent API errors](https://docs.1claw.co/docs/agents/api/errors)
+- [Fetch a secret](https://docs.1claw.co/docs/agents/api/fetch-secret)
+- [List accessible secrets](https://docs.1claw.co/docs/agents/api/list-accessible-secrets)
+- [Agent API overview](https://docs.1claw.co/docs/agents/api/overview)
+- [Bankr Key Vending](https://docs.1claw.co/docs/agents/bankr-keys)
+- [Messaging Channels](https://docs.1claw.co/docs/agents/channels)
+- [Agent Communication — Chat & Channels](https://docs.1claw.co/docs/agents/communication)
+- [Agent-to-Agent Delegation](https://docs.1claw.co/docs/agents/delegation)
+- [Agent Discovery](https://docs.1claw.co/docs/agents/discovery)
+- [Managing Agent Fleets](https://docs.1claw.co/docs/agents/fleet-management)
+- [Guardrail governance](https://docs.1claw.co/docs/agents/guardrail-governance)
+- [Crypto Transaction Proxy (moved)](https://docs.1claw.co/docs/agents/intents/crypto-proxy-legacy)
+- [Intents API — Guardrails & Security](https://docs.1claw.co/docs/agents/intents/guardrails)
+- [Multi-Chain Signing](https://docs.1claw.co/docs/agents/intents/multi-chain-signing)
+- [Intents API](https://docs.1claw.co/docs/agents/intents/overview)
+- [Intents API — Signing](https://docs.1claw.co/docs/agents/intents/signing)
+- [Agent Memory](https://docs.1claw.co/docs/agents/memory)
+- [OIDC federation — use 1claw as an IdP for Anthropic WIF](https://docs.1claw.co/docs/agents/oidc-federation)
+- [Agents overview](https://docs.1claw.co/docs/agents/overview)
+- [Agent Safe accounts (Phase 5)](https://docs.1claw.co/docs/agents/safe-accounts)
+- [Agent Self-Onboarding](https://docs.1claw.co/docs/agents/self-enrollment)
+- [Shroud Configuration & Operations](https://docs.1claw.co/docs/agents/shroud/configuration)
+- [IDE & tool setup (Shroud proxy)](https://docs.1claw.co/docs/agents/shroud/ide-setup)
+- [Shroud](https://docs.1claw.co/docs/agents/shroud/overview)
+- [Shroud Threat Detection](https://docs.1claw.co/docs/agents/shroud/threat-detection)
+- [Automations](https://docs.1claw.co/docs/automations/overview)
+- [Payment Cards](https://docs.1claw.co/docs/cards/overview)
+- [Agents & policies](https://docs.1claw.co/docs/dashboard/agents-policies)
+- [Dashboard overview](https://docs.1claw.co/docs/dashboard/overview)
+- [Platform wizard](https://docs.1claw.co/docs/dashboard/platform-wizard)
+- [Settings & billing](https://docs.1claw.co/docs/dashboard/settings-billing)
+- [Treasury & cards](https://docs.1claw.co/docs/dashboard/treasury-cards)
+- [Vaults & secrets](https://docs.1claw.co/docs/dashboard/vaults-secrets)
+- [Platform API (multi-tenant)](https://docs.1claw.co/docs/platform-api/multi-tenant)
+- [OAuth Connected Accounts](https://docs.1claw.co/docs/platform-api/oauth-connections)
+- [Platform API](https://docs.1claw.co/docs/platform-api/overview)
+- [Webhooks](https://docs.1claw.co/docs/platform-api/webhooks)
+- [Risk Engine](https://docs.1claw.co/docs/risk-engine/overview)
+- [Runtime Hosting](https://docs.1claw.co/docs/runtimes/hosting)
+- [Cloud Runtimes](https://docs.1claw.co/docs/runtimes/overview)
+- [Sharing Secrets](https://docs.1claw.co/docs/sharing/overview)
+- [Customer-Managed Encryption Keys (CMEK)](https://docs.1claw.co/docs/vaults/cmek)
+- [Give an agent access](https://docs.1claw.co/docs/vaults/golden-path)
+- [Deactivate agent / Rotate key](https://docs.1claw.co/docs/vaults/human-api/agents/deactivate-agent)
+- [List agents](https://docs.1claw.co/docs/vaults/human-api/agents/list-agents)
+- [Register an agent](https://docs.1claw.co/docs/vaults/human-api/agents/register-agent)
+- [Authentication](https://docs.1claw.co/docs/vaults/human-api/authentication)
+- [Human API errors](https://docs.1claw.co/docs/vaults/human-api/errors)
+- [Create a policy (grant)](https://docs.1claw.co/docs/vaults/human-api/grants/create-grant)
+- [List policies (grants)](https://docs.1claw.co/docs/vaults/human-api/grants/list-grants)
+- [Revoke a policy (grant)](https://docs.1claw.co/docs/vaults/human-api/grants/revoke-grant)
+- [Human API overview](https://docs.1claw.co/docs/vaults/human-api/overview)
+- [Create or update a secret](https://docs.1claw.co/docs/vaults/human-api/secrets/create)
+- [Delete a secret](https://docs.1claw.co/docs/vaults/human-api/secrets/delete)
+- [Read a secret](https://docs.1claw.co/docs/vaults/human-api/secrets/read)
+- [Rotate a secret](https://docs.1claw.co/docs/vaults/human-api/secrets/rotate)
+- [Update a secret (new version)](https://docs.1claw.co/docs/vaults/human-api/secrets/update)
+- [MCP Deployment](https://docs.1claw.co/docs/vaults/mcp/deployment)
+- [MCP Server Overview](https://docs.1claw.co/docs/vaults/mcp/overview)
+- [MCP Security](https://docs.1claw.co/docs/vaults/mcp/security)
+- [MCP Setup Guide](https://docs.1claw.co/docs/vaults/mcp/setup)
+- [MCP Tool Reference](https://docs.1claw.co/docs/vaults/mcp/tools)
+- [Multi-Party Computation (MPC)](https://docs.1claw.co/docs/vaults/mpc)
+- [Vaults overview](https://docs.1claw.co/docs/vaults/overview)
+- [Revoking access](https://docs.1claw.co/docs/vaults/revoking-access)
+- [Rotating secrets](https://docs.1claw.co/docs/vaults/rotating-secrets)
+- [Secret rotation and bindings](https://docs.1claw.co/docs/vaults/rotation-bindings)
+- [Scoped permissions](https://docs.1claw.co/docs/vaults/scoped-permissions)
+- [Securing Agent Access](https://docs.1claw.co/docs/vaults/securing-access)
 
 <!-- AUTO-GENERATED-DOC-INDEX:END -->

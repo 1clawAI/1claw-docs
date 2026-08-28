@@ -16,7 +16,7 @@ const config: Config = {
     title: "1claw Docs",
     tagline: "Cloud HSM Secrets Manager for Humans & AI Agents",
     favicon: "favicon.ico",
-    url: "https://docs.1claw.xyz",
+    url: "https://docs.1claw.co",
     baseUrl: "/",
     organizationName: "1claw",
     projectName: "1claw-docs",
@@ -94,26 +94,26 @@ const config: Config = {
                 "@graph": [
                     {
                         "@type": "Organization",
-                        "@id": "https://1claw.xyz/#organization",
+                        "@id": "https://1claw.co/#organization",
                         name: "1Claw",
-                        url: "https://1claw.xyz",
+                        url: "https://1claw.co",
                         logo: {
                             "@type": "ImageObject",
-                            url: "https://1claw.xyz/logos/png/1claw-round-black.png",
+                            url: "https://1claw.co/logos/png/1claw-round-black.png",
                         },
                         sameAs: ["https://github.com/1clawAI", "https://x.com/1clawAI"],
                     },
                     {
                         "@type": "WebSite",
-                        "@id": "https://docs.1claw.xyz/#website",
-                        url: "https://docs.1claw.xyz",
+                        "@id": "https://docs.1claw.co/#website",
+                        url: "https://docs.1claw.co",
                         name: "1claw Docs",
-                        publisher: { "@id": "https://1claw.xyz/#organization" },
+                        publisher: { "@id": "https://1claw.co/#organization" },
                         potentialAction: {
                             "@type": "SearchAction",
                             target: {
                                 "@type": "EntryPoint",
-                                urlTemplate: "https://docs.1claw.xyz/docs/?q={search_term_string}",
+                                urlTemplate: "https://docs.1claw.co/docs/?q={search_term_string}",
                             },
                             "query-input": "required name=search_term_string",
                         },
@@ -138,7 +138,7 @@ const config: Config = {
                 srcDark: "img/logo-dark.svg",
                 height: 22,
                 width: 22,
-                href: "https://1claw.xyz",
+                href: "https://1claw.co",
             },
             items: [
                 { to: "/docs/intro", label: "Docs", position: "left" },
@@ -180,10 +180,10 @@ const config: Config = {
         },
         footer: {
             links: [
-                { label: "Privacy", href: "https://1claw.xyz/privacy" },
-                { label: "Terms", href: "https://1claw.xyz/terms" },
+                { label: "Privacy", href: "https://1claw.co/privacy" },
+                { label: "Terms", href: "https://1claw.co/terms" },
                 { label: "GitHub", href: "https://github.com/1clawAI" },
-                { label: "Status", href: "https://1claw.xyz/status" },
+                { label: "Status", href: "https://1claw.co/status" },
                 { label: "Support (Telegram)", href: "https://t.me/+jG4Rm7XHJ79mNDRh" },
             ],
             copyright: "Copyright © 1claw. PolyForm Noncommercial 1.0.0.",
@@ -210,15 +210,15 @@ const config: Config = {
                 content:
                     "1claw, HSM, secrets manager, AI agents, API keys, Claude, MCP, Model Context Protocol, zero trust, cloud HSM, vault, Cursor, OpenClaw, documentation",
             },
-            { name: "llms-txt", content: "https://docs.1claw.xyz/llms.txt" },
+            { name: "llms-txt", content: "https://docs.1claw.co/llms.txt" },
             { property: "og:type", content: "website" },
-            { property: "og:image", content: "https://docs.1claw.xyz/img/og-docs.png" },
+            { property: "og:image", content: "https://docs.1claw.co/img/og-docs.png" },
             { property: "og:image:width", content: "1200" },
             { property: "og:image:height", content: "630" },
             { property: "og:site_name", content: "1claw Docs" },
             { property: "og:locale", content: "en_US" },
             { name: "twitter:card", content: "summary_large_image" },
-            { name: "twitter:image", content: "https://docs.1claw.xyz/img/og-docs.png" },
+            { name: "twitter:image", content: "https://docs.1claw.co/img/og-docs.png" },
         ],
         // Sitemap is configured in the preset above; themeConfig.sitemap is also read by the plugin.
         sitemap: {
