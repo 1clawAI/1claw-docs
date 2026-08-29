@@ -26,7 +26,7 @@ Email sending requires a Resend API key. Set these environment variables on the 
 | -------------------- | -------- | --------------------------- | ------------------------------ |
 | `RESEND_API_KEY`     | Yes      | —                           | Your Resend API key (`re_...`) |
 | `ONECLAW_EMAIL_FROM` | No       | `1Claw <noreply@1claw.xyz>` | Sender address                 |
-| `ONECLAW_PUBLIC_URL` | No       | `https://1claw.xyz`         | Base URL for links in emails   |
+| `ONECLAW_PUBLIC_URL` | No       | `https://1claw.co`         | Base URL for links in emails   |
 
 If `RESEND_API_KEY` is not set, email sending is silently skipped and a log message is emitted instead. This is useful for local development.
 

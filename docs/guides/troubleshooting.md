@@ -23,7 +23,7 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 ## 402 Payment Required
 
 - Your request count has exceeded your tier’s monthly limit and the API is asking for payment (x402 or prepaid credits).
-- **What to do:** Upgrade your plan, add prepaid credits, or complete the x402 payment for this request. In the dashboard, go to [Settings → Billing](https://1claw.xyz/settings/billing). See [Billing & Usage](/docs/guides/billing-and-usage).
+- **What to do:** Upgrade your plan, add prepaid credits, or complete the x402 payment for this request. In the dashboard, go to [Settings → Billing](https://1claw.co/settings/billing). See [Billing & Usage](/docs/guides/billing-and-usage).
 
 ## 403 Forbidden
 

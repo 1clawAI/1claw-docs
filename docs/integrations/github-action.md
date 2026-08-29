@@ -22,7 +22,7 @@ The action is a thin wrapper over [`@1claw/sdk`](https://www.npmjs.com/package/@
 
 ## Quick start
 
-1. **Create a CI agent** in the [dashboard](https://1claw.xyz/agents/new) (or via `1claw agent create`). Scope a read policy to the secret paths your pipeline needs — see [golden path](/docs/vaults/golden-path).
+1. **Create a CI agent** in the [dashboard](https://1claw.co/agents/new) (or via `1claw agent create`). Scope a read policy to the secret paths your pipeline needs — see [golden path](/docs/vaults/golden-path).
 2. **Add the agent key** to GitHub: repository **Settings → Secrets and variables → Actions**, e.g. `ONECLAW_AGENT_API_KEY` = `ocv_...`.
 3. **Reference secrets** in your workflow:
 
@@ -112,4 +112,4 @@ Review downstream steps that consume these env vars — masking reduces accident
 - [CLI](/docs/integrations/cli) — `env pull`, `env run`, and non-GitHub CI
 - [Quickstart — CI/CD](/docs/quickstart#common-integration-patterns)
 - [Scoped permissions](/docs/vaults/scoped-permissions)
-- [1claw.xyz/for-ai](https://1claw.xyz/for-ai) — MCP config, discovery endpoints, and package links
+- [1claw.xyz/for-ai](https://1claw.co/for-ai) — MCP config, discovery endpoints, and package links

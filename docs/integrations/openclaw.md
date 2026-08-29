@@ -56,11 +56,11 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
 
 You can omit `human_email` and use the returned **`approval_url`** to approve while signed in. After approval, 1Claw **emails the credentials** (Agent ID + API key). The enroll response does not include the API key.
 
-Once you get the email (or finish the approval flow), configure the credentials in your OpenClaw environment (see [Configure credentials](#configure-credentials) below), then grant the agent access to a vault from the [dashboard](https://1claw.xyz/agents).
+Once you get the email (or finish the approval flow), configure the credentials in your OpenClaw environment (see [Configure credentials](#configure-credentials) below), then grant the agent access to a vault from the [dashboard](https://1claw.co/agents).
 
 ### Option B: Manual registration
 
-1. **1Claw account** — Sign up at [1claw.xyz](https://1claw.xyz).
+1. **1Claw account** — Sign up at [1claw.xyz](https://1claw.co).
 2. **A vault** — Create a vault in the dashboard (or via API).
 3. **An agent** — Register an agent in the dashboard (Vaults → select vault → Agents, or from the Agents page). Copy the **Agent ID** and the one-time **API key** (`ocv_...`); store the key securely.
 4. **Access for the agent** — Grant the agent read (and optionally write) access to the vault via a policy. See [Give an agent access](/docs/vaults/golden-path).

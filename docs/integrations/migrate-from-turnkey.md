@@ -144,7 +144,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 104 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 141 tools |
 
 ### 5. API Mapping
 

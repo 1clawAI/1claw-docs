@@ -119,7 +119,7 @@ npx @1claw/cli agent enroll my-agent
 
 ## 2. Human grants access
 
-The human receives an email with the agent's ID and API key. In the [dashboard](https://1claw.xyz):
+The human receives an email with the agent's ID and API key. In the [dashboard](https://1claw.co):
 
 1. Go to **Vaults** and select (or create) a vault.
 2. Navigate to **Policies** → **Create Policy**.

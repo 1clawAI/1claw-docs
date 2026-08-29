@@ -9,7 +9,7 @@ sidebar_position: 5
 1Claw exposes machine-readable discovery metadata on the marketing site (**1claw.xyz** and **1claw.co**) and on the Vault API (**api.1claw.xyz**). Live OIDC keys and federation metadata always come from Vault; the dashboard proxies or host-aware routes avoid drift.
 
 :::tip For AI page
-Copy-friendly URLs and MCP config live at [1claw.xyz/for-ai](https://1claw.xyz/for-ai).
+Copy-friendly URLs and MCP config live at [1claw.xyz/for-ai](https://1claw.co/for-ai).
 :::
 
 ## Marketing origin (1claw.xyz / 1claw.co)
@@ -59,4 +59,4 @@ Re-run the [Cloudflare Agent-Ready](https://developers.cloudflare.com/agents/) s
 
 ## WebMCP (Chrome)
 
-On [/for-ai](https://1claw.xyz/for-ai), when `navigator.modelContext` is available, read-only tools register: `searchDocs` (llms.txt), `getAuthGuide` (auth.md), `getMcpConfig` (MCP server card). No secrets are exposed.
+On [/for-ai](https://1claw.co/for-ai), when `navigator.modelContext` is available, read-only tools register: `searchDocs` (llms.txt), `getAuthGuide` (auth.md), `getMcpConfig` (MCP server card). No secrets are exposed.

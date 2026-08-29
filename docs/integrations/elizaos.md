@@ -127,6 +127,6 @@ After bootstrap, load secrets from `.env.elizaos` or paste values into your char
 
 - [GitHub — 1claw-elizaos-plugin](https://github.com/1clawAI/1claw-elizaos-plugin)
 - [npm — @1claw/plugin-elizaos](https://www.npmjs.com/package/@1claw/plugin-elizaos)
-- [Ecosystem directory](https://1claw.xyz/ecosystem)
+- [Ecosystem directory](https://1claw.co/ecosystem)
 - [Intents API guide](/docs/agents/intents/overview)
 - [Shroud guide](/docs/agents/shroud/overview)

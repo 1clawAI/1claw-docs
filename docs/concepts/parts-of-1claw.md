@@ -34,7 +34,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 ### Dashboard
 
-**What it is:** The web UI at [1claw.xyz](https://1claw.xyz). Sign in with email/password or Google, then manage vaults, secrets, agents, policies, sharing, audit log, API keys, billing, and team. You can enable **Shroud** and **Intents** per agent and configure guardrails.
+**What it is:** The web UI at [1claw.xyz](https://1claw.co). Sign in with email/password or Google, then manage vaults, secrets, agents, policies, sharing, audit log, API keys, billing, and team. You can enable **Shroud** and **Intents** per agent and configure guardrails.
 
 **When to use it:** For day-to-day setup and management — creating vaults, storing secrets, registering agents, granting access, configuring Shroud/Intents, viewing audit logs, and billing.
 

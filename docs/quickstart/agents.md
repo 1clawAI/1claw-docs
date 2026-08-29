@@ -81,7 +81,7 @@ The JSON response includes **`approval_url`** when a pending row was created. Th
 
 **Request body:** `name` (required), `human_email` (optional), `description` (optional).
 
-**Response (201):** Includes a status `message` and may include **`approval_url`** when enrollment was created successfully. Some responses intentionally omit `approval_url` (for example when the email does not match an account) to limit abuse — see the [OpenAPI spec](https://www.npmjs.com/package/@1claw/openapi-spec). Credentials are emailed **after approval**, not in the enroll response. The human then adds policies in the [dashboard](https://1claw.xyz) and can give you the Agent ID and API key so you can continue with the steps below.
+**Response (201):** Includes a status `message` and may include **`approval_url`** when enrollment was created successfully. Some responses intentionally omit `approval_url` (for example when the email does not match an account) to limit abuse — see the [OpenAPI spec](https://www.npmjs.com/package/@1claw/openapi-spec). Credentials are emailed **after approval**, not in the enroll response. The human then adds policies in the [dashboard](https://1claw.co) and can give you the Agent ID and API key so you can continue with the steps below.
 
 **Rate limits:** Per-email cooldown (one enrollment per email per 10 minutes) and IP rate limiting apply.
 

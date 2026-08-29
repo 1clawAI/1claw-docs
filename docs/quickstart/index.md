@@ -50,7 +50,7 @@ flowchart LR
 | **Human** | Developer, operator, or team owner | Create vaults, store secrets, register agents, write policies | Email/password, Google, passkey, or personal API key (`1ck_`) |
 | **Agent** | AI assistant, service, or automation | List and fetch secrets the human allowed; optionally sign txs or route LLM calls through Shroud | Agent API key (`ocv_`) → short-lived JWT |
 
-Same API for both: `https://api.1claw.xyz`. The dashboard at [1claw.xyz](https://1claw.xyz) is a UI on top of the same endpoints.
+Same API for both: `https://api.1claw.xyz`. The dashboard at [1claw.xyz](https://1claw.co) is a UI on top of the same endpoints.
 
 ---
 
@@ -77,7 +77,7 @@ brew install 1clawAI/tap/oneclaw
 
 What `setup` does in one flow:
 
-1. **Login** — browser device flow at [1claw.xyz](https://1claw.xyz) (no password in terminal)
+1. **Login** — browser device flow at [1claw.xyz](https://1claw.co) (no password in terminal)
 2. **Provision** — agent, vault, read/write policy on `**`, and sample secret `examples/hello`
 3. **Configure** — writes MCP config for each detected AI client
 
@@ -121,8 +121,8 @@ Full command reference: [CLI guide](/docs/integrations/cli).
 
 ### Option B — Dashboard
 
-1. Sign up at [1claw.xyz](https://1claw.xyz)
-2. **Vaults → Create vault** (or use the [onboarding wizard](https://1claw.xyz/onboarding))
+1. Sign up at [1claw.xyz](https://1claw.co)
+2. **Vaults → Create vault** (or use the [onboarding wizard](https://1claw.co/onboarding))
 3. **Secrets → Add secret** at a path like `api-keys/openai`
 4. Optional: **Agents → Register agent** and **Policies → Grant access**
 
@@ -177,7 +177,7 @@ Choose the interface that matches where your code runs:
 | Integration | Best for | Get started |
 | ----------- | -------- | ----------- |
 | **[CLI](/docs/integrations/cli)** | Fastest onboarding, CI/CD, `env run`, local daemon | `1claw setup` |
-| **[Dashboard](https://1claw.xyz)** | Visual setup, policies, audit log, billing | Sign up → onboarding wizard |
+| **[Dashboard](https://1claw.co)** | Visual setup, policies, audit log, billing | Sign up → onboarding wizard |
 | **[MCP Server](/docs/vaults/mcp/overview)** | AI assistants (Claude, Cursor, GPT) calling vault tools | `1claw setup` or [MCP setup](/docs/vaults/mcp/setup) |
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
@@ -233,7 +233,7 @@ Enable Intents API, provision signing keys, set transaction guardrails in the da
 
 The shortest manual path if you are not using `1claw setup`:
 
-1. **Sign up** — [1claw.xyz](https://1claw.xyz) or `1claw login`
+1. **Sign up** — [1claw.xyz](https://1claw.co) or `1claw login`
 2. **Vault + secret** — `1claw vault create` + `1claw secret set …` (or dashboard)
 3. **Agent + policy** — `1claw agent create my-agent` + `1claw policy create …` (or [golden path guide](/docs/vaults/golden-path))
 4. **Connect** — MCP via `1claw setup`, SDK in your app, or `1claw agent token` + API calls
@@ -244,7 +244,7 @@ The shortest manual path if you are not using `1claw setup`:
 
 | Requirement | Details |
 | ----------- | ------- |
-| **Account** | Free tier at [1claw.xyz](https://1claw.xyz) — 1,000 requests/month, 3 vaults, 2 agents |
+| **Account** | Free tier at [1claw.xyz](https://1claw.co) — 1,000 requests/month, 3 vaults, 2 agents |
 | **CLI** | Node 20+ for `npm install -g @1claw/cli`, or Homebrew tap above |
 | **API base URL** | `https://api.1claw.xyz` |
 | **curl / HTTP client** | Only needed if you skip the CLI and follow the REST quickstarts |

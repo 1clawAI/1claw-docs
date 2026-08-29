@@ -13,7 +13,7 @@ import TabItem from '@theme/TabItem';
 
 Before configuring the MCP server, you need:
 
-1. **A 1claw account** — Sign up at [1claw.xyz](https://1claw.xyz)
+1. **A 1claw account** — Sign up at [1claw.xyz](https://1claw.co)
 2. **A vault** — Create one from the dashboard
 3. **An agent** — Register an agent and save the API key (`ocv_...`)
 4. **A policy** — Grant the agent read access to the secret paths it needs

@@ -139,7 +139,7 @@ Verify: login → balance load → send → policy error toast on violation.
 - Dashboard **Treasury** — wallet balances and send history
 - `GET /v1/treasury/wallets/spend-policy` — effective policy for a user session
 - Platform app audit: `GET /v1/platform/apps/{id}/audit`
-- [Status page](https://1claw.xyz/status) — API and dashboard health
+- [Status page](https://1claw.co/status) — API and dashboard health
 
 ## Related
 

@@ -24,7 +24,7 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
-Limits match the live [pricing page](https://1claw.xyz/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
+Limits match the live [pricing page](https://1claw.co/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
 
 ### Execution Intents vs Intents API
 
@@ -58,7 +58,7 @@ Unlike request quotas (which support overages via credits or x402), resource lim
 
 ### Upgrading
 
-Visit [1claw.xyz/settings/billing](https://1claw.xyz/settings/billing) to:
+Visit [1claw.xyz/settings/billing](https://1claw.co/settings/billing) to:
 
 - Start a subscription checkout (Stripe)
 - View your current tier and limits
@@ -96,7 +96,7 @@ Included plan requests are covered by your subscription and do not incur per-req
 
 Signature overage (after the included monthly quota) is a **flat per-signature rate** — not a percentage of transaction value. Simulation endpoints use the same rate as the table above.
 
-Exact per-endpoint prices are also shown in the [pricing page](https://1claw.xyz/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
+Exact per-endpoint prices are also shown in the [pricing page](https://1claw.co/pricing) x402 table, the dashboard billing UI, and x402 `402` responses. Source of truth: `overage_cost_cents` in `vault/src/domain/billing.rs`.
 
 ## Overage Methods
 
@@ -180,7 +180,7 @@ curl -X PATCH -H "Authorization: Bearer $TOKEN" \
 
 ### Dashboard
 
-Visit [1claw.xyz/settings/billing](https://1claw.xyz/settings/billing) to see:
+Visit [1claw.xyz/settings/billing](https://1claw.co/settings/billing) to see:
 
 - Current subscription tier and limits
 - Current month's total requests vs tier limit
@@ -417,7 +417,7 @@ MCP tool calls go through the same vault API and count toward the same usage quo
 
 If your tier limit is exhausted and you have no credits (or x402 configured), the MCP server will return a clear error message:
 
-> "Tier limit exceeded. Top up credits or configure payment at https://1claw.xyz/settings/billing"
+> "Tier limit exceeded. Top up credits or configure payment at https://1claw.co/settings/billing"
 
 ## Enterprise
 

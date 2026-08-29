@@ -88,7 +88,7 @@ Decentralized inference on hardware-attested Apple Silicon with end-to-end encry
 | **Website** | [darkbloom.dev](https://darkbloom.dev) |
 | **Provider header** | `X-Shroud-Provider: darkbloom` |
 | **Supported models** | [Reference](/docs/reference/shroud-supported-models#darkbloom-models) |
-| **Guide** | [Private AI Agents with Shroud, Darkbloom & Venice](https://1claw.xyz/blog/private-ai-agents-shroud-darkbloom-venice) |
+| **Guide** | [Private AI Agents with Shroud, Darkbloom & Venice](https://1claw.co/blog/private-ai-agents-shroud-darkbloom-venice) |
 
 ---
 
@@ -101,7 +101,7 @@ Privacy-first inference with zero data retention, optional TEE and E2EE modes. S
 | **Website** | [venice.ai](https://venice.ai) |
 | **Provider header** | `X-Shroud-Provider: venice` |
 | **Supported models** | [Reference](/docs/reference/shroud-supported-models#venice-models) |
-| **Guide** | [Private AI Agents with Shroud, Darkbloom & Venice](https://1claw.xyz/blog/private-ai-agents-shroud-darkbloom-venice) |
+| **Guide** | [Private AI Agents with Shroud, Darkbloom & Venice](https://1claw.co/blog/private-ai-agents-shroud-darkbloom-venice) |
 
 ---
 
@@ -223,4 +223,4 @@ Tenderly powers transaction simulation in the Intents API — simulate before si
 
 ## Want to add yours?
 
-If you've built something with 1Claw, email [ops@1claw.xyz](mailto:ops@1claw.xyz) and we'll add it here and on [1claw.xyz/ecosystem](https://1claw.xyz/ecosystem).
+If you've built something with 1Claw, email [ops@1claw.xyz](mailto:ops@1claw.xyz) and we'll add it here and on [1claw.xyz/ecosystem](https://1claw.co/ecosystem).

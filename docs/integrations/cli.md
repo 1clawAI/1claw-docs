@@ -990,7 +990,7 @@ Use `1claw config list` and `1claw config set <key> <value>` to view and update.
 When you run `1claw login` (without `--email`), the CLI:
 
 1. Calls `POST /v1/auth/device/code` to get a device code and user code.
-2. Opens the dashboard at `https://1claw.xyz/cli/verify?code=<user_code>`.
+2. Opens the dashboard at `https://1claw.co/cli/verify?code=<user_code>`.
 3. You approve the request in the browser (while logged in to 1Claw).
 4. The CLI polls `POST /v1/auth/device/token` until the backend marks the code approved, then receives a JWT and stores it.
 

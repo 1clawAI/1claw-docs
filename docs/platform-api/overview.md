@@ -9,7 +9,7 @@ sidebar_position: 14
 The Platform API lets you build products on top of 1Claw. Register your app, create bootstrap templates, provision end-users, and manage their secrets infrastructure — all with custody guarantees that prevent your platform from accessing end-user secrets.
 
 :::info Requirements
-The Platform API requires a **Pro or higher** subscription. [Upgrade your plan →](https://1claw.xyz/settings/billing)
+The Platform API requires a **Pro or higher** subscription. [Upgrade your plan →](https://1claw.co/settings/billing)
 :::
 
 ## Quickstart (~10 min)
@@ -122,7 +122,7 @@ The response includes `claim_url`, `claim_token`, and `summary` (with `vault_id`
 
 Send the `claim_url` to your end user (e.g. via your app's UI, email, or bot message). When they visit it, they'll see what was provisioned and can claim the resources with one click.
 
-The claim URL format is `https://1claw.xyz/connect/{slug}/claim/{token}`. It expires after 10 minutes.
+The claim URL format is `https://1claw.co/connect/{slug}/claim/{token}`. It expires after 10 minutes.
 
 **Reissue an expired claim URL:**
 
@@ -698,7 +698,7 @@ For **sign-in** (OIDC tokens), use scopes like `openid profile email`:
 
 1. Your app redirects users to:
    ```
-   https://1claw.xyz/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=openid%20email&state=RANDOM&code_challenge=...&code_challenge_method=S256
+   https://1claw.co/oauth/authorize?client_id=YOUR_SLUG&redirect_uri=https://myapp.com/callback&response_type=code&scope=openid%20email&state=RANDOM&code_challenge=...&code_challenge_method=S256
    ```
 2. The user sees the 1Claw consent page and approves.
 3. 1Claw redirects back to your `redirect_uri` with an authorization `code`.
@@ -735,7 +735,7 @@ When you call `POST /v1/platform/users/upsert` and the user already exists in a 
   "link_required": {
     "status": "link_required",
     "reason": "user_exists_in_other_org",
-    "authorize_url": "https://1claw.xyz/connect/cubeverse/link?login_hint=user@example.com&return_to=https://myapp.com/callback",
+    "authorize_url": "https://1claw.co/connect/cubeverse/link?login_hint=user@example.com&return_to=https://myapp.com/callback",
     "app_slug": "cubeverse"
   }
 }
@@ -858,7 +858,7 @@ After a user claims their bootstrapped resources, they can grant your platform a
 
 1. Your app redirects the user to the 1Claw grant page:
    ```
-   https://1claw.xyz/connect/{your-slug}/grant?connection={connection_id}
+   https://1claw.co/connect/{your-slug}/grant?connection={connection_id}
    ```
 2. The user selects which vaults and agents to share.
 3. Your backend can query the grants to discover what access it has.

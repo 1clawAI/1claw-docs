@@ -11,7 +11,7 @@ Get your users a wallet with just an email address. No browser extensions, no se
 ## Prerequisites
 
 - A 1Claw account with a **Pro+** plan
-- A platform app (`plt_` API key) — [create one in the dashboard](https://1claw.xyz/platform)
+- A platform app (`plt_` API key) — [create one in the dashboard](https://1claw.co/platform)
 
 ## Install
 
@@ -107,7 +107,7 @@ import { createClient, generatePKCE, buildAuthorizeUrl } from "@1claw/sdk";
 const client = createClient({ baseUrl: "https://api.1claw.xyz" });
 const { codeVerifier, codeChallenge } = await generatePKCE();
 
-const url = buildAuthorizeUrl("https://1claw.xyz", {
+const url = buildAuthorizeUrl("https://1claw.co", {
   clientId: "your-app-slug",
   redirectUri: "https://yourapp.com/callback",
   scopes: ["openid", "email"],

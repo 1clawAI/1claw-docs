@@ -49,7 +49,7 @@ Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthr
 
 Available for **macOS**, **Windows**, and **Linux** at:
 
-**[1claw.xyz/download/shroud-bridge](https://1claw.xyz/download/shroud-bridge)** *(experimental)*
+**[1claw.xyz/download/shroud-bridge](https://1claw.co/download/shroud-bridge)** *(experimental)*
 
 ### Setup
 

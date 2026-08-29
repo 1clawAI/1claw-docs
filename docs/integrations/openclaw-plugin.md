@@ -52,7 +52,7 @@ openclaw plugins install -l ./path/to/1claw-openclaw-plugin
 
 ## Config
 
-Minimal config: set the agent API key (from [enrollment](/docs/agents/self-enrollment) or the [dashboard](https://1claw.xyz/agents)) in the plugin config or via environment variables.
+Minimal config: set the agent API key (from [enrollment](/docs/agents/self-enrollment) or the [dashboard](https://1claw.co/agents)) in the plugin config or via environment variables.
 
 ### Config file
 

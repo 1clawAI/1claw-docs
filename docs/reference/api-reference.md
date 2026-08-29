@@ -13,7 +13,7 @@ This page is a **human-readable endpoint index** grouped by domain. When in doub
 ## Base URL
 
 - **Production:** `https://api.1claw.xyz`
-- **Dashboard proxy:** `https://1claw.xyz/api` (proxies to the same API)
+- **Dashboard proxy:** `https://1claw.co/api` (proxies to the same API)
 
 All endpoints are under **/v1**.
 

@@ -18,7 +18,7 @@ pip install langchain-1claw
 
 ## Prerequisites
 
-1. A [1Claw](https://1claw.xyz) account with a vault and at least one secret path your agent can read.
+1. A [1Claw](https://1claw.co) account with a vault and at least one secret path your agent can read.
 2. An agent registered in your org with an `ocv_` API key.
 3. Access policies that grant the agent read (and write, if needed) on the paths you expect the tools to touch.
 

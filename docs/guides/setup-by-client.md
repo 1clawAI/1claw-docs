@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Setup by client
 
-Use this page to jump to the right setup for your environment. Every path assumes you have a [1claw account](https://1claw.xyz), a vault, an **agent** (with API key), and a **policy** granting the agent access to the vault. See [Give an agent access](/docs/vaults/golden-path) if you haven’t set that up yet.
+Use this page to jump to the right setup for your environment. Every path assumes you have a [1claw account](https://1claw.co), a vault, an **agent** (with API key), and a **policy** granting the agent access to the vault. See [Give an agent access](/docs/vaults/golden-path) if you haven’t set that up yet.
 
 ## Quick reference
 

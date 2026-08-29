@@ -81,7 +81,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
      └─────────────────┘
 ```
 
-- **Dashboard** — The web UI at [1claw.xyz](https://1claw.xyz) where humans manage vaults, secrets, agents, and policies.
+- **Dashboard** — The web UI at [1claw.xyz](https://1claw.co) where humans manage vaults, secrets, agents, and policies.
 - **Vault API** — The Rust backend that handles authentication, envelope encryption, policy enforcement, and all CRUD operations. Both the dashboard and MCP server talk to it.
 - **Shroud** — Optional LLM proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz); agents can send LLM traffic through Shroud for inspection and redaction. Transaction signing can also run in Shroud’s TEE.
 - **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets and Intents. Hosted at `mcp.1claw.xyz` or run locally.
@@ -100,7 +100,7 @@ The same REST API serves both personas:
 | **Human** | Email/password or Google → JWT; or personal API key → JWT | Create vaults, PUT/GET/DELETE secrets, create/list policies, register agents, audit logs |
 | **Agent** | Agent API key → JWT via `/v1/auth/agent-token`            | GET secret by path, list secrets in a vault (subject to policies)                        |
 
-Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.xyz) proxies `/api/v1/*` to the same API.
+Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.co) proxies `/api/v1/*` to the same API.
 
 ## Next steps
 

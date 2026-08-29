@@ -38,8 +38,8 @@ Without guardrails, one prompt injection through a poisoned input can trigger un
 
 ## Prerequisites
 
-- A 1Claw account ([sign up free](https://1claw.xyz/signup))
-- A human API key (`1ck_...`) from [Settings → API Keys](https://1claw.xyz/settings/api-keys)
+- A 1Claw account ([sign up free](https://1claw.co/signup))
+- A human API key (`1ck_...`) from [Settings → API Keys](https://1claw.co/settings/api-keys)
 - Node.js 20+
 
 ## Setup (5 minutes)
@@ -242,7 +242,7 @@ With the secured version:
 
 ## Updating guardrails
 
-Update via the [dashboard](https://1claw.xyz/agents), the SDK, or the CLI at any time. Changes take effect on the next transaction (existing JWTs are revoked when policies change).
+Update via the [dashboard](https://1claw.co/agents), the SDK, or the CLI at any time. Changes take effect on the next transaction (existing JWTs are revoked when policies change).
 
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
@@ -279,4 +279,4 @@ await client.agents.update("agent-uuid", {
 - **New Base MCP quickstart**: [docs.base.org/ai-agents/quickstart](https://docs.base.org/ai-agents/quickstart)
 - **Intents API docs**: [Intents API guide](/docs/agents/intents/overview)
 - **Shroud docs**: [Shroud guide](/docs/agents/shroud/overview)
-- **Blog post**: [Autonomous Agents on Base Need More Than Human Approval](https://1claw.xyz/blog/base-mcp-secured)
+- **Blog post**: [Autonomous Agents on Base Need More Than Human Approval](https://1claw.co/blog/base-mcp-secured)

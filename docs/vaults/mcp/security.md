@@ -163,5 +163,5 @@ The MCP server translates vault API errors into clear, actionable messages:
 |------------|-------------------|
 | 404 | `No secret found at path '<path>'.` |
 | 410 | `Secret at path '<path>' is expired or has exceeded its maximum access count.` |
-| 402 | `Free tier quota exhausted. Upgrade your plan or add payment at https://1claw.xyz/settings/billing` |
+| 402 | `Free tier quota exhausted. Upgrade your plan or add payment at https://1claw.co/settings/billing` |
 | 403 | `Access denied` (agent doesn't have a policy for this path) |

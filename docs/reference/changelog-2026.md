@@ -1589,7 +1589,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 
 ### Live demo
 
-- **New:** Interactive demo page at [1claw.xyz/demo](https://1claw.xyz/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
+- **New:** Interactive demo page at [1claw.xyz/demo](https://1claw.co/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
 
 ### Onboarding wizard improvements
 
@@ -1659,7 +1659,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 - **New:** Audit hash chain — each event stores `prev_event_id` and SHA-256 `integrity_hash` for tamper detection.
 - **New:** x402 payment replay protection — payment proofs deduplicated via SHA-256 before facilitator verification.
 - **New:** Authorization enforcement on `delete_secret`, `list_secrets`, and `list_versions` (policy check, not just org membership).
-- **Improved:** CORS defaults to `https://1claw.xyz` in production (no more permissive `Any` fallback).
+- **Improved:** CORS defaults to `https://1claw.co` in production (no more permissive `Any` fallback).
 - **Improved:** CSP removes `unsafe-inline` and `unsafe-eval` from `script-src`.
 - **Improved:** Global rate limiting middleware applied to all API routes.
 - **Improved:** Dependency overrides for `minimatch`, `ajv`, `hono` to address known CVEs.

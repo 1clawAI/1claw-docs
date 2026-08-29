@@ -150,7 +150,7 @@ const { codeVerifier, codeChallenge } = await generatePKCE();
 
 sessionStorage.setItem("pkce_verifier", codeVerifier);
 
-const url = buildAuthorizeUrl("https://1claw.xyz", {
+const url = buildAuthorizeUrl("https://1claw.co", {
   clientId: "my-wallet-app", // platform app slug
   redirectUri: "https://yourapp.com/oauth/callback",
   scopes: ["openid", "profile", "email"],

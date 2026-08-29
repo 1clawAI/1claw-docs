@@ -6,7 +6,7 @@ sidebar_position: 0
 
 # Dashboard
 
-The **Dashboard** at [1claw.xyz](https://1claw.xyz) is the primary interface for humans. It proxies `/api/v1/*` to the Vault API and exposes every product area through a consistent sidebar.
+The **Dashboard** at [1claw.xyz](https://1claw.co) is the primary interface for humans. It proxies `/api/v1/*` to the Vault API and exposes every product area through a consistent sidebar.
 
 ## Sign in
 

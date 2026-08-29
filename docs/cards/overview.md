@@ -17,7 +17,7 @@ By default, **`card_require_approval` is `true`** on every agent. When an agent 
 3. An approval is created with `action: card_order` and assigned to the agent's creator.
 4. The API returns **202 Accepted** with `approval_id` — **no x402 payment yet**.
 5. A human approves via one of:
-   - **Dashboard** — [1claw.xyz/approvals](https://1claw.xyz/approvals)
+   - **Dashboard** — [1claw.xyz/approvals](https://1claw.co/approvals)
    - **Mobile app** — push notification + risk-tier step-up (biometric / TOTP)
    - **Email** — one-click Approve/Deny links (`GET /v1/approvals/quick-decide`, proxied at `/api/approvals/quick-decide` on the dashboard domain)
 

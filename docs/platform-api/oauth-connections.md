@@ -60,7 +60,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/oauth/connect" \
   -d '{
     "provider_slug": "github",
     "scopes": ["repo", "user"],
-    "redirect_uri": "https://1claw.xyz/oauth/callback"
+    "redirect_uri": "https://1claw.co/oauth/callback"
   }'
 ```
 
