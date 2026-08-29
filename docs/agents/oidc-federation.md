@@ -19,8 +19,8 @@ agent ──[ ocv_… or agent JWT ]──▶ 1claw POST /v1/auth/federated-toke
                                   └─ return access_token, expires_in
 agent ──[ federated JWT ]──▶ Anthropic POST /v1/oauth/token
                               │
-                              ├─ fetch https://api.1claw.xyz/.well-known/openid-configuration
-                              ├─ fetch https://api.1claw.xyz/.well-known/jwks.json
+                              ├─ fetch https://api.1claw.co/.well-known/openid-configuration
+                              ├─ fetch https://api.1claw.co/.well-known/jwks.json
                               ├─ verify alg, kid, iss, aud, exp
                               └─ return sk-ant-oat01-…
 agent ──[ sk-ant-oat01-… ]──▶ Claude API
@@ -32,9 +32,9 @@ Both EdDSA and RS256 keys are advertised in JWKS. Federation tokens are minted w
 
 | Endpoint | What it returns |
 |----------|-----------------|
-| `GET https://api.1claw.xyz/.well-known/openid-configuration` | Issuer, JWKS URL, supported algs, supported grant types. |
-| `GET https://api.1claw.xyz/.well-known/jwks.json` | Every active EdDSA + RS256 public key version, keyed by `kid`. |
-| `POST https://api.1claw.xyz/v1/auth/federated-token` | RFC 8693 token exchange. |
+| `GET https://api.1claw.co/.well-known/openid-configuration` | Issuer, JWKS URL, supported algs, supported grant types. |
+| `GET https://api.1claw.co/.well-known/jwks.json` | Every active EdDSA + RS256 public key version, keyed by `kid`. |
+| `POST https://api.1claw.co/v1/auth/federated-token` | RFC 8693 token exchange. |
 
 ## Step 1 — Enable federation on the agent
 
@@ -53,8 +53,8 @@ In the Anthropic Console go to **Workload Identity Federation → Add provider**
 | Field | Value |
 |-------|-------|
 | Provider type | OpenID Connect |
-| Issuer URL | `https://api.1claw.xyz` |
-| JWKS URL | `https://api.1claw.xyz/.well-known/jwks.json` |
+| Issuer URL | `https://api.1claw.co` |
+| JWKS URL | `https://api.1claw.co/.well-known/jwks.json` |
 | Subject claim | `sub` |
 | Allowed audience | `https://api.anthropic.com` (or whatever Anthropic gives you) |
 
@@ -70,7 +70,7 @@ The token exchange endpoint accepts both JSON and `application/x-www-form-urlenc
 import { OneclawClient } from "@1claw/sdk";
 
 const client = new OneclawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_API_KEY!, // ocv_...
 });
 
@@ -93,7 +93,7 @@ console.log("expires_in", data!.expires_in);
 ### curl
 
 ```bash
-curl -sS -X POST https://api.1claw.xyz/v1/auth/federated-token \
+curl -sS -X POST https://api.1claw.co/v1/auth/federated-token \
   -H "content-type: application/x-www-form-urlencoded" \
   -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
   -d "subject_token=${ONECLAW_AGENT_API_KEY}" \
@@ -127,7 +127,15 @@ Anthropic returns an `sk-ant-oat01-…` token you can then use against the Claud
 
 | Claim | Value |
 |-------|-------|
-| `iss` | `https://api.1claw.xyz` (or your `vault_public_url` if customized) |
+| `iss` | `https://api.1claw.co` (or your `vault_public_url` if customized) |
+
+:::note Issuer moved to `api.1claw.co`
+Tokens minted before this change carry `https://api.1claw.xyz`. Both hosts serve
+identical JWKS, and the API accepts either issuer on validation, so existing
+tokens keep working until they expire. If you configured a relying party against
+the old issuer, update it to `https://api.1claw.co` — the `iss` claim must match
+what your verifier expects.
+:::
 | `sub` | `agent:<agent_uuid>` |
 | `aud` | The audience you requested (must be on the agent's allowlist) |
 | `exp` | `iat + agent.federated_token_ttl_seconds` (default 900s, max 3600s) |
