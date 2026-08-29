@@ -1,7 +1,6 @@
 User-agent: *
 Allow: /
 
-# AI scrapers — you're welcome here
 User-agent: GPTBot
 Allow: /
 
@@ -14,4 +13,4 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-Sitemap: https://docs.1claw.xyz/sitemap.xml
+Sitemap: https://docs.1claw.co/sitemap.xml
