@@ -18,7 +18,11 @@ Best for apps that only need an email address — no password, no seed phrase.
 **Flow:**
 
 1. `POST /v1/auth/email-otp/send` — 6-digit code, 5-minute TTL, emailed via Resend
-2. `POST /v1/auth/email-otp/verify` — returns JWT + creates user/org if new
+2. `POST /v1/auth/email-otp/verify` — returns a JWT. A first-time address gets a
+   user and org **when the request carries `platform_app_id`** (the embedded-wallet
+   case) or explicitly sets `allow_signup: true`. Without either, an unrecognised
+   address is rejected rather than silently signed up — a valid code proves control
+   of an inbox, not consent to create an account.
 3. Optional `auto_provision_chains` — generates treasury wallets on first verify
 
 <Tabs groupId="code-examples">

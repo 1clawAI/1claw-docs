@@ -57,7 +57,7 @@ Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign tr
 | **TEE boundary** | Signs inside enclave | Signs inside enclave AND inspects LLM traffic inside enclave (Shroud) |
 | **Attestation** | Remote attestation (QuorumOS) | Remote attestation (GCE identity token, AMD SEV-SNP) |
 | **Audit integrity** | Event log | Hash-chained event log with HMAC verification API |
-| **Multi-chain signing** | 6+ chains | 6 chains (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + non-EVM deep decode |
+| **Multi-chain signing** | 6+ chains | 6 chains GA (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) + Midnight (Preprod preview) + non-EVM deep decode |
 | **Policy language** | Proprietary DSL (`.all()`, `.filter()`) | `tx_conditions` + expression engine (v2) + Cedar (Team+) + OPA (Business+) |
 | **Deep inspection** | Per-chain struct depth | `deep_inspect` unwraps multicall, Safe execTransaction, ERC-4337 handleOps |
 | **Consensus** | Quorum signing (n-of-m) | `consensus_trigger` for **authorization** (who may sign/export/change policy), not MPC threshold signatures |
