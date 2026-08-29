@@ -1,18 +1,18 @@
 ---
 title: Agent discovery & machine-readable metadata
-description: OIDC, MCP, auth.md, x402, and ARD endpoints for AI agents and agent-readiness scanners on 1claw.xyz and 1claw.co.
+description: OIDC, MCP, auth.md, x402, and ARD endpoints for AI agents and agent-readiness scanners on 1claw.co and 1claw.co.
 sidebar_position: 5
 ---
 
 # Agent discovery
 
-1Claw exposes machine-readable discovery metadata on the marketing site (**1claw.xyz** and **1claw.co**) and on the Vault API (**api.1claw.xyz**). Live OIDC keys and federation metadata always come from Vault; the dashboard proxies or host-aware routes avoid drift.
+1Claw exposes machine-readable discovery metadata on the marketing site (**1claw.co** and **1claw.co**) and on the Vault API (**api.1claw.xyz**). Live OIDC keys and federation metadata always come from Vault; the dashboard proxies or host-aware routes avoid drift.
 
 :::tip For AI page
-Copy-friendly URLs and MCP config live at [1claw.xyz/for-ai](https://1claw.co/for-ai).
+Copy-friendly URLs and MCP config live at [1claw.co/for-ai](https://1claw.co/for-ai).
 :::
 
-## Marketing origin (1claw.xyz / 1claw.co)
+## Marketing origin (1claw.co / 1claw.co)
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -55,7 +55,7 @@ After deploy:
 ./scripts/check-discovery-parity.sh
 ```
 
-Re-run the [Cloudflare Agent-Ready](https://developers.cloudflare.com/agents/) scan on both **1claw.xyz** and **1claw.co**.
+Re-run the [Cloudflare Agent-Ready](https://developers.cloudflare.com/agents/) scan on both **1claw.co** and **1claw.co**.
 
 ## WebMCP (Chrome)
 

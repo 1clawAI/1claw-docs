@@ -1118,7 +1118,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 - **Improved:** Shroud TEE signing mirrors all changes — both `vault` and `shroud` now use identical SDK-backed implementations for Bitcoin and Solana.
 - **Tests:** Comprehensive unit tests added for both chains in both `vault` and `shroud`: key generation determinism, address derivation across networks (mainnet/testnet/signet), signing to all recipient address types, multi-UTXO inputs, dust change handling, invalid address rejection, SPL token transfers, shortvec encoding, and blockhash variation.
 - **Verified end-to-end:** Live testnet transactions confirmed on all non-EVM chains — Solana Devnet (sign-only, submit/broadcast, unified sign), Bitcoin Signet (sign-only, submit/broadcast), Tron Shasta (sign-only, submit/broadcast), and Cardano Preprod (sign-only, submit/broadcast).
-- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.xyz/docs/agents/intents/signing#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
+- **Docs:** Intents API guide updated with comprehensive [testnet reference table](https://docs.1claw.co/docs/agents/intents/signing#non-evm-networks) including faucet links, external API dependencies, and network-specific address format notes for all 5 non-EVM chains.
 
 ### API v2.24.0 / SDK 0.37.0 / Vault 0.37.0 / MCP 0.37.0 — Broad XRPL coverage (2026-07-03)
 
@@ -1589,7 +1589,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 
 ### Live demo
 
-- **New:** Interactive demo page at [1claw.xyz/demo](https://1claw.co/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
+- **New:** Interactive demo page at [1claw.co/demo](https://1claw.co/demo) — three panels (Vault secret retrieval, Shroud prompt injection + secret redaction, Intents TEE transaction signing) with preset buttons, no signup required.
 
 ### Onboarding wizard improvements
 

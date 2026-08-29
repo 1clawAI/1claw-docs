@@ -13,7 +13,7 @@ This guide walks through the minimum path from zero to a working embedded wallet
 
 :::info Prerequisites
 - 1Claw account with **Pro or higher** subscription
-- Dashboard access at [1claw.xyz/platform](https://1claw.co/platform)
+- Dashboard access at [1claw.co/platform](https://1claw.co/platform)
 :::
 
 ## Step 1: Create a platform app

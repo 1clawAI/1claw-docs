@@ -89,7 +89,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
     "hash_field": "integrity_hash",
     "link_field": "prev_event_id",
     "genesis_prev_hash": "",
-    "documentation": "https://docs.1claw.xyz/security/audit-verification"
+    "documentation": "https://docs.1claw.co/security/audit-verification"
   }
 }
 ```

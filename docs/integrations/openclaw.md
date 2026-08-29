@@ -60,7 +60,7 @@ Once you get the email (or finish the approval flow), configure the credentials 
 
 ### Option B: Manual registration
 
-1. **1Claw account** — Sign up at [1claw.xyz](https://1claw.co).
+1. **1Claw account** — Sign up at [1claw.co](https://1claw.co).
 2. **A vault** — Create a vault in the dashboard (or via API).
 3. **An agent** — Register an agent in the dashboard (Vaults → select vault → Agents, or from the Agents page). Copy the **Agent ID** and the one-time **API key** (`ocv_...`); store the key securely.
 4. **Access for the agent** — Grant the agent read (and optionally write) access to the vault via a policy. See [Give an agent access](/docs/vaults/golden-path).

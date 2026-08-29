@@ -109,7 +109,7 @@ Agent: "I need the Stripe API key"
 | ------ | ----------------------------------------------------------------- |
 | 404    | No secret found at this path                                      |
 | 410    | Secret is expired or has exceeded its maximum access count        |
-| 402    | Free tier quota exhausted — upgrade at 1claw.xyz/settings/billing |
+| 402    | Free tier quota exhausted — upgrade at 1claw.co/settings/billing |
 
 ---
 

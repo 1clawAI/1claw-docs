@@ -14,8 +14,8 @@ Every component of 1claw auto-deploys on push to `main`. This guide explains how
 |-----------|-------------|------------|----------|
 | Vault API | `vault/**` | Cloud Run (`oneclaw-vault`) | `.github/workflows/deploy-vault.yml` |
 | MCP Server | `packages/mcp/**` | Cloud Run (`oneclaw-mcp`) | `.github/workflows/deploy-mcp.yml` |
-| Dashboard | `dashboard/**` | Vercel (`1claw.xyz`) | Vercel Git integration |
-| Docs | `docs/**` | Vercel (`docs.1claw.xyz`) | Vercel Git integration |
+| Dashboard | `dashboard/**` | Vercel (`1claw.co`) | Vercel Git integration |
+| Docs | `docs/**` | Vercel (`docs.1claw.co`) | Vercel Git integration |
 
 ## Vault API
 
@@ -76,7 +76,7 @@ The Next.js dashboard is deployed to Vercel via Git integration.
 
 1. Push to `main` with changes in `dashboard/`.
 2. Vercel detects the change and builds automatically.
-3. Production deployment goes live at `1claw.xyz`.
+3. Production deployment goes live at `1claw.co`.
 
 ### Manual deploy
 
@@ -101,7 +101,7 @@ The Docusaurus docs site is deployed to Vercel via Git integration.
 
 1. Push to `main` with changes in `docs/`.
 2. Vercel detects the change and builds automatically.
-3. Production deployment goes live at `docs.1claw.xyz`.
+3. Production deployment goes live at `docs.1claw.co`.
 
 ### Manual deploy
 

@@ -6,7 +6,7 @@ sidebar_position: 6
 
 # Licensing
 
-1claw uses a split licensing model. Client-side packages are fully open source under the MIT license. Server-side infrastructure is proprietary and accessed via 1claw.xyz.
+1claw uses a split licensing model. Client-side packages are fully open source under the MIT license. Server-side infrastructure is proprietary and accessed via 1claw.co.
 
 ## MIT (free to use commercially)
 
@@ -19,12 +19,12 @@ sidebar_position: 6
 
 You can use, modify, and redistribute these packages in commercial projects without restriction. The full MIT license text is in each package's `LICENSE` file.
 
-## Proprietary (access via 1claw.xyz)
+## Proprietary (access via 1claw.co)
 
 | Component | Description |
 |-----------|-------------|
 | **Vault API** | HSM-backed secrets engine, policy engine, billing, auth |
-| **Dashboard** | Next.js web UI at 1claw.xyz |
+| **Dashboard** | Next.js web UI at 1claw.co |
 | **Shroud** | TEE LLM proxy running on GKE Confidential Nodes (AMD SEV-SNP) |
 | **Intents signing backend** | Transaction signing inside the TEE |
 

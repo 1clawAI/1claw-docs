@@ -16,7 +16,7 @@ This guide takes you from zero to a signed on-chain transaction. By the end you 
 3. A policy granting the agent read access
 4. A signed transaction on a testnet
 
-The whole thing takes about five minutes assuming you already have an account. If you do not, [sign up at 1claw.xyz](https://1claw.co) first.
+The whole thing takes about five minutes assuming you already have an account. If you do not, [sign up at 1claw.co](https://1claw.co) first.
 
 ## Prerequisites
 

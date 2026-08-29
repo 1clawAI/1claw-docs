@@ -55,7 +55,7 @@ Open **http://localhost:3000** and you have a live agent. Your source files are 
 1claw login
 ```
 
-This opens your browser to 1claw.xyz where you approve the login. The CLI polls until you confirm. Your token is stored in `~/.config/1claw/`.
+This opens your browser to 1claw.co where you approve the login. The CLI polls until you confirm. Your token is stored in `~/.config/1claw/`.
 
 ### Email/password
 

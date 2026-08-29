@@ -15,7 +15,7 @@ This guide walks through creating a template that passes CI and shows up in `1cl
 - A [GitHub](https://github.com) account
 - [Docker](https://docs.docker.com/get-docker/) installed locally
 - Familiarity with the target framework (LangChain, Mastra, etc.)
-- Optional: [`@1claw/cli`](https://docs.1claw.xyz/docs/integrations/cli) installed to test `1claw spawn` end-to-end
+- Optional: [`@1claw/cli`](https://docs.1claw.co/docs/integrations/cli) installed to test `1claw spawn` end-to-end
 
 ## How templates are distributed
 
@@ -110,7 +110,7 @@ post_spawn_message: |
 
 ## Step 4 — Security requirements
 
-Templates must follow the same model as [`1claw init --docker`](https://docs.1claw.xyz/docs/integrations/cli#containerized-agent-runtime-init---docker):
+Templates must follow the same model as [`1claw init --docker`](https://docs.1claw.co/docs/integrations/cli#containerized-agent-runtime-init---docker):
 
 1. **No secrets in the image.** Do not `ENV` API keys or copy credential files.
 2. **Daemon socket.** The host mounts `/run/1claw/daemon.sock`; the entrypoint uses `ONECLAW_DAEMON_SOCKET` for MCP and credential injection.
@@ -213,7 +213,7 @@ See [CONTRIBUTING.md](https://github.com/1clawAI/agent-templates/blob/main/CONTR
 
 ## Related
 
-- [CLI guide — `1claw spawn`](https://docs.1claw.xyz/docs/integrations/cli#agent-templates-spawn)
+- [CLI guide — `1claw spawn`](https://docs.1claw.co/docs/integrations/cli#agent-templates-spawn)
 - [Template repository README](https://github.com/1clawAI/agent-templates#contribute-a-template)
 - [CONTRIBUTING.md (schema reference)](https://github.com/1clawAI/agent-templates/blob/main/CONTRIBUTING.md)
-- [MCP integration](https://docs.1claw.xyz/docs/integrations/mcp-integration) — how agents use vault tools
+- [MCP integration](https://docs.1claw.co/docs/integrations/mcp-integration) — how agents use vault tools

@@ -10,7 +10,7 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 
 ## "Can't reach the API" / connection errors
 
-- **Base URL** — Use `https://api.1claw.xyz` for production. The dashboard at 1claw.xyz proxies `/api/*` to the same API, so from a browser you may use relative `/api/v1/...` when on the same origin.
+- **Base URL** — Use `https://api.1claw.xyz` for production. The dashboard at 1claw.co proxies `/api/*` to the same API, so from a browser you may use relative `/api/v1/...` when on the same origin.
 - **CLI / SDK** — Ensure your client is configured with the correct base URL. The SDK and CLI default to the production API when not set.
 - **MCP** — For hosted MCP, use `https://mcp.1claw.xyz/mcp`. For local stdio, `ONECLAW_BASE_URL` defaults to `https://api.1claw.xyz`; override only if you use a different API host.
 

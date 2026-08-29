@@ -1,12 +1,12 @@
 ---
 title: Dashboard overview
-description: The 1Claw web UI at 1claw.xyz for managing vaults, agents, treasury, platform apps, billing, and security settings.
+description: The 1Claw web UI at 1claw.co for managing vaults, agents, treasury, platform apps, billing, and security settings.
 sidebar_position: 0
 ---
 
 # Dashboard
 
-The **Dashboard** at [1claw.xyz](https://1claw.co) is the primary interface for humans. It proxies `/api/v1/*` to the Vault API and exposes every product area through a consistent sidebar.
+The **Dashboard** at [1claw.co](https://1claw.co) is the primary interface for humans. It proxies `/api/v1/*` to the Vault API and exposes every product area through a consistent sidebar.
 
 ## Sign in
 

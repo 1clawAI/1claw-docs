@@ -28,7 +28,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 | **Runtimes** | Managed containers for agents with optional public hosting | [Runtimes →](/docs/runtimes/overview) |
 | **Cards** | Agent-ordered prepaid/gift cards via x402 (PAN never exposed) | [Cards →](/docs/cards/overview) |
 | **Platform API** | Build products on 1Claw with bootstrap templates | [Platform →](/docs/platform-api/overview) |
-| **Dashboard** | Web UI at 1claw.xyz for humans | [Dashboard →](/docs/dashboard/overview) |
+| **Dashboard** | Web UI at 1claw.co for humans | [Dashboard →](/docs/dashboard/overview) |
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/vaults/cmek) (client-side encryption layer) and [MPC](/docs/vaults/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.xyz` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
@@ -63,7 +63,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Dashboard  │────▶│  Vault API  │◀────│  MCP Server │
 │  (Next.js)  │     │  (Rust)     │     │  (Node.js)  │
-│  1claw.xyz  │     │ api.1claw.xyz     │ mcp.1claw.xyz
+│  1claw.co  │     │ api.1claw.xyz     │ mcp.1claw.xyz
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
               ┌────────────┼────────────┐
@@ -81,7 +81,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
      └─────────────────┘
 ```
 
-- **Dashboard** — The web UI at [1claw.xyz](https://1claw.co) where humans manage vaults, secrets, agents, and policies.
+- **Dashboard** — The web UI at [1claw.co](https://1claw.co) where humans manage vaults, secrets, agents, and policies.
 - **Vault API** — The Rust backend that handles authentication, envelope encryption, policy enforcement, and all CRUD operations. Both the dashboard and MCP server talk to it.
 - **Shroud** — Optional LLM proxy at [shroud.1claw.xyz](https://shroud.1claw.xyz); agents can send LLM traffic through Shroud for inspection and redaction. Transaction signing can also run in Shroud’s TEE.
 - **MCP Server** — A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents (Claude, Cursor, GPT) just-in-time access to vault secrets and Intents. Hosted at `mcp.1claw.xyz` or run locally.
@@ -100,7 +100,7 @@ The same REST API serves both personas:
 | **Human** | Email/password or Google → JWT; or personal API key → JWT | Create vaults, PUT/GET/DELETE secrets, create/list policies, register agents, audit logs |
 | **Agent** | Agent API key → JWT via `/v1/auth/agent-token`            | GET secret by path, list secrets in a vault (subject to policies)                        |
 
-Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.xyz](https://1claw.co) proxies `/api/v1/*` to the same API.
+Base URL: `https://api.1claw.xyz` (or your Cloud Run URL). The dashboard at [1claw.co](https://1claw.co) proxies `/api/v1/*` to the same API.
 
 ## Next steps
 

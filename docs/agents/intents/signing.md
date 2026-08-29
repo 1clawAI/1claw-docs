@@ -628,7 +628,7 @@ from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
 # See the curl / TypeScript tabs for the equivalent call.
-# Install: pip install oneclaw — https://docs.1claw.xyz/docs/sdks/python
+# Install: pip install oneclaw — https://docs.1claw.co/docs/sdks/python
 ```
 
 </TabItem>

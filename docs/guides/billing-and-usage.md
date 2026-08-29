@@ -58,7 +58,7 @@ Unlike request quotas (which support overages via credits or x402), resource lim
 
 ### Upgrading
 
-Visit [1claw.xyz/settings/billing](https://1claw.co/settings/billing) to:
+Visit [1claw.co/settings/billing](https://1claw.co/settings/billing) to:
 
 - Start a subscription checkout (Stripe)
 - View your current tier and limits
@@ -180,7 +180,7 @@ curl -X PATCH -H "Authorization: Bearer $TOKEN" \
 
 ### Dashboard
 
-Visit [1claw.xyz/settings/billing](https://1claw.co/settings/billing) to see:
+Visit [1claw.co/settings/billing](https://1claw.co/settings/billing) to see:
 
 - Current subscription tier and limits
 - Current month's total requests vs tier limit

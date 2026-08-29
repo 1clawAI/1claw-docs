@@ -136,7 +136,7 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 - **Security questions:** ops@1claw.xyz
 - **Attestation endpoint:** `GET https://shroud.1claw.xyz/v1/shroud/attestation`
 - **Audit verification:** [Audit hash chain verification](/docs/security/audit-verification) — `GET https://api.1claw.xyz/v1/audit/verify` (authenticated)
-- **Full documentation:** https://docs.1claw.xyz/security/
+- **Full documentation:** https://docs.1claw.co/security/
 
 ---
 
