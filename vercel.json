@@ -4,18 +4,58 @@
   "installCommand": "pnpm install",
   "framework": null,
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "docs.1claw.xyz"
+        }
+      ],
+      "destination": "https://docs.1claw.co/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "docs.1claw.xyz"
+        }
+      ],
+      "destination": "https://docs.1claw.co/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/llms.txt", "destination": "/llms.txt" },
-    { "source": "/llms-full.txt", "destination": "/llms-full.txt" }
+    {
+      "source": "/llms.txt",
+      "destination": "/llms.txt"
+    },
+    {
+      "source": "/llms-full.txt",
+      "destination": "/llms-full.txt"
+    }
   ],
   "headers": [
     {
       "source": "/llms.txt",
-      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        }
+      ]
     },
     {
       "source": "/llms-full.txt",
-      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        }
+      ]
     }
   ]
 }
