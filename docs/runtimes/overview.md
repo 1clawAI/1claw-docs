@@ -25,17 +25,38 @@ is served by **`GET /v1/runtimes/templates`** (public, no auth) — prefer readi
 it over copying this table, so a client can check a template at build time
 rather than discovering it at provision time.
 
-| `template` | Runtime | Chat | Use case |
-|---|---|---|---|
-| `python` | Python 3.12 + pip | — | LangChain, CrewAI, custom agents |
-| `node` | Node 22 + pnpm | — | TypeScript agents, ElizaOS |
-| `hermes` | 1Claw Hermes runtime | yes | Built-in MCP + Shroud integration |
-| `openclaw` | Rust-based minimal | yes | High-performance agents |
-| `openclaude` | OpenClaude + 1Claw sidecar | yes | Automations Assist, NL workflow authoring |
-| `opencode` | OpenCode + 1Claw sidecar | yes | Coding agent workflows |
-| *(omitted)* + `image` | Any Dockerfile | — | Full control |
+| `template` | Runtime | Chat | Licence | Needs your own vendor account |
+|---|---|---|---|---|
+| `python` | Python 3.12 + pip | — | Apache-2.0 | no |
+| `node` | Node 22 + pnpm | — | Apache-2.0 | no |
+| `hermes` | 1Claw Hermes runtime | yes | Apache-2.0 | no |
+| `openclaw` | Rust-based minimal | yes | Apache-2.0 | no |
+| `openclaude` | OpenClaude + 1Claw sidecar | yes | Apache-2.0 | no |
+| `opencode` | OpenCode + 1Claw sidecar | yes | Apache-2.0 | no |
+| `claude-code` | Anthropic's Claude Code CLI | yes | proprietary | yes — Claude subscription or `ANTHROPIC_API_KEY` |
+| `codex` | OpenAI's Codex CLI | yes | Apache-2.0 | yes — ChatGPT plan or `OPENAI_API_KEY` |
+| `amp` | Sourcegraph Amp | yes | proprietary | yes — paid Amp subscription |
+| *(omitted)* + `image` | Any Dockerfile | — | — | — |
 
 "Chat" means `POST /v1/runtimes/{id}/chat` is available for that template.
+
+:::note Open source and "no subscription" are different questions
+
+The image ships the CLI, never a credential. The Codex CLI is Apache-2.0 **and**
+still requires a ChatGPT plan or an API key at run time, so the two columns are
+tracked separately in `GET /v1/runtimes/templates` (`license` and
+`requires_vendor_subscription`) rather than collapsed into one flag. Provisioning
+a runtime whose vendor account you do not have gives you a container that starts
+and then cannot do anything.
+
+:::
+
+### What cannot run as a runtime
+
+Editor extensions — **Cline** and **Kilo Code** among them — have no headless
+binary to containerise. They are MCP clients, so they belong on the
+[coding-agent path](/docs/guides/setup-by-client) where they read secrets from
+your vault over MCP, not here.
 
 :::note An unrecognised template does not error
 

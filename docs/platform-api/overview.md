@@ -1270,7 +1270,7 @@ const vaults = await scoped.listVaults();
 ### Delegation log
 
 ```
-GET /v1/platform/connected-apps/{connectionId}/delegation-log
+GET /v1/platform/connections/{connection_id}/delegation-log
 ```
 
 ## Current Limitations

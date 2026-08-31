@@ -196,7 +196,7 @@ import { SignInWith1Claw, handleSignInCallback } from "@1claw/wallet-react";
 />
 ```
 
-Supported scopes include `openid`, `profile`, `email`, and wallet-related scopes configured on your platform app. Revoke consent: `DELETE /v1/oauth/consent/{app_slug}`.
+Supported scopes include `openid`, `profile`, `email`, and wallet-related scopes configured on your platform app. Revoke consent: `DELETE /v1/oauth/consents/{app_id}`.
 
 Full OAuth server details: [Platform API — OAuth](/docs/platform-api/overview) and OpenID discovery at `GET /.well-known/openid-configuration`.
 

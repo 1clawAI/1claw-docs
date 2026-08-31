@@ -43,7 +43,8 @@ All endpoints are under **/v1**.
 | POST   | `/v1/auth/set-password`     | Set password for OIDC-provisioned users (no existing password) |
 | POST   | `/v1/auth/change-email`     | Initiate email change (sends verification code)     |
 | POST   | `/v1/auth/verify-email-change` | Complete email change with verification code     |
-| POST   | `/v1/auth/reauth`           | Step-up re-authentication (returns `reauth_token`)  |
+| POST   | `/v1/auth/reauth/begin`     | Start step-up re-authentication                    |
+| POST   | `/v1/auth/reauth/complete`  | Finish step-up, returns `reauth_token`             |
 
 ## Account Management
 
