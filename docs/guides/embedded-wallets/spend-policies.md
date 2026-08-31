@@ -114,7 +114,7 @@ All platform management endpoints require a **`plt_`** platform API key or an or
 import { createClient } from "@1claw/sdk";
 
 const platform = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.PLATFORM_KEY, // plt_...
 });
 
@@ -135,7 +135,7 @@ console.log(policy.id, policy.created_at);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/$APP_ID/spend-policies" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/$APP_ID/spend-policies" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -170,7 +170,7 @@ console.log(data.policies);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/apps/$APP_ID/spend-policies" \
+curl "https://api.1claw.co/v1/platform/apps/$APP_ID/spend-policies" \
   -H "Authorization: Bearer $PLT_KEY"
 ```
 
@@ -201,7 +201,7 @@ await platform.platform.setUserSpendPolicy(connectionId, {
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/platform/connections/$CONNECTION_ID/spend-policy" \
+curl -X PUT "https://api.1claw.co/v1/platform/connections/$CONNECTION_ID/spend-policy" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -228,7 +228,7 @@ Requires the **end-user's JWT** (not `plt_`). Returns the resolved policy or `{ 
 
 ```typescript
 const userClient = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: userJwt,
 });
 
@@ -241,7 +241,7 @@ console.log(data?.max_value_per_tx_eth, data?.allowed_chains);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/spend-policy" \
+curl "https://api.1claw.co/v1/treasury/wallets/spend-policy" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -265,7 +265,7 @@ await platform.platform.deleteSpendPolicy(appId, policyId);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/platform/apps/$APP_ID/spend-policies/$POLICY_ID" \
+curl -X DELETE "https://api.1claw.co/v1/platform/apps/$APP_ID/spend-policies/$POLICY_ID" \
   -H "Authorization: Bearer $PLT_KEY"
 ```
 
@@ -396,7 +396,7 @@ The embedded wallet widget calls treasury wallet send/swap APIs with the user's 
 ```tsx
 import { OneclawWalletProvider, OneclawTreasuryWidget } from "@1claw/wallet-react";
 
-<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
+<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
   <OneclawTreasuryWidget theme="dark" chains={["ethereum", "base"]} />
 </OneclawWalletProvider>
 ```

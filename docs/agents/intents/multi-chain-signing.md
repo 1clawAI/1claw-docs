@@ -57,7 +57,7 @@ print(resp.data["address"])
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "ethereum" }'
@@ -113,7 +113,7 @@ console.log(key.address);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/import" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys/ethereum/import" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password" \
   -H "Content-Type: application/json" \
@@ -231,19 +231,19 @@ print(resp.data.get("tx_hash"))
 
 ```bash
 # Bitcoin
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "bitcoin-signet", "to": "tb1q...", "value": "0.001" }'
 
 # Solana
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "solana-devnet", "to": "9xQ...", "value": "0.25" }'
 
 # XRP with destination tag
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "xrp-testnet", "to": "rPT1...", "value": "10", "destination_tag": 12345 }'

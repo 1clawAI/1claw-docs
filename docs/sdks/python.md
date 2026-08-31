@@ -37,7 +37,7 @@ from oneclaw import create_client
 client = create_client(api_key="1ck_your_user_key")
 
 # Or login with email/password
-client = create_client(base_url="https://api.1claw.xyz")
+client = create_client(base_url="https://api.1claw.co")
 client.auth.login("you@example.com", "your-password")
 
 # Create a vault and store a secret

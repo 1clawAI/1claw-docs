@@ -50,7 +50,7 @@ flowchart LR
 | **Human** | Developer, operator, or team owner | Create vaults, store secrets, register agents, write policies | Email/password, Google, passkey, or personal API key (`1ck_`) |
 | **Agent** | AI assistant, service, or automation | List and fetch secrets the human allowed; optionally sign txs or route LLM calls through Shroud | Agent API key (`ocv_`) → short-lived JWT |
 
-Same API for both: `https://api.1claw.xyz`. The dashboard at [1claw.co](https://1claw.co) is a UI on top of the same endpoints.
+Same API for both: `https://api.1claw.co`. The dashboard at [1claw.co](https://1claw.co) is a UI on top of the same endpoints.
 
 ---
 
@@ -154,7 +154,7 @@ Step-by-step curl, TypeScript, and Python examples: [Quickstart for humans](/doc
 1claw agent token <agent-id>
 
 # Or with curl — see full guide
-curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+curl -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{"api_key":"ocv_..."}'
 ```
@@ -224,7 +224,7 @@ npm run deploy
 
 **4. LLM app with guardrails**
 
-Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.xyz`. See [Shroud](/docs/agents/shroud/overview) and [IDE setup](/docs/agents/shroud/ide-setup).
+Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.co`. See [Shroud](/docs/agents/shroud/overview) and [IDE setup](/docs/agents/shroud/ide-setup).
 
 **5. On-chain agent**
 
@@ -249,7 +249,7 @@ The shortest manual path if you are not using `1claw setup`:
 | ----------- | ------- |
 | **Account** | Free tier at [1claw.co](https://1claw.co) — 1,000 requests/month, 3 vaults, 2 agents |
 | **CLI** | Node 20+ for `npm install -g @1claw/cli`, or Homebrew tap above |
-| **API base URL** | `https://api.1claw.xyz` |
+| **API base URL** | `https://api.1claw.co` |
 | **curl / HTTP client** | Only needed if you skip the CLI and follow the REST quickstarts |
 
 ---

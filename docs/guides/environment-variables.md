@@ -62,7 +62,7 @@ Limit: **1,000 vars per vault**.
 
 ```bash
 # Create a production-scoped var
-curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars" \
+curl -s -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/env-vars" \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -73,7 +73,7 @@ curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars" \
   }'
 
 # Resolve for preview with optional branch
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars/resolve?environment=preview&git_branch=feat/auth" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/env-vars/resolve?environment=preview&git_branch=feat/auth" \
   -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
 ```
 
@@ -82,7 +82,7 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/env-vars/resolve?environment=
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz", apiKey: process.env.ONECLAW_API_KEY! });
+const client = createClient({ baseUrl: "https://api.1claw.co", apiKey: process.env.ONECLAW_API_KEY! });
 
 await client.envVars.create(vaultId, {
   key: "STRIPE_KEY",

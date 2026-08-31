@@ -10,7 +10,7 @@ The **Human API** is the full set of REST endpoints used by secret owners: creat
 
 ## Base URL
 
-- **Production:** `https://api.1claw.xyz` (or your Cloud Run URL, e.g. `https://oneclaw-vault-XXXX.run.app`)
+- **Production:** `https://api.1claw.co` (or your Cloud Run URL, e.g. `https://oneclaw-vault-XXXX.run.app`)
 - **Dashboard proxy:** The app at [1claw.co](https://1claw.co) proxies `/api/v1/*` to the same API, so from the browser the base is effectively `https://1claw.co/api`.
 
 All endpoints are under the `/v1` prefix.

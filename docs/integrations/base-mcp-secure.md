@@ -247,7 +247,7 @@ Update via the [dashboard](https://1claw.co/agents), the SDK, or the CLI at any 
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
 
-const client = new OneclawClient({ baseUrl: "https://api.1claw.xyz", apiKey: "1ck_..." });
+const client = new OneclawClient({ baseUrl: "https://api.1claw.co", apiKey: "1ck_..." });
 
 await client.agents.update("agent-uuid", {
   tx_to_allowlist: ["0xMorphoVault", "0xColdWallet"],

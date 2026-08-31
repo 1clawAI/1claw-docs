@@ -31,7 +31,7 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -123,7 +123,7 @@ Supported per-chain fields: `max_value`, `daily_limit`, `to_allowlist`, `token_a
 When using `xrpl_tx_json`, you can restrict which of those types an agent may submit:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "xrpl_allowed_tx_types": ["Payment", "TrustSet", "OfferCreate"] }'
@@ -147,7 +147,7 @@ The signing key balance endpoint now supports querying specific token balances a
 
 ```bash
 # Query native + specific ERC-20 token balances
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys/ethereum/balance?tokens=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdAC17F958D2ee523a2206206994597C13D831ec7" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -161,17 +161,17 @@ The `?tokens=` parameter accepts comma-separated contract addresses or mints. Wo
 
 ## Shroud TEE signing (optional)
 
-When [Shroud](/docs/agents/shroud/overview) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.xyz` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
+When [Shroud](/docs/agents/shroud/overview) is deployed, transaction signing moves into a Trusted Execution Environment (AMD SEV-SNP on GKE). The `POST /v1/agents/:id/transactions` endpoint on `shroud.1claw.co` uses Shroud's own signing engine — private keys are only decrypted inside confidential memory. All other Intents API endpoints (list, get, simulate, simulate-bundle) are proxied to the Vault API.
 
-Both `api.1claw.xyz` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
+Both `api.1claw.co` and the TEE hosts serve the full Intents API. Choose based on your security requirements:
 
 | Surface | Submit | List/Get/Simulate | Key isolation |
 | --- | --- | --- | --- |
-| `api.1claw.xyz` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
-| `shroud.1claw.xyz` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
-| `intents.1claw.xyz` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
+| `api.1claw.co` | HSM-backed signing (Cloud Run) | Direct | Cloud KMS HSM |
+| `shroud.1claw.co` | TEE signing (GKE SEV-SNP) | Proxied to Vault API | TEE + KMS |
+| `intents.1claw.co` | TEE signing (same backend as Shroud) | Proxied to Vault API | TEE + KMS |
 
-`intents.1claw.xyz` is an alias for the same GKE backend as `shroud.1claw.xyz` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/agents/shroud/overview).
+`intents.1claw.co` is an alias for the same GKE backend as `shroud.1claw.co` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/agents/shroud/overview).
 
 ## Security model
 
@@ -205,7 +205,7 @@ When the `nonce` field is omitted, the server atomically reserves the next nonce
 By default, the `signed_tx` field (raw signed transaction hex) is **omitted** from GET responses to reduce exfiltration risk. Pass `?include_signed_tx=true` to include it:
 
 ```bash
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions?include_signed_tx=true" \
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/transactions?include_signed_tx=true" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 ```
 
@@ -245,7 +245,7 @@ Set `execution_intents_enabled: true` when creating or updating an agent:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "execution_intents_enabled": true }'
@@ -281,7 +281,7 @@ Bindings are human-only — agents cannot create or modify their own bindings.
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -382,7 +382,7 @@ api_key = resp.data.get("api_key")  # shown once
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -410,7 +410,7 @@ Use vault-ref credentials when multiple bindings share the same upstream API key
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/execute" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -490,7 +490,7 @@ Binding responses include **`credential_set`** (boolean) so you can confirm a cr
 ### GraphQL example
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/execute" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/execute" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

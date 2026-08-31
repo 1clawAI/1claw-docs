@@ -1,6 +1,6 @@
 ---
 title: MCP Deployment
-description: Deploy the 1claw MCP server to Cloud Run for hosted access at mcp.1claw.xyz, or self-host on any container platform.
+description: Deploy the 1claw MCP server to Cloud Run for hosted access at mcp.1claw.co, or self-host on any container platform.
 sidebar_position: 4
 ---
 
@@ -15,7 +15,7 @@ The MCP server auto-deploys to Google Cloud Run on every push to `main` that mod
 1. Push to `main` triggers the workflow.
 2. Docker image is built and pushed to Artifact Registry.
 3. Cloud Run service `oneclaw-mcp` is updated with the new image.
-4. The service is available at its Cloud Run URL (and at `mcp.1claw.xyz` if domain mapping is configured).
+4. The service is available at its Cloud Run URL (and at `mcp.1claw.co` if domain mapping is configured).
 
 ### Infrastructure (Terraform)
 
@@ -23,13 +23,13 @@ The Cloud Run service and domain mapping are defined in `infra/main.tf`. To set 
 
 ```hcl
 # In infra/terraform.tfvars
-mcp_domain = "mcp.1claw.xyz"
+mcp_domain = "mcp.1claw.co"
 ```
 
 Then run `terraform apply`. This creates:
 
 - `google_cloud_run_v2_service.mcp` — The Cloud Run service with health checks, auto-scaling (0–5 instances), and the vault API URL injected as an environment variable.
-- `google_cloud_run_domain_mapping.mcp` — Maps `mcp.1claw.xyz` to the service (requires a CNAME DNS record pointing to Cloud Run).
+- `google_cloud_run_domain_mapping.mcp` — Maps `mcp.1claw.co` to the service (requires a CNAME DNS record pointing to Cloud Run).
 
 ### Environment variables (set automatically)
 
@@ -54,7 +54,7 @@ cd packages/mcp
 docker build -t my-mcp-server .
 docker run -p 8080:8080 \
   -e MCP_TRANSPORT=httpStream \
-  -e ONECLAW_BASE_URL=https://api.1claw.xyz \
+  -e ONECLAW_BASE_URL=https://api.1claw.co \
   my-mcp-server
 ```
 

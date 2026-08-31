@@ -22,7 +22,7 @@ Use it when your agent lives in OpenClaw and you want vault access, signing, and
 | **Native agent tools** | On | 13 tools: secrets, vaults, policies, sharing, EVM simulate/submit. Prefix: `oneclaw_*`. |
 | **Secret redaction** | On | Scans outbound messages and redacts leaked secret values before they leave the gateway. |
 | **Secret injection** | Off | Replaces `{{1claw:path/to/secret}}` placeholders with real values at prompt time. |
-| **Shroud routing** | Off | When the agent has `shroud_enabled`, routes LLM traffic through [Shroud](https://shroud.1claw.xyz). |
+| **Shroud routing** | Off | When the agent has `shroud_enabled`, routes LLM traffic through [Shroud](https://shroud.1claw.co). |
 | **Key rotation monitor** | Off | Background service that warns when secrets expire within 7 days. |
 | **Slash commands** | On | `/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`. |
 | **Gateway RPC** | — | `1claw.status` for programmatic health/status. |
@@ -85,8 +85,8 @@ You can rely on env vars instead of (or as fallback for) the config file:
 | `ONECLAW_AGENT_API_KEY` | Agent API key (`ocv_...`). Required. |
 | `ONECLAW_AGENT_ID` | Agent UUID. Optional; resolved from the key if omitted. |
 | `ONECLAW_VAULT_ID` | Default vault UUID. Optional; auto-discovered from the token response or first vault. |
-| `ONECLAW_BASE_URL` | 1claw API base URL. Default: `https://api.1claw.xyz`. |
-| `ONECLAW_SHROUD_URL` | Shroud proxy URL. Default: `https://shroud.1claw.xyz`. |
+| `ONECLAW_BASE_URL` | 1claw API base URL. Default: `https://api.1claw.co`. |
+| `ONECLAW_SHROUD_URL` | Shroud proxy URL. Default: `https://shroud.1claw.co`. |
 | `ONECLAW_MCP_SANITIZATION_MODE` | Security mode for tool input inspection: `block`, `surgical`, or `log_only`. Default: `block`. |
 
 Config file values take precedence over env vars.

@@ -50,7 +50,7 @@ Some older references describe `SHA-256(prev_hash | event_id | actor_id | action
 
 ## Calling `GET /v1/audit/verify`
 
-**Endpoint:** `GET https://api.1claw.xyz/v1/audit/verify`
+**Endpoint:** `GET https://api.1claw.co/v1/audit/verify`
 
 **Authentication:** Required. Use a human JWT or org API key (`1ck_…`) with access to the org whose chain you want to verify.
 
@@ -68,7 +68,7 @@ Some older references describe `SHA-256(prev_hash | event_id | actor_id | action
 export TOKEN="your-jwt-or-1ck-key"
 
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://api.1claw.xyz/v1/audit/verify?limit=5000" | jq .
+  "https://api.1claw.co/v1/audit/verify?limit=5000" | jq .
 ```
 
 ### Example response

@@ -44,7 +44,7 @@ Other recipient types (`user`, `agent`, `creator`, `external_email`) still requi
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/secrets/{secret_id}/share \
+curl -X POST https://api.1claw.co/v1/secrets/{secret_id}/share \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -62,7 +62,7 @@ curl -X POST https://api.1claw.xyz/v1/secrets/{secret_id}/share \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
@@ -105,7 +105,7 @@ share = resp.data
 ```json
 {
     "id": "uuid",
-    "share_url": "https://api.1claw.xyz/v1/share/uuid",
+    "share_url": "https://api.1claw.co/v1/share/uuid",
     "recipient_type": "external_email",
     "recipient_email": "colleague@example.com",
     "expires_at": "2026-03-15T00:00:00Z",
@@ -121,7 +121,7 @@ The simplest way for an agent to share a secret back with the human who owns it:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/secrets/{secret_id}/share \
+curl -X POST https://api.1claw.co/v1/secrets/{secret_id}/share \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -191,9 +191,9 @@ For **`anyone_with_link`** shares, `GET /v1/share/{share_id}` requires **no** `A
 <TabItem value="curl" label="curl">
 
 ```bash
-curl https://api.1claw.xyz/v1/share/{share_id}
+curl https://api.1claw.co/v1/share/{share_id}
 # If the share has a passphrase, include it in the request body (JSON):
-# curl --data '{"passphrase":"your-passphrase"}' https://api.1claw.xyz/v1/share/{share_id}
+# curl --data '{"passphrase":"your-passphrase"}' https://api.1claw.co/v1/share/{share_id}
 ```
 
 </TabItem>
@@ -226,7 +226,7 @@ Only the creator can revoke:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE https://api.1claw.xyz/v1/share/{share_id} \
+curl -X DELETE https://api.1claw.co/v1/share/{share_id} \
   -H "Authorization: Bearer $TOKEN"
 ```
 

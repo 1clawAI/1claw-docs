@@ -130,7 +130,7 @@ Anthropic returns an `sk-ant-oat01-…` token you can then use against the Claud
 | `iss` | `https://api.1claw.co` (or your `vault_public_url` if customized) |
 
 :::note Issuer moved to `api.1claw.co`
-Tokens minted before this change carry `https://api.1claw.xyz`. Both hosts serve
+Tokens minted before this change carry `https://api.1claw.co`. Both hosts serve
 identical JWKS, and the API accepts either issuer on validation, so existing
 tokens keep working until they expire. If you configured a relying party against
 the old issuer, update it to `https://api.1claw.co` — the `iss` claim must match
@@ -164,7 +164,7 @@ The header always includes `alg: RS256`, `typ: JWT`, and a `kid` that resolves a
 | `403 Federation not enabled` | Toggle the agent's federation switch in the dashboard. |
 | `403 audience not allowed` | Add the audience to the agent's allowlist. |
 | `400 audience must be an absolute URL` | Use `https://`; localhost and private CIDRs are blocked in production. |
-| `503 RS256 signing key not configured` | 1claw deployment misconfigured; contact ops@1claw.xyz. |
+| `503 RS256 signing key not configured` | 1claw deployment misconfigured; contact ops@1claw.co. |
 | Anthropic complains about `iss` | Make sure the issuer in the Anthropic Console exactly matches `iss` in the JWT (no trailing slash). |
 
 ## Combine with Shroud for defense-in-depth

@@ -62,7 +62,7 @@ Query params on list: `scope_type`, `scope_id`.
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/access-policies" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/access-policies" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -85,7 +85,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/access-policies" \
 ```typescript
 // Use fetch or curl until @1claw/sdk adds a walletAccess resource.
 // Request body matches the Vault handler DTO (scope_type, principal_type, …).
-const res = await fetch("https://api.1claw.xyz/v1/treasury/wallets/access-policies", {
+const res = await fetch("https://api.1claw.co/v1/treasury/wallets/access-policies", {
   method: "POST",
   headers: {
     Authorization: `Bearer ${userJwt}`,
@@ -111,7 +111,7 @@ Returns **201** with the full policy object.
 ### List policies
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/access-policies?scope_type=org" \
+curl "https://api.1claw.co/v1/treasury/wallets/access-policies?scope_type=org" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -120,7 +120,7 @@ Response: `{ "policies": [ ... ] }` — active policies only.
 ### Delete (soft-delete)
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/treasury/wallets/access-policies/$POLICY_ID" \
+curl -X DELETE "https://api.1claw.co/v1/treasury/wallets/access-policies/$POLICY_ID" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 

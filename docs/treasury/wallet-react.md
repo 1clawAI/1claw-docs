@@ -33,7 +33,7 @@ import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-reac
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
+    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
       <OneclawEmbeddedWallet
         features={["send", "swap", "receive", "buy"]}
         socialProviders={["google", "apple", "email"]}
@@ -57,7 +57,7 @@ Context provider that wraps your app. Must be an ancestor of any wallet componen
 | Prop | Type | Required | Description |
 | --- | --- | --- | --- |
 | `apiKey` | `string` | Yes | Your Platform API key (`plt_...`) |
-| `baseUrl` | `string` | No | API base URL (defaults to `https://api.1claw.xyz`) |
+| `baseUrl` | `string` | No | API base URL (defaults to `https://api.1claw.co`) |
 | `children` | `ReactNode` | Yes | Your app content |
 
 ### `<OneclawEmbeddedWallet>`
@@ -272,7 +272,7 @@ No additional configuration needed — the widget handles widget URLs and callba
 | Environment variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_ONECLAW_API_KEY` | Your `plt_` Platform API key |
-| `NEXT_PUBLIC_ONECLAW_BASE_URL` | API base URL (default: `https://api.1claw.xyz`) |
+| `NEXT_PUBLIC_ONECLAW_BASE_URL` | API base URL (default: `https://api.1claw.co`) |
 
 ---
 

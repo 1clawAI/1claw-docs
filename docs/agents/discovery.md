@@ -31,15 +31,15 @@ By default, agents are private. To publish an agent to the directory:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID/discovery" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID/discovery" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "discoverable": true,
     "public_description": "A DeFi research agent that analyzes token metrics and on-chain data.",
     "public_tags": ["defi", "research", "analytics"],
-    "a2a_url": "https://my-agent.run.1claw.xyz/a2a",
-    "mcp_url": "https://my-agent.run.1claw.xyz/mcp"
+    "a2a_url": "https://my-agent.run.1claw.co/a2a",
+    "mcp_url": "https://my-agent.run.1claw.co/mcp"
   }'
 ```
 
@@ -51,8 +51,8 @@ await client.discovery.updateDiscovery(agentId, {
   discoverable: true,
   public_description: "A DeFi research agent that analyzes token metrics.",
   public_tags: ["defi", "research", "analytics"],
-  a2a_url: "https://my-agent.run.1claw.xyz/a2a",
-  mcp_url: "https://my-agent.run.1claw.xyz/mcp",
+  a2a_url: "https://my-agent.run.1claw.co/a2a",
+  mcp_url: "https://my-agent.run.1claw.co/mcp",
 });
 ```
 
@@ -64,8 +64,8 @@ await client.discovery.updateDiscovery(agentId, {
   --discoverable \
   --description "A DeFi research agent" \
   --tags defi,research,analytics \
-  --a2a-url "https://my-agent.run.1claw.xyz/a2a" \
-  --mcp-url "https://my-agent.run.1claw.xyz/mcp"
+  --a2a-url "https://my-agent.run.1claw.co/a2a" \
+  --mcp-url "https://my-agent.run.1claw.co/mcp"
 ```
 
 </TabItem>
@@ -78,7 +78,7 @@ Only human users can update discovery settings — agents cannot make themselves
 Every discoverable agent has a public card (no authentication required):
 
 ```bash
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/card"
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/card"
 ```
 
 ```json
@@ -87,8 +87,8 @@ curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/card"
   "name": "DeFi Researcher",
   "description": "Analyzes token metrics and on-chain data.",
   "tags": ["defi", "research", "analytics"],
-  "a2a_url": "https://my-agent.run.1claw.xyz/a2a",
-  "mcp_url": "https://my-agent.run.1claw.xyz/mcp",
+  "a2a_url": "https://my-agent.run.1claw.co/a2a",
+  "mcp_url": "https://my-agent.run.1claw.co/mcp",
   "capabilities": ["secrets", "signing", "memory"]
 }
 ```
@@ -102,10 +102,10 @@ The directory is public and supports full-text search and tag filtering:
 
 ```bash
 # Search by query
-curl "https://api.1claw.xyz/v1/agents/directory?q=defi&tags=research"
+curl "https://api.1claw.co/v1/agents/directory?q=defi&tags=research"
 
 # Paginated listing
-curl "https://api.1claw.xyz/v1/agents/directory?limit=20&offset=0"
+curl "https://api.1claw.co/v1/agents/directory?limit=20&offset=0"
 ```
 
 </TabItem>
@@ -136,7 +136,7 @@ data.agents.forEach((a) => console.log(a.name, a.tags));
 Platform apps can also be listed in the marketplace with additional metadata:
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/marketplace"
+curl "https://api.1claw.co/v1/platform/marketplace"
 ```
 
 Each listing includes `category`, `listing_tags`, `pricing_summary`, and optional screenshots.

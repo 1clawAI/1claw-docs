@@ -55,7 +55,7 @@ await client.internalAccounts.transfer({
 Pass an **`Idempotency-Key`** header on the HTTP request for safe retries (recommended for production):
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/internal-transfers" \
+curl -X POST "https://api.1claw.co/v1/internal-transfers" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Idempotency-Key: $(uuidgen)" \
   -H "Content-Type: application/json" \
@@ -137,7 +137,7 @@ Details: [CMEK](/docs/vaults/cmek).
 
 Human treasury sends execute in Vault with HSM-backed keys. **Optional TEE routing** applies to **agent** Intents API traffic via Shroud (`intents_require_tee`, `execution_require_tee`) — not the standard embedded-wallet send path.
 
-Attestation: `GET https://shroud.1claw.xyz/v1/shroud/attestation`
+Attestation: `GET https://shroud.1claw.co/v1/shroud/attestation`
 
 See [Security overview](/docs/security/security-overview) and [Trust model comparison](/docs/security/trust-model-comparison).
 

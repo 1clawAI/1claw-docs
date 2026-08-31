@@ -74,7 +74,7 @@ Set `intents_api_enabled: true` when registering or updating an agent:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents" \
+curl -X POST "https://api.1claw.co/v1/agents" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -90,7 +90,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents" \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
@@ -134,7 +134,7 @@ The enforcement is two-sided: the flag both **grants** access to the transaction
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -198,11 +198,11 @@ print(resp.data.get("tx_hash"), resp.data.get("status"))
 
 ```bash
 # List all transactions for this agent
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 
 # Get a specific transaction
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/$TX_ID" \
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/transactions/$TX_ID" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 ```
 
@@ -247,7 +247,7 @@ Call `POST /v1/agents/:agent_id/transactions/sign` with the same request body as
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/sign" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions/sign" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -322,7 +322,7 @@ api_key = resp.data.get("api_key")  # shown once
 All agent guardrails (allowlists, value caps, daily limits) are enforced exactly as for submit. The transaction is recorded for audit and daily-limit tracking.
 
 :::tip TEE signing
-When using Shroud (`shroud.1claw.xyz`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting.
+When using Shroud (`shroud.1claw.co`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting.
 :::
 
 ## Transaction simulation (Tenderly) {#simulation}
@@ -337,7 +337,7 @@ Call the simulate endpoint to preview a transaction without committing:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/simulate" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions/simulate" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -404,7 +404,7 @@ Add `"simulate_first": true` to the standard transaction submission. The server 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -454,7 +454,7 @@ Simulate multiple transactions sequentially (e.g. ERC-20 approve followed by a s
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions/simulate-bundle" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions/simulate-bundle" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -508,7 +508,7 @@ Set `max_fee_per_gas` and `max_priority_fee_per_gas` instead of `gas_price` to u
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

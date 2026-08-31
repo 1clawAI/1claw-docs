@@ -52,7 +52,7 @@ Your SaaS                          1claw Platform API             End user
 <TabItem value="curl" label="curl">
 
 ```bash
-APP=$(curl -s -X POST https://api.1claw.xyz/v1/platform/apps \
+APP=$(curl -s -X POST https://api.1claw.co/v1/platform/apps \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -111,7 +111,7 @@ Templates define what gets created for each user:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/$APP_ID/templates" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/$APP_ID/templates" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -244,7 +244,7 @@ import { createClient } from "@1claw/sdk";
 
 // Client using the bootstrapped agent's API key
 const tradingAgent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: bootstrapResult.summary.agent_api_key,
 });
 

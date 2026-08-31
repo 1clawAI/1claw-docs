@@ -24,12 +24,12 @@ Use this checklist before launching embedded wallets to real users.
 
 ```bash
 # Send OTP
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/send" \
   -H "Content-Type: application/json" \
   -d '{"email":"test+wallet@yourdomain.com","platform_app_id":"APP_UUID"}'
 
 # Verify (use code from email)
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/verify" \
   -H "Content-Type: application/json" \
   -d '{
     "email":"test+wallet@yourdomain.com",
@@ -43,7 +43,7 @@ Expect `token`, `user_id`, `is_new_user`, and optional `wallet_address` in the r
 ### 2. Wallet provisioning
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets" \
+curl "https://api.1claw.co/v1/treasury/wallets" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -52,7 +52,7 @@ Confirm wallets exist for each requested chain.
 ### 3. Balance read
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance" \
+curl "https://api.1claw.co/v1/treasury/wallets/ethereum/balance" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -61,7 +61,7 @@ curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance" \
 Use Sepolia or Base Sepolia. Fund the wallet via faucet, then send with step-up auth:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/sepolia/send" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/sepolia/send" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "X-Auth-Confirm: $PASSWORD" \
   -H "Content-Type: application/json" \
@@ -78,7 +78,7 @@ Configure a tight allowlist, attempt send to a non-listed address, confirm **403
 ### 6. Widget integration
 
 ```tsx
-<OneclawWalletProvider apiKey={process.env.NEXT_PUBLIC_PLT_KEY!} baseUrl="https://api.1claw.xyz">
+<OneclawWalletProvider apiKey={process.env.NEXT_PUBLIC_PLT_KEY!} baseUrl="https://api.1claw.co">
   <OneclawEmbeddedWallet
     chains={["ethereum"]}
     features={["send", "receive"]}

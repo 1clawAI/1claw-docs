@@ -8,6 +8,54 @@ sidebar_label: "2026"
 
 ### 2026-08 (latest)
 
+### v0.59.12 (2026-08-31) {#v05912-2026-08-31}
+
+**Discoverability — two catalogues that were previously prose only**
+- **`GET /v1/runtimes/templates`** — the provisionable runtime template catalogue, with `chat_capable` per entry. Public, no auth. This path previously collided with `/v1/runtimes/{runtime_id}` and answered `400 UUID parsing failed`.
+- **`GET /v1/automations/step-types`** — the full `workflow_spec` step vocabulary (14 types), each marked `agent_allowed` and `moves_funds`, plus step caps and the run timeout. Public, no auth.
+- **Unrecognised automation step types** are still skipped rather than fatal, but the run output now names the step and lists the known types instead of reporting a bare "unsupported step type".
+
+**Platform API**
+- **`PATCH /v1/platform/apps/{id}` accepts `redirect_uris`** from a `plt_` key. Previously no platform-key route could change them, so an app moving domains needed a human operator token.
+- **A refused `PATCH` now names the offending fields** rather than only restating which field is permitted, so a reconcile loop can retry without them.
+
+---
+
+### v0.59.8 – v0.59.11 (2026-08-30 → 08-31) {#v0598-v05911}
+
+:::warning Integrator-affecting: the OIDC issuer moved
+
+The Vault mints and advertises **`https://api.1claw.co`** as its issuer. The
+legacy issuer `https://api.1claw.xyz` is still **accepted on validation** —
+tokens minted before the move stay valid until they expire — but is never
+minted. If you pin an expected `iss`, accept both during the transition.
+
+The OIDC discovery document previously advertised an `authorization_endpoint`
+on the legacy apex, which now 301s; a redirect inside an authorization request
+can drop `state` or `code_challenge`. It is now on `https://1claw.co`.
+
+WebAuthn `rp_id` also moved to `1claw.co`. Passkeys enrolled against the old
+origin cannot be used on the new one; affected users are re-prompted to enrol.
+:::
+
+- **Billing** — the dashboard metering exemption is now scoped to the three polled endpoints (`GET /v1/runtimes`, `/v1/runtimes/{id}`, `/v1/automations`) in addition to requiring a non-`api_key` caller. Session-authenticated `GET`s to other routes, including secret reads, are billable and count toward the monthly quota.
+- **Email OTP** — the per-address send budget is now scoped to `(address, sender)`. Previously anyone who knew an address could spend its budget and silently suppress the owner's sign-in code.
+- **Automations** — platform-created workflows are validated at create and re-validated at run.
+- **SMTP execution** — a recipient value must be a single mailbox; commas, semicolons and whitespace are rejected, so a list cannot be smuggled past the per-execution recipient cap.
+- **Packages** — OpenAPI spec, SDK, CLI, MCP → **0.59.8**; `@1claw/wallet-react` → **0.5.2**; Python SDK → **0.59.8**. All client defaults moved to `api.1claw.co`.
+- **`docs.1claw.xyz`** now redirects (308) to `docs.1claw.co`.
+
+---
+
+### v0.59.5 – v0.59.7 (2026-08-27 → 08-29) {#v0595-v0597}
+
+- **Content inspection** — `POST /v1/shroud/inspect-content` REST parity, webhooks catalog.
+- **Onboarding** — golden-path provisioning, runtime log streams, runtime chat history.
+- **Midnight / NIGHT** chain family support behind `ONECLAW_MIDNIGHT_ENABLED` (Preprod only).
+- **Auth** — email-OTP sign-in promoted on the login page; passkey `rp_id` recorded per credential.
+
+---
+
 ### v0.59.4 (2026-08-27) {#v0594-2026-08-27}
 
 **Platform connection expansion**
@@ -952,8 +1000,8 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 ### v0.41.1 — TEE enforcement toggles (2026-07-13)
 
 #### Agent-level TEE enforcement (Pro+)
-- **New:** `intents_require_tee` boolean on agents — when enabled, transaction sign/submit requests to `api.1claw.xyz` are rejected with 403. Agents must route through `shroud.1claw.xyz` where signing happens inside the hardware enclave.
-- **New:** `execution_require_tee` boolean on agents — when enabled, execute requests to `api.1claw.xyz` are rejected AND all direct secret reads by the agent are blocked. Forces use of Execution Intents bindings through the TEE.
+- **New:** `intents_require_tee` boolean on agents — when enabled, transaction sign/submit requests to `api.1claw.co` are rejected with 403. Agents must route through `shroud.1claw.co` where signing happens inside the hardware enclave.
+- **New:** `execution_require_tee` boolean on agents — when enabled, execute requests to `api.1claw.co` are rejected AND all direct secret reads by the agent are blocked. Forces use of Execution Intents bindings through the TEE.
 - **New:** `X-1Claw-TEE-Origin` HMAC verification module (`vault/src/api/middleware/tee_origin.rs`) — Shroud sets this header on proxied requests; Vault validates using shared `ONECLAW_TEE_ORIGIN_SECRET`.
 - **Changed:** "Enable Intents API" toggle moved from the Overview tab to the Signing tab on agent detail page.
 - **Dashboard:** Two new TEE enforcement toggles on the Signing tab with Pro+ tier badge, disabled states (dependent on base flags), and confirmation dialog warning about breaking changes.
@@ -1620,7 +1668,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 - **Updated:** On paid routes, x402 middleware runs before auth so unauthenticated requests receive 402 (with payment details) instead of 401. Scanners and buyers can discover and pay without a token.
 - **New:** Optional `x402.asset` (DB/API) and `X402_ASSET` env — default is Base USDC. Used in 402 `accepts[].asset`.
 - **Updated:** SDK `PaymentAccept` and auto-pay logic support the new 402 shape; `maxAmountRequired` (atomic) with fallback to legacy `price` (USD). Custom `X402Signer` implementations should use `maxAmountRequired` and `asset`.
-- **Updated:** Dashboard proxy passes discovery paths (`/openapi.json`, `/.well-known/x402`) through without `/v1` prefix so vault discovery routes are reachable at api.1claw.xyz.
+- **Updated:** Dashboard proxy passes discovery paths (`/openapi.json`, `/.well-known/x402`) through without `/v1` prefix so vault discovery routes are reachable at api.1claw.co.
 
 ## 2026-02
 
@@ -1730,7 +1778,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 - **New:** MCP server for AI agent access to secrets via the Model Context Protocol.
 - 7 tools: `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `rotate_and_store`, `get_env_bundle`.
 - Browsable `vault://secrets` resource.
-- **Dual transport:** Local stdio mode (Claude Desktop, Cursor) and hosted HTTP streaming mode (`mcp.1claw.xyz`).
+- **Dual transport:** Local stdio mode (Claude Desktop, Cursor) and hosted HTTP streaming mode (`mcp.1claw.co`).
 - Per-session authentication in hosted mode — each connection gets its own vault client.
 - Auto-deploy to Cloud Run via GitHub Actions.
 

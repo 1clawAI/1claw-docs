@@ -10,7 +10,16 @@ const path = require("path");
 const DOCS_DIR = path.join(__dirname, "..", "docs");
 const OUT_FULL = path.join(__dirname, "..", "static", "llms-full.txt");
 const OUT_LLMS = path.join(__dirname, "..", "static", "llms.txt");
-const SITE_URL = "https://docs.1claw.xyz";
+// Read from docusaurus.config.ts rather than repeating it. This was hardcoded
+// to the legacy host while the config said docs.1claw.co, so every build wrote
+// ~174 stale URLs into llms.txt — the index AI crawlers read — and nothing
+// surfaced the disagreement because the two were never compared.
+const SITE_URL = (() => {
+    const cfg = fs.readFileSync(path.join(__dirname, "..", "docusaurus.config.ts"), "utf8");
+    const m = cfg.match(/^\s*url:\s*["']([^"']+)["']/m);
+    if (!m) throw new Error("could not read `url` from docusaurus.config.ts");
+    return m[1].replace(/\/$/, "");
+})();
 const INDEX_START = "<!-- AUTO-GENERATED-DOC-INDEX:START -->";
 const INDEX_END = "<!-- AUTO-GENERATED-DOC-INDEX:END -->";
 
@@ -90,7 +99,7 @@ function buildIndex(mdFiles) {
     const lines = [
         "## Documentation index",
         "",
-        `Complete index of ${mdFiles.length} doc pages on docs.1claw.xyz. Full content: ${SITE_URL}/llms-full.txt`,
+        `Complete index of ${mdFiles.length} doc pages on ${SITE_URL.replace(/^https:\/\//, "")}. Full content: ${SITE_URL}/llms-full.txt`,
         "",
     ];
 

@@ -35,7 +35,7 @@ You can obtain an access token in three ways: email/password, Google OAuth, or a
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/token \
+curl -X POST https://api.1claw.co/v1/auth/token \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"your-password"}'
 ```
@@ -96,7 +96,7 @@ The server verifies the Google ID token locally via [Google's JWKS](https://www.
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/google \
+curl -X POST https://api.1claw.co/v1/auth/google \
   -H "Content-Type: application/json" \
   -d '{"id_token":"<google-id-token>"}'
 ```
@@ -147,7 +147,7 @@ If you have a **personal API key** (e.g. `1ck_...` from the dashboard or `POST /
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/api-key-token \
+curl -X POST https://api.1claw.co/v1/auth/api-key-token \
   -H "Content-Type: application/json" \
   -d '{"api_key":"1ck_..."}'
 ```
@@ -157,7 +157,7 @@ curl -X POST https://api.1claw.xyz/v1/auth/api-key-token \
 
 ```typescript
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: "1ck_...",
 });
 ```
@@ -194,7 +194,7 @@ All three key types (`1ck_` human, `ocv_` agent, `plt_` platform) support option
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE https://api.1claw.xyz/v1/auth/token \
+curl -X DELETE https://api.1claw.co/v1/auth/token \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -240,7 +240,7 @@ Returns **204 No Content** on success. Useful to invalidate the current token (e
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/change-password \
+curl -X POST https://api.1claw.co/v1/auth/change-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"current_password":"...","new_password":"..."}'

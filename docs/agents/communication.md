@@ -43,7 +43,7 @@ The dashboard chat lets you interact with agents in real time. Messages are rout
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: "1ck_...",
 });
 

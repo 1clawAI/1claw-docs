@@ -34,7 +34,7 @@ A vault is a container for secrets. Every secret lives inside exactly one vault.
 ```bash
 export TOKEN="your-jwt-or-1ck-key"
 
-VAULT=$(curl -s -X POST https://api.1claw.xyz/v1/vaults \
+VAULT=$(curl -s -X POST https://api.1claw.co/v1/vaults \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Quickstart","description":"Five-minute walkthrough"}')
@@ -50,7 +50,7 @@ echo "Vault ID: $VAULT_ID"
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY!,
 });
 
@@ -74,7 +74,7 @@ Put a secret into the vault. This could be an API key, a database URL, or any se
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/demo/api-key" \
+curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/demo/api-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -106,7 +106,7 @@ An agent is a non-human caller (AI assistant, backend service, automation) that 
 <TabItem value="curl" label="curl">
 
 ```bash
-AGENT=$(curl -s -X POST https://api.1claw.xyz/v1/agents \
+AGENT=$(curl -s -X POST https://api.1claw.co/v1/agents \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -144,7 +144,7 @@ Policies define what an agent can access. This one grants read access on everyth
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+curl -s -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -175,7 +175,7 @@ Provision an Ethereum signing key for the agent. 1claw generates the keypair ins
 <TabItem value="curl" label="curl">
 
 ```bash
-SIGNING_KEY=$(curl -s -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
+SIGNING_KEY=$(curl -s -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"chain":"ethereum"}')
@@ -208,12 +208,12 @@ Exchange the agent API key for a JWT, then submit a transaction on Sepolia. The 
 
 ```bash
 # Exchange agent key for JWT
-AGENT_TOKEN=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+AGENT_TOKEN=$(curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d "{\"api_key\": \"$AGENT_KEY\"}" | jq -r '.token')
 
 # Submit a testnet transaction
-TX=$(curl -s -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+TX=$(curl -s -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -230,7 +230,7 @@ echo "$TX" | jq '{id, tx_hash, status}'
 
 ```typescript
 const agentClient = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: agentKey,
 });
 

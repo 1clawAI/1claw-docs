@@ -32,7 +32,7 @@ npm install @1claw/sdk
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-    baseUrl: "https://api.1claw.xyz",
+    baseUrl: "https://api.1claw.co",
     apiKey: process.env.ONECLAW_API_KEY, // personal API key (1ck_...)
 });
 
@@ -59,19 +59,19 @@ The SDK supports three authentication methods:
 ```ts
 // 1. Personal API key (recommended for server-side)
 const client = createClient({
-    baseUrl: "https://api.1claw.xyz",
+    baseUrl: "https://api.1claw.co",
     apiKey: "1ck_...",
 });
 
 // 2. Agent credentials
 const client = createClient({
-    baseUrl: "https://api.1claw.xyz",
+    baseUrl: "https://api.1claw.co",
     agentId: "uuid",
     apiKey: "ocv_...",
 });
 
 // 3. Manual auth (signup, email/password)
-const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const client = createClient({ baseUrl: "https://api.1claw.co" });
 await client.auth.signup({
     email: "me@example.com",
     password: "...",

@@ -46,14 +46,14 @@ Separate asymmetric keys (not envelope KEKs):
 **Public endpoint (no authentication required):**
 
 ```
-GET https://shroud.1claw.xyz/v1/shroud/attestation
+GET https://shroud.1claw.co/v1/shroud/attestation
 ```
 
 Returns `attestation_level`, `identity_token`, `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
 
 1. Decode JWT from `identity_token`
 2. Validate signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
-3. Confirm `aud` is `https://api.1claw.xyz`
+3. Confirm `aud` is `https://api.1claw.co`
 4. At `confidential` / `sev_snp` levels, verify Confidential Computing claims (`secboot`, `hwmodel`, etc.)
 5. At `sev_snp`, verify image digest / measurement match
 
@@ -163,11 +163,11 @@ All agent LLM traffic can pass through the Shroud TEE proxy when `shroud_enabled
 
 **Scope:** Expression evaluator, public attestation endpoint, Shamir reconstruction path, audit hash chain verification.
 
-**Status:** Engagement scoped. Contact ops@1claw.xyz for published findings.
+**Status:** Engagement scoped. Contact ops@1claw.co for published findings.
 
 ### SOC 2
 
-Contact ops@1claw.xyz for current compliance attestation status.
+Contact ops@1claw.co for current compliance attestation status.
 
 ---
 
@@ -189,17 +189,17 @@ Contact ops@1claw.xyz for current compliance attestation status.
 
 ```bash
 # 1. Verify TEE attestation
-curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
+curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 
 # 2. Verify audit hash chain
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify | jq .
+  https://api.1claw.co/v1/audit/verify | jq .
 
 # 3. Verify OIDC public keys
-curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
+curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 
 # 4. Dry-run Cedar policy (Team+)
-curl -X POST https://api.1claw.xyz/v1/org/cedar-policies/test \
+curl -X POST https://api.1claw.co/v1/org/cedar-policies/test \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"policy": "...", "context": {...}}'

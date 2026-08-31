@@ -28,7 +28,7 @@ If you're connecting Cursor or Claude Desktop to a vault, start with [MCP integr
 
 ```bash
 # Fetch a secret
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -39,7 +39,7 @@ curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 

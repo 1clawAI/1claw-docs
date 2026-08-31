@@ -49,7 +49,7 @@ There are two ways to connect your OpenClaw agent to 1Claw:
 The agent can register itself. Run this from your deployment script or during `clawhub install`:
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-openclaw-agent","human_email":"you@example.com"}'
 ```
@@ -91,7 +91,7 @@ Set them in your OpenClaw environment or in the config your gateway uses when ru
 
 The 1claw skill teaches your agent how to call 1Claw's MCP tools (e.g. `list_secrets`, `get_secret`, `put_secret`, `create_vault`, `share_secret`). When the agent needs a credential, it calls the tool; the MCP server authenticates to the 1Claw API with your agent credentials and returns the secret value. The agent uses it for the task and does not store it in long-term context.
 
-- **MCP server** — The skill uses `@1claw/mcp`. You can run it as a local process (stdio) or use the hosted MCP at `https://mcp.1claw.xyz/mcp` if your OpenClaw setup supports remote MCP.
+- **MCP server** — The skill uses `@1claw/mcp`. You can run it as a local process (stdio) or use the hosted MCP at `https://mcp.1claw.co/mcp` if your OpenClaw setup supports remote MCP.
 - **Permissions** — The agent's 1Claw policies control what it can read and write. Restrict by path pattern (e.g. `prod/*` only) and use the dashboard to revoke or rotate access anytime.
 - **Sharing with your human** — The agent can share secrets back to the human who registered it using `recipient_type: "creator"` in the `share_secret` tool. The human will see the shared secret in their dashboard under Sharing → Inbound.
 

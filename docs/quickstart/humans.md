@@ -21,13 +21,13 @@ Try out the example in this repo: **[Basic](https://github.com/1clawAI/1claw-exa
 
 ## 1. Get a JWT
 
-Exchange email and password for an access token. Base URL: `https://api.1claw.xyz` (or your Cloud Run URL).
+Exchange email and password for an access token. Base URL: `https://api.1claw.co` (or your Cloud Run URL).
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/token \
+curl -X POST https://api.1claw.co/v1/auth/token \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"your-password"}'
 ```
@@ -38,7 +38,7 @@ curl -X POST https://api.1claw.xyz/v1/auth/token \
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const client = createClient({ baseUrl: "https://api.1claw.co" });
 
 await client.auth.login({
   email: "you@example.com",
@@ -83,7 +83,7 @@ Vaults are containers for secrets. Each vault has its own HSM-backed key.
 ```bash
 export TOKEN="<your access_token>"
 
-curl -X POST https://api.1claw.xyz/v1/vaults \
+curl -X POST https://api.1claw.co/v1/vaults \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"My Vault","description":"Secrets for my app"}'
@@ -138,7 +138,7 @@ Secrets live at **paths** inside a vault. Paths are slash-separated (e.g. `api-k
 ```bash
 export VAULT_ID="ae370174-9aee-4b02-ba7c-d1519930c709"
 
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -205,7 +205,7 @@ The secret **value** is never returned after creation; only metadata.
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -239,7 +239,7 @@ print(secret.data["value"])
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

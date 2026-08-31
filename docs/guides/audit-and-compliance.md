@@ -21,7 +21,7 @@ All API access (and relevant failures) can be recorded in an **audit log**. Secr
 ### Example request
 
 ```bash
-curl "https://api.1claw.xyz/v1/audit/events?action=secret.read&limit=25" \
+curl "https://api.1claw.co/v1/audit/events?action=secret.read&limit=25" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

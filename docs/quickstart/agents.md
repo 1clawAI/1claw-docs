@@ -34,7 +34,7 @@ That human can then grant the agent access to vaults via policies and share the 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","human_email":"human@example.com"}'
 ```
@@ -43,7 +43,7 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-const res = await fetch("https://api.1claw.xyz/v1/agents/enroll", {
+const res = await fetch("https://api.1claw.co/v1/agents/enroll", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -72,7 +72,7 @@ client.agents.enroll("my-agent", "admin@example.com")
 **Name only (link-only enrollment):**
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent"}'
 ```
@@ -93,7 +93,7 @@ You need the **agent ID** (UUID) and the **API key** that was returned when the 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+curl -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
@@ -110,7 +110,7 @@ import { createClient } from "@1claw/sdk";
 // Agent credentials — the SDK exchanges them for a JWT automatically
 // and refreshes it before expiry
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: "ec7e0226-30f0-4dda-b169-f060a3502603",
   apiKey: "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs",
 });
@@ -152,7 +152,7 @@ With the agent JWT you can list secrets in a vault (metadata only). You only see
 export TOKEN="<agent access_token>"
 export VAULT_ID="ae370174-9aee-4b02-ba7c-d1519930c709"
 
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -193,7 +193,7 @@ Request a secret by vault ID and path. The server checks policy; if the agent ha
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -232,7 +232,7 @@ Agents can share secrets with the human who created or enrolled them using `reci
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/secrets/$SECRET_ID/share" \
+curl -s -X POST "https://api.1claw.co/v1/secrets/$SECRET_ID/share" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"recipient_type":"creator","expires_at":"2026-12-31T00:00:00Z"}'

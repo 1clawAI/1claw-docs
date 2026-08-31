@@ -25,7 +25,7 @@ Store your `bk_ptr_` partner key via the dashboard or API:
 **API:**
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/org/bankr-config" \
+curl -X PUT "https://api.1claw.co/v1/org/bankr-config" \
   -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -50,7 +50,7 @@ The partner key is encrypted at rest (AES-256-GCM + org_id AAD).
 Create a policy allowing your agent to lease keys:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/AGENT_KEYS_VAULT_ID/policies" \
+curl -X POST "https://api.1claw.co/v1/vaults/AGENT_KEYS_VAULT_ID/policies" \
   -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -66,7 +66,7 @@ The `__agent-keys` vault ID can be found via `GET /v1/org/agent-keys-vault`.
 ### 3. Agent Leases a Key
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_ID/bankr-keys/lease" \
+curl -X POST "https://api.1claw.co/v1/agents/AGENT_ID/bankr-keys/lease" \
   -H "Authorization: Bearer AGENT_JWT" \
   -H "Content-Type: application/json" \
   -d '{ "ttl": 600 }'

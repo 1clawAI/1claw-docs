@@ -59,7 +59,7 @@ Disables that version. The row is **kept for audit**, but any read of that versi
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"api_key","value":"sk-proj-NEW..."}'
@@ -107,7 +107,7 @@ print(resp.data["path"], f"v{resp.data['version']}")
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-rotate/api-keys%2Fdb-password" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-rotate/api-keys%2Fdb-password" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"length":32,"charset":"hex"}'
@@ -156,7 +156,7 @@ Tool **`rotate_generate`**: `path` (required), optional `length` (8–1024), opt
 <TabItem value="curl" label="curl">
 
 ```bash
-curl "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/api-keys%2Fopenai" \
+curl "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-versions/api-keys%2Fopenai" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -202,7 +202,7 @@ Tool **`list_versions`**: `path`. Returns one line per version with `[disabled]`
 <TabItem value="curl" label="curl">
 
 ```bash
-curl "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version/api-keys%2Fopenai/3" \
+curl "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-version/api-keys%2Fopenai/3" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -246,7 +246,7 @@ Tool **`get_secret`** always loads the latest readable version. For an explicit 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/api-keys%2Fopenai/2" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-version-disable/api-keys%2Fopenai/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -288,7 +288,7 @@ To rotate an **agent API key**, use **POST /v1/agents/:agent_id/rotate-key**. Th
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/rotate-key" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/rotate-key" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

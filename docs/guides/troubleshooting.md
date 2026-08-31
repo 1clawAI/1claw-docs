@@ -10,9 +10,9 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 
 ## "Can't reach the API" / connection errors
 
-- **Base URL** — Use `https://api.1claw.xyz` for production. The dashboard at 1claw.co proxies `/api/*` to the same API, so from a browser you may use relative `/api/v1/...` when on the same origin.
+- **Base URL** — Use `https://api.1claw.co` for production. The dashboard at 1claw.co proxies `/api/*` to the same API, so from a browser you may use relative `/api/v1/...` when on the same origin.
 - **CLI / SDK** — Ensure your client is configured with the correct base URL. The SDK and CLI default to the production API when not set.
-- **MCP** — For hosted MCP, use `https://mcp.1claw.xyz/mcp`. For local stdio, `ONECLAW_BASE_URL` defaults to `https://api.1claw.xyz`; override only if you use a different API host.
+- **MCP** — For hosted MCP, use `https://mcp.1claw.co/mcp`. For local stdio, `ONECLAW_BASE_URL` defaults to `https://api.1claw.co`; override only if you use a different API host.
 
 ## 401 Unauthorized
 
@@ -60,4 +60,4 @@ For a full list of error codes and response shapes, see [Error codes](/docs/refe
 ## Need help?
 
 - **Community:** [Join the 1claw Telegram group](https://t.me/+jG4Rm7XHJ79mNDRh) for questions and support.
-- **Email:** [ops@1claw.xyz](mailto:ops@1claw.xyz) for account or billing issues.
+- **Email:** [ops@1claw.co](mailto:ops@1claw.co) for account or billing issues.

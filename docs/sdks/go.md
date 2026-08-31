@@ -36,7 +36,7 @@ import (
 
 func main() {
 	client, err := oneclaw.NewClient(
-		oneclaw.WithBaseURL("https://api.1claw.xyz"),
+		oneclaw.WithBaseURL("https://api.1claw.co"),
 		oneclaw.WithAPIKey(os.Getenv("ONECLAW_API_KEY")),
 	)
 	if err != nil {
@@ -69,7 +69,7 @@ Agents authenticate by exchanging their `ocv_` API key for a short-lived JWT. Th
 
 ```go
 client, err := oneclaw.NewClient(
-	oneclaw.WithBaseURL("https://api.1claw.xyz"),
+	oneclaw.WithBaseURL("https://api.1claw.co"),
 	oneclaw.WithAgentAuth(
 		os.Getenv("ONECLAW_AGENT_ID"),
 		os.Getenv("ONECLAW_AGENT_API_KEY"),
@@ -88,7 +88,7 @@ You can also use key-only auth (no agent ID required — resolved from the key p
 
 ```go
 client, err := oneclaw.NewClient(
-	oneclaw.WithBaseURL("https://api.1claw.xyz"),
+	oneclaw.WithBaseURL("https://api.1claw.co"),
 	oneclaw.WithAgentAPIKey(os.Getenv("ONECLAW_AGENT_API_KEY")),
 )
 ```

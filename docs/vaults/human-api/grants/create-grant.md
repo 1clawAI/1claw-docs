@@ -47,7 +47,7 @@ The `effect`, `priority`, and `attribute_conditions` fields enable advanced poli
 | `device_known` | boolean | Require a known/registered device |
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -70,7 +70,7 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/policies" \
+curl -X POST "https://api.1claw.co/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/policies" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

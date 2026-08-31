@@ -26,7 +26,7 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **JWT (JSON Web Token)** — The short-lived token returned after login or agent-token exchange. Sent as `Authorization: Bearer <token>`. Contains claims such as user/agent id, org id, and (for agents) scopes.
 
-**MCP (Model Context Protocol)** — A protocol that lets AI tools (e.g. Claude, Cursor) call 1claw tools (list secrets, get secret, etc.) over stdio or HTTP. The 1claw MCP server is available at mcp.1claw.xyz or as a local process. See [MCP Server](/docs/vaults/mcp/overview).
+**MCP (Model Context Protocol)** — A protocol that lets AI tools (e.g. Claude, Cursor) call 1claw tools (list secrets, get secret, etc.) over stdio or HTTP. The 1claw MCP server is available at mcp.1claw.co or as a local process. See [MCP Server](/docs/vaults/mcp/overview).
 
 **Path** — A slash-separated identifier for a secret inside a vault (e.g. `api-keys/stripe`, `config/prod/db`). Used in policies as glob patterns (e.g. `**`, `prod/*`). See [Secrets model](/docs/concepts/secrets-model).
 

@@ -30,7 +30,7 @@ import { z } from "zod";
 import { createClient } from "@1claw/sdk";
 
 const oneclaw = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -160,7 +160,7 @@ import { experimental_createMCPClient as createMCPClient } from "ai";
 const mcpClient = await createMCPClient({
   transport: {
     type: "sse",
-    url: "https://mcp.1claw.xyz/mcp",
+    url: "https://mcp.1claw.co/mcp",
     headers: {
       Authorization: `Bearer ${process.env.ONECLAW_AGENT_KEY}`,
     },
@@ -196,7 +196,7 @@ from agents import function_tool
 import httpx
 import os
 
-ONECLAW_BASE = "https://api.1claw.xyz"
+ONECLAW_BASE = "https://api.1claw.co"
 AGENT_KEY = os.environ["ONECLAW_AGENT_KEY"]
 AGENT_ID = os.environ["ONECLAW_AGENT_ID"]
 VAULT_ID = os.environ["ONECLAW_VAULT_ID"]
@@ -321,7 +321,7 @@ If you need the LLM to use a secret as part of its reasoning, consider:
 ### Set guardrails on the agent
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

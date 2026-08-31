@@ -37,7 +37,7 @@ Only human users can create delegations. The delegator is the agent that will se
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/agents/$DELEGATOR_ID/delegations" \
+curl -s -X POST "https://api.1claw.co/v1/agents/$DELEGATOR_ID/delegations" \
   -H "Authorization: Bearer $HUMAN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -57,7 +57,7 @@ curl -s -X POST "https://api.1claw.xyz/v1/agents/$DELEGATOR_ID/delegations" \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY, // human API key
 });
 

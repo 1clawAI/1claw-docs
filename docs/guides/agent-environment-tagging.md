@@ -75,7 +75,7 @@ Per-environment values intersect with global agent guardrails — the **strictes
 ### API
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/agents" \
+curl -s -X POST "https://api.1claw.co/v1/agents" \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -87,7 +87,7 @@ curl -s -X POST "https://api.1claw.xyz/v1/agents" \
 ```
 
 ```bash
-curl -s -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -s -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

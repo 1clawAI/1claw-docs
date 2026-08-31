@@ -10,7 +10,7 @@ The **Agent API** is the same REST API as the Human API, with a different **auth
 
 ## Base URL
 
-Same as Human API: `https://api.1claw.xyz` (or your Cloud Run URL).
+Same as Human API: `https://api.1claw.co` (or your Cloud Run URL).
 
 ## Authentication
 

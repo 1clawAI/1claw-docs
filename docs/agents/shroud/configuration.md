@@ -275,7 +275,7 @@ Shroud logs every inspection event — both clean requests and flagged threats. 
 
 ### Shroud Activity API (REST)
 
-Programmatic access uses the **Vault API** (e.g. `https://api.1claw.xyz`), authenticated with a human JWT or user API key — not the Shroud agent headers.
+Programmatic access uses the **Vault API** (e.g. `https://api.1claw.co`), authenticated with a human JWT or user API key — not the Shroud agent headers.
 
 | Method | Path | Description |
 |--------|------|-------------|

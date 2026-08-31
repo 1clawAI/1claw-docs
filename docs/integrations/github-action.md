@@ -66,7 +66,7 @@ jobs:
 | `api-key` | Yes | — | Agent API key (`ocv_...`). Pass `${{ secrets.ONECLAW_AGENT_API_KEY }}`. Exchanged for a short-lived JWT at runtime. |
 | `secrets` | Yes | — | Newline- or comma-separated `ENV_NAME=vault/ref` mappings (see below). |
 | `mask` | No | `true` | Register each value with `::add-mask::` before export. Leave on. |
-| `api-base` | No | `https://api.1claw.xyz` | Vault API base URL (use for staging/self-hosted). |
+| `api-base` | No | `https://api.1claw.co` | Vault API base URL (use for staging/self-hosted). |
 
 ### Secret mapping format
 

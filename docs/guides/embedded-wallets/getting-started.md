@@ -21,7 +21,7 @@ This guide walks through the minimum path from zero to a working embedded wallet
 Register your app from the dashboard (**Platform → New app**) or via API with your human JWT (`1ck_...` or session token):
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps" \
+curl -X POST "https://api.1claw.co/v1/platform/apps" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -51,7 +51,7 @@ Templates declare what gets created per user: vault, agents, policies, signing k
 Example template with an agent + policies (for products that also run automation):
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/$APP_ID/templates" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/$APP_ID/templates" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -86,7 +86,7 @@ Upsert creates (or finds) a user and a `platform_user_connections` row:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -102,7 +102,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
 import { createClient } from "@1claw/sdk";
 
 const platform = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.PLATFORM_API_KEY!, // plt_...
 });
 
@@ -124,7 +124,7 @@ You can also pass a `subject_token` (OIDC JWT verified against your app's JWKS) 
 If you created a template, bootstrap applies it to the connection:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/$CONNECTION_ID/bootstrap" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/$CONNECTION_ID/bootstrap" \
   -H "Authorization: Bearer $PLT_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "template_id": "TEMPLATE_UUID" }'
@@ -154,7 +154,7 @@ Two common paths:
 ```tsx
 import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
-<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
+<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
   <OneclawEmbeddedWallet
     chains={["ethereum", "base", "solana"]}
     socialProviders={["email", "google", "apple"]}

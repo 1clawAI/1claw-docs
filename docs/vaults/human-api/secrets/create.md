@@ -36,7 +36,7 @@ Store a secret in a vault at a given **path**. If the path already exists, this 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
+curl -X PUT "https://api.1claw.co/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

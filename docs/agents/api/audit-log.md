@@ -20,7 +20,7 @@ Returns audit events for the caller's organization. Agents can use this to see t
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/audit/events?limit=20" \
+curl -s "https://api.1claw.co/v1/audit/events?limit=20" \
   -H "Authorization: Bearer <token>"
 ```
 

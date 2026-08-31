@@ -70,7 +70,7 @@ Or configure MCP directly in GOAT's tool registry:
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer ocv_your_agent_api_key"
       }
@@ -85,7 +85,7 @@ Or configure MCP directly in GOAT's tool registry:
 import { createClient } from "@1claw/sdk";
 
 const oneclaw = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -130,7 +130,7 @@ from langchain_openai import ChatOpenAI
 async with MultiServerMCPClient(
     {
         "1claw": {
-            "url": "https://mcp.1claw.xyz/mcp",
+            "url": "https://mcp.1claw.co/mcp",
             "headers": {
                 "Authorization": "Bearer ocv_your_agent_api_key"
             },
@@ -160,7 +160,7 @@ If you prefer explicit tool definitions:
 from langchain.tools import tool
 import httpx
 
-ONECLAW_BASE = "https://api.1claw.xyz"
+ONECLAW_BASE = "https://api.1claw.co"
 AGENT_KEY = "ocv_..."
 
 async def get_agent_token():
@@ -230,7 +230,7 @@ from crewai import Agent, Task, Crew
 from crewai.tools import tool
 import httpx
 
-ONECLAW_BASE = "https://api.1claw.xyz"
+ONECLAW_BASE = "https://api.1claw.co"
 
 @tool
 def fetch_api_key(vault_id: str, secret_path: str) -> str:
@@ -309,7 +309,7 @@ If your agent framework routes LLM calls through an API, point them through Shro
 export OPENAI_API_BASE=https://api.openai.com/v1
 
 # Use:
-export OPENAI_API_BASE=https://shroud.1claw.xyz/v1
+export OPENAI_API_BASE=https://shroud.1claw.co/v1
 ```
 
 Shroud strips any accidentally-leaked secrets from prompts before they reach the LLM provider. See [Shroud guide](/docs/agents/shroud/overview).
@@ -319,7 +319,7 @@ Shroud strips any accidentally-leaked secrets from prompts before they reach the
 Every agent that signs transactions should have guardrails:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

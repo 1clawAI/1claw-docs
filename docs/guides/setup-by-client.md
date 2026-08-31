@@ -50,7 +50,7 @@ If you run an [OpenClaw](https://docs.openclaw.ai) gateway (WhatsApp, Telegram, 
 
 ChatGPT does not support MCP. To use 1claw from ChatGPT or similar tools you can:
 
-- **REST API** — Use the [Agent API](/docs/agents/api/overview): get a JWT via `POST /v1/auth/agent-token` with your agent ID and API key, then call the vault endpoints (e.g. list secrets, get secret by path). Use from a Custom GPT **Action** (OpenAPI schema pointing at `https://api.1claw.xyz`) or from your own backend that proxies requests.
+- **REST API** — Use the [Agent API](/docs/agents/api/overview): get a JWT via `POST /v1/auth/agent-token` with your agent ID and API key, then call the vault endpoints (e.g. list secrets, get secret by path). Use from a Custom GPT **Action** (OpenAPI schema pointing at `https://api.1claw.co`) or from your own backend that proxies requests.
 - **SDK** — Use [@1claw/sdk](https://www.npmjs.com/package/@1claw/sdk) in a small Node/TS service that your GPT or app calls.
 
 We don’t yet have a dedicated “ChatGPT Custom GPT” step-by-step. If you build one, the same [agent quickstart](/docs/quickstart/agents) and [Agent API](/docs/agents/api/overview) apply.
@@ -59,7 +59,7 @@ We don’t yet have a dedicated “ChatGPT Custom GPT” step-by-step. If you bu
 
 Any client that supports MCP over HTTP or stdio can connect:
 
-- **Hosted:** `https://mcp.1claw.xyz/mcp` with headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token`.
+- **Hosted:** `https://mcp.1claw.co/mcp` with headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token`.
 - **Local:** Run the [1claw MCP server](https://www.npmjs.com/package/@1claw/mcp) with env vars `ONECLAW_AGENT_ID`, `ONECLAW_AGENT_API_KEY`, `ONECLAW_VAULT_ID`.
 
 **→ [MCP Setup](/docs/vaults/mcp/setup)** and [MCP integration](/docs/integrations/mcp-integration) for details.

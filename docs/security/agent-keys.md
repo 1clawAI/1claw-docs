@@ -37,11 +37,11 @@ Public keys are returned on the agent record:
 ```bash
 # Human (list/get agents)
 curl -H "Authorization: Bearer <token>" \
-  https://api.1claw.xyz/v1/agents/<agent_id>
+  https://api.1claw.co/v1/agents/<agent_id>
 
 # Agent (get own profile)
 curl -H "Authorization: Bearer <agent-jwt>" \
-  https://api.1claw.xyz/v1/agents/me
+  https://api.1claw.co/v1/agents/me
 ```
 
 Response includes:
@@ -61,7 +61,7 @@ Private keys are stored as secrets in the `__agent-keys` vault. To let an agent 
 
 ```bash
 # Grant agent read access to its own keys in __agent-keys
-curl -X POST "https://api.1claw.xyz/v1/vaults/<agent-keys-vault-id>/policies" \
+curl -X POST "https://api.1claw.co/v1/vaults/<agent-keys-vault-id>/policies" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

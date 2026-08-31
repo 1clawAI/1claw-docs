@@ -61,7 +61,7 @@ The human key (`1ck_`) is rejected if you pass an agent key (`ocv_`) by mistake.
 | `ONECLAW_POLICY_PATH` | `**` | Secret path glob for the policy |
 | `ONECLAW_ENABLE_INTENTS` | `false` | Set `true` to enable Intents API on the agent |
 | `ONECLAW_OUTPUT_FILE` | `.env.elizaos` | Agent credentials output path |
-| `ONECLAW_BASE_URL` | `https://api.1claw.xyz` | API base URL |
+| `ONECLAW_BASE_URL` | `https://api.1claw.co` | API base URL |
 
 ### Optional: Intents API at bootstrap
 
@@ -101,8 +101,8 @@ After bootstrap, load secrets from `.env.elizaos` or paste values into your char
 | `ONECLAW_AGENT_API_KEY` | Yes | — | Agent key `ocv_...` |
 | `ONECLAW_AGENT_ID` | No | auto | Override auto-discovery |
 | `ONECLAW_VAULT_ID` | No | auto | Pin a vault when the agent has several |
-| `ONECLAW_BASE_URL` | No | `https://api.1claw.xyz` | API endpoint |
-| `ONECLAW_USE_SHROUD` | No | `false` | Route through `shroud.1claw.xyz` |
+| `ONECLAW_BASE_URL` | No | `https://api.1claw.co` | API endpoint |
+| `ONECLAW_USE_SHROUD` | No | `false` | Route through `shroud.1claw.co` |
 
 ## Actions
 

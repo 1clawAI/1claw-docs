@@ -70,14 +70,14 @@ Unlike proprietary infrastructure where trust is assumed, 1Claw provides live ve
 
 ```bash
 # Verify TEE attestation (public)
-curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
+curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 
 # Verify audit hash chain integrity (authenticated)
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify | jq .
+  https://api.1claw.co/v1/audit/verify | jq .
 
 # Verify OIDC public keys (public)
-curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
+curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 ```
 
 ## Getting Started

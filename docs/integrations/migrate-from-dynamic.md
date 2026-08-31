@@ -33,7 +33,7 @@ If you store API keys, RPC URLs, or signing keys in Dynamic's environment or you
 
 ```bash
 # Create a vault for your production secrets
-curl -X POST https://api.1claw.xyz/v1/vaults \
+curl -X POST https://api.1claw.co/v1/vaults \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Production","description":"Migrated from Dynamic server env"}'
@@ -43,7 +43,7 @@ Store each secret:
 
 ```bash
 # Example: move an RPC URL
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/rpc/ethereum-mainnet" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/rpc/ethereum-mainnet" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -87,7 +87,7 @@ const signedTx = await dynamic.wallets.signTransaction(walletId, {
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY, // ocv_ key
 });
 
@@ -114,7 +114,7 @@ Dynamic scopes server wallet access through environment IDs and API keys. 1claw 
 
 ```bash
 # Grant the agent read access to signing key paths
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -128,7 +128,7 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
 Add transaction guardrails that Dynamic does not offer:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

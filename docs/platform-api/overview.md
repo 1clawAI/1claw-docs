@@ -17,7 +17,7 @@ The Platform API requires a **Pro or higher** subscription. [Upgrade your plan �
 ### 1. Register a Platform App
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps" \
+curl -X POST "https://api.1claw.co/v1/platform/apps" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -49,7 +49,7 @@ Set `api_key_expires_at` (ISO 8601) when creating the app to auto-expire the key
 Templates define what gets created for each user: a vault, agents, and access policies.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/templates" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/APP_ID/templates" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -83,7 +83,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/templates" \
 ### 3. Provision a User
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -95,7 +95,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
 Set `create_sub_org: true` to auto-create a sub-organization for the connected user, giving them isolated resources under the parent org:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -108,7 +108,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
 ### 4. Bootstrap the User
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/bootstrap" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/bootstrap" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -129,7 +129,7 @@ The claim URL format is `https://1claw.co/connect/{slug}/claim/{token}`. It expi
 If the token expires before your user claims, mint a fresh one without re-provisioning:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/reissue-claim" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/reissue-claim" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{}'
@@ -140,10 +140,10 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/reissu
 
 ```bash
 # Preview what was provisioned
-curl "https://api.1claw.xyz/v1/platform/claim/ct_TOKEN"
+curl "https://api.1claw.co/v1/platform/claim/ct_TOKEN"
 
 # Redeem the claim
-curl -X POST "https://api.1claw.xyz/v1/platform/claim/ct_TOKEN"
+curl -X POST "https://api.1claw.co/v1/platform/claim/ct_TOKEN"
 ```
 
 ### 6. Agent Access is Automatic
@@ -162,7 +162,7 @@ The bootstrap response includes `summary.agent_api_key` (one-time, like regular 
 **Get an agent JWT:**
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/auth/agent-token" \
+curl -X POST "https://api.1claw.co/v1/auth/agent-token" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "AGENT_UUID",
@@ -176,11 +176,11 @@ curl -X POST "https://api.1claw.xyz/v1/auth/agent-token" \
 Agent wallet addresses come from **signing keys** provisioned at bootstrap (`summary.signing_keys` or template `signing_keys[]`). Retrieve them later with the **connection-scoped** endpoint (plt_ auth — do not use `GET /v1/agents/{id}/signing-keys`, which is org-bound and returns 403 for platform keys):
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/signing-keys?agent_id=AGENT_UUID" \
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/signing-keys?agent_id=AGENT_UUID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 # → { "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1", "is_active": true }] }
 
-curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/signing-keys/ethereum?agent_id=AGENT_UUID" \
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/signing-keys/ethereum?agent_id=AGENT_UUID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 # → { "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1" }
 ```
@@ -194,7 +194,7 @@ curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/signing-keys/e
 ```bash
 AGENT_JWT="eyJ..."  # from token exchange above
 
-curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/AGENT_UUID/transactions" \
   -H "Authorization: Bearer $AGENT_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -210,7 +210,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions" \
 **Sign without broadcasting (sign-only mode):**
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/AGENT_UUID/transactions/sign" \
+curl -X POST "https://api.1claw.co/v1/agents/AGENT_UUID/transactions/sign" \
   -H "Authorization: Bearer $AGENT_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -246,6 +246,34 @@ Bootstrap templates accept **shorthand aliases** that map to agent API field nam
 | `execution_intents_enabled` | `execution_intents_enabled`, `execution: true`, `execution: { "enabled": true }` |
 
 Direct field names win over conflicting shorthands (e.g. `intents_api_enabled: true` with `intents: false` still enables Intents API).
+
+:::warning `intents: true` does not enable execution
+
+`intents` is shorthand for **`intents_api_enabled` only**. It does not set
+`execution_intents_enabled`, which has its own separate shorthand (`execution`).
+
+The two flags do different things, and an agent with one and not the other is a
+confusing halfway state: it can compose an intent and will be refused when it
+tries to execute one, with "Execution Intents not enabled for this agent". If
+you want both, set both:
+
+```json
+{ "intents": true, "execution": true }
+```
+
+or, unambiguously:
+
+```json
+{ "intents_api_enabled": true, "execution_intents_enabled": true }
+```
+:::
+
+**Inheritance.** Each flag is resolved per agent first, then from the template
+root. If an agent spec sets *either* the direct field or its shorthand, the
+agent's value is used and the template root is ignored for that flag; if it sets
+neither, the root value applies. So a root-level `intents: true` covers every
+agent that stays silent about it, and an agent that mentions `intents` at all
+takes full responsibility for its own value.
 
 ### `plan` (platform_pays tier inheritance)
 
@@ -357,7 +385,7 @@ Runtimes can be declared three ways in a bootstrap template:
 | `name` | string | `"default"` | Runtime name |
 | `template` | string | — | Agent template (`hermes`, `openclaw`, `openclaude`, …) |
 | `preset` | string | `"small"` | Compute preset: `small`, `medium`, `large`, `small-cc`, `medium-cc`, `large-cc` |
-| `expose_http` | boolean | `false` | Enable public URL at `{slug}.run.1claw.xyz` |
+| `expose_http` | boolean | `false` | Enable public URL at `{slug}.run.1claw.co` |
 | `agent_ref` | integer | `0` | Index into `agents[]` (top-level `runtimes` only) |
 | `idle_timeout_secs` | integer | `1800` | Idle auto-stop timeout |
 | `startup_command` | string | — | Optional container startup override |
@@ -423,14 +451,14 @@ Platform apps act on behalf of a **connected end-user**. These endpoints scope a
 ### Inspect template
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/templates/TEMPLATE_ID" \
+curl "https://api.1claw.co/v1/platform/apps/APP_ID/templates/TEMPLATE_ID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 ```
 
 ### Poll connection state
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID" \
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 # → { status, vault_ids, agent_ids, runtime_ids, automation_ids, claim, ... }
 ```
@@ -438,7 +466,7 @@ curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID" \
 ### Create a runtime for a provisioned agent
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/runtimes" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -452,7 +480,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtim
 ### Chat with a provisioned agent
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_ID/chat" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents/AGENT_ID/chat" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -468,7 +496,7 @@ Accepts `message`, `system`, `system_prompt`, or `messages[]` (including `role: 
 ### Get a connection-scoped runtime
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIME_ID" \
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIME_ID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 ```
 
@@ -480,11 +508,11 @@ Register a WebAuthn passkey for the connected user without a human JWT:
 
 ```bash
 # Begin
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 
 # Complete (browser ceremony)
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "credential_id": "...", "attestation_object": "...", "client_data_json": "..." }'
@@ -518,7 +546,7 @@ Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flow
 If an agent was bootstrapped before Intents were enabled, patch it in place — the agent must belong to the connection (`agent_ids`):
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/agents/AGENT_UUID" \
+curl -X PATCH "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents/AGENT_UUID" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -554,7 +582,7 @@ At **bootstrap** time, the same flags can be set via template aliases: `intents:
 When a transfer exceeds spend caps or matches a consensus policy, create a hash-bound pending approval for the connected user's agent — no need to pass `policy_id` if the agent already has a matching `consensus_trigger` policy:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/pending-approvals" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/pending-approvals" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -575,7 +603,7 @@ Then decide with `POST .../pending-approvals/{id}/decide` using the returned `pa
 Optional explicit policy:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/pending-approvals" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/pending-approvals" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -592,7 +620,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/pendin
 MCP `inspect_content` parity for platform backends:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/shroud/inspect-content" \
+curl -X POST "https://api.1claw.co/v1/shroud/inspect-content" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "content": "user-supplied text", "context": "input" }'
@@ -666,7 +694,7 @@ If your platform app uses the OAuth consent flow ("Sign in with 1Claw"), you nee
 **API:**
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+curl -X PATCH "https://api.1claw.co/v1/platform/apps/APP_ID" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -783,13 +811,13 @@ Set the hostname allowed in EIP-4361 messages (no scheme, path, or port):
 
 ```bash
 # Human JWT
-curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+curl -X PATCH "https://api.1claw.co/v1/platform/apps/APP_ID" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{ "siwe_domain": "myapp.com" }'
 
 # Or plt_ key — platform keys may **only** update siwe_domain via PATCH
-curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+curl -X PATCH "https://api.1claw.co/v1/platform/apps/APP_ID" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "siwe_domain": "myapp.com" }'
@@ -801,14 +829,14 @@ First `POST /v1/platform/siwe/challenge` with optional `domain` in the body auto
 
 ```bash
 # 1. Challenge (plt_ auth)
-curl -X POST "https://api.1claw.xyz/v1/platform/siwe/challenge" \
+curl -X POST "https://api.1claw.co/v1/platform/siwe/challenge" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "domain": "myapp.com" }'
 # → { "message": "...", "nonce": "...", "expires_at": "..." }
 
 # 2. User signs message in wallet, then upsert
-curl -X POST "https://api.1claw.xyz/v1/platform/users/upsert" \
+curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -868,7 +896,7 @@ After a user claims their bootstrapped resources, they can grant your platform a
 **Grant resources** (user-authenticated, `1ck_` key):
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grant" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/grant" \
   -H "Authorization: Bearer 1ck_USER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -880,14 +908,14 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grant"
 **List active grants:**
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants" \
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/grants" \
   -H "Authorization: Bearer 1ck_USER_KEY"
 ```
 
 **Revoke a grant:**
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/grants/GRANT_ID" \
+curl -X DELETE "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/grants/GRANT_ID" \
   -H "Authorization: Bearer 1ck_USER_KEY"
 ```
 
@@ -925,7 +953,7 @@ Resource grants are always user-initiated. Platform operators cannot grant thems
 Track all platform-related events for your app:
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/audit" \
+curl "https://api.1claw.co/v1/platform/apps/APP_ID/audit" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 ```
 
@@ -938,7 +966,7 @@ Returns `platform.*` audit events (app creation, user provisioning, bootstrap, t
 Rotate your platform API key at any time. The old key is immediately invalidated.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-key" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/APP_ID/rotate-key" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{ "api_key_expires_at": "2027-01-01T00:00:00Z" }'
@@ -963,7 +991,7 @@ The `api_key_expires_at` field is optional. Omit it for a key that never expires
 List approved platform apps in the public marketplace:
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/marketplace"
+curl "https://api.1claw.co/v1/platform/marketplace"
 ```
 
 Returns apps with `category`, `tags`, `screenshots`, and `pricing_summary`. No authentication required. The dashboard exposes this at `/marketplace`.
@@ -975,7 +1003,7 @@ Returns apps with `category`, `tags`, `screenshots`, and `pricing_summary`. No a
 Get connected user counts and bootstrap metrics for your app:
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/stats" \
+curl "https://api.1claw.co/v1/platform/apps/APP_ID/stats" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 ```
 
@@ -990,7 +1018,7 @@ Platform apps receive lifecycle events at `platform_apps.webhook_url` (set via `
 List configured delivery and event catalog:
 
 ```bash
-curl "https://api.1claw.xyz/v1/platform/apps/APP_ID/webhooks" \
+curl "https://api.1claw.co/v1/platform/apps/APP_ID/webhooks" \
   -H "Authorization: Bearer plt_YOUR_KEY"
 # → { webhook_configured, webhook_url_host, platform_events[], org_webhooks_note }
 ```
@@ -1020,7 +1048,7 @@ The following events are delivered to the platform app webhook:
 Org webhook HMAC secrets are returned once at create time. Rotate by recreating the webhook, or use `POST /v1/platform/apps/{app_id}/rotate-webhook-secret` for platform app delivery secrets.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer YOUR_USER_JWT"
 ```
 
@@ -1043,7 +1071,7 @@ Fathom and other platform clients should send `Idempotency-Key` on provisioning 
 Bootstrap example:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONN_ID/bootstrap" \
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONN_ID/bootstrap" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Idempotency-Key: bootstrap-user-123-v1" \
   -H "Content-Type: application/json" \
@@ -1057,7 +1085,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/connections/CONN_ID/bootstrap" \
 Per-app rate limits are enforced on all Platform API endpoints. Set `max_requests_per_minute` when creating or updating your app:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/platform/apps/APP_ID" \
+curl -X PATCH "https://api.1claw.co/v1/platform/apps/APP_ID" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{ "max_requests_per_minute": 120 }'
@@ -1080,7 +1108,7 @@ If your platform offers treasury wallets to end-users, spend policies let you se
 ### Create an App-Level Default Policy
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/spend-policies" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/APP_ID/spend-policies" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1096,7 +1124,7 @@ curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/spend-policies" \
 Override the app default for a specific connected user:
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/spend-policy" \
+curl -X PUT "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/spend-policy" \
   -H "Authorization: Bearer YOUR_USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1110,7 +1138,7 @@ curl -X PUT "https://api.1claw.xyz/v1/platform/connections/CONNECTION_ID/spend-p
 End-users can see what policy applies to them:
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/spend-policy" \
+curl "https://api.1claw.co/v1/treasury/wallets/spend-policy" \
   -H "Authorization: Bearer USER_JWT"
 ```
 
@@ -1136,7 +1164,7 @@ Platform apps can provide passwordless wallet experiences to end-users using Ema
 
 ```bash
 # 1. Send OTP
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/send" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -1144,7 +1172,7 @@ curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
   }'
 
 # 2. Verify OTP → returns JWT + wallet address
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/verify" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -1158,7 +1186,7 @@ curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
 ### Social Login
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/auth/social-login" \
+curl -X POST "https://api.1claw.co/v1/auth/social-login" \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "google",
@@ -1209,7 +1237,7 @@ PATCH /v1/platform/connected-apps/{connectionId}
 The platform sends the `X-Platform-Connection` header with its `plt_` key:
 
 ```bash
-curl -X GET "https://api.1claw.xyz/v1/vaults" \
+curl -X GET "https://api.1claw.co/v1/vaults" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "X-Platform-Connection: CONNECTION_ID"
 ```
@@ -1263,7 +1291,7 @@ GET /v1/platform/connected-apps/{connectionId}/delegation-log
 import { OneclawClient } from "@1claw/sdk";
 
 const client = new OneclawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: "plt_YOUR_KEY",
 });
 
@@ -1296,7 +1324,7 @@ console.log("Agent API Key:", result.data.summary.agent_api_key); // one-time �
 from oneclaw import OneclawClient
 
 client = OneclawClient(
-    base_url="https://api.1claw.xyz",
+    base_url="https://api.1claw.co",
     api_key="plt_YOUR_KEY",
 )
 

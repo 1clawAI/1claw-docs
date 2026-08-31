@@ -24,7 +24,7 @@ Update a secret by PUTting a new value at the same path. The old version is pres
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/apis/stripe-key" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/apis/stripe-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -63,7 +63,7 @@ For credentials you control (database passwords, internal API keys), let 1claw g
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-rotate/db/password" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-rotate/db/password" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -103,7 +103,7 @@ The agent fetching this secret on its next request gets the new value. You updat
 For multi-chain signing keys:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys/ethereum/rotate" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys/ethereum/rotate" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -114,14 +114,14 @@ This deactivates the old key and provisions a new one. The old address is preser
 Every rotation creates a new version. View the history:
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-versions/apis/stripe-key" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-versions/apis/stripe-key" \
   -H "Authorization: Bearer $TOKEN" | jq '.versions[] | {version, created_at, is_disabled}'
 ```
 
 Disable old versions to prevent rollback reads:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/apis/stripe-key/2" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-version-disable/apis/stripe-key/2" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -164,7 +164,7 @@ The credential is injected server-side. When you rotate the underlying secret, t
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -256,7 +256,7 @@ The agent specifies what to call. 1claw handles credential injection, SSRF prote
 Verify connectivity before going live:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings/$BINDING_ID/test" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings/$BINDING_ID/test" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -265,7 +265,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings/$BINDING_ID/tes
 For inline credentials, rotate explicitly:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/bindings/$BINDING_ID/rotate-credential" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings/$BINDING_ID/rotate-credential" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"credential": {"api_key": "new_key_value"}}'
@@ -288,7 +288,7 @@ NEW_PASS=$(1claw secret get db/postgres-password -v $VAULT_ID --quiet)
 psql -h db.example.com -U admin -c "ALTER USER app_user PASSWORD '$NEW_PASS'"
 
 # 4. Disable the old version (REST API or SDK — no CLI subcommand yet)
-curl -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secret-version-disable/db/postgres-password/1" \
+curl -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/secret-version-disable/db/postgres-password/1" \
   -H "Authorization: Bearer $TOKEN"
 
 # 5. Any agent with a vault_ref binding picks up the new password automatically

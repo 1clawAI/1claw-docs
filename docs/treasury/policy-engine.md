@@ -31,11 +31,11 @@ Human owners/admins configure the backend via API or dashboard (**Settings → P
 
 ```bash
 # Read current config
-curl -s https://api.1claw.xyz/v1/org/settings/policy-backend \
+curl -s https://api.1claw.co/v1/org/settings/policy-backend \
   -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
 
 # Enable Cedar in shadow mode for signing actions
-curl -s -X PATCH https://api.1claw.xyz/v1/org/settings/policy-backend \
+curl -s -X PATCH https://api.1claw.co/v1/org/settings/policy-backend \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -58,7 +58,7 @@ curl -s -X PATCH https://api.1claw.xyz/v1/org/settings/policy-backend \
 In **shadow**, Cedar/OPA run on every matching request. Decisions are logged; **built-in enforcement is unchanged**. Use the divergence report before flipping to enforce:
 
 ```bash
-curl -s https://api.1claw.xyz/v1/org/policy-shadow-report \
+curl -s https://api.1claw.co/v1/org/policy-shadow-report \
   -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
 ```
 
@@ -73,7 +73,7 @@ Webhook events: `policy_backend.circuit_breaker_opened`, `policy_backend.circuit
 CRUD at `/v1/org/cedar-policies`. Dry-run at `POST /v1/org/cedar-policies/test`.
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/org/cedar-policies \
+curl -s -X POST https://api.1claw.co/v1/org/cedar-policies \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -104,7 +104,7 @@ Upload ABIs so policies can inspect decoded calldata (`function_name`, normalize
 Each ABI has an `interface_kind`: `evm_abi` (default) for EVM contract ABIs, or `solana_idl` for Anchor IDLs. The kind determines which decoder is used to populate the transaction context.
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/org/contract-abis \
+curl -s -X POST https://api.1claw.co/v1/org/contract-abis \
   -H "Authorization: Bearer $ONECLAW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -155,7 +155,7 @@ Webhook events: `pending_approval.created`, `.approved`, `.rejected`, `.executed
 
 ```bash
 # List pending approvals
-curl -s "https://api.1claw.xyz/v1/pending-approvals?status=pending" \
+curl -s "https://api.1claw.co/v1/pending-approvals?status=pending" \
   -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
 ```
 

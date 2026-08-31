@@ -29,7 +29,7 @@ Agents authenticate by exchanging an **agent ID** and **API key** for a short-li
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/auth/agent-token \
+curl -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
@@ -46,7 +46,7 @@ import { createClient } from "@1claw/sdk";
 // The SDK exchanges agent credentials for a JWT automatically
 // and refreshes the token before it expires
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: "ec7e0226-30f0-4dda-b169-f060a3502603",
   apiKey: "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs",
 });

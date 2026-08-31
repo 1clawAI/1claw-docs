@@ -20,7 +20,7 @@ import TabItem from '@theme/TabItem';
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/agents/ec7e0226-30f0-4dda-b169-f060a3502603" \
+curl -X DELETE "https://api.1claw.co/v1/agents/ec7e0226-30f0-4dda-b169-f060a3502603" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -61,7 +61,7 @@ Generates a **new** API key for the agent. The old key stops working. Response i
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/ec7e0226-30f0-4dda-b169-f060a3502603/rotate-key" \
+curl -X POST "https://api.1claw.co/v1/agents/ec7e0226-30f0-4dda-b169-f060a3502603/rotate-key" \
   -H "Authorization: Bearer <token>"
 ```
 

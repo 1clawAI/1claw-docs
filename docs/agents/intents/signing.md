@@ -31,7 +31,7 @@ Instead of manually storing a raw private key in a vault, you can provision HSM-
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/signing-keys" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "ethereum" }'
@@ -168,7 +168,7 @@ Rate limit: one request per address per 24 hours. The default API key above is p
 
 ```bash
 # Bitcoin (testnet): send 0.001 BTC
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -178,13 +178,13 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
   }'
 
 # Solana (devnet): send 0.25 SOL
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "solana-devnet", "to": "9xQ...", "value": "0.25" }'
 
 # XRP (testnet): send 10 XRP with a destination tag
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "chain": "xrp-testnet", "to": "rPT1...", "value": "10", "destination_tag": 12345 }'
@@ -259,7 +259,7 @@ Sign an arbitrary human-readable message. Requires `message_signing_enabled: tru
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/sign" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -308,7 +308,7 @@ Sign structured typed data (e.g. ERC-20 Permit, gasless approvals). The agent's 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/sign" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -368,7 +368,7 @@ Some protocols compute a **canonical** EIP-712 digest client-side — notably **
 :::
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/sign" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/sign" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -585,7 +585,7 @@ Admins can add new chains via the admin API:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/admin/chains" \
+curl -X POST "https://api.1claw.co/v1/admin/chains" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -603,7 +603,7 @@ curl -X POST "https://api.1claw.xyz/v1/admin/chains" \
 
 ```typescript
 // Admin chain management requires direct API calls
-const response = await fetch("https://api.1claw.xyz/v1/admin/chains", {
+const response = await fetch("https://api.1claw.co/v1/admin/chains", {
   method: "POST",
   headers: {
     "Authorization": `Bearer ${adminToken}`,

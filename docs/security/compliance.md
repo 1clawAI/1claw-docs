@@ -26,4 +26,4 @@ sidebar_position: 3
 
 Use the [Audit API](/docs/guides/audit-and-compliance) and policy model to document who had access to what and when. For specific standards (e.g. SOC 2, HIPAA), work with your compliance team to map controls to 1Claw's capabilities and your deployment (GCP, Supabase, Vercel compliance offerings).
 
-Contact **ops@1claw.xyz** for current SOC 2 status and attestation letters.
+Contact **ops@1claw.co** for current SOC 2 status and attestation letters.

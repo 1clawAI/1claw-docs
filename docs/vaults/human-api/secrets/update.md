@@ -22,7 +22,7 @@ Same request body as [Create a secret](/docs/vaults/human-api/secrets/create): `
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"api_key","value":"sk-proj-NEW-KEY..."}'

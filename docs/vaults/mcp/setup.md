@@ -24,13 +24,13 @@ Try out the example in this repo: **[FastMCP Tool Server](https://github.com/1cl
 
 ## Option 1: Hosted server (recommended)
 
-The simplest setup — no local installation needed. The hosted MCP server runs at `mcp.1claw.xyz` and authenticates per-connection with a **Bearer JWT**. You get the JWT by calling the 1claw API with your **agent ID** and **API key** (`ocv_...`):
+The simplest setup — no local installation needed. The hosted MCP server runs at `mcp.1claw.co` and authenticates per-connection with a **Bearer JWT**. You get the JWT by calling the 1claw API with your **agent ID** and **API key** (`ocv_...`):
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"<your-agent-uuid>","api_key":"ocv_..."}' | jq -r '.access_token'
 ```
@@ -42,7 +42,7 @@ curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: "<your-agent-uuid>",
   apiKey: "ocv_...",
 });
@@ -78,7 +78,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer <jwt-from-agent-token-endpoint>",
         "X-Vault-ID": "your-vault-uuid-here"
@@ -96,7 +96,7 @@ Add to `.cursor/mcp.json` in your project root:
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer <jwt-from-agent-token-endpoint>",
         "X-Vault-ID": "your-vault-uuid-here"
@@ -114,7 +114,7 @@ Claude Code uses the same MCP configuration as Cursor. Use either the **hosted**
 
 Any client that supports HTTP streaming can connect:
 
-- **Endpoint:** `https://mcp.1claw.xyz/mcp`
+- **Endpoint:** `https://mcp.1claw.co/mcp`
 - **Headers:** `Authorization: Bearer <jwt>` (from `POST /v1/auth/agent-token` with `agent_id` and `api_key`) and `X-Vault-ID: <vault-uuid>`
 
 ## Option 2: Local server (stdio)
@@ -181,7 +181,7 @@ The server auto-resolves the agent ID via the API key prefix and auto-discovers 
 | `ONECLAW_AGENT_ID` | No | — | Agent UUID. Optional when using `ONECLAW_AGENT_API_KEY` (auto-resolved via prefix lookup). |
 | `ONECLAW_AGENT_TOKEN` | Yes* (stdio) | — | Static JWT from `POST /v1/auth/agent-token` (alternative to API key; expires ~1 h). |
 | `ONECLAW_VAULT_ID` | No | auto-discovered | UUID of the vault to operate on. When omitted, auto-discovered from the token exchange `vault_ids` or the first org vault. |
-| `ONECLAW_BASE_URL` | No | `https://api.1claw.xyz` | Override for self-hosted vault |
+| `ONECLAW_BASE_URL` | No | `https://api.1claw.co` | Override for self-hosted vault |
 
 \* Set **`ONECLAW_AGENT_API_KEY`** (recommended, simplest) or **`ONECLAW_AGENT_TOKEN`** + **`ONECLAW_VAULT_ID`**.
 

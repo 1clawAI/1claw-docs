@@ -3,7 +3,7 @@
 **Version:** 0.2  
 **Date:** 2026-08  
 **Classification:** Public  
-**Contact:** ops@1claw.xyz
+**Contact:** ops@1claw.co
 
 ---
 
@@ -40,7 +40,7 @@ Agent Runtime (untrusted)
 Shroud runs on GKE Confidential Nodes with AMD SEV-SNP. Verify the deployment:
 
 ```bash
-curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
+curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 ```
 
 **Response fields:**
@@ -58,7 +58,7 @@ curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
 1. Decode `identity_token` as a JWT (do not trust before signature verify)
 2. Fetch Google public keys from `https://www.googleapis.com/oauth2/v3/certs`
 3. Verify the JWT signature
-4. Confirm `aud` is `https://api.1claw.xyz` (see `verification.expected_audience` in the response)
+4. Confirm `aud` is `https://api.1claw.co` (see `verification.expected_audience` in the response)
 5. Compare `image_hash` against the published Docker digest (`ghcr.io/1clawai/shroud`)
 6. At `sev_snp` level, confirm measurement/digest claims match your expected build
 
@@ -68,7 +68,7 @@ Every audit event is linked to the previous via `prev_event_id` and an HMAC-SHA2
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify | jq .
+  https://api.1claw.co/v1/audit/verify | jq .
 ```
 
 The verify endpoint **recomputes HMAC-SHA256 server-side** for events in the query window and checks `prev_event_id` linkage. It returns `chain_valid`, `tampered_events`, and `unverifiable_events` (for pre-2026-08-21 legacy rows).
@@ -125,7 +125,7 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 
 | Framework | Status |
 |-----------|--------|
-| SOC 2 Type II | Contact ops@1claw.xyz for current status |
+| SOC 2 Type II | Contact ops@1claw.co for current status |
 | GDPR | Data export (`POST /v1/auth/export-data`) and account deletion (`DELETE /v1/auth/me`) with step-up auth |
 | PCI DSS | Reference-mode card storage; PAN never persisted for Laso partner cards |
 
@@ -133,11 +133,11 @@ This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-s
 
 ## 5. Contact and Next Steps
 
-- **Security questions:** ops@1claw.xyz
-- **Attestation endpoint:** `GET https://shroud.1claw.xyz/v1/shroud/attestation`
-- **Audit verification:** [Audit hash chain verification](/docs/security/audit-verification) — `GET https://api.1claw.xyz/v1/audit/verify` (authenticated)
+- **Security questions:** ops@1claw.co
+- **Attestation endpoint:** `GET https://shroud.1claw.co/v1/shroud/attestation`
+- **Audit verification:** [Audit hash chain verification](/docs/security/audit-verification) — `GET https://api.1claw.co/v1/audit/verify` (authenticated)
 - **Full documentation:** https://docs.1claw.co/security/
 
 ---
 
-*This document is versioned. Check the date above and request the latest version from ops@1claw.xyz if older than 90 days.*
+*This document is versioned. Check the date above and request the latest version from ops@1claw.co if older than 90 days.*

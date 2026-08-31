@@ -37,7 +37,7 @@ console.log(data.tx_hash, data.status);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/send" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/send" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -H "X-Auth-Confirm: $USER_PASSWORD" \

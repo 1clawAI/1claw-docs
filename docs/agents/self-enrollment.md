@@ -47,7 +47,7 @@ The enrollment endpoint is **public** — no authentication required. Provide **
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{
     "name": "my-agent",
@@ -63,7 +63,7 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
 import { AgentsResource } from "@1claw/sdk";
 
 const result = await AgentsResource.enroll(
-  "https://api.1claw.xyz",
+  "https://api.1claw.co",
   {
     name: "my-agent",
     human_email: "alice@example.com",
@@ -101,7 +101,7 @@ npx @1claw/cli agent enroll my-agent --email alice@example.com
 **Link-only (no email):**
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent"}'
 
@@ -135,7 +135,7 @@ Once the human shares the API key with the agent's deployment:
 <TabItem value="curl" label="curl">
 
 ```bash
-TOKEN=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+TOKEN=$(curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"<AGENT_ID>","api_key":"ocv_..."}' \
   | jq -r .access_token)
@@ -148,7 +148,7 @@ TOKEN=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: process.env.ONECLAW_AGENT_ID,
   apiKey: process.env.ONECLAW_AGENT_API_KEY,
 });
@@ -175,11 +175,11 @@ print(client.resolved_agent_id)
 
 ```bash
 # Read a secret
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN"
 
 # Store a secret
-curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/credentials/db-password" \
+curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/credentials/db-password" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"password","value":"s3cret!"}'
@@ -226,7 +226,7 @@ Agents can share any secret they own back to the human who created them using `r
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/secrets/$SECRET_ID/share" \
+curl -s -X POST "https://api.1claw.co/v1/secrets/$SECRET_ID/share" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -286,7 +286,7 @@ Here is a typical agent lifecycle in a single script:
 import { createClient, AgentsResource } from "@1claw/sdk";
 
 // Step 1: Self-enroll (first run only)
-const enrollment = await AgentsResource.enroll("https://api.1claw.xyz", {
+const enrollment = await AgentsResource.enroll("https://api.1claw.co", {
   name: "deploy-bot",
   human_email: "ops@mycompany.com",
 });
@@ -295,7 +295,7 @@ console.log("Pending:", enrollment.message, enrollment.approval_url);
 
 // Steps 3-5: Normal operation (after receiving credentials)
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: process.env.ONECLAW_AGENT_ID,
   apiKey: process.env.ONECLAW_AGENT_API_KEY,
 });

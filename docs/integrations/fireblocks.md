@@ -50,7 +50,7 @@ Fireblocks API keys and private keys for API authentication should be stored in 
 
 ```bash
 # Store the Fireblocks API secret key
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/fireblocks/api-secret" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/fireblocks/api-secret" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -59,7 +59,7 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/fireblocks/api-se
     "description": "Fireblocks API private key for JWT signing"
   }'
 
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/fireblocks/api-key" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/fireblocks/api-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -130,7 +130,7 @@ import { createClient } from "@1claw/sdk";
 import { FireblocksSDK } from "fireblocks-sdk";
 
 const oneclaw = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

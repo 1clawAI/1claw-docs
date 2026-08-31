@@ -100,7 +100,7 @@ for (const w of data.wallets) {
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/generate" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/generate" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{"chains":["ethereum","solana","bitcoin"]}'
@@ -119,7 +119,7 @@ const { data } = await client.treasuryWallets.listWallets();
 ```
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets" \
+curl "https://api.1claw.co/v1/treasury/wallets" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 
@@ -137,7 +137,7 @@ console.log(data.tokens);
 ```
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance?tokens=0x833589..." \
+curl "https://api.1claw.co/v1/treasury/wallets/ethereum/balance?tokens=0x833589..." \
   -H "Authorization: Bearer $USER_JWT"
 ```
 

@@ -69,7 +69,7 @@ Private keys are stored at the path `users/{user_id}/chains/{chain}/private_key`
 Generate wallets for one or more chains. If you omit `chains`, all six are created. Chains where you already have an active wallet are silently skipped.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/generate" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/generate" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -107,14 +107,14 @@ Response:
 ### List active wallets
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets" \
+curl "https://api.1claw.co/v1/treasury/wallets" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Get a specific chain wallet
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum" \
+curl "https://api.1claw.co/v1/treasury/wallets/ethereum" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -123,7 +123,7 @@ curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum" \
 Get the native currency and ERC-20 token balances for a treasury wallet address. Balances are fetched in real time via the chain's RPC.
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/ethereum/balance" \
+curl "https://api.1claw.co/v1/treasury/wallets/ethereum/balance" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -150,7 +150,7 @@ Response:
 Send native currency or ERC-20 tokens from your treasury wallet. Signs an EIP-1559 transaction and broadcasts via RPC. Requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.send`.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/send" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/send" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password" \
   -H "Content-Type: application/json" \
@@ -171,7 +171,7 @@ Swap tokens via the 0x DEX aggregator. Fetches a quote from the 0x API, signs th
 The server requires a `ZERO_X_API_KEY` environment variable to be configured.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/swap" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/swap" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password" \
   -H "Content-Type: application/json" \
@@ -187,7 +187,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/swap" \
 Exporting a wallet's private key requires your account password in the `X-Auth-Confirm` header. This is audit-logged as `treasury_wallet.export`.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/export" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/export" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password"
 ```
@@ -211,7 +211,7 @@ The private key is returned in plaintext. Treat it as you would any other secret
 Import an existing private key instead of generating one server-side. Human-only, requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.import`.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/import" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/import" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password" \
   -H "Content-Type: application/json" \
@@ -245,7 +245,7 @@ The server derives the public key and address, stores the key in `__treasury-key
 
 ```bash
 # Send 0.001 BTC from treasury wallet
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/bitcoin/send" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/bitcoin/send" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Auth-Confirm: your-account-password" \
   -H "Content-Type: application/json" \
@@ -261,7 +261,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/bitcoin/send" \
 Deactivates the current wallet and generates a new keypair for the same chain. The old wallet is retained for audit but its key is no longer usable.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/rotate" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/rotate" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -270,7 +270,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/ethereum/rotate" \
 Soft-deletes the wallet. The key material is retained for audit but the wallet no longer appears in listings.
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/treasury/wallets/ethereum" \
+curl -X DELETE "https://api.1claw.co/v1/treasury/wallets/ethereum" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -315,7 +315,7 @@ When approving an agent's access request, you can optionally:
 2. **Set delegation mode** — creates a `treasury_delegations` entry authorizing the agent
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/access-requests/{rid}/approve" \
+curl -X POST "https://api.1claw.co/v1/treasury/{id}/access-requests/{rid}/approve" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -333,7 +333,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/access-requests/{rid}/appro
 Agents with delegation can submit transactions through the Intents API using treasury keys:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/{id}/transactions" \
+curl -X POST "https://api.1claw.co/v1/agents/{id}/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -365,7 +365,7 @@ For Safe multisigs with threshold > 1, agents or users can create proposals that
 ### Creating a proposal
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/proposals" \
+curl -X POST "https://api.1claw.co/v1/treasury/{id}/proposals" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -381,7 +381,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/proposals" \
 ### Signing a proposal
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/{id}/proposals/{pid}/sign" \
+curl -X POST "https://api.1claw.co/v1/treasury/{id}/proposals/{pid}/sign" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -455,7 +455,7 @@ Treasury-relevant events include `wallet.transfer.sent`, `wallet.transfer.receiv
 ### Registering a webhook
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks" \
+curl -X POST "https://api.1claw.co/v1/webhooks" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

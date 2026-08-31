@@ -28,7 +28,7 @@ import TabItem from '@theme/TabItem';
 Magic's publishable and secret keys should be in a vault, not in environment variables:
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/magic/secret-key" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/magic/secret-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -53,7 +53,7 @@ Magic handles user-facing auth and signing. For background operations that run w
 import { createClient } from "@1claw/sdk";
 
 const agent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

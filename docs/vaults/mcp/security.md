@@ -146,7 +146,7 @@ The secret auto-expires after the date or after 5 reads, whichever comes first.
 
 ### Hosted vs local
 
-| Consideration | Hosted (`mcp.1claw.xyz`) | Local (stdio) |
+| Consideration | Hosted (`mcp.1claw.co`) | Local (stdio) |
 |--------------|--------------------------|---------------|
 | Setup complexity | Minimal (URL + headers) | Requires Node.js, build step |
 | Network path | Agent → MCP server → Vault API | Agent → local MCP → Vault API |

@@ -31,7 +31,7 @@ Override **replaces** the app default — fields are not merged.
 ## User-facing read
 
 ```bash
-curl "https://api.1claw.xyz/v1/treasury/wallets/spend-policy" \
+curl "https://api.1claw.co/v1/treasury/wallets/spend-policy" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 

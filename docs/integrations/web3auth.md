@@ -47,7 +47,7 @@ User (browser)                    Your backend                  Blockchain
 Your Web3Auth client ID and verifier secrets should not sit in `.env` files. Store them in a 1claw vault:
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/web3auth/client-id" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/web3auth/client-id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -56,7 +56,7 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/web3auth/client-i
     "description": "Web3Auth client ID"
   }'
 
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/web3auth/client-secret" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/web3auth/client-secret" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -81,7 +81,7 @@ Web3Auth wallets are user-controlled. For operations that do not have a user dri
 import { createClient } from "@1claw/sdk";
 
 const agent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

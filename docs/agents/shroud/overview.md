@@ -73,13 +73,13 @@ Shroud includes **20 inspection layers** covering threat detection, secret prote
 
 Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
 
-Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.xyz` and `shroud.1claw.xyz` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
+Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.co` and `shroud.1claw.co` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
 
 ### Endpoint
 
 | Method | Path | Notes |
 |--------|------|--------|
-| POST   | `https://shroud.1claw.xyz/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
+| POST   | `https://shroud.1claw.co/v1/chat/completions` | OpenAI-style; Shroud maps to provider-specific paths (e.g. Google uses `generateContent`) |
 
 Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes by provider.
 
@@ -173,7 +173,7 @@ X-Shroud-Model: gpt-4o-mini
 
 **Example:**
 ```typescript
-const res = await fetch("https://shroud.1claw.xyz/v1/chat/completions", {
+const res = await fetch("https://shroud.1claw.co/v1/chat/completions", {
   method: "POST",
   headers: {
     "X-Shroud-Agent-Key": `${agentId}:${agentApiKey}`,
@@ -246,14 +246,14 @@ await client.agents.update(agentId, {
 
 ```bash
 # Using agent key and vault-resolved provider key (no X-Shroud-Api-Key)
-curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+curl -X POST "https://shroud.1claw.co/v1/chat/completions" \
   -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
   -H "X-Shroud-Provider: google" \
   -H "Content-Type: application/json" \
   -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}'
 
 # With explicit vault key path
-curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
+curl -X POST "https://shroud.1claw.co/v1/chat/completions" \
   -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
   -H "X-Shroud-Provider: anthropic" \
   -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
@@ -264,7 +264,7 @@ curl -X POST "https://shroud.1claw.xyz/v1/chat/completions" \
 ### Example: TypeScript (fetch)
 
 ```typescript
-const SHROUD_URL = "https://shroud.1claw.xyz";
+const SHROUD_URL = "https://shroud.1claw.co";
 const agentId = process.env.ONECLAW_AGENT_ID!;
 const agentApiKey = process.env.ONECLAW_AGENT_API_KEY!;
 
@@ -320,7 +320,7 @@ The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and O
 2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
 3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
 4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
-5. Forwards to `https://shroud.1claw.xyz` with inspection, redaction, and policy enforcement
+5. Forwards to `https://shroud.1claw.co` with inspection, redaction, and policy enforcement
 6. Streams the response back
 
 ### LLM Token Billing

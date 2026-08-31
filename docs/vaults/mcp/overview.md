@@ -24,7 +24,7 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
                                                        ▼
                                                 ┌──────────────┐
                                                 │  Vault API   │
-                                                │ api.1claw.xyz│
+                                                │ api.1claw.co│
                                                 └──────────────┘
 ```
 
@@ -39,7 +39,7 @@ Secrets are fetched at runtime and never persisted in the LLM context window bey
 | Mode           | Use case                                            | Auth                | URL                         |
 | -------------- | --------------------------------------------------- | ------------------- | --------------------------- |
 | **stdio**      | Local — Claude Desktop, Cursor, any MCP client      | Env vars            | N/A (runs locally)          |
-| **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.xyz/mcp` |
+| **httpStream** | Hosted — any MCP client with HTTP streaming support | Per-request headers | `https://mcp.1claw.co/mcp` |
 | **local-only** | Security tools only — no vault credentials needed   | None                | N/A (runs locally)          |
 
 ### Local-only mode

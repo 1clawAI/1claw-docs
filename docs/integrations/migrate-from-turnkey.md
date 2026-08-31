@@ -181,7 +181,7 @@ const result = await client.agents.signIntent(agentId, {
 
 ## Migration Support
 
-Contact ops@1claw.xyz for assisted migration, including:
+Contact ops@1claw.co for assisted migration, including:
 
 - Policy translation review
 - Signing key import (`POST /v1/agents/{id}/signing-keys/{chain}/import`)

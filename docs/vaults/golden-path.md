@@ -27,14 +27,14 @@ Log in (email/password or Google), then:
 export TOKEN="..."
 
 # Create vault
-VAULT_RESP=$(curl -s -X POST https://api.1claw.xyz/v1/vaults \
+VAULT_RESP=$(curl -s -X POST https://api.1claw.co/v1/vaults \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Production","description":"Prod secrets"}')
 VAULT_ID=$(echo "$VAULT_RESP" | jq -r '.id')
 
 # Store a secret
-curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"api_key","value":"sk-proj-..."}'
@@ -47,7 +47,7 @@ curl -s -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/opena
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
@@ -81,7 +81,7 @@ vault_id = resp.data["id"]
 <TabItem value="curl" label="curl">
 
 ```bash
-AGENT_RESP=$(curl -s -X POST https://api.1claw.xyz/v1/agents \
+AGENT_RESP=$(curl -s -X POST https://api.1claw.co/v1/agents \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"My Bot","description":"CI agent","scopes":["vaults:read"]}')
@@ -130,7 +130,7 @@ Grant the agent read access to all secrets in the vault (or use a narrower patte
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+curl -s -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -178,12 +178,12 @@ From the agent's environment (with `AGENT_ID` and `API_KEY` stored securely):
 
 ```bash
 # Get agent JWT
-AGENT_TOKEN=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+AGENT_TOKEN=$(curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d "{\"agent_id\":\"$AGENT_ID\",\"api_key\":\"$API_KEY\"}" | jq -r '.access_token')
 
 # Fetch secret
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/api-keys/openai" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 ```
 
@@ -195,7 +195,7 @@ import { createClient } from "@1claw/sdk";
 
 // In the agent's runtime
 const agentClient = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   agentId: process.env.ONECLAW_AGENT_ID,
   apiKey: process.env.ONECLAW_AGENT_API_KEY,
 });
@@ -235,7 +235,7 @@ To revoke: delete the policy or deactivate the agent. To rotate: create a new se
 Instead of steps 1-2 above, the agent can **self-enroll** by calling a public endpoint with no credentials. With **`human_email`**, Allow/Deny links are emailed (and the response may include **`approval_url`** as a backup). With **name only**, the response includes **`approval_url`** for you to open while signed in:
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","human_email":"you@example.com"}'
 ```
@@ -243,7 +243,7 @@ curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
 Or name only:
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent"}'
 ```

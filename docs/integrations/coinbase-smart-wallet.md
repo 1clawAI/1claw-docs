@@ -54,7 +54,7 @@ import { createClient } from "@1claw/sdk";
 
 // Agent client, configured with the agent's own API key
 const agent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -76,7 +76,7 @@ The user's Smart Wallet and the agent's signing key are completely separate. The
 If you integrate with Coinbase's APIs (Commerce, Exchange, Onramp), store those credentials in a 1claw vault instead of environment variables.
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/coinbase/commerce-api-key" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/coinbase/commerce-api-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

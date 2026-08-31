@@ -38,7 +38,7 @@ export default function WalletPage() {
   return (
     <OneclawWalletProvider
       apiKey={process.env.NEXT_PUBLIC_ONECLAW_PLATFORM_KEY!}
-      baseUrl="https://api.1claw.xyz"
+      baseUrl="https://api.1claw.co"
     >
       <OneclawEmbeddedWallet
         chains={["ethereum", "base", "solana"]}
@@ -60,7 +60,7 @@ export default function WalletPage() {
 | Prop | Required | Description |
 | ---- | -------- | ----------- |
 | `apiKey` | Yes | Platform API key (`plt_...`) |
-| `baseUrl` | No | API base (default `https://api.1claw.xyz`) |
+| `baseUrl` | No | API base (default `https://api.1claw.co`) |
 | `children` | Yes | App tree |
 
 ### `OneclawEmbeddedWallet`

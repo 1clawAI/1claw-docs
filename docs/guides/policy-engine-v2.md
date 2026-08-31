@@ -33,7 +33,7 @@ This page is a guide entry point. Full reference lives under **Treasury → Poli
 4. When consensus matches, the API returns **202** with `pending_approval_id`. After human approval, execute with `POST /v1/pending-approvals/{id}/execute` — the **`approval_id` token is single-use** and **submitter-bound**.
 
 ```bash
-curl -s https://api.1claw.xyz/v1/org/settings/policy-backend \
+curl -s https://api.1claw.co/v1/org/settings/policy-backend \
   -H "Authorization: Bearer $ONECLAW_TOKEN" | jq
 ```
 

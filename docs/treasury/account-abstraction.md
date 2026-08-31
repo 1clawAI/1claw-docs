@@ -73,7 +73,7 @@ import { http, createPublicClient } from "viem";
 import { base } from "viem/chains";
 
 const oneclaw = create1clawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -137,7 +137,7 @@ import { alchemy, sepolia } from "@account-kit/infra";
 import { createClient as create1clawClient } from "@1claw/sdk";
 
 const oneclaw = create1clawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -189,7 +189,7 @@ import { createSmartAccountClient, BiconomySmartAccountV2 } from "@biconomy/acco
 import { createClient as create1clawClient } from "@1claw/sdk";
 
 const oneclaw = create1clawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -225,7 +225,7 @@ import { http, createPublicClient } from "viem";
 import { base } from "viem/chains";
 
 const oneclaw = create1clawClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

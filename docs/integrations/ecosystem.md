@@ -223,4 +223,4 @@ Tenderly powers transaction simulation in the Intents API — simulate before si
 
 ## Want to add yours?
 
-If you've built something with 1Claw, email [ops@1claw.xyz](mailto:ops@1claw.xyz) and we'll add it here and on [1claw.co/ecosystem](https://1claw.co/ecosystem).
+If you've built something with 1Claw, email [ops@1claw.co](mailto:ops@1claw.co) and we'll add it here and on [1claw.co/ecosystem](https://1claw.co/ecosystem).

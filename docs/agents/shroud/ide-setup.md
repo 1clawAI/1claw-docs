@@ -8,7 +8,7 @@ tags: [shroud, cli, cursor, ide]
 
 # IDE & tool setup (Shroud proxy)
 
-Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.xyz`** with the correct Shroud headers.
+Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.co`** with the correct Shroud headers.
 
 **Parent doc:** [Shroud → IDE Integration](/docs/agents/shroud/overview#ide-integration-1claw-proxy)
 
@@ -86,7 +86,7 @@ Closing the Shroud Bridge window **does not stop the proxy**. The app minimizes 
 
 - The local proxy runs **in-process** (Rust, no Node.js subprocess) and only listens on `127.0.0.1`
 - Agent credentials are stored in the **OS keychain**, not on disk or in localStorage
-- The proxy injects `X-Shroud-Agent-Key` and `X-Shroud-Provider` headers, then forwards to `https://shroud.1claw.xyz` — all Shroud inspection, redaction, and policy enforcement applies
+- The proxy injects `X-Shroud-Agent-Key` and `X-Shroud-Provider` headers, then forwards to `https://shroud.1claw.co` — all Shroud inspection, redaction, and policy enforcement applies
 - Editor-side `Authorization` / `x-api-key` headers are **not** forwarded to Shroud; use any placeholder API key in the IDE
 
 ## Reference

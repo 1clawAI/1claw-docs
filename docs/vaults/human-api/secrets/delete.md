@@ -20,7 +20,7 @@ Soft-delete a secret at a path. All versions of that path are marked deleted; th
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/old-key" \
+curl -X DELETE "https://api.1claw.co/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/old-key" \
   -H "Authorization: Bearer <token>"
 ```
 

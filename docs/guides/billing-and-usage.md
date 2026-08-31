@@ -142,7 +142,7 @@ When the free tier is exhausted (or the request is unauthenticated on a paid rou
             "scheme": "exact",
             "network": "eip155:8453",
             "maxAmountRequired": "1500",
-            "resource": "https://api.1claw.xyz/v1/vaults/{vault_id}/secrets/{path}",
+            "resource": "https://api.1claw.co/v1/vaults/{vault_id}/secrets/{path}",
             "payTo": "0x...",
             "maxTimeoutSeconds": 60,
             "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
@@ -165,13 +165,13 @@ Toggle between credits and x402 in the billing dashboard or via API:
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"overage_method": "credits"}' \
-  https://api.1claw.xyz/v1/billing/overage-method
+  https://api.1claw.co/v1/billing/overage-method
 
 # Use x402 micropayments for overages
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"overage_method": "x402"}' \
-  https://api.1claw.xyz/v1/billing/overage-method
+  https://api.1claw.co/v1/billing/overage-method
 ```
 
 **Default:** New organizations default to `credits`. If you have no credits and haven't set up x402, you'll need to top up credits or configure x402 before overages can be processed.
@@ -197,7 +197,7 @@ Visit [1claw.co/settings/billing](https://1claw.co/settings/billing) to see:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/subscription
+  https://api.1claw.co/v1/billing/subscription
 ```
 
 Response includes subscription status, usage, and credits:
@@ -231,7 +231,7 @@ Response includes subscription status, usage, and credits:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/credits/balance
+  https://api.1claw.co/v1/billing/credits/balance
 ```
 
 ```json
@@ -246,7 +246,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.1claw.xyz/v1/billing/credits/transactions?limit=20&offset=0"
+  "https://api.1claw.co/v1/billing/credits/transactions?limit=20&offset=0"
 ```
 
 ```json
@@ -279,11 +279,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```bash
 # Get current month summary
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/usage
+  https://api.1claw.co/v1/billing/usage
 
 # Get recent usage events
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.1claw.xyz/v1/billing/history?limit=50"
+  "https://api.1claw.co/v1/billing/history?limit=50"
 ```
 
 ## Quota Response Headers
@@ -350,7 +350,7 @@ If multiple LLM billing subscriptions are created for the same organization (e.g
 - **`STRIPE_LLM_PRICING_PLAN_ID`** (`bpp_...`) set on Vault — **required** for LLM Checkout subscribe. Stripe Checkout uses **`pricing_plan_subscription_item`** (with `Stripe-Version: 2025-09-30.preview;checkout_product_catalog_preview=v1`). Copy the pricing plan ID from the Stripe Dashboard (Billing for LLM tokens). Also used for subscription matching, disable, and webhooks.
 - **`STRIPE_LLM_RATE_CARD_ID`** (`rcd_...`) — optional; used for `GET /v1/billing/llm-pricing` display.
 - Active Stripe customer (created automatically when you enable)
-- Shroud proxy enabled for agents (LLM requests must go through `shroud.1claw.xyz`)
+- Shroud proxy enabled for agents (LLM requests must go through `shroud.1claw.co`)
 - Agent JWT must include `llm_token_billing: true` and `stripe_customer_id` claims
 
 ### API Endpoints
@@ -358,15 +358,15 @@ If multiple LLM billing subscriptions are created for the same organization (e.g
 ```bash
 # Check LLM billing status
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/llm-token-billing
+  https://api.1claw.co/v1/billing/llm-token-billing
 
 # Enable (returns Stripe checkout URL)
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/llm-token-billing/subscribe
+  https://api.1claw.co/v1/billing/llm-token-billing/subscribe
 
 # Disable
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/billing/llm-token-billing/disable
+  https://api.1claw.co/v1/billing/llm-token-billing/disable
 ```
 
 Response shape (fields vary by org and Stripe data availability):
@@ -421,4 +421,4 @@ If your tier limit is exhausted and you have no credits (or x402 configured), th
 
 ## Enterprise
 
-For organizations with custom requirements, unlimited usage, dedicated support, or on-premise deployments, contact us at [ops@1claw.xyz](mailto:ops@1claw.xyz) to discuss Enterprise pricing and terms.
+For organizations with custom requirements, unlimited usage, dedicated support, or on-premise deployments, contact us at [ops@1claw.co](mailto:ops@1claw.co) to discuss Enterprise pricing and terms.

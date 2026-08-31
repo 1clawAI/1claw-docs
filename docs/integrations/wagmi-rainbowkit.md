@@ -84,7 +84,7 @@ Create a server-side client:
 import { createClient } from "@1claw/sdk";
 
 export const oneclaw = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!, // ocv_ key, never expose to frontend
 });
 ```

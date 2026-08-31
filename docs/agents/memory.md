@@ -30,7 +30,7 @@ All tiers are **encrypted at rest** with the org's KEK via envelope encryption (
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "memory_enabled": true }'
@@ -60,7 +60,7 @@ Use the REST API or dashboard — there is no `agent update --memory-enabled` fl
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_API_KEY,
 });
 
@@ -98,17 +98,17 @@ results.entries.forEach((e) => console.log(e.key, e.score));
 
 ```bash
 # Write durable memory
-curl -X PUT "https://api.1claw.xyz/v1/agents/$AGENT_ID/memory/preferences/timezone" \
+curl -X PUT "https://api.1claw.co/v1/agents/$AGENT_ID/memory/preferences/timezone" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "value": "America/New_York", "tier": "durable" }'
 
 # Read
-curl "https://api.1claw.xyz/v1/agents/$AGENT_ID/memory/preferences/timezone" \
+curl "https://api.1claw.co/v1/agents/$AGENT_ID/memory/preferences/timezone" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 
 # Semantic search
-curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/memory/search" \
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "namespace": "knowledge", "query": "how many vaults?", "top_k": 5 }'
@@ -153,7 +153,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/$AGENT_ID/memory/search" \
 Memory is organized into namespaces — logical groupings like `session`, `preferences`, `knowledge`, etc. Agents can be restricted to specific namespaces via `memory_namespace_allowlist`:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "memory_namespace_allowlist": ["session", "preferences", "knowledge"] }'

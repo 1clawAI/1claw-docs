@@ -33,7 +33,7 @@ window.open(data.session_url, "_blank");
 ```
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/fiat/onramp/session" \
+curl -X POST "https://api.1claw.co/v1/fiat/onramp/session" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -62,7 +62,7 @@ window.location.href = data.widget_url;
 ```
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/fiat/offramp/initiate" \
+curl -X POST "https://api.1claw.co/v1/fiat/offramp/initiate" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{

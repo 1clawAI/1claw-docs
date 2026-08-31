@@ -24,7 +24,7 @@ npm install @1claw/sdk
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const client = createClient({ baseUrl: "https://api.1claw.co" });
 
 // 1. Send a login code
 await client.auth.sendEmailOtp({ email: "user@example.com" });
@@ -61,7 +61,7 @@ import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-reac
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.xyz">
+    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
       <OneclawEmbeddedWallet
         chains={["ethereum", "base"]}
         features={["send", "swap", "receive", "buy"]}
@@ -80,7 +80,7 @@ Control what your users can do with their wallets:
 import { createClient } from "@1claw/sdk";
 
 const platform = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.PLATFORM_KEY!, // plt_...
 });
 
@@ -104,7 +104,7 @@ await platform.platform.setUserSpendPolicy(connectionId, {
 ```typescript
 import { createClient, generatePKCE, buildAuthorizeUrl } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const client = createClient({ baseUrl: "https://api.1claw.co" });
 const { codeVerifier, codeChallenge } = await generatePKCE();
 
 const url = buildAuthorizeUrl("https://1claw.co", {

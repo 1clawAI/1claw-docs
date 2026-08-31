@@ -20,7 +20,7 @@ Returns all agents in the caller's organization. API keys are never returned; on
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/agents" \
+curl -s "https://api.1claw.co/v1/agents" \
   -H "Authorization: Bearer <token>"
 ```
 

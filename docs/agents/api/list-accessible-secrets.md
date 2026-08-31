@@ -20,7 +20,7 @@ Returns **metadata** for secrets in the vault. The server applies policy so the 
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets?prefix=api-keys" \
+curl -s "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets?prefix=api-keys" \
   -H "Authorization: Bearer <agent_token>"
 ```
 

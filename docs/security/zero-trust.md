@@ -36,7 +36,7 @@ Verify your org's chain:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify | jq .
+  https://api.1claw.co/v1/audit/verify | jq .
 ```
 
 See [Audit hash chain verification](/docs/security/audit-verification) for what `chain_valid` means and known limitations.

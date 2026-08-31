@@ -10,7 +10,7 @@ import TabItem from '@theme/TabItem';
 
 # Runtime Hosting
 
-Runtime Hosting gives your Cloud Runtimes a public HTTP endpoint at `{slug}.run.1claw.xyz`. Use it to expose agent APIs, webhooks, or dashboards — no load balancer or DNS configuration needed.
+Runtime Hosting gives your Cloud Runtimes a public HTTP endpoint at `{slug}.run.1claw.co`. Use it to expose agent APIs, webhooks, or dashboards — no load balancer or DNS configuration needed.
 
 ## How it works
 
@@ -18,7 +18,7 @@ Runtime Hosting gives your Cloud Runtimes a public HTTP endpoint at `{slug}.run.
 Client                     1Claw Edge                    Your Runtime Container
   │                            │                                │
   │  GET https://my-bot.       │                                │
-  │    run.1claw.xyz/chat      │                                │
+  │    run.1claw.co/chat      │                                │
   │  ──────────────────────►   │                                │
   │                            │  1. Route by slug               │
   │                            │  2. Verify inbound auth         │
@@ -27,7 +27,7 @@ Client                     1Claw Edge                    Your Runtime Container
   │  ◄──────────────────────── │  ◄──── Response                │
 ```
 
-1. A request arrives at `{slug}.run.1claw.xyz`
+1. A request arrives at `{slug}.run.1claw.co`
 2. The edge resolves the slug to a running runtime
 3. Inbound auth is enforced (if configured)
 4. The request is forwarded to the container's HTTP port
@@ -56,7 +56,7 @@ Client                     1Claw Edge                    Your Runtime Container
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/runtimes" \
+curl -X POST "https://api.1claw.co/v1/runtimes" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -81,7 +81,7 @@ const { data: runtime } = await client.runtimes.create({
   slug: "my-api-agent",
   inbound_auth: "api_key",
 });
-console.log(runtime.public_url); // https://my-api-agent.run.1claw.xyz
+console.log(runtime.public_url); // https://my-api-agent.run.1claw.co
 ```
 
 </TabItem>
@@ -90,7 +90,7 @@ console.log(runtime.public_url); // https://my-api-agent.run.1claw.xyz
 ## Public URL format
 
 ```
-https://{slug}.run.1claw.xyz
+https://{slug}.run.1claw.co
 ```
 
 All paths and query parameters are forwarded as-is to your container. The container must listen on the configured `http_port` (default: 8080).
@@ -141,7 +141,7 @@ Public endpoints are accessible to anyone on the internet. Rate limiting is appl
 ```
 
 ```bash
-curl "https://api.1claw.xyz/v1/runtimes/slug-check/my-agent-name" \
+curl "https://api.1claw.co/v1/runtimes/slug-check/my-agent-name" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -165,7 +165,7 @@ By default, the edge forwards to port 8080. If your application listens on a dif
 
 ## HTTPS and TLS
 
-All `*.run.1claw.xyz` subdomains are automatically covered by a wildcard TLS certificate. You don't need to manage certificates. All traffic is encrypted end-to-end.
+All `*.run.1claw.co` subdomains are automatically covered by a wildcard TLS certificate. You don't need to manage certificates. All traffic is encrypted end-to-end.
 
 ## API endpoints
 
@@ -212,7 +212,7 @@ async def chat(body: dict):
   --env PORT=8080
 ```
 
-Your agent is now live at `https://fastapi-agent.run.1claw.xyz/chat`.
+Your agent is now live at `https://fastapi-agent.run.1claw.co/chat`.
 
 ## Next steps
 

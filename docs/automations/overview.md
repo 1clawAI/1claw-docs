@@ -28,6 +28,53 @@ Automations let you run agent workflows on a schedule, in response to webhooks, 
 
 The dashboard maps legacy UI `action_type` / `action_config` fields onto `workflow_spec` before calling the API.
 
+## Step types
+
+`workflow_spec` is a list of steps. The full vocabulary is served by
+**`GET /v1/automations/step-types`** (public, no auth), which returns each type
+with whether an agent-created automation may use it and whether it can move
+funds. Read it rather than copying this table.
+
+| Step | Agent-created | Moves funds | What it does |
+|---|---|---|---|
+| `log` | yes | — | Record a message in the run output |
+| `notify` | yes | — | Send on a configured channel |
+| `wait` | yes | — | Pause for a bounded interval |
+| `memory_get` / `memory_put` | yes | — | Read / write agent memory |
+| `memory_search` | — | — | Search agent memory |
+| `http` | — | — | Call a URL (SSRF-validated) |
+| `condition` | — | — | Branch on an expression over earlier step output |
+| `ai_generate` | — | — | Generate text via the agent's model |
+| `rotate_generate` | — | — | Generate a rotated secret value |
+| `approval_request` | — | — | Raise a human approval from inside the run |
+| `submit_transaction` | — | **yes** | Sign and broadcast as the agent |
+| `swap` | — | **yes** | Quote and execute a swap as the agent |
+| `execute_intent` | — | **yes** | Run an execution-intent binding as the agent |
+
+**Agent-created automations** are restricted to the five marked above, capped at
+10 steps, and may only use `manual` or `webhook` triggers. Platform- and
+human-created automations may use every type, capped at 50 steps.
+
+### Steps that move funds
+
+`submit_transaction`, `swap` and `execute_intent` run **as the agent**, using its
+own signing key. They are not a way around the agent's limits: each passes the
+same spend policy, transaction guardrails, delegation checks and control-plane
+consensus as a direct API call, and each requires `execution_intents_enabled`.
+`execute_intent` additionally refuses when `execution_require_tee` is set.
+
+This is what makes a rule like "if the balance drops below X, move funds" a
+workflow rather than something you need your own scheduler for. A step that
+would exceed a cap can escalate with `approval_request` instead of failing.
+
+:::note An unrecognised step type is skipped, not fatal
+
+A step whose `type` is not in the list above is skipped and the run continues —
+an older engine meeting a newer spec degrades rather than breaking. The run
+output names the step and lists the known types, so check there if a workflow
+appears to succeed without doing anything.
+:::
+
 ## Trigger types
 
 | Type | Description | Example |
@@ -46,12 +93,12 @@ When `trigger_type` is `webhook`, the create response includes **one-time** cred
   "id": "...",
   "name": "deploy-notify",
   "trigger_type": "webhook",
-  "webhook_url": "https://api.1claw.xyz/v1/automations/{id}/webhook/whk_...",
+  "webhook_url": "https://api.1claw.co/v1/automations/{id}/webhook/whk_...",
   "webhook_token": "whk_..."
 }
 ```
 
-- **URL pattern:** `POST https://api.1claw.xyz/v1/automations/{automation_id}/webhook/{token}`
+- **URL pattern:** `POST https://api.1claw.co/v1/automations/{automation_id}/webhook/{token}`
 - The token is stored as a SHA-256 hash server-side; it is only returned on create (and after rotation).
 - **Rotate:** `POST /v1/automations/{id}/rotate-webhook-token` (human-only) mints a new `whk_` token and returns a fresh URL once.
 - No Bearer auth required — the token in the path is the secret.
@@ -102,7 +149,7 @@ When the bound agent has **`shroud_enabled`**, swap / submit_transaction steps s
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
@@ -130,7 +177,7 @@ console.log(automation?.webhook_url);
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/automations" \
+curl -X POST "https://api.1claw.co/v1/automations" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -311,7 +358,7 @@ Each preset includes `description`, `workflow_spec`, `default_cron`, `estimated_
 
 ```bash
 # Fetch presets via CLI
-curl https://api.1claw.xyz/v1/automations/presets | jq '.[].name'
+curl https://api.1claw.co/v1/automations/presets | jq '.[].name'
 ```
 
 ## Run history

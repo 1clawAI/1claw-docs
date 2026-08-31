@@ -1,6 +1,6 @@
 ---
 title: MCP integration
-description: Connect AI agents to your 1claw vault using the Model Context Protocol. Hosted at mcp.1claw.xyz or run locally via stdio.
+description: Connect AI agents to your 1claw vault using the Model Context Protocol. Hosted at mcp.1claw.co or run locally via stdio.
 sidebar_position: 4
 ---
 
@@ -8,7 +8,7 @@ sidebar_position: 4
 
 The 1claw MCP server connects AI clients (Claude, Cursor, GPT, and others) to your vault through the [Model Context Protocol](https://modelcontextprotocol.io). Secrets are fetched at tool-call time, not pasted into system prompts or config files.
 
-This is the fastest path for IDE agents: register an agent in the dashboard, grant read access to the paths it needs, and point your MCP client at `mcp.1claw.xyz` with the agent API key. The server exchanges the key for a short-lived JWT, refreshes it automatically, and discovers the vault when the agent is bound to one.
+This is the fastest path for IDE agents: register an agent in the dashboard, grant read access to the paths it needs, and point your MCP client at `mcp.1claw.co` with the agent API key. The server exchanges the key for a short-lived JWT, refreshes it automatically, and discovers the vault when the agent is bound to one.
 
 For local-only security inspection (no vault account), run the MCP server in `ONECLAW_LOCAL_ONLY` mode. For secrets that never leave your laptop, use [local daemon mode](/docs/integrations/cli#local-daemon-secret-proxy) with `ONECLAW_LOCAL_VAULT=true`.
 
@@ -28,7 +28,7 @@ The fastest way to connect an AI agent to your vault:
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer ocv_your_agent_api_key"
       }
@@ -51,7 +51,7 @@ If the agent has access to multiple vaults, add `"X-Vault-ID": "your-vault-uuid"
 If you prefer to manage tokens yourself, exchange the API key for a JWT and pass it directly. Note that JWTs expire (~15 minutes by default) and you'll need to refresh them manually.
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"<uuid>","api_key":"ocv_..."}' | jq -r '.access_token'
 ```
@@ -60,7 +60,7 @@ curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer <jwt-from-agent-token-endpoint>",
         "X-Vault-ID": "your-vault-uuid"

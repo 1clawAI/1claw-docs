@@ -55,7 +55,7 @@ const result = await engine.contract.write({
 import { createClient } from "@1claw/sdk";
 
 const agent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 
@@ -87,7 +87,7 @@ Move your Thirdweb credentials out of environment variables:
 
 ```bash
 # Store the Thirdweb secret key
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/thirdweb/secret-key" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/thirdweb/secret-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -97,7 +97,7 @@ curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/thirdweb/secret-k
   }'
 
 # Store the client ID (not sensitive but good practice)
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/thirdweb/client-id" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/thirdweb/client-id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -122,7 +122,7 @@ Thirdweb smart accounts (via Account Factory) need an owner/signer. A 1claw agen
 import { createClient } from "@1claw/sdk";
 
 const oneclaw = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

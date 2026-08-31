@@ -470,7 +470,7 @@ The daemon serves secrets over a Unix socket and injects them into HTTP requests
 1claw setup --local
 ```
 
-This sets `ONECLAW_LOCAL_VAULT=true` and `ONECLAW_DAEMON_SOCKET` in the MCP config, so the MCP server connects to the local daemon instead of `api.1claw.xyz`. The model uses `proxy_request` to make API calls with secrets injected — the secret value never enters the context window.
+This sets `ONECLAW_LOCAL_VAULT=true` and `ONECLAW_DAEMON_SOCKET` in the MCP config, so the MCP server connects to the local daemon instead of `api.1claw.co`. The model uses `proxy_request` to make API calls with secrets injected — the secret value never enters the context window.
 
 ### Architecture
 
@@ -502,7 +502,7 @@ Or pass the key explicitly:
 1claw proxy --agent-key "ocv_YOUR_KEY"
 ```
 
-The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints **Cursor, Claude Code, Copilot, and extension** snippets on startup. Key-only / env mode calls `POST /v1/auth/agent-token` once at startup (uses `ONECLAW_API_URL`, default `https://api.1claw.xyz`).
+The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints **Cursor, Claude Code, Copilot, and extension** snippets on startup. Key-only / env mode calls `POST /v1/auth/agent-token` once at startup (uses `ONECLAW_API_URL`, default `https://api.1claw.co`).
 
 **Full IDE walkthrough:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
 
@@ -513,7 +513,7 @@ The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints
 | `--agent-key <id:key>` or `ocv_...` | env fallback | If omitted, uses `ONECLAW_AGENT_API_KEY` (+ optional `ONECLAW_AGENT_ID`) |
 | `--port <n>` | `11434` | Local port; if busy, tries up to 32 higher ports; `0` = OS-assigned |
 | `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
-| `--shroud-url <url>` | `https://shroud.1claw.xyz` | Override Shroud endpoint |
+| `--shroud-url <url>` | `https://shroud.1claw.co` | Override Shroud endpoint |
 | `--verbose` | off | Log each request with timestamp, method, provider, and status |
 
 ### Auto-detection
@@ -629,7 +629,7 @@ In cloud mode (anything **not** `--local`), the chat UI is connected to an LLM *
 1claw init --docker --list-modules           # List available modules and exit
 ```
 
-When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your **local vault** — the daemon injects it toward `*.1claw.xyz`, never into the container. With `--local`, nothing touches the cloud.
+When the cloud is reachable, `init` provisions an agent (Shroud + Intents API enabled) plus a vault and read policy, then stores the agent key in your **local vault** — the daemon injects it toward `*.1claw.co`, never into the container. With `--local`, nothing touches the cloud.
 
 ### Chat LLM through Shroud (+ 1Claw token billing)
 
@@ -641,7 +641,7 @@ In cloud mode the embedded chat UI talks to an LLM through Shroud. Pick the mode
 1claw init --docker --llm-provider google    --llm-model gemini-2.5-flash
 ```
 
-The container never holds the agent key — the daemon injects `X-Shroud-Agent-Key` toward `shroud.1claw.xyz`, and Shroud applies your agent's inspection/redaction policy before forwarding.
+The container never holds the agent key — the daemon injects `X-Shroud-Agent-Key` toward `shroud.1claw.co`, and Shroud applies your agent's inspection/redaction policy before forwarding.
 
 **Where the provider key comes from** — Shroud resolves it in this order; pick whichever fits:
 
@@ -979,7 +979,7 @@ eval $(1claw env pull --format shell)
 
 Config file: `~/.config/1claw/config.json`.
 
-- `api-url` — API base URL (default: `https://api.1claw.xyz`)
+- `api-url` — API base URL (default: `https://api.1claw.co`)
 - `output-format` — `table`, `json`, or `plain`
 - `default-vault` — Default vault ID for commands that need one
 

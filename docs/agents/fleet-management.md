@@ -17,7 +17,7 @@ Agents self-enroll via `POST /v1/agents/enroll`. Use **`human_email`** when the 
 ```typescript
 import { AgentsResource } from "@1claw/sdk";
 
-await AgentsResource.enroll("https://api.1claw.xyz", {
+await AgentsResource.enroll("https://api.1claw.co", {
   name: `worker-${process.env.HOSTNAME}`,
   human_email: "ops@mycompany.com",
 });
@@ -38,7 +38,7 @@ When a human is provisioning many agents at once:
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
@@ -127,7 +127,7 @@ This adds a second layer: even if a policy accidentally grants broader access, t
 Add time windows and IP restrictions for sensitive paths:
 
 ```bash
-curl -s -X POST "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies" \
+curl -s -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

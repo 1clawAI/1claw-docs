@@ -11,7 +11,7 @@ This is a structural difference, not a feature delta. An agent that can exfiltra
 ### TEE Attestation (Live)
 
 ```bash
-curl -s https://shroud.1claw.xyz/v1/shroud/attestation | jq .
+curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 ```
 
 Returns a GCE identity token signed by Google's Confidential Computing attestation service. The response includes `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify the JWT against Google's JWKS to confirm:
@@ -24,7 +24,7 @@ Returns a GCE identity token signed by Google's Confidential Computing attestati
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://api.1claw.xyz/v1/audit/verify | jq .
+  https://api.1claw.co/v1/audit/verify | jq .
 ```
 
 Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity_hash`. The verify endpoint **recomputes HMACs** and walks linkage within your org. See [Audit verification](/docs/security/audit-verification) for algorithm details, legacy cutoff, and limitations.
@@ -32,8 +32,8 @@ Every audit event is hash-chained via `prev_event_id` and HMAC-SHA256 `integrity
 ### OIDC Federation (Live)
 
 ```bash
-curl -s https://api.1claw.xyz/.well-known/openid-configuration | jq .
-curl -s https://api.1claw.xyz/.well-known/jwks.json | jq .
+curl -s https://api.1claw.co/.well-known/openid-configuration | jq .
+curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 ```
 
 1Claw-issued agent JWTs are verifiable by any OIDC relying party (Anthropic WIF, GCP/AWS STS). Public JWKS with EdDSA + RS256 keys, 5-minute cache.
@@ -151,4 +151,4 @@ when {
 
 ## SOC 2 Status
 
-Contact ops@1claw.xyz for current compliance attestation status.
+Contact ops@1claw.co for current compliance attestation status.

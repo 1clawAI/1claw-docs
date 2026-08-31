@@ -36,4 +36,4 @@ The packages you install and run locally should be MIT so you can vendor, fork, 
 
 ## Self-hosting
 
-The Vault API source code is in the [1claw monorepo](https://github.com/1clawAI/1claw) under a proprietary license. If you need a self-hosted deployment (e.g., for air-gapped environments or regulatory requirements), contact [ops@1claw.xyz](mailto:ops@1claw.xyz) to discuss Enterprise licensing.
+The Vault API source code is in the [1claw monorepo](https://github.com/1clawAI/1claw) under a proprietary license. If you need a self-hosted deployment (e.g., for air-gapped environments or regulatory requirements), contact [ops@1claw.co](mailto:ops@1claw.co) to discuss Enterprise licensing.

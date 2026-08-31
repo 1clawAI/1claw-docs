@@ -14,20 +14,36 @@ A runtime is a managed container that runs your agent code. It includes:
 
 - **Compute** — CPU and memory allocated from a preset
 - **Lifecycle** — start, stop, idle-timeout, auto-restart
-- **Hosting** — optional public HTTP endpoint at `{slug}.run.1claw.xyz`
+- **Hosting** — optional public HTTP endpoint at `{slug}.run.1claw.co`
 - **Logs** — real-time streaming and historical access
 - **Sidecar** — 1Claw sidecar auto-injected for secret access and memory
 
 ## Templates
 
-| Template | Runtime | Use case |
-|----------|---------|----------|
-| **Python** | Python 3.12 + pip | LangChain, CrewAI, custom agents |
-| **Node.js** | Node 22 + pnpm | TypeScript agents, ElizaOS |
-| **Hermes** | 1Claw Hermes runtime | Built-in MCP + Shroud integration |
-| **OpenClaw** | Rust-based minimal | High-performance agents |
-| **OpenClaude** | OpenClaude + 1Claw sidecar | Automations Assist, NL workflow authoring |
-| **Custom Docker** | Any Dockerfile | Full control |
+The `template` values below are what you pass to the API. The authoritative list
+is served by **`GET /v1/runtimes/templates`** (public, no auth) — prefer reading
+it over copying this table, so a client can check a template at build time
+rather than discovering it at provision time.
+
+| `template` | Runtime | Chat | Use case |
+|---|---|---|---|
+| `python` | Python 3.12 + pip | — | LangChain, CrewAI, custom agents |
+| `node` | Node 22 + pnpm | — | TypeScript agents, ElizaOS |
+| `hermes` | 1Claw Hermes runtime | yes | Built-in MCP + Shroud integration |
+| `openclaw` | Rust-based minimal | yes | High-performance agents |
+| `openclaude` | OpenClaude + 1Claw sidecar | yes | Automations Assist, NL workflow authoring |
+| `opencode` | OpenCode + 1Claw sidecar | yes | Coding agent workflows |
+| *(omitted)* + `image` | Any Dockerfile | — | Full control |
+
+"Chat" means `POST /v1/runtimes/{id}/chat` is available for that template.
+
+:::note An unrecognised template does not error
+
+A `template` value that is not in this list resolves to the base runtime rather
+than being refused, so a typo provisions a container with none of the tooling
+you expected and nothing reports a problem. Check the value against
+`GET /v1/runtimes/templates` before provisioning.
+:::
 
 ## Create via dashboard
 
@@ -97,7 +113,7 @@ Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a s
 Enable `expose_http` to get a public URL:
 
 ```
-https://{slug}.run.1claw.xyz
+https://{slug}.run.1claw.co
 ```
 
 ### Inbound authentication
@@ -157,7 +173,7 @@ Enable `shell_access_enabled` on the runtime (dashboard Terminal settings or API
 
 ```bash
 # API: create a short-lived shell session (human-only, step-up auth)
-curl -X POST "https://api.1claw.xyz/v1/runtimes/$RUNTIME_ID/shell/session" \
+curl -X POST "https://api.1claw.co/v1/runtimes/$RUNTIME_ID/shell/session" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"password":"..."}'

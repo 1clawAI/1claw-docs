@@ -45,7 +45,7 @@ Agent                           1claw                         Human
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/approvals/request \
+curl -X POST https://api.1claw.co/v1/approvals/request \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -95,13 +95,13 @@ Set the risk tier based on the sensitivity of the action. A request to read a te
 
 ```bash
 # Approve
-curl -X POST "https://api.1claw.xyz/v1/approvals/$APPROVAL_ID/decide" \
+curl -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/decide" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"decision": "approved"}'
 
 # Deny
-curl -X POST "https://api.1claw.xyz/v1/approvals/$APPROVAL_ID/decide" \
+curl -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/decide" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"decision": "denied"}'
@@ -128,7 +128,7 @@ When `action` is `policy_change` and the decision is `approved`, 1claw automatic
 ## Listing pending approvals
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/approvals?status=pending" \
+curl -s "https://api.1claw.co/v1/approvals?status=pending" \
   -H "Authorization: Bearer $TOKEN" | jq '.approvals[] | {id, action, summary, risk_tier, created_at}'
 ```
 
@@ -240,7 +240,7 @@ For non-multisig operations (policy changes, guardrail updates, access requests)
 Set up a webhook to get notified when approvals are decided:
 
 ```bash
-curl -X POST https://api.1claw.xyz/v1/webhooks \
+curl -X POST https://api.1claw.co/v1/webhooks \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

@@ -15,7 +15,7 @@ sidebar_position: 6
 
 Claude Code supports MCP. Use the same setup as **Cursor**:
 
-- **Hosted:** Add the MCP server with URL `https://mcp.1claw.xyz/mcp` and headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token` with your agent ID and API key.
+- **Hosted:** Add the MCP server with URL `https://mcp.1claw.co/mcp` and headers `Authorization: Bearer <jwt>` and `X-Vault-ID: <vault-uuid>`. Get the JWT from `POST /v1/auth/agent-token` with your agent ID and API key.
 - **Local (stdio):** Run the 1claw MCP server locally with env vars `ONECLAW_AGENT_ID`, `ONECLAW_AGENT_API_KEY`, `ONECLAW_VAULT_ID`.
 
 Configure MCP in Claude Code (e.g. via `claude mcp add` or your Claude Code settings). Exact UI may vary; follow [Anthropic’s MCP docs](https://docs.anthropic.com/en/docs/claude-code/mcp) for your version.

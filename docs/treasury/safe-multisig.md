@@ -54,7 +54,7 @@ Register your Safe with 1claw:
 <TabItem value="curl" label="curl">
 
 ```bash
-TREASURY=$(curl -s -X POST https://api.1claw.xyz/v1/treasury \
+TREASURY=$(curl -s -X POST https://api.1claw.co/v1/treasury \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -96,7 +96,7 @@ Create a delegation that lets the agent propose and sign transactions using the 
 
 ```bash
 # Approve the agent's access request with delegation
-curl -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/access-requests/$REQUEST_ID/approve" \
+curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/access-requests/$REQUEST_ID/approve" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -126,7 +126,7 @@ Per-delegation guardrails override or intersect with agent-level guardrails. The
 <TabItem value="curl" label="curl">
 
 ```bash
-PROPOSAL=$(curl -s -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals" \
+PROPOSAL=$(curl -s -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -169,7 +169,7 @@ Each signer submits an EIP-712 signature:
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/sign" \
+curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/sign" \
   -H "Authorization: Bearer $SIGNER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -194,7 +194,7 @@ await client.treasury.signProposal(treasuryId, proposalId, {
 To reject:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/sign" \
+curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/sign" \
   -H "Authorization: Bearer $SIGNER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"decision": "reject"}'
@@ -212,7 +212,7 @@ When the number of `approve` signatures reaches the Safe's threshold:
 No manual execution step is needed unless you want to force-execute:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/execute" \
+curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/execute" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -221,7 +221,7 @@ curl -X POST "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL
 For low-value, routine transactions, you can configure auto-approve rules on the delegation. When an agent creates a proposal matching a rule, 1claw automatically inserts the agent's signature. If that meets the threshold, the transaction executes immediately with no human interaction.
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/delegations/$DELEGATION_ID" \
+curl -X PATCH "https://api.1claw.co/v1/treasury/$TREASURY_ID/delegations/$DELEGATION_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -246,7 +246,7 @@ Auto-approve rules bypass human review for matching transactions. Set tight cons
 List all proposals for a treasury:
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/treasury/$TREASURY_ID/proposals?status=pending" \
+curl -s "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals?status=pending" \
   -H "Authorization: Bearer $TOKEN" | jq '.proposals[] | {id, status, to_address, value_wei}'
 ```
 

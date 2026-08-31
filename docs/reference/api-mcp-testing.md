@@ -13,7 +13,7 @@ This page provides ready-to-run `curl` commands for every area of the 1claw API 
 Set these environment variables before running the examples:
 
 ```bash
-export API="https://api.1claw.xyz"
+export API="https://api.1claw.co"
 ```
 
 ---
@@ -584,7 +584,7 @@ Or add to your MCP client configuration (e.g. Claude Desktop, Cursor):
             "command": "npx",
             "args": ["-y", "@1claw/mcp"],
             "env": {
-                "ONECLAW_API_URL": "https://api.1claw.xyz",
+                "ONECLAW_API_URL": "https://api.1claw.co",
                 "ONECLAW_AGENT_ID": "<agent-uuid>",
                 "ONECLAW_API_KEY": "ocv_..."
             }
@@ -754,7 +754,7 @@ For direct stdio testing, pipe JSON-RPC messages:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
-  ONECLAW_API_URL=https://api.1claw.xyz \
+  ONECLAW_API_URL=https://api.1claw.co \
   ONECLAW_AGENT_ID=<agent-uuid> \
   ONECLAW_API_KEY=ocv_... \
   npx @1claw/mcp

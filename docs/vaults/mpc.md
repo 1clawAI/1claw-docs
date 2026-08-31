@@ -47,7 +47,7 @@ Best for: defense-in-depth with a client-held recovery share.
 MPC is enabled per-vault via a single API call. The custody mode is **immutable once set** — you cannot change modes after enablement.
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/VAULT_ID/mpc" \
+curl -X POST "https://api.1claw.co/v1/vaults/VAULT_ID/mpc" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -58,7 +58,7 @@ curl -X POST "https://api.1claw.xyz/v1/vaults/VAULT_ID/mpc" \
 For modes that use specific providers, you can optionally specify them:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/vaults/VAULT_ID/mpc" \
+curl -X POST "https://api.1claw.co/v1/vaults/VAULT_ID/mpc" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -76,7 +76,7 @@ The custody mode cannot be changed after it is set on a vault. Choose carefully 
 Use the standard `PUT /v1/vaults/{id}/secrets/{path}` endpoint. For custody modes that include a client share (`2of2_client_custody` and `2of3_client_custody`), the response includes a `client_share` field:
 
 ```bash
-curl -X PUT "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+curl -X PUT "https://api.1claw.co/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -104,7 +104,7 @@ Store the `client_share` securely — in a password manager, hardware security m
 For modes with client custody, include the `X-Client-Share` header:
 
 ```bash
-curl "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+curl "https://api.1claw.co/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Client-Share: dGhpcyBpcyBhIGJhc2U2NCBlbmNvZGVkIHNoYXJl..."
 ```
@@ -112,7 +112,7 @@ curl "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
 For `2of3_multi_hsm`, no header is needed — reads work like any other vault:
 
 ```bash
-curl "https://api.1claw.xyz/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
+curl "https://api.1claw.co/v1/vaults/VAULT_ID/secrets/api-keys/stripe" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

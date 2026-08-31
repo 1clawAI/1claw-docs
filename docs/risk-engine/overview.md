@@ -74,13 +74,13 @@ Navigate to **Risk Engine → Honeytokens** to create and manage honeytokens.
 
 ```bash
 # Create a honeytoken
-curl -X POST https://api.1claw.xyz/v1/risk/honeytokens \
+curl -X POST https://api.1claw.co/v1/risk/honeytokens \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"vault_id": "...", "secret_path": "api-keys/production", "notes": "Canary for vault breach"}'
 
 # List honeytokens
-curl https://api.1claw.xyz/v1/risk/honeytokens \
+curl https://api.1claw.co/v1/risk/honeytokens \
   -H "Authorization: Bearer $TOKEN"
 ```
 

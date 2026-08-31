@@ -83,7 +83,7 @@ const { hash } = await privy.walletApi.ethereum.sendTransaction({
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!, // ocv_ key
 });
 
@@ -112,7 +112,7 @@ Differences worth noting:
 Privy does not have native transaction guardrails. 1claw lets you set per-agent constraints:
 
 ```bash
-curl -X PATCH "https://api.1claw.xyz/v1/agents/$AGENT_ID" \
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -131,7 +131,7 @@ If you keep API keys, webhook secrets, or database credentials in environment va
 
 ```bash
 # Store your Privy app secret itself in 1claw
-curl -X PUT "https://api.1claw.xyz/v1/vaults/$VAULT_ID/secrets/privy/app-secret" \
+curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/privy/app-secret" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -160,7 +160,7 @@ Privy is designed for user-facing flows. For backend processes that need to sign
 import { createClient } from "@1claw/sdk";
 
 const agent = createClient({
-  baseUrl: "https://api.1claw.xyz",
+  baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
 

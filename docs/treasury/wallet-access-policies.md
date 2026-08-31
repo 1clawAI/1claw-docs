@@ -33,7 +33,7 @@ Wallet access policies control **who** may send, swap, view balances, export, or
 ## Create example
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/treasury/wallets/access-policies" \
+curl -X POST "https://api.1claw.co/v1/treasury/wallets/access-policies" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

@@ -41,7 +41,7 @@ The provider registry is seeded with 10 providers:
 ### 1. Save App Credentials
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/oauth/app-credentials" \
+curl -X POST "https://api.1claw.co/v1/agents/{agent_id}/oauth/app-credentials" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -54,7 +54,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/oauth/app-credentials" 
 ### 2. Initiate OAuth Connection
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/oauth/connect" \
+curl -X POST "https://api.1claw.co/v1/agents/{agent_id}/oauth/connect" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -82,7 +82,7 @@ Open the `authorization_url` in a browser. After the user approves, the callback
 The agent can now access GitHub through execution intents:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/execute" \
+curl -X POST "https://api.1claw.co/v1/agents/{agent_id}/execute" \
   -H "Authorization: Bearer $AGENT_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -100,7 +100,7 @@ curl -X POST "https://api.1claw.xyz/v1/agents/{agent_id}/execute" \
 ```typescript
 import { createClient } from '@1claw/sdk';
 
-const client = createClient({ baseUrl: 'https://api.1claw.xyz', token: userJwt });
+const client = createClient({ baseUrl: 'https://api.1claw.co', token: userJwt });
 
 // List available providers
 const providers = await client.oauthConnect.listProviders();

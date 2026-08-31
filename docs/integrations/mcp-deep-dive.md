@@ -55,7 +55,7 @@ To use an existing agent key:
 
 ### Hosted MCP server (recommended)
 
-The hosted server at `mcp.1claw.xyz` requires no local setup. Configure your AI tool to connect:
+The hosted server at `mcp.1claw.co` requires no local setup. Configure your AI tool to connect:
 
 <Tabs groupId="ai-tool">
 <TabItem value="cursor" label="Cursor">
@@ -66,7 +66,7 @@ Create or edit `.cursor/mcp.json` in your project root:
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer ocv_your_agent_api_key"
       }
@@ -84,7 +84,7 @@ Edit `~/.claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer ocv_your_agent_api_key"
       }
@@ -102,7 +102,7 @@ Create or edit `.vscode/mcp.json`:
 {
   "servers": {
     "1claw": {
-      "url": "https://mcp.1claw.xyz/mcp",
+      "url": "https://mcp.1claw.co/mcp",
       "headers": {
         "Authorization": "Bearer ocv_your_agent_api_key"
       }
@@ -117,7 +117,7 @@ Create or edit `.vscode/mcp.json`:
 ```bash
 claude mcp add 1claw \
   --transport http \
-  --url https://mcp.1claw.xyz/mcp \
+  --url https://mcp.1claw.co/mcp \
   --header "Authorization: Bearer ocv_your_agent_api_key"
 ```
 

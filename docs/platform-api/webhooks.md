@@ -15,7 +15,7 @@ Webhook CRUD endpoints require a **user JWT** (`principal_type: "user"`). Agents
 ## Quickstart
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/webhooks" \
+curl -X POST "https://api.1claw.co/v1/webhooks" \
   -H "Authorization: Bearer $USER_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -150,7 +150,7 @@ Org webhook signing secrets are shown **once** when you create the webhook. To r
 **Platform app webhooks** support in-place rotation:
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/platform/apps/APP_ID/rotate-webhook-secret" \
+curl -X POST "https://api.1claw.co/v1/platform/apps/APP_ID/rotate-webhook-secret" \
   -H "Authorization: Bearer $USER_JWT"
 ```
 

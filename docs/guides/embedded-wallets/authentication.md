@@ -31,7 +31,7 @@ Best for apps that only need an email address — no password, no seed phrase.
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ baseUrl: "https://api.1claw.xyz" });
+const client = createClient({ baseUrl: "https://api.1claw.co" });
 
 await client.auth.sendEmailOtp({
   email: "user@example.com",
@@ -53,12 +53,12 @@ client.http.setToken(data.token);
 
 ```bash
 # Send code
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/send" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/send" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","platform_app_id":"APP_UUID"}'
 
 # Verify code
-curl -X POST "https://api.1claw.xyz/v1/auth/email-otp/verify" \
+curl -X POST "https://api.1claw.co/v1/auth/email-otp/verify" \
   -H "Content-Type: application/json" \
   -d '{
     "email":"user@example.com",

@@ -20,7 +20,7 @@ Removes the policy. The principal (user or agent) immediately loses the permissi
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X DELETE "https://api.1claw.xyz/v1/vaults/$VAULT_ID/policies/897b37da-a265-4bd4-818b-e716eeff3de3" \
+curl -X DELETE "https://api.1claw.co/v1/vaults/$VAULT_ID/policies/897b37da-a265-4bd4-818b-e716eeff3de3" \
   -H "Authorization: Bearer <token>"
 ```
 

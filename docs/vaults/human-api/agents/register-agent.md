@@ -39,7 +39,7 @@ See [Agent keys](/docs/security/agent-keys) for details on key formats and how t
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -X POST "https://api.1claw.xyz/v1/agents" \
+curl -X POST "https://api.1claw.co/v1/agents" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

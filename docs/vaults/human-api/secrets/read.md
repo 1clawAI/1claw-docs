@@ -25,7 +25,7 @@ Retrieve the **decrypted value** and metadata of a secret. Requires read permiss
 <TabItem value="curl" label="curl">
 
 ```bash
-curl -s "https://api.1claw.xyz/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
+curl -s "https://api.1claw.co/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c709/secrets/api-keys/openai" \
   -H "Authorization: Bearer <token>"
 ```
 
