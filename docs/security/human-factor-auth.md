@@ -26,7 +26,7 @@ Embedded clients can read the resolved policy via `GET /v1/treasury/wallets/auth
 | `passkey_only` | Passkey tx-assert only |
 | `passkey_required` | Passkey required; password fallback disabled |
 | `password_only` | Password via `X-Auth-Confirm` |
-| `reauth_token_only` | Short-lived reauth token from `POST /v1/auth/reauth` |
+| `reauth_token_only` | Short-lived reauth token from `POST /v1/auth/reauth/complete` |
 
 ## Passkey tx-assert (v0.56.2)
 

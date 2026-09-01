@@ -201,7 +201,7 @@ curl -X POST "https://api.1claw.co/v1/runtimes/$RUNTIME_ID/shell/session" \
 # → { "session_token", "ws_url", "expires_in", "max_session_minutes" }
 ```
 
-Step-up options: account `password`, `totp_code`, WebAuthn `passkey_credential` (after `POST .../shell/passkey/begin`), or a `reauth_token` from `POST /v1/auth/reauth` with purpose `runtime_shell`.
+Step-up options: account `password`, `totp_code`, WebAuthn `passkey_credential` (after `POST .../shell/passkey/begin`), or a `reauth_token` from `POST /v1/auth/reauth/begin` then `POST /v1/auth/reauth/complete` with purpose `runtime_shell`.
 
 SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Terminal tab connects a binary WebSocket to `ws_url`. Vault may auto-repair Cloud Run invoker IAM and reconcile the shroud sidecar on connect; enabling shell while a runtime is already running may require stop/start so the sidecar is injected.
 
@@ -219,7 +219,7 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 
 - GCP Cloud Audit entries are excluded / summarized — full CreateService specs (env vars) are never returned to clients.
 - JWTs, API keys, and secret-shaped assignments are redacted server-side (and again in the dashboard as defense-in-depth).
-- Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
+- Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth/begin` then `/complete` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
 
 API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
 
