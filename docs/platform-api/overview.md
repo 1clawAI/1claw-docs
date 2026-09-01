@@ -502,23 +502,36 @@ curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIM
 
 Do **not** use `GET /v1/runtimes/{id}` with a plt_ key — that resolves to the platform org.
 
-### Passkey enroll for connected end-users
+### Passkey enrollment for connected end-users
 
-Register a WebAuthn passkey for the connected user without a human JWT:
+**A platform app cannot enroll a passkey for a user.** Both
+`/v1/platform/connections/{id}/passkeys/enroll/begin` and `.../complete` return
+403, always. This page previously showed them as working `plt_` calls; they
+never can be.
 
-```bash
-# Begin
-curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
-  -H "Authorization: Bearer plt_YOUR_KEY"
+The reason is what a passkey is worth. It is not scoped to your connection the
+way a `plt_` key is: once one exists on an account, the public sign-in flow
+(`/v1/auth/passkeys/assert/*`) exchanges it for a **full, non-delegated user
+session**. An app able to enroll one would hold a credential stronger than the
+delegation boundary it operates under, so the capability was removed.
 
-# Complete (browser ceremony)
-curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
-  -H "Authorization: Bearer plt_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "credential_id": "...", "attestation_object": "...", "client_data_json": "..." }'
-```
+That also rules out the near miss: a claim session cannot enroll either. A claim
+JWT acts as the connected user, and your app can obtain one on its own — it can
+reissue a claim token for its own connection and redeem it — so accepting it
+here would be the same hole with an extra step.
 
-Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flows.
+**The user enrolls, in a session they signed into themselves**, at
+`https://1claw.co/settings/security`. Send them there and use `return_to` on the
+claim link to bring them back.
+
+To *use* a passkey a connected user already has — the step-up you probably
+want — see:
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/v1/platform/connections/{id}/passkeys` | Whether the confirm step can be offered at all. Returns counts, never credential material. Branch on `has_passkey`. |
+| POST | `/v1/platform/connections/{id}/passkeys/tx-assert/begin` | Ask that user to touch their authenticator over a specific digest. |
+| POST | `/v1/platform/connections/{id}/passkeys/tx-assert/complete` | Complete that ceremony. |
 
 ### Spend policy, approvals, signing keys
 
@@ -1389,8 +1402,8 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/siwe/challenge` | `plt_` key | SIWE nonce + message for wallet upsert |
 | POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
 | GET | `/v1/platform/connections/{id}/runtimes/{rid}` | `plt_` key | Get connection-scoped runtime |
-| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | `plt_` key | Start passkey registration for connected user |
-| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | `plt_` key | Complete passkey registration |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | — | **Always 403.** A platform app cannot enroll a login passkey; the user enrolls in their own session. |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | — | **Always 403.** See above. |
 | POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors) |
 | POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
 | GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |

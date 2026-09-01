@@ -1457,8 +1457,8 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 | `POST`   | `/v1/shroud/inspect-content`                     | Standalone content threat scan (plt_ / agent / user JWT) |
 | `POST`   | `/v1/platform/connections/{id}/runtimes`         | Create runtime for connection agent (plt_ auth)        |
 | `GET`    | `/v1/platform/connections/{id}/runtimes/{rid}`   | Get connection-scoped runtime (plt_ auth; not `/v1/runtimes/{id}`) |
-| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/begin`   | Start WebAuthn registration for connected end-user (plt_ auth) |
-| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/complete`  | Complete passkey registration for connected end-user |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/begin`   | **Always 403** — platform apps cannot enrol login passkeys |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/complete`  | **Always 403** — see above |
 | `POST`   | `/v1/platform/connections/{id}/agents/{aid}/chat`  | Chat with connection agent (plt_ auth; `system`, `system_prompt`, `messages[]`; 402 on billing errors) |
 | `GET`    | `/v1/platform/connections/{id}/signing-keys`      | List agent signing keys — public metadata only (plt_; optional `?agent_id=`) |
 | `GET`    | `/v1/platform/connections/{id}/signing-keys/{chain}` | Single-chain agent signing key (plt_; optional `?agent_id=`) |

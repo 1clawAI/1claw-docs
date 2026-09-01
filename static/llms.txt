@@ -382,8 +382,8 @@ Key endpoints:
 - `POST /v1/platform/connections/{id}/bootstrap` — Bootstrap resources from template (optional `parameters`, `Idempotency-Key`)
 - `POST /v1/platform/siwe/challenge` — SIWE challenge for wallet-based user upsert (platform-only)
 - `GET /v1/platform/connections/{id}/runtimes/{runtime_id}` — Connection-scoped runtime GET (plt_; not `/v1/runtimes/{id}`)
-- `POST /v1/platform/connections/{id}/passkeys/enroll/begin` — Start passkey registration for connected user (plt_)
-- `POST /v1/platform/connections/{id}/passkeys/enroll/complete` — Complete passkey registration (plt_)
+- `POST /v1/platform/connections/{id}/passkeys/enroll/begin` — ALWAYS 403. Platform apps cannot enrol login passkeys; the user enrols at 1claw.co/settings/security.
+- `POST /v1/platform/connections/{id}/passkeys/enroll/complete` — ALWAYS 403. See above.
 - `POST /v1/platform/connections/{id}/agents/{agent_id}/chat` — Connection-scoped agent chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors)
 - `PATCH /v1/platform/connections/{id}/agents/{agent_id}` — Enable Intents/Execution Intents or update `system_prompt` (plt_; agent on connection)
 - `GET /v1/platform/connections/{id}/signing-keys` — List agent signing keys (public metadata; optional `?agent_id=`; not `wallet_address`)

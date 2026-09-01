@@ -132,8 +132,7 @@ Use these with **`plt_`** auth when building embedded wallet or agent products (
 | Agent signing key (one chain) | `GET .../signing-keys/{chain}?agent_id=` | `platform.getConnectionSigningKey()` |
 | Enable Intents post-bootstrap | `PATCH .../agents/{agent_id}` | `platform.patchConnectionAgent()` |
 | Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
-| Passkey enroll (begin) | `POST .../passkeys/enroll/begin` | `platform.connectionPasskeyEnrollBegin()` |
-| Passkey enroll (complete) | `POST .../passkeys/enroll/complete` | `platform.connectionPasskeyEnrollComplete()` |
+| Passkey enroll | — | **Not available.** Both enroll routes return 403: a passkey mints a full user session via the public assert flow, so a platform app cannot create one. The user enrolls at `1claw.co/settings/security` in their own session. |
 | Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]`; billing errors **402** |
 | Template GET | `GET /v1/platform/apps/{appId}/templates/{templateId}` | `platform.getTemplate()` |
 | Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |

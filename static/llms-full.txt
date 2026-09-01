@@ -9816,8 +9816,7 @@ Use these with **`plt_`** auth when building embedded wallet or agent products (
 | Agent signing key (one chain) | `GET .../signing-keys/{chain}?agent_id=` | `platform.getConnectionSigningKey()` |
 | Enable Intents post-bootstrap | `PATCH .../agents/{agent_id}` | `platform.patchConnectionAgent()` |
 | Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
-| Passkey enroll (begin) | `POST .../passkeys/enroll/begin` | `platform.connectionPasskeyEnrollBegin()` |
-| Passkey enroll (complete) | `POST .../passkeys/enroll/complete` | `platform.connectionPasskeyEnrollComplete()` |
+| Passkey enroll | — | **Not available** — both enroll routes return 403. The user enrols in their own session. |
 | Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]`; billing errors **402** |
 | Template GET | `GET /v1/platform/apps/{appId}/templates/{templateId}` | `platform.getTemplate()` |
 | Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |
@@ -19105,15 +19104,9 @@ Do **not** use `GET /v1/runtimes/{id}` with a plt_ key — that resolves to the 
 Register a WebAuthn passkey for the connected user without a human JWT:
 
 ```bash
-# Begin
-curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/begin" \
-  -H "Authorization: Bearer plt_YOUR_KEY"
-
-# Complete (browser ceremony)
-curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/passkeys/enroll/complete" \
-  -H "Authorization: Bearer plt_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "credential_id": "...", "attestation_object": "...", "client_data_json": "..." }'
+# Both of these return 403, always. A platform app cannot enrol a login
+# passkey — it would mint a full user session through the public assert
+# flow. The user enrols at https://1claw.co/settings/security instead.
 ```
 
 Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flows.
@@ -19987,8 +19980,8 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/siwe/challenge` | `plt_` key | SIWE nonce + message for wallet upsert |
 | POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
 | GET | `/v1/platform/connections/{id}/runtimes/{rid}` | `plt_` key | Get connection-scoped runtime |
-| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | `plt_` key | Start passkey registration for connected user |
-| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | `plt_` key | Complete passkey registration |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | — | **Always 403.** Platform apps cannot enrol login passkeys. |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | — | **Always 403.** See above. |
 | POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors) |
 | POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
 | GET | `/v1/platform/connections/{id}/usage` | `plt_` key | Per-connection usage / inference spend |
@@ -22669,7 +22662,7 @@ origin cannot be used on the new one; affected users are re-prompted to enrol.
 **Fathom platform integration (migration 221)**
 - **`agents.system_prompt`** — default chat system prompt on create/update and template `agents[].system_prompt` at bootstrap.
 - **Connection chat** — `POST /v1/platform/connections/{id}/agents/{aid}/chat` accepts `system`, `system_prompt`, and `messages[]` with `role: system`; billing failures return **402** (not 500).
-- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users (replaces user-only `/v1/auth/passkeys/register/*`).
+- **Connection passkey enroll** — REMOVED. `POST .../passkeys/enroll/begin|complete` always return 403. A passkey mints a full non-delegated user session via the public assert flow, so a platform app cannot create one. The user enrols at `1claw.co/settings/security` in a session they signed into themselves.
 - **Connection runtime GET** — `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` (plt_ scoped; use instead of `GET /v1/runtimes/{id}`).
 - **`platform_pays` tier inheritance (migration 220)** — Template `plan` at bootstrap grants tier to end-user org; `GET /v1/platform/connections/{id}` returns `provisioned_tier`.
 - **Bootstrap runtime fix** — `provision_runtime` uses valid Cloud Run provider and respects tier limits.

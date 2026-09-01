@@ -109,7 +109,7 @@ origin cannot be used on the new one; affected users are re-prompted to enrol.
 **Fathom platform integration (migration 221)**
 - **`agents.system_prompt`** — default chat system prompt on create/update and template `agents[].system_prompt` at bootstrap.
 - **Connection chat** — `POST /v1/platform/connections/{id}/agents/{aid}/chat` accepts `system`, `system_prompt`, and `messages[]` with `role: system`; billing failures return **402** (not 500).
-- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users (replaces user-only `/v1/auth/passkeys/register/*`).
+- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users. **Withdrawn 2026-08-27 and now always 403.** A passkey is exchangeable for a full, non-delegated user session through the public assert flow, so an app able to enrol one held a credential stronger than the delegation boundary it operates under. The user enrols in their own session instead.
 - **Connection runtime GET** — `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` (plt_ scoped; use instead of `GET /v1/runtimes/{id}`).
 - **`platform_pays` tier inheritance (migration 220)** — Template `plan` at bootstrap grants tier to end-user org; `GET /v1/platform/connections/{id}` returns `provisioned_tier`.
 - **Bootstrap runtime fix** — `provision_runtime` uses valid Cloud Run provider and respects tier limits.
