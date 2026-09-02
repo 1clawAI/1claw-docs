@@ -591,11 +591,20 @@ the answer.
 
 ## Getting started
 
+The client is not on npm yet. Clone and build it:
+
 ```bash
-npm install -g @1claw/browser-bridge
+git clone https://github.com/1clawAI/browser-bridge
+cd browser-bridge && pnpm install && pnpm build
 ```
 
 Pair the machine (a human action, behind step-up re-auth):
+
+```bash
+1claw browser pair laptop --public-key "<bridge public key>"
+```
+
+Or against the API directly:
 
 ```bash
 curl -X POST https://api.1claw.co/v1/browser/devices \
@@ -689,11 +698,8 @@ the meantime, and is capped at five fills per binding per ten minutes.
 List what is paired, and revoke it:
 
 ```bash
-curl https://api.1claw.co/v1/browser/devices \
-  -H "Authorization: Bearer $USER_TOKEN"
-
-curl -X DELETE https://api.1claw.co/v1/browser/devices/{id} \
-  -H "Authorization: Bearer $USER_TOKEN"
+1claw browser devices          # revoked ones are listed too
+1claw browser revoke <device-id>
 ```
 
 Revoked devices stay in the list rather than disappearing, because "was this
