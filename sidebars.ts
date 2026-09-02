@@ -135,6 +135,7 @@ const sidebars: SidebarsConfig = {
                         "agents/bankr-keys",
                         "agents/guardrail-governance",
                         "agents/safe-accounts",
+                        "agents/browser-bridge",
                     ],
                 },
                 {

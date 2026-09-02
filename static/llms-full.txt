@@ -547,6 +547,163 @@ await client.agents.revokeBankrKey(agentId, leaseId);
 
 ---
 
+## Browser Bridge
+
+---
+title: Browser Bridge
+description: Let an agent log into a website without ever giving it the password.
+---
+
+# Browser Bridge
+
+An agent needs to log into a site. The obvious way is to hand it the password
+and hope. The Browser Bridge is the other way: the agent drives the browser,
+asks *which* credential to use, and the bridge types it. The value never enters
+the agent's context, its logs, or its model provider's.
+
+The client is open source — [`1clawAI/browser-bridge`](https://github.com/1clawAI/browser-bridge),
+Apache-2.0, published as `@1claw/browser-bridge`.
+
+## The shape of it
+
+```
+agent  ──CDP──▶  bridge  ──HTTPS──▶  vault
+                   │
+                   └──CDP──▶  Chromium
+```
+
+The bridge is the only process attached to Chromium. The agent talks to the
+bridge, not to the browser, and every command it sends crosses a gate.
+
+Three separate credentials are involved, and the separation *is* the guarantee:
+
+| Credential | Answers | Held by |
+|---|---|---|
+| `bb_` device credential | *which machine* | the bridge, from pairing |
+| user session | *which person* | the human who paired it |
+| agent JWT | *which agent* | the agent |
+
+Collapsing any two lets one stand in for another. That is why authorising a
+fill needs the agent's token **and** the bridge's, while redeeming the grant
+needs the human's **and** the bridge's — and is refused outright for an agent
+principal. The agent asks which binding; it is refused when it tries to collect
+the answer.
+
+## Getting started
+
+```bash
+npm install -g @1claw/browser-bridge
+```
+
+Pair the machine (a human action, behind step-up re-auth):
+
+```bash
+curl -X POST https://api.1claw.co/v1/browser/devices \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"laptop","public_key_pin":"<bridge public key>"}'
+```
+
+The `bb_` credential comes back once and is never returned again.
+
+Define a binding — which secret may be typed, and where:
+
+```bash
+curl -X POST https://api.1claw.co/v1/browser/credentials \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "acme-login",
+    "vault_id": "<vault>",
+    "secret_path": "acme/password",
+    "login_url": "https://app.acme.example/login",
+    "allowed_hosts": ["app.acme.example"]
+  }'
+```
+
+Hosts are matched **exactly**. A wildcard is refused at creation rather than
+stored, because a stored `*.example.com` would match nothing while looking
+permissive.
+
+Then point your framework at the bridge:
+
+```js
+await puppeteer.connect({ browserWSEndpoint: bridge.url });
+await chromium.connectOverCDP(bridge.url);
+```
+
+Stock Puppeteer and Playwright clients work, and so do the agent frameworks
+built on them.
+
+## What the gate refuses
+
+- **`Runtime.evaluate` during a fill.** The whole target is blocked while a
+  credential is being typed, not just the field — and the fill happens on a
+  page the agent has never had a session on, so a listener installed earlier
+  has nothing to observe.
+- **Another agent's pages.** Each client gets its own Chromium browser context.
+  `Target.getTargets` is narrowed to the caller's own pages, and attaching to
+  someone else's is refused even with the id in hand.
+- **Response bodies.** `Network.getResponseBody` and the events carrying raw
+  headers are not forwarded — filtering a response after the fact does not
+  help when the side effect *is* the exfiltration.
+
+## Authorising a fill
+
+The bridge asks the vault whether this fill is allowed, on this page, right
+now. The request carries what the vault needs to decide:
+
+```json
+{
+  "session_id": "...",
+  "binding_id": "...",
+  "tab_origin": "https://app.acme.example",
+  "frame_origin": "https://app.acme.example",
+  "form_action_origin": "https://app.acme.example",
+  "frame_id": "...",
+  "generation": 7,
+  "form_path": "/login",
+  "field_names": ["username", "password"],
+  "redirect_chain": ["sso.acme.example"],
+  "current_generation": 7
+}
+```
+
+:::warning All four of the last fields are required
+
+`form_path`, `field_names`, `redirect_chain` and `current_generation` are not
+optional. A request missing any of them is refused with a `400` naming them.
+
+Send `current_generation` as the generation you observe **now**, and
+`generation` as the one the request was decided against. Sending the same value
+for both makes the staleness check compare a value to itself — which is exactly
+the bug that made it useless before these fields were required.
+:::
+
+The vault answers with a grant, a denial and a reason, or a pending approval.
+A grant is single-use, lives 60 seconds, is refused if the page navigated in
+the meantime, and is capped at five fills per binding per ten minutes.
+
+## Losing a laptop
+
+List what is paired, and revoke it:
+
+```bash
+curl https://api.1claw.co/v1/browser/devices \
+  -H "Authorization: Bearer $USER_TOKEN"
+
+curl -X DELETE https://api.1claw.co/v1/browser/devices/{id} \
+  -H "Authorization: Bearer $USER_TOKEN"
+```
+
+Revoked devices stay in the list rather than disappearing, because "was this
+machine ever paired" is the question people ask after a laptop goes missing.
+Revocation takes effect immediately — a revoked `bb_` opens no sessions and
+authorises no fills.
+
+
+---
+
 ## Messaging Channels
 
 ---
@@ -8987,7 +9144,7 @@ import { SignInWith1Claw, handleSignInCallback } from "@1claw/wallet-react";
 />
 ```
 
-Supported scopes include `openid`, `profile`, `email`, and wallet-related scopes configured on your platform app. Revoke consent: `DELETE /v1/oauth/consent/{app_slug}`.
+Supported scopes include `openid`, `profile`, `email`, and wallet-related scopes configured on your platform app. Revoke consent: `DELETE /v1/oauth/consents/{app_id}`.
 
 Full OAuth server details: [Platform API — OAuth](/docs/platform-api/overview) and OpenID discovery at `GET /.well-known/openid-configuration`.
 
@@ -9816,7 +9973,7 @@ Use these with **`plt_`** auth when building embedded wallet or agent products (
 | Agent signing key (one chain) | `GET .../signing-keys/{chain}?agent_id=` | `platform.getConnectionSigningKey()` |
 | Enable Intents post-bootstrap | `PATCH .../agents/{agent_id}` | `platform.patchConnectionAgent()` |
 | Connection runtime GET | `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` | `platform.getConnectionRuntime()` |
-| Passkey enroll | — | **Not available** — both enroll routes return 403. The user enrols in their own session. |
+| Passkey enroll | — | **Not available.** Both enroll routes return 403: a passkey mints a full user session via the public assert flow, so a platform app cannot create one. The user enrolls at `1claw.co/settings/security` in their own session. |
 | Agent chat (as user) | `POST .../agents/{aid}/chat` | `platform.connectionAgentChat()` — accepts `system`, `system_prompt`, `messages[]`; billing errors **402** |
 | Template GET | `GET /v1/platform/apps/{appId}/templates/{templateId}` | `platform.getTemplate()` |
 | Provisioned tier | `GET /v1/platform/connections/{id}` → `provisioned_tier` | `platform.getConnection()` |
@@ -19099,17 +19256,36 @@ curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/runtimes/RUNTIM
 
 Do **not** use `GET /v1/runtimes/{id}` with a plt_ key — that resolves to the platform org.
 
-### Passkey enroll for connected end-users
+### Passkey enrollment for connected end-users
 
-Register a WebAuthn passkey for the connected user without a human JWT:
+**A platform app cannot enroll a passkey for a user.** Both
+`/v1/platform/connections/{id}/passkeys/enroll/begin` and `.../complete` return
+403, always. This page previously showed them as working `plt_` calls; they
+never can be.
 
-```bash
-# Both of these return 403, always. A platform app cannot enrol a login
-# passkey — it would mint a full user session through the public assert
-# flow. The user enrols at https://1claw.co/settings/security instead.
-```
+The reason is what a passkey is worth. It is not scoped to your connection the
+way a `plt_` key is: once one exists on an account, the public sign-in flow
+(`/v1/auth/passkeys/assert/*`) exchanges it for a **full, non-delegated user
+session**. An app able to enroll one would hold a credential stronger than the
+delegation boundary it operates under, so the capability was removed.
 
-Replaces user-only `/v1/auth/passkeys/register/*` for wallet-first platform flows.
+That also rules out the near miss: a claim session cannot enroll either. A claim
+JWT acts as the connected user, and your app can obtain one on its own — it can
+reissue a claim token for its own connection and redeem it — so accepting it
+here would be the same hole with an extra step.
+
+**The user enrolls, in a session they signed into themselves**, at
+`https://1claw.co/settings/security`. Send them there and use `return_to` on the
+claim link to bring them back.
+
+To *use* a passkey a connected user already has — the step-up you probably
+want — see:
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/v1/platform/connections/{id}/passkeys` | Whether the confirm step can be offered at all. Returns counts, never credential material. Branch on `has_passkey`. |
+| POST | `/v1/platform/connections/{id}/passkeys/tx-assert/begin` | Ask that user to touch their authenticator over a specific digest. |
+| POST | `/v1/platform/connections/{id}/passkeys/tx-assert/complete` | Complete that ceremony. |
 
 ### Spend policy, approvals, signing keys
 
@@ -19861,7 +20037,7 @@ const vaults = await scoped.listVaults();
 ### Delegation log
 
 ```
-GET /v1/platform/connected-apps/{connectionId}/delegation-log
+GET /v1/platform/connections/{connection_id}/delegation-log
 ```
 
 ## Current Limitations
@@ -19980,7 +20156,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | POST | `/v1/platform/siwe/challenge` | `plt_` key | SIWE nonce + message for wallet upsert |
 | POST | `/v1/platform/connections/{id}/runtimes` | `plt_` key | Create runtime for connection agent |
 | GET | `/v1/platform/connections/{id}/runtimes/{rid}` | `plt_` key | Get connection-scoped runtime |
-| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | — | **Always 403.** Platform apps cannot enrol login passkeys. |
+| POST | `/v1/platform/connections/{id}/passkeys/enroll/begin` | — | **Always 403.** A platform app cannot enroll a login passkey; the user enrolls in their own session. |
 | POST | `/v1/platform/connections/{id}/passkeys/enroll/complete` | — | **Always 403.** See above. |
 | POST | `/v1/platform/connections/{id}/agents/{aid}/chat` | `plt_` key | Chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors) |
 | POST | `/v1/platform/apps/{id}/templates/{tid}/preview` | `plt_` key | Dry-run template with `parameters` |
@@ -21890,7 +22066,8 @@ All endpoints are under **/v1**.
 | POST   | `/v1/auth/set-password`     | Set password for OIDC-provisioned users (no existing password) |
 | POST   | `/v1/auth/change-email`     | Initiate email change (sends verification code)     |
 | POST   | `/v1/auth/verify-email-change` | Complete email change with verification code     |
-| POST   | `/v1/auth/reauth`           | Step-up re-authentication (returns `reauth_token`)  |
+| POST   | `/v1/auth/reauth/begin`     | Start step-up re-authentication                    |
+| POST   | `/v1/auth/reauth/complete`  | Finish step-up, returns `reauth_token`             |
 
 ## Account Management
 
@@ -22559,7 +22736,66 @@ sidebar_label: "2026"
 
 ## 2026 {#2026}
 
-### 2026-08 (latest)
+### 2026-09 (latest)
+
+### v0.59.13 (2026-09-02) {#v05913-2026-09-02}
+
+**Three endpoints were returning 500 on every call. They are fixed.**
+
+- **`POST /v1/secrets/{id}/share`** — secret sharing failed for every caller.
+  The query behind it named its columns by hand and did not gain two fields the
+  row type had gained, so it failed against the database every time and
+  surfaced as "An unexpected error occurred". If you have integration code that
+  quietly skipped sharing, it will start working.
+- **`DELETE /v1/org/sub-orgs/{id}`** — archiving a sub-organization had never
+  once succeeded. Its first statement wrote a column that did not exist, so the
+  transaction rolled back and nothing was archived.
+- **`POST /v1/vaults`** now answers **409** for a duplicate name and **400**
+  for an empty one or one over 255 characters. All three were 500s. Names are
+  unique per organization, and the name is trimmed before it is stored — the
+  trimmed value is what must be unique.
+
+**Browser bridge**
+
+:::warning Integrator-affecting: four fill fields are now required
+
+`POST /v1/agents/{id}/browser/fills` requires `form_path`, `field_names`,
+`redirect_chain` and `current_generation`. They were optional and filled in
+server-side when absent, which turned three of the policy's own checks off: the
+redirect chain was always empty so its check never ran, `current_generation`
+defaulted to `generation` and was compared against itself, and `form_path`
+defaulted to `""`, which matches no fingerprint pattern and denied every
+binding that carried one.
+
+A request missing any of them is now refused with a 400 naming the fields.
+Send `current_generation` as the generation you observe *now* — sending the
+same value as `generation` makes the staleness check compare a value to itself.
+:::
+
+- **`GET /v1/browser/devices`** and **`DELETE /v1/browser/devices/{id}`** are
+  documented. Revoked devices are listed rather than hidden, because "was this
+  machine ever paired" is the question asked after a laptop goes missing.
+- **Stock CDP clients connect.** Puppeteer, Playwright, and the agent
+  frameworks built on them can now attach to the bridge, open a page and
+  navigate. Previously they were refused on the second method they sent.
+- Commands are confined to a client's own targets, not only events: one agent
+  cannot list, attach to, or drive another agent's page.
+
+**Runtimes**
+
+- **`POST /v1/runtimes/{id}/chat`** answers **503** when the runtime's last
+  start failed under 120 seconds ago. Chat starts a stopped runtime, so a
+  client that retries on failure turns each attempt into another deploy. Wait
+  out the cooldown, or call the start endpoint to see the underlying error.
+
+**Packages** — OpenAPI spec and SDK → **0.59.10**. Purely additive: the two
+browser-device routes, the newly required fill fields, and the 409/503
+responses above.
+
+---
+
+### 2026-08
+
 
 ### v0.59.12 (2026-08-31) {#v05912-2026-08-31}
 
@@ -22662,7 +22898,7 @@ origin cannot be used on the new one; affected users are re-prompted to enrol.
 **Fathom platform integration (migration 221)**
 - **`agents.system_prompt`** — default chat system prompt on create/update and template `agents[].system_prompt` at bootstrap.
 - **Connection chat** — `POST /v1/platform/connections/{id}/agents/{aid}/chat` accepts `system`, `system_prompt`, and `messages[]` with `role: system`; billing failures return **402** (not 500).
-- **Connection passkey enroll** — REMOVED. `POST .../passkeys/enroll/begin|complete` always return 403. A passkey mints a full non-delegated user session via the public assert flow, so a platform app cannot create one. The user enrols at `1claw.co/settings/security` in a session they signed into themselves.
+- **Connection passkey enroll** — `POST .../passkeys/enroll/begin|complete` for plt_-scoped WebAuthn registration of connected end-users. **Withdrawn 2026-08-27 and now always 403.** A passkey is exchangeable for a full, non-delegated user session through the public assert flow, so an app able to enrol one held a credential stronger than the delegation boundary it operates under. The user enrols in their own session instead.
 - **Connection runtime GET** — `GET /v1/platform/connections/{id}/runtimes/{runtimeId}` (plt_ scoped; use instead of `GET /v1/runtimes/{id}`).
 - **`platform_pays` tier inheritance (migration 220)** — Template `plan` at bootstrap grants tier to end-user org; `GET /v1/platform/connections/{id}` returns `provisioned_tier`.
 - **Bootstrap runtime fix** — `provision_runtime` uses valid Cloud Run provider and respects tier limits.
@@ -25215,17 +25451,38 @@ is served by **`GET /v1/runtimes/templates`** (public, no auth) — prefer readi
 it over copying this table, so a client can check a template at build time
 rather than discovering it at provision time.
 
-| `template` | Runtime | Chat | Use case |
-|---|---|---|---|
-| `python` | Python 3.12 + pip | — | LangChain, CrewAI, custom agents |
-| `node` | Node 22 + pnpm | — | TypeScript agents, ElizaOS |
-| `hermes` | 1Claw Hermes runtime | yes | Built-in MCP + Shroud integration |
-| `openclaw` | Rust-based minimal | yes | High-performance agents |
-| `openclaude` | OpenClaude + 1Claw sidecar | yes | Automations Assist, NL workflow authoring |
-| `opencode` | OpenCode + 1Claw sidecar | yes | Coding agent workflows |
-| *(omitted)* + `image` | Any Dockerfile | — | Full control |
+| `template` | Runtime | Chat | Licence | Needs your own vendor account |
+|---|---|---|---|---|
+| `python` | Python 3.12 + pip | — | Apache-2.0 | no |
+| `node` | Node 22 + pnpm | — | Apache-2.0 | no |
+| `hermes` | 1Claw Hermes runtime | yes | Apache-2.0 | no |
+| `openclaw` | Rust-based minimal | yes | Apache-2.0 | no |
+| `openclaude` | OpenClaude + 1Claw sidecar | yes | Apache-2.0 | no |
+| `opencode` | OpenCode + 1Claw sidecar | yes | Apache-2.0 | no |
+| `claude-code` | Anthropic's Claude Code CLI | yes | proprietary | yes — Claude subscription or `ANTHROPIC_API_KEY` |
+| `codex` | OpenAI's Codex CLI | yes | Apache-2.0 | yes — ChatGPT plan or `OPENAI_API_KEY` |
+| `amp` | Sourcegraph Amp | yes | proprietary | yes — paid Amp subscription |
+| *(omitted)* + `image` | Any Dockerfile | — | — | — |
 
 "Chat" means `POST /v1/runtimes/{id}/chat` is available for that template.
+
+:::note Open source and "no subscription" are different questions
+
+The image ships the CLI, never a credential. The Codex CLI is Apache-2.0 **and**
+still requires a ChatGPT plan or an API key at run time, so the two columns are
+tracked separately in `GET /v1/runtimes/templates` (`license` and
+`requires_vendor_subscription`) rather than collapsed into one flag. Provisioning
+a runtime whose vendor account you do not have gives you a container that starts
+and then cannot do anything.
+
+:::
+
+### What cannot run as a runtime
+
+Editor extensions — **Cline** and **Kilo Code** among them — have no headless
+binary to containerise. They are MCP clients, so they belong on the
+[coding-agent path](/docs/guides/setup-by-client) where they read secrets from
+your vault over MCP, not here.
 
 :::note An unrecognised template does not error
 
@@ -25370,7 +25627,7 @@ curl -X POST "https://api.1claw.co/v1/runtimes/$RUNTIME_ID/shell/session" \
 # → { "session_token", "ws_url", "expires_in", "max_session_minutes" }
 ```
 
-Step-up options: account `password`, `totp_code`, WebAuthn `passkey_credential` (after `POST .../shell/passkey/begin`), or a `reauth_token` from `POST /v1/auth/reauth` with purpose `runtime_shell`.
+Step-up options: account `password`, `totp_code`, WebAuthn `passkey_credential` (after `POST .../shell/passkey/begin`), or a `reauth_token` from `POST /v1/auth/reauth/begin` then `POST /v1/auth/reauth/complete` with purpose `runtime_shell`.
 
 SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Terminal tab connects a binary WebSocket to `ws_url`. Vault may auto-repair Cloud Run invoker IAM and reconcile the shroud sidecar on connect; enabling shell while a runtime is already running may require stop/start so the sidecar is injected.
 
@@ -25388,7 +25645,7 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 
 - GCP Cloud Audit entries are excluded / summarized — full CreateService specs (env vars) are never returned to clients.
 - JWTs, API keys, and secret-shaped assignments are redacted server-side (and again in the dashboard as defense-in-depth).
-- Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
+- Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth/begin` then `/complete` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
 
 API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
 
@@ -26584,7 +26841,7 @@ Embedded clients can read the resolved policy via `GET /v1/treasury/wallets/auth
 | `passkey_only` | Passkey tx-assert only |
 | `passkey_required` | Passkey required; password fallback disabled |
 | `password_only` | Password via `X-Auth-Confirm` |
-| `reauth_token_only` | Short-lived reauth token from `POST /v1/auth/reauth` |
+| `reauth_token_only` | Short-lived reauth token from `POST /v1/auth/reauth/complete` |
 
 ## Passkey tx-assert (v0.56.2)
 
@@ -31902,11 +32159,11 @@ All error responses use **RFC 7807** problem details: a JSON body with `type`, `
 
 | Code | Meaning |
 |------|---------|
-| 400 | Bad Request — Invalid path, body, or parameters |
+| 400 | Bad Request — invalid path, body, or parameters. For `POST /v1/vaults`, an empty name or one over 255 characters, checked before the consensus gate and the quota so a malformed request consumes neither |
 | 401 | Unauthorized — Missing or invalid Authorization header / token |
 | 403 | Forbidden — Valid token but insufficient permission (or resource limit reached) |
 | 404 | Not Found — Vault, secret, policy, or agent not found |
-| 409 | Conflict — e.g. name already in use (if applicable) |
+| 409 | Conflict — a vault with that name already exists in this organization. Names are unique per org, compared after trimming |
 | 410 | Gone — Secret expired, deleted, or over max_access_count |
 | 429 | Too Many Requests — Rate limited |
 | 500 | Internal Server Error — Server-side failure (detail is generic) |
