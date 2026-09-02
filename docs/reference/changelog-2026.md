@@ -6,7 +6,66 @@ sidebar_label: "2026"
 
 ## 2026 {#2026}
 
-### 2026-08 (latest)
+### 2026-09 (latest)
+
+### v0.59.13 (2026-09-02) {#v05913-2026-09-02}
+
+**Three endpoints were returning 500 on every call. They are fixed.**
+
+- **`POST /v1/secrets/{id}/share`** — secret sharing failed for every caller.
+  The query behind it named its columns by hand and did not gain two fields the
+  row type had gained, so it failed against the database every time and
+  surfaced as "An unexpected error occurred". If you have integration code that
+  quietly skipped sharing, it will start working.
+- **`DELETE /v1/org/sub-orgs/{id}`** — archiving a sub-organization had never
+  once succeeded. Its first statement wrote a column that did not exist, so the
+  transaction rolled back and nothing was archived.
+- **`POST /v1/vaults`** now answers **409** for a duplicate name and **400**
+  for an empty one or one over 255 characters. All three were 500s. Names are
+  unique per organization, and the name is trimmed before it is stored — the
+  trimmed value is what must be unique.
+
+**Browser bridge**
+
+:::warning Integrator-affecting: four fill fields are now required
+
+`POST /v1/agents/{id}/browser/fills` requires `form_path`, `field_names`,
+`redirect_chain` and `current_generation`. They were optional and filled in
+server-side when absent, which turned three of the policy's own checks off: the
+redirect chain was always empty so its check never ran, `current_generation`
+defaulted to `generation` and was compared against itself, and `form_path`
+defaulted to `""`, which matches no fingerprint pattern and denied every
+binding that carried one.
+
+A request missing any of them is now refused with a 400 naming the fields.
+Send `current_generation` as the generation you observe *now* — sending the
+same value as `generation` makes the staleness check compare a value to itself.
+:::
+
+- **`GET /v1/browser/devices`** and **`DELETE /v1/browser/devices/{id}`** are
+  documented. Revoked devices are listed rather than hidden, because "was this
+  machine ever paired" is the question asked after a laptop goes missing.
+- **Stock CDP clients connect.** Puppeteer, Playwright, and the agent
+  frameworks built on them can now attach to the bridge, open a page and
+  navigate. Previously they were refused on the second method they sent.
+- Commands are confined to a client's own targets, not only events: one agent
+  cannot list, attach to, or drive another agent's page.
+
+**Runtimes**
+
+- **`POST /v1/runtimes/{id}/chat`** answers **503** when the runtime's last
+  start failed under 120 seconds ago. Chat starts a stopped runtime, so a
+  client that retries on failure turns each attempt into another deploy. Wait
+  out the cooldown, or call the start endpoint to see the underlying error.
+
+**Packages** — OpenAPI spec and SDK → **0.59.10**. Purely additive: the two
+browser-device routes, the newly required fill fields, and the 409/503
+responses above.
+
+---
+
+### 2026-08
+
 
 ### v0.59.12 (2026-08-31) {#v05912-2026-08-31}
 

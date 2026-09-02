@@ -12,11 +12,11 @@ All error responses use **RFC 7807** problem details: a JSON body with `type`, `
 
 | Code | Meaning |
 |------|---------|
-| 400 | Bad Request — Invalid path, body, or parameters |
+| 400 | Bad Request — invalid path, body, or parameters. For `POST /v1/vaults`, an empty name or one over 255 characters, checked before the consensus gate and the quota so a malformed request consumes neither |
 | 401 | Unauthorized — Missing or invalid Authorization header / token |
 | 403 | Forbidden — Valid token but insufficient permission (or resource limit reached) |
 | 404 | Not Found — Vault, secret, policy, or agent not found |
-| 409 | Conflict — e.g. name already in use (if applicable) |
+| 409 | Conflict — a vault with that name already exists in this organization. Names are unique per org, compared after trimming |
 | 410 | Gone — Secret expired, deleted, or over max_access_count |
 | 429 | Too Many Requests — Rate limited |
 | 500 | Internal Server Error — Server-side failure (detail is generic) |
