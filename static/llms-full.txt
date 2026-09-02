@@ -564,6 +564,40 @@ the agent's context, its logs, or its model provider's.
 The client is open source — [`1clawAI/browser-bridge`](https://github.com/1clawAI/browser-bridge),
 Apache-2.0, published as `@1claw/browser-bridge`.
 
+## Where this sits
+
+It is not an alternative to Playwright, Puppeteer, browser-use, Stagehand or
+Anthropic's Computer Use. Those answer *how does the agent drive*. This answers
+*how does a credential get used without the agent holding it* — which they
+leave to you.
+
+| | Computer Use | browser-use | Browser Bridge |
+|---|---|---|---|
+| Who types the password | the model, as an action it chose | the library, from a value your code supplied | a separate process the agent cannot read from |
+| Where the value lives | in the action stream, so in the model's context | in the agent process (`sensitive_data` keeps it out of the *prompt*) | only in the bridge, wrapped and zeroed after use |
+| Under prompt injection | can be told to read the field back | can be told to submit what it holds somewhere else | can ask for a fill; cannot choose the page, read the field, or collect the value |
+
+browser-use is Playwright-based, so it connects to the bridge unchanged. Stock
+Puppeteer and Playwright clients do too.
+
+## How fast
+
+A full lifecycle against a live third-party site — create the account, sign in,
+capture the API key the site issues, and make a real request with it. No human
+at any step.
+
+| Stage | Time | What happens |
+|---|---:|---|
+| Provision — register + store password | 2.13s | The bridge signs up, generates the password and stores it |
+| Sign in — username + password + submit | 1.14s | The bridge logs in; the agent never sees the password |
+| Capture — read + store the API key | 0.80s | The bridge reads the key in a window the agent never lands on |
+| Use — request with the key injected | 0.37s | The key is injected; the agent passes only a city name |
+| **End to end** | **4.43s** | |
+
+Most of that is opening a fresh page for each credential operation. That cost is
+also the control: the typing never happens on a page the agent has scripted, so
+a listener it installed earlier has nothing to observe.
+
 ## The shape of it
 
 ```
