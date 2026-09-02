@@ -625,11 +625,16 @@ the answer.
 
 ## Getting started
 
-The client is not on npm yet. Clone and build it:
+```bash
+npm install -g @1claw/browser-bridge
+```
+
+Or work from source — the repo is Apache-2.0 and the demo runs with no account:
 
 ```bash
 git clone https://github.com/1clawAI/browser-bridge
 cd browser-bridge && pnpm install && pnpm build
+node packages/browser-bridge/examples/demo.mjs
 ```
 
 Pair the machine (a human action, behind step-up re-auth):
