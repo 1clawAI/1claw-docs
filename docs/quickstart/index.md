@@ -62,6 +62,8 @@ Same API for both: `https://api.1claw.co`. The dashboard at [1claw.co](https://1
 | **Store secrets as a human** (scripts, apps, CI) | [Human path](#human-path-store-and-use-secrets) | 3–4 steps |
 | **Agent fetching secrets** (service, LangChain, custom code) | [Agent path](#agent-path-fetch-secrets-at-runtime) | 2–4 steps |
 | **Human grants agent access end-to-end** | [Golden path](/docs/vaults/golden-path) or `1claw setup` | 4 steps |
+| **Agent calls an API without holding the key** | [Execution path](#execution-path-call-an-api-without-holding-the-key) | 3 steps |
+| **Agent signs a transaction without holding the key** | [Intents path](#intents-path-sign-without-holding-the-key) | 3 steps |
 | **No cloud / offline secrets** | `1claw init --docker --local` or [local vault](/docs/integrations/cli#local-vault-offline-encrypted) | See [CLI](/docs/integrations/cli) |
 
 ---
@@ -173,6 +175,117 @@ An agent with an API key but **no policy** gets **zero secrets**. After creating
 
 ---
 
+## Execution path: call an API without holding the key
+
+Fetching a secret still puts it in the agent's process. **Execution bindings** avoid
+that: you register the upstream once with a credential, and the agent calls the
+binding by name. The credential is loaded server-side at execution time and never
+appears in the request, the response, or the agent's context.
+
+**You create the binding; the agent may only run it.** `POST /v1/agents/{id}/bindings`
+refuses an agent caller outright — it tells the agent to list existing bindings,
+execute one, or ask you for a new one.
+
+### 1. Create the binding (human)
+
+Point the credential at a vault secret rather than pasting it in. `--vault-ref` stores a
+live pointer, resolved at execution time, so rotating the secret changes what the binding
+uses with no edit here.
+
+```bash
+1claw binding create <agent-id> \
+  --name stripe \
+  --type http \
+  --config '{"base_url":"https://api.stripe.com"}' \
+  --vault-ref <vault-id>:api-keys/stripe
+```
+
+Types: `http`, `graphql`, `postgres`, `mysql`, `redis`, `grpc`, `smtp`, `s3`,
+`cloud_sdk`, `custom`.
+
+### 2. Check it before the agent depends on it
+
+```bash
+1claw binding test <agent-id> <binding-id>
+```
+
+### 3. Execute (agent)
+
+```bash
+1claw binding execute <agent-id> \
+  --binding stripe \
+  --intent-type http \
+  --params '{"method":"GET","path":"/v1/charges"}'
+```
+
+Or over REST, with the agent's JWT:
+
+```bash
+curl -X POST https://api.1claw.co/v1/agents/$AGENT_ID/execute \
+  -H "Authorization: Bearer $AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "stripe",
+    "intent_type": "http",
+    "params": { "method": "GET", "path": "/v1/charges" }
+  }'
+```
+
+The response carries `execution_id`, `status`, `result`, `duration_ms`,
+`redactions_applied`, and `execution_surface` — `"vault"` or `"tee"`, reported
+truthfully so you always know where an intent actually ran.
+
+:::tip Dry-run first
+Add `"dry_run": true` to run the guardrail checks with **no upstream call and no
+credential load**. It answers "would this be allowed?" without spending anything or
+touching the secret.
+:::
+
+Guardrails are per binding — host and path allowlists, method limits, and for GraphQL
+`--allow-mutations`, `--allow-introspection`, `--max-query-depth`, `--max-aliases`. An
+agent cannot widen them; `1claw binding update` takes an `approval_id` for a queued
+widening. Review runs with `1claw binding executions <agent-id>`.
+
+---
+
+## Intents path: sign without holding the key
+
+Same idea for chains. The private key is generated in an HSM and never leaves it; the
+agent submits an intent and the vault signs after checking guardrails.
+
+### 1. Provision a signing key (human)
+
+`POST /v1/agents/{id}/signing-keys/{chain}` — or the dashboard, under the agent's
+**Signing keys**. Confirm with:
+
+```bash
+1claw agent keys list <agent-id>
+```
+
+### 2. Set transaction guardrails (human)
+
+On the agent: `tx_to_allowlist`, `tx_max_value`, `tx_daily_limit`, `tx_allowed_chains`.
+These are checked before signing, not after. See [Guardrails](/docs/agents/intents/guardrails).
+
+### 3. Submit (agent)
+
+```bash
+1claw agent tx submit <agent-id> \
+  --chain base \
+  --to 0xRECIPIENT \
+  --value 0.01 \
+  --simulate
+```
+
+`--simulate` runs the transaction without broadcasting, which is the on-chain equivalent
+of `dry_run`. Drop it to send. For signing without submitting, `1claw agent sign`.
+
+Details: [Intents overview](/docs/agents/intents/overview),
+[Signing](/docs/agents/intents/signing),
+[Multi-chain](/docs/agents/intents/multi-chain-signing).
+
+---
+
 ## Ways to integrate
 
 Choose the interface that matches where your code runs:
@@ -185,6 +298,7 @@ Choose the interface that matches where your code runs:
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
 | **[Shroud proxy](/docs/agents/shroud/overview)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
+| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw binding create` → `1claw binding execute` |
 | **[Intents API](/docs/agents/intents/overview)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
 | **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
 | **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
@@ -226,9 +340,15 @@ npm run deploy
 
 Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.co`. See [Shroud](/docs/agents/shroud/overview) and [IDE setup](/docs/agents/shroud/ide-setup).
 
-**5. On-chain agent**
+**5. Agent that calls a third-party API**
 
-Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/agents/intents/overview).
+Register the upstream as a binding with `--vault-ref`, then let the agent execute it by
+name. The credential is loaded server-side and never reaches the agent. See the
+[execution path](#execution-path-call-an-api-without-holding-the-key).
+
+**6. On-chain agent**
+
+Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/agents/intents/overview) and the [intents path](#intents-path-sign-without-holding-the-key).
 
 ---
 
@@ -263,4 +383,5 @@ The shortest manual path if you are not using `1claw setup`:
 - [CLI](/docs/integrations/cli) — full command reference, Docker runtime, local daemon
 - [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions (`1clawAI/1claw-action@v1`)
 - [MCP overview](/docs/vaults/mcp/overview) — tools your AI assistant can call
+- [Intents API](/docs/agents/intents/overview) — signing keys, guardrails, multi-chain
 - [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples
