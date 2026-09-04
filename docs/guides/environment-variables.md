@@ -38,7 +38,7 @@ Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"bran
 | `GET` | `/v1/vaults/{id}/env-vars` | List vars (filter `?environment=`) |
 | `POST` | `/v1/vaults/{id}/env-vars` | Create var |
 | `GET` | `/v1/vaults/{id}/env-vars/{key}` | Get var (`?environment=`, `?git_branch=`) |
-| `PATCH` | `/v1/vaults/{id}/env-vars/{key}` | Update var |
+| `PATCH` | `/v1/vaults/{id}/env-vars/{key}` | Update var (see [Changing environments](#changing-which-environments-a-var-applies-to)) |
 | `DELETE` | `/v1/vaults/{id}/env-vars/{key}` | Delete var |
 | `GET` | `/v1/vaults/{id}/env-vars/resolve` | Resolve final KEY=VALUE set |
 | `GET` | `/v1/vaults/{id}/environments` | List environments |
@@ -57,6 +57,41 @@ Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"bran
 | `DELETE` | `/v1/org/env-vars/{id}/links/{vault_id}` | Unlink from vault |
 
 Limit: **1,000 vars per vault**.
+
+## Changing which environments a var applies to
+
+`PATCH` takes the full `environments` array — it replaces, it does not merge. Two
+rules decide whether the request is accepted.
+
+**At least one environment.** An empty array is refused with
+`"At least one environment must be specified"`. A variable scoped to nothing
+cannot be read by anything, so it is not a state worth storing.
+
+**A branch only exists alongside `preview`.** `git_branch` scopes a preview
+variable to one branch, and it is invalid without `preview` in the list. So
+dropping `preview` has to drop the branch in the same request:
+
+```bash
+curl -X PATCH "https://api.1claw.co/v1/vaults/$VAULT_ID/env-vars/DATABASE_URL?git_branch=main" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"environments":["production"],"git_branch":null}'
+```
+
+`git_branch` distinguishes three cases: **absent** leaves it as-is, **`null`**
+clears it, a **string** sets it. Send `null` rather than omitting the field when
+you drop `preview`; omitting it leaves the old branch attached to a variable that
+no longer has `preview`, which the next write rejects.
+
+The CLI does this for you — `1claw env set KEY -e production` clears the branch
+when `preview` is not in the list.
+
+:::note Selecting the right row
+A key can exist more than once in a vault: once per branch scope. The
+`?environment=` and `?git_branch=` query parameters pick which row `PATCH` and
+`DELETE` act on. Without them the server matches any row for that key with no
+branch, which may not be the one you meant.
+:::
 
 ## Example: create and resolve
 
@@ -105,6 +140,9 @@ Per-key management (distinct from legacy `env pull`/`push` which sync path-based
 1claw env add DATABASE_URL production          # Add var scoped to production
 1claw env add API_KEY preview --sensitive      # Sensitive write-only var
 1claw env rm DATABASE_URL preview              # Remove from preview
+1claw env set DATABASE_URL -e production,preview   # Change which environments a var applies to
+1claw env set DATABASE_URL -e preview --branch feat/x   # Scope it to one branch
+1claw env set DATABASE_URL -e production --no-branch    # Drop preview and its branch
 1claw env environments ls                      # List vault environments
 1claw env environments add staging             # Create custom environment
 1claw env environments rm staging              # Delete custom environment

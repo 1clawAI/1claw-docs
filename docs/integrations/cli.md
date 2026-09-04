@@ -403,11 +403,25 @@ Manage individual encrypted env vars with environment scoping and precedence-bas
 1claw env ls production                        # List vars for an environment
 1claw env add DATABASE_URL production          # Add var scoped to production
 1claw env add API_KEY preview --sensitive      # Sensitive write-only var
+1claw env add SHARED_FLAG --all                # All three environments, explicitly
 1claw env rm DATABASE_URL preview              # Remove from preview
+
+# Change which environments an existing var applies to
+1claw env set DATABASE_URL -e production,preview
+1claw env set DATABASE_URL -e preview --branch feat/x   # Scope to one branch
+1claw env set DATABASE_URL -e production --no-branch    # Drop preview and its branch
+
 1claw env environments ls                      # List vault environments
 1claw env environments add staging             # Create custom environment
 1claw env environments rm staging              # Delete custom environment
 ```
+
+`env add` needs an environment, or `--all`. It used to default to all three
+silently, which is how local values ended up in production.
+
+`env set` replaces the environment list rather than merging, matching the API.
+A git branch is only valid alongside `preview`, so dropping `preview` clears the
+branch too — `env set` does that for you.
 
 ### Environment cache (offline mode)
 
