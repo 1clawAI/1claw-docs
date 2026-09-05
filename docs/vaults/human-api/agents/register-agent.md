@@ -87,7 +87,7 @@ api_key = resp.data.get("api_key")  # shown once
 ```json
 {
     "agent": {
-        "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+        "id": "00000000-0000-4000-8000-000000000000",
         "name": "DeFi Bot",
         "description": "Automated trading agent",
         "auth_method": "api_key",
@@ -98,7 +98,7 @@ api_key = resp.data.get("api_key")  # shown once
         "ecdh_public_key": "BDq8k3Lw...base64...65bytes...",
         "created_at": "2026-02-18T12:00:00Z"
     },
-    "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+    "api_key": "ocv_EXAMPLE_KEY_NOT_REAL_replace_with_your_own"
 }
 ```
 

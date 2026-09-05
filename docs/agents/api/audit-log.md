@@ -58,7 +58,7 @@ for e in events.data.get("events", []):
       "id": "...",
       "org_id": "...",
       "actor_type": "agent",
-      "actor_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+      "actor_id": "00000000-0000-4000-8000-000000000000",
       "action": "secret.read",
       "resource_type": "secret",
       "resource_id": "api-keys/openai",

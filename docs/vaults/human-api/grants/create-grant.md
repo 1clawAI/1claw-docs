@@ -76,7 +76,7 @@ curl -X POST "https://api.1claw.co/v1/vaults/ae370174-9aee-4b02-ba7c-d1519930c70
   -d '{
     "secret_path_pattern": "**",
     "principal_type": "agent",
-    "principal_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "principal_id": "00000000-0000-4000-8000-000000000000",
     "permissions": ["read"]
   }'
 ```
@@ -117,7 +117,7 @@ client.policies.create(
     "vault_id": "ae370174-9aee-4b02-ba7c-d1519930c709",
     "secret_path_pattern": "**",
     "principal_type": "agent",
-    "principal_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+    "principal_id": "00000000-0000-4000-8000-000000000000",
     "permissions": ["read"],
     "conditions": {},
     "created_by": "2a57eb5e-caac-4e34-9685-b94c37458eb1",

@@ -55,7 +55,7 @@ for a in agents.data["agents"]:
 {
   "agents": [
     {
-      "id": "ec7e0226-30f0-4dda-b169-f060a3502603",
+      "id": "00000000-0000-4000-8000-000000000000",
       "name": "CI Agent",
       "description": "GitHub Actions deploy",
       "auth_method": "api_key",

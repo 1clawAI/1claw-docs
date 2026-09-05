@@ -96,8 +96,8 @@ You need the **agent ID** (UUID) and the **API key** that was returned when the 
 curl -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{
-    "agent_id": "ec7e0226-30f0-4dda-b169-f060a3502603",
-    "api_key": "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs"
+    "agent_id": "00000000-0000-4000-8000-000000000000",
+    "api_key": "ocv_EXAMPLE_KEY_NOT_REAL_replace_with_your_own"
   }'
 ```
 
@@ -111,8 +111,8 @@ import { createClient } from "@1claw/sdk";
 // and refreshes it before expiry
 const client = createClient({
   baseUrl: "https://api.1claw.co",
-  agentId: "ec7e0226-30f0-4dda-b169-f060a3502603",
-  apiKey: "ocv_W3_eYj0BSdTjChKwCKRYuZJacmmhVn4ozWIxHV-zlEs",
+  agentId: "00000000-0000-4000-8000-000000000000",
+  apiKey: "ocv_EXAMPLE_KEY_NOT_REAL_replace_with_your_own",
 });
 ```
 
