@@ -11472,7 +11472,7 @@ Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"bran
 | `GET` | `/v1/vaults/{id}/env-vars` | List vars (filter `?environment=`) |
 | `POST` | `/v1/vaults/{id}/env-vars` | Create var |
 | `GET` | `/v1/vaults/{id}/env-vars/{key}` | Get var (`?environment=`, `?git_branch=`) |
-| `PATCH` | `/v1/vaults/{id}/env-vars/{key}` | Update var |
+| `PATCH` | `/v1/vaults/{id}/env-vars/{key}` | Update var (see [Changing environments](#changing-which-environments-a-var-applies-to)) |
 | `DELETE` | `/v1/vaults/{id}/env-vars/{key}` | Delete var |
 | `GET` | `/v1/vaults/{id}/env-vars/resolve` | Resolve final KEY=VALUE set |
 | `GET` | `/v1/vaults/{id}/environments` | List environments |
@@ -11491,6 +11491,41 @@ Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"bran
 | `DELETE` | `/v1/org/env-vars/{id}/links/{vault_id}` | Unlink from vault |
 
 Limit: **1,000 vars per vault**.
+
+## Changing which environments a var applies to
+
+`PATCH` takes the full `environments` array — it replaces, it does not merge. Two
+rules decide whether the request is accepted.
+
+**At least one environment.** An empty array is refused with
+`"At least one environment must be specified"`. A variable scoped to nothing
+cannot be read by anything, so it is not a state worth storing.
+
+**A branch only exists alongside `preview`.** `git_branch` scopes a preview
+variable to one branch, and it is invalid without `preview` in the list. So
+dropping `preview` has to drop the branch in the same request:
+
+```bash
+curl -X PATCH "https://api.1claw.co/v1/vaults/$VAULT_ID/env-vars/DATABASE_URL?git_branch=main" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"environments":["production"],"git_branch":null}'
+```
+
+`git_branch` distinguishes three cases: **absent** leaves it as-is, **`null`**
+clears it, a **string** sets it. Send `null` rather than omitting the field when
+you drop `preview`; omitting it leaves the old branch attached to a variable that
+no longer has `preview`, which the next write rejects.
+
+The CLI does this for you — `1claw env set KEY -e production` clears the branch
+when `preview` is not in the list.
+
+:::note Selecting the right row
+A key can exist more than once in a vault: once per branch scope. The
+`?environment=` and `?git_branch=` query parameters pick which row `PATCH` and
+`DELETE` act on. Without them the server matches any row for that key with no
+branch, which may not be the one you meant.
+:::
 
 ## Example: create and resolve
 
@@ -11539,6 +11574,9 @@ Per-key management (distinct from legacy `env pull`/`push` which sync path-based
 1claw env add DATABASE_URL production          # Add var scoped to production
 1claw env add API_KEY preview --sensitive      # Sensitive write-only var
 1claw env rm DATABASE_URL preview              # Remove from preview
+1claw env set DATABASE_URL -e production,preview   # Change which environments a var applies to
+1claw env set DATABASE_URL -e preview --branch feat/x   # Scope it to one branch
+1claw env set DATABASE_URL -e production --no-branch    # Drop preview and its branch
 1claw env environments ls                      # List vault environments
 1claw env environments add staging             # Create custom environment
 1claw env environments rm staging              # Delete custom environment
@@ -14175,11 +14213,25 @@ Manage individual encrypted env vars with environment scoping and precedence-bas
 1claw env ls production                        # List vars for an environment
 1claw env add DATABASE_URL production          # Add var scoped to production
 1claw env add API_KEY preview --sensitive      # Sensitive write-only var
+1claw env add SHARED_FLAG --all                # All three environments, explicitly
 1claw env rm DATABASE_URL preview              # Remove from preview
+
+# Change which environments an existing var applies to
+1claw env set DATABASE_URL -e production,preview
+1claw env set DATABASE_URL -e preview --branch feat/x   # Scope to one branch
+1claw env set DATABASE_URL -e production --no-branch    # Drop preview and its branch
+
 1claw env environments ls                      # List vault environments
 1claw env environments add staging             # Create custom environment
 1claw env environments rm staging              # Delete custom environment
 ```
+
+`env add` needs an environment, or `--all`. It used to default to all three
+silently, which is how local values ended up in production.
+
+`env set` replaces the environment list rather than merging, matching the API.
+A git branch is only valid alongside `preview`, so dropping `preview` clears the
+branch too — `env set` does that for you.
 
 ### Environment cache (offline mode)
 
@@ -21081,6 +21133,8 @@ Same API for both: `https://api.1claw.co`. The dashboard at [1claw.co](https://1
 | **Store secrets as a human** (scripts, apps, CI) | [Human path](#human-path-store-and-use-secrets) | 3–4 steps |
 | **Agent fetching secrets** (service, LangChain, custom code) | [Agent path](#agent-path-fetch-secrets-at-runtime) | 2–4 steps |
 | **Human grants agent access end-to-end** | [Golden path](/docs/vaults/golden-path) or `1claw setup` | 4 steps |
+| **Agent calls an API without holding the key** | [Execution path](#execution-path-call-an-api-without-holding-the-key) | 3 steps |
+| **Agent signs a transaction without holding the key** | [Intents path](#intents-path-sign-without-holding-the-key) | 3 steps |
 | **No cloud / offline secrets** | `1claw init --docker --local` or [local vault](/docs/integrations/cli#local-vault-offline-encrypted) | See [CLI](/docs/integrations/cli) |
 
 ---
@@ -21192,6 +21246,117 @@ An agent with an API key but **no policy** gets **zero secrets**. After creating
 
 ---
 
+## Execution path: call an API without holding the key
+
+Fetching a secret still puts it in the agent's process. **Execution bindings** avoid
+that: you register the upstream once with a credential, and the agent calls the
+binding by name. The credential is loaded server-side at execution time and never
+appears in the request, the response, or the agent's context.
+
+**You create the binding; the agent may only run it.** `POST /v1/agents/{id}/bindings`
+refuses an agent caller outright — it tells the agent to list existing bindings,
+execute one, or ask you for a new one.
+
+### 1. Create the binding (human)
+
+Point the credential at a vault secret rather than pasting it in. `--vault-ref` stores a
+live pointer, resolved at execution time, so rotating the secret changes what the binding
+uses with no edit here.
+
+```bash
+1claw binding create <agent-id> \
+  --name stripe \
+  --type http \
+  --config '{"base_url":"https://api.stripe.com"}' \
+  --vault-ref <vault-id>:api-keys/stripe
+```
+
+Types: `http`, `graphql`, `postgres`, `mysql`, `redis`, `grpc`, `smtp`, `s3`,
+`cloud_sdk`, `custom`.
+
+### 2. Check it before the agent depends on it
+
+```bash
+1claw binding test <agent-id> <binding-id>
+```
+
+### 3. Execute (agent)
+
+```bash
+1claw binding execute <agent-id> \
+  --binding stripe \
+  --intent-type http \
+  --params '{"method":"GET","path":"/v1/charges"}'
+```
+
+Or over REST, with the agent's JWT:
+
+```bash
+curl -X POST https://api.1claw.co/v1/agents/$AGENT_ID/execute \
+  -H "Authorization: Bearer $AGENT_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "binding": "stripe",
+    "intent_type": "http",
+    "params": { "method": "GET", "path": "/v1/charges" }
+  }'
+```
+
+The response carries `execution_id`, `status`, `result`, `duration_ms`,
+`redactions_applied`, and `execution_surface` — `"vault"` or `"tee"`, reported
+truthfully so you always know where an intent actually ran.
+
+:::tip Dry-run first
+Add `"dry_run": true` to run the guardrail checks with **no upstream call and no
+credential load**. It answers "would this be allowed?" without spending anything or
+touching the secret.
+:::
+
+Guardrails are per binding — host and path allowlists, method limits, and for GraphQL
+`--allow-mutations`, `--allow-introspection`, `--max-query-depth`, `--max-aliases`. An
+agent cannot widen them; `1claw binding update` takes an `approval_id` for a queued
+widening. Review runs with `1claw binding executions <agent-id>`.
+
+---
+
+## Intents path: sign without holding the key
+
+Same idea for chains. The private key is generated in an HSM and never leaves it; the
+agent submits an intent and the vault signs after checking guardrails.
+
+### 1. Provision a signing key (human)
+
+`POST /v1/agents/{id}/signing-keys/{chain}` — or the dashboard, under the agent's
+**Signing keys**. Confirm with:
+
+```bash
+1claw agent keys list <agent-id>
+```
+
+### 2. Set transaction guardrails (human)
+
+On the agent: `tx_to_allowlist`, `tx_max_value`, `tx_daily_limit`, `tx_allowed_chains`.
+These are checked before signing, not after. See [Guardrails](/docs/agents/intents/guardrails).
+
+### 3. Submit (agent)
+
+```bash
+1claw agent tx submit <agent-id> \
+  --chain base \
+  --to 0xRECIPIENT \
+  --value 0.01 \
+  --simulate
+```
+
+`--simulate` runs the transaction without broadcasting, which is the on-chain equivalent
+of `dry_run`. Drop it to send. For signing without submitting, `1claw agent sign`.
+
+Details: [Intents overview](/docs/agents/intents/overview),
+[Signing](/docs/agents/intents/signing),
+[Multi-chain](/docs/agents/intents/multi-chain-signing).
+
+---
+
 ## Ways to integrate
 
 Choose the interface that matches where your code runs:
@@ -21204,6 +21369,7 @@ Choose the interface that matches where your code runs:
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
 | **[Shroud proxy](/docs/agents/shroud/overview)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
+| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw binding create` → `1claw binding execute` |
 | **[Intents API](/docs/agents/intents/overview)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
 | **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
 | **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
@@ -21245,9 +21411,15 @@ npm run deploy
 
 Enable Shroud on the agent, store provider keys in the vault, point requests at `https://shroud.1claw.co`. See [Shroud](/docs/agents/shroud/overview) and [IDE setup](/docs/agents/shroud/ide-setup).
 
-**5. On-chain agent**
+**5. Agent that calls a third-party API**
 
-Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/agents/intents/overview).
+Register the upstream as a binding with `--vault-ref`, then let the agent execute it by
+name. The credential is loaded server-side and never reaches the agent. See the
+[execution path](#execution-path-call-an-api-without-holding-the-key).
+
+**6. On-chain agent**
+
+Enable Intents API, provision signing keys, set transaction guardrails in the dashboard. See [Intents API](/docs/agents/intents/overview) and the [intents path](#intents-path-sign-without-holding-the-key).
 
 ---
 
@@ -21282,6 +21454,7 @@ The shortest manual path if you are not using `1claw setup`:
 - [CLI](/docs/integrations/cli) — full command reference, Docker runtime, local daemon
 - [GitHub Action](/docs/integrations/github-action) — CI vault secrets in GitHub Actions (`1clawAI/1claw-action@v1`)
 - [MCP overview](/docs/vaults/mcp/overview) — tools your AI assistant can call
+- [Intents API](/docs/agents/intents/overview) — signing keys, guardrails, multi-chain
 - [Examples repo](https://github.com/1clawAI/1claw-examples) — Basic and LangChain samples
 
 
