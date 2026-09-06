@@ -8,6 +8,50 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.17 (2026-09-06) {#v05917-2026-09-06}
+
+**Declarative charts.** One file provisions a whole swarm:
+
+```bash
+1claw diff  -f chart.yaml     # what would change
+1claw apply -f chart.yaml
+```
+
+`POST /v1/org/apply/diff` and `POST /v1/org/apply`, plus per-user usage exports
+from v0.59.15's Feature 7 work. Both endpoints are human-only — a chart
+provisions agents, vaults and access policies, so an agent that could apply one
+could grant itself access to a vault it cannot currently read.
+
+The interesting half is what apply refuses to do:
+
+- **It never deletes.** A resource removed from the chart is left alone; there
+  is no `--prune`. An apply that silently deletes is an apply nobody runs twice.
+- **It skips anything edited outside the chart**, naming the fields that differ.
+  Someone changed it by hand for a reason, and overwriting that because a file
+  says otherwise is how a deployment tool destroys a fix at three in the morning.
+- **It refuses guardrails.** Transaction limits, host allowlists and approval
+  policies route through the guardrail approval flow; a reconciler writing them
+  directly would be a way around it wearing a deployment tool's clothes.
+- **It does not skip your approval gates.** Apply calls the same handlers the
+  API routes call, so an org requiring consensus for `vault.create` gets an
+  approval queued exactly as a dashboard click would. That resource reports
+  `awaiting_approval`; the rest of the chart still applies.
+
+A refusal is never silence — silently ignoring a difference would mean the chart
+and reality disagree forever while every apply reports success.
+
+**Typos are errors.** Unknown fields are rejected. A misspelled `system_promt`
+that was quietly dropped would produce an apply reporting success while doing
+nothing you asked for.
+
+**Names are the reconcile keys.** Duplicates are an error rather than resolved
+by position, which would silently reassign resources when someone reordered the
+file.
+
+The reconciler is server-side and only server-side; `1claw apply` parses YAML,
+posts it, and renders the answer. Example chart at `examples/charts/inbox-swarm/`,
+with a test that runs the shipped file through the real validator.
+
 ### v0.59.16 (2026-09-06) {#v05916-2026-09-06}
 
 **SMS notifications, and approval by reply for the lowest-risk actions.**

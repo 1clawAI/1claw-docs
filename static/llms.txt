@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 175 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 176 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -634,11 +634,12 @@ Complete index of 175 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Trust model](https://docs.1claw.co/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.co/docs/concepts/what-is-1claw)
 
-### Guides (25)
+### Guides (26)
 
 - [Agent Environment Tagging](https://docs.1claw.co/docs/guides/agent-environment-tagging)
 - [Audit and compliance](https://docs.1claw.co/docs/guides/audit-and-compliance)
 - [Billing & Usage](https://docs.1claw.co/docs/guides/billing-and-usage)
+- [Declarative charts (`1claw apply`)](https://docs.1claw.co/docs/guides/declarative-charts)
 - [Deploying Updates](https://docs.1claw.co/docs/guides/deploying-updates)
 - [Email Notifications](https://docs.1claw.co/docs/guides/email-notifications)
 - [Advanced Embedded Wallet Features](https://docs.1claw.co/docs/guides/embedded-wallets/advanced)
