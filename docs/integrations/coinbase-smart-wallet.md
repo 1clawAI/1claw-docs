@@ -107,12 +107,12 @@ Smart Wallet uses passkeys for user-level transaction confirmation. For agent-le
 ```typescript
 // Agent requests approval for a high-value operation
 const approval = await agent.approvals.request({
-  action: "policy_change",
+  action: "policy_request",
   target_type: "agent",
   target_id: agentId,
-  summary: "Request to increase daily spend limit to 10 ETH",
+  summary: { title: "Increase daily spend limit to 10 ETH" },
   reason: "Portfolio rebalancing requires larger position sizes",
-  risk_tier: 2, // requires biometric approval on mobile
+  declared_risk_tier: 2, // asks for biometric approval on mobile; 1claw may require more
 });
 ```
 

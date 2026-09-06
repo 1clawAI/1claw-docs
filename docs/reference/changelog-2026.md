@@ -8,6 +8,87 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.14 (2026-09-06) {#v05914-2026-09-06}
+
+**Approvals a human can actually read.**
+
+An approval used to describe a transaction. It can now describe a refund, a
+post, an invoice — any business action — in plain language, with the risk tier
+decided by 1claw rather than by the agent asking.
+
+**`POST /v1/approvals/request` accepts business actions.** Name them
+`namespace.verb` (`refund.create`, `social.post`). Two new fields:
+
+- `payload` — what the action will actually do (`amount_usd`, `customer_email`).
+  Separate from `summary`, which is what the human is shown. The risk tier is
+  derived from the payload, so a summary that flatters it changes what your
+  operator reads and nothing about how strong the approval must be. The
+  dashboard shows both.
+- `declared_risk_tier` — advisory. 1claw derives its own floor and takes the
+  higher of the two. You can ask for a stricter review, never a weaker one: an
+  agent declaring tier 1 on a $500 refund gets tier 2, and the response returns
+  `risk_tier` (enforced), `declared_risk_tier` (asked for) and
+  `declared_below_floor`. `risk_tier` still works as the old request-body name.
+
+The response also returns `human_summary` — the line your operator receives on
+SMS, push, or email, rendered from your agent's `summary_template`.
+
+:::warning Integrator-affecting: five actions are now rejected on this endpoint
+
+`policy_change`, `card_order`, `agent_transaction`, `agent_execution` and
+`agent_sign_intent` return **403** when an agent requests them directly. These
+are the approvals 1claw *executes* when a human approves — and the wording a
+human reads has to come from the same place as the side effect that follows.
+They are still raised for you automatically by the endpoints that need them.
+
+If you were requesting `policy_change` to ask for wider access, use
+`access_request` or `policy_request` instead. Our own documentation showed
+`policy_change` in that example and has been corrected.
+:::
+
+**New: `action_approval_policy` on agents.** Says which business actions need a
+human and above what amount, and carries the `summary_template` used to render
+the sentence:
+
+```json
+{
+  "rules": [{
+    "action_type": "refund.create",
+    "mode": "approve",
+    "require_for_amount_above_usd": "50",
+    "summary_template": "Refund {{amount_usd}} to {{customer_email}}"
+  }]
+}
+```
+
+Editing it counts as widening a guardrail — raising a threshold takes a human
+out of the loop — so it routes through the same approval flow as loosening a
+transaction limit. Malformed rules are rejected when you save them rather than
+ignored when they are read: a threshold of `"fifty"` used to be a rule that
+silently did nothing.
+
+**Consensus approvals keep their summary.** `POST /v1/pending-approvals` and the
+platform equivalent now store the `summary` you send, so the queue an approver
+decides from shows it. It was previously included in the webhook and nowhere
+else. Sending one is not yet required; submissions without one are accepted and
+counted.
+
+**Fixed, in the packages**
+
+- **CLI:** `1claw approval list` and `approval get` threw `TypeError:
+  tier.toLowerCase is not a function` on any real approval — `risk_tier` was
+  typed as a string and the API sends a number. The list now leads with the
+  plain-language summary.
+- **MCP:** `get_approval` and `list_approvals` read `resource_type`,
+  `resource_id` and `metadata`, which the API has never returned, so they showed
+  the action and nothing about what it was for. They now read the real fields
+  and show the summary, tier, and payload. `request_approval` no longer tells
+  agents to request `policy_change`, or that the tier range is 1–5 when the
+  column has always been 1–3.
+- **OpenAPI:** the request-side `risk_tier` was documented as 1–5 against a
+  column that has always been `CHECK (risk_tier IN (1, 2, 3))`.
+
+
 ### v0.59.13 (2026-09-02) {#v05913-2026-09-02}
 
 **Three endpoints were returning 500 on every call. They are fixed.**

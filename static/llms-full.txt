@@ -14941,12 +14941,12 @@ Smart Wallet uses passkeys for user-level transaction confirmation. For agent-le
 ```typescript
 // Agent requests approval for a high-value operation
 const approval = await agent.approvals.request({
-  action: "policy_change",
+  action: "policy_request",
   target_type: "agent",
   target_id: agentId,
-  summary: "Request to increase daily spend limit to 10 ETH",
+  summary: { title: "Increase daily spend limit to 10 ETH" },
   reason: "Portfolio rebalancing requires larger position sizes",
-  risk_tier: 2, // requires biometric approval on mobile
+  declared_risk_tier: 2, // asks for biometric approval on mobile; 1claw may require more
 });
 ```
 
@@ -22956,6 +22956,87 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.14 (2026-09-06) {#v05914-2026-09-06}
+
+**Approvals a human can actually read.**
+
+An approval used to describe a transaction. It can now describe a refund, a
+post, an invoice — any business action — in plain language, with the risk tier
+decided by 1claw rather than by the agent asking.
+
+**`POST /v1/approvals/request` accepts business actions.** Name them
+`namespace.verb` (`refund.create`, `social.post`). Two new fields:
+
+- `payload` — what the action will actually do (`amount_usd`, `customer_email`).
+  Separate from `summary`, which is what the human is shown. The risk tier is
+  derived from the payload, so a summary that flatters it changes what your
+  operator reads and nothing about how strong the approval must be. The
+  dashboard shows both.
+- `declared_risk_tier` — advisory. 1claw derives its own floor and takes the
+  higher of the two. You can ask for a stricter review, never a weaker one: an
+  agent declaring tier 1 on a $500 refund gets tier 2, and the response returns
+  `risk_tier` (enforced), `declared_risk_tier` (asked for) and
+  `declared_below_floor`. `risk_tier` still works as the old request-body name.
+
+The response also returns `human_summary` — the line your operator receives on
+SMS, push, or email, rendered from your agent's `summary_template`.
+
+:::warning Integrator-affecting: five actions are now rejected on this endpoint
+
+`policy_change`, `card_order`, `agent_transaction`, `agent_execution` and
+`agent_sign_intent` return **403** when an agent requests them directly. These
+are the approvals 1claw *executes* when a human approves — and the wording a
+human reads has to come from the same place as the side effect that follows.
+They are still raised for you automatically by the endpoints that need them.
+
+If you were requesting `policy_change` to ask for wider access, use
+`access_request` or `policy_request` instead. Our own documentation showed
+`policy_change` in that example and has been corrected.
+:::
+
+**New: `action_approval_policy` on agents.** Says which business actions need a
+human and above what amount, and carries the `summary_template` used to render
+the sentence:
+
+```json
+{
+  "rules": [{
+    "action_type": "refund.create",
+    "mode": "approve",
+    "require_for_amount_above_usd": "50",
+    "summary_template": "Refund {{amount_usd}} to {{customer_email}}"
+  }]
+}
+```
+
+Editing it counts as widening a guardrail — raising a threshold takes a human
+out of the loop — so it routes through the same approval flow as loosening a
+transaction limit. Malformed rules are rejected when you save them rather than
+ignored when they are read: a threshold of `"fifty"` used to be a rule that
+silently did nothing.
+
+**Consensus approvals keep their summary.** `POST /v1/pending-approvals` and the
+platform equivalent now store the `summary` you send, so the queue an approver
+decides from shows it. It was previously included in the webhook and nowhere
+else. Sending one is not yet required; submissions without one are accepted and
+counted.
+
+**Fixed, in the packages**
+
+- **CLI:** `1claw approval list` and `approval get` threw `TypeError:
+  tier.toLowerCase is not a function` on any real approval — `risk_tier` was
+  typed as a string and the API sends a number. The list now leads with the
+  plain-language summary.
+- **MCP:** `get_approval` and `list_approvals` read `resource_type`,
+  `resource_id` and `metadata`, which the API has never returned, so they showed
+  the action and nothing about what it was for. They now read the real fields
+  and show the summary, tier, and payload. `request_approval` no longer tells
+  agents to request `policy_change`, or that the tier range is 1–5 when the
+  column has always been 1–3.
+- **OpenAPI:** the request-side `risk_tier` was documented as 1–5 against a
+  column that has always been `CHECK (risk_tier IN (1, 2, 3))`.
+
+
 ### v0.59.13 (2026-09-02) {#v05913-2026-09-02}
 
 **Three endpoints were returning 500 on every call. They are fixed.**
@@ -28753,10 +28834,28 @@ Agent                           1claw                         Human
   |  (approved or denied)         |                             |
 ```
 
-1. The agent creates an approval request, specifying the action, a summary, and a risk tier.
-2. 1claw routes the request to the human who registered the agent (`agents.created_by`).
+1. The agent creates an approval request: what the action is, a `summary` for the
+   human, and a `payload` describing what will actually happen.
+2. 1claw derives the risk tier from the agent's approval policy and the payload,
+   and routes the request to the human who registered the agent (`agents.created_by`).
 3. The human reviews and decides (approve or deny) through the dashboard, mobile app, or API.
-4. If the action is `policy_change` and the decision is `approved`, 1claw auto-executes the policy change.
+
+## Which actions an agent may request
+
+Two families:
+
+- **Business actions**, named `namespace.verb` — `refund.create`, `social.post`,
+  `invoice.send`. These are yours to define; 1claw does not act on them, it asks
+  a human and tells you the answer.
+- **Access requests** — `access_request`, `policy_request`, `binding_request`.
+  These ask a human to widen what the agent itself may do.
+
+Actions that 1claw executes on your behalf when approved — `policy_change`,
+`card_order`, `agent_transaction`, `agent_execution`, `agent_sign_intent` — are
+created by the platform and **rejected** on this endpoint with a 403. They are
+raised for you when you call the endpoint that needs them (ordering a card, say),
+because the wording a human reads and the side effect that follows have to come
+from the same place.
 
 ## Creating an approval request
 
@@ -28768,34 +28867,68 @@ curl -X POST https://api.1claw.co/v1/approvals/request \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "action": "policy_change",
-    "target_type": "agent",
-    "target_id": "'"$AGENT_ID"'",
-    "summary": "Request read access to secrets/production/*",
-    "reason": "Need production database credentials for migration task",
-    "risk_tier": 2
+    "action": "refund.create",
+    "target_type": "order",
+    "target_id": "order_1234",
+    "summary": {
+      "title": "Refund $49.99",
+      "body": "Customer says the order arrived damaged.",
+      "fields": [
+        { "label": "Order", "value": "#1234" },
+        { "label": "Reason", "value": "Damaged on arrival" }
+      ]
+    },
+    "payload": {
+      "amount_usd": "49.99",
+      "customer_email": "a.user@example.com"
+    },
+    "reason": "Customer support ticket #5567"
   }'
 ```
+
+The response is `202` with the approval id, plus `risk_tier` — the tier actually
+enforced — and `human_summary`, the line your operator will see.
 
 </TabItem>
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
 const approval = await agentClient.approvals.request({
-  action: "policy_change",
-  target_type: "agent",
-  target_id: agentId,
-  summary: "Request read access to secrets/production/*",
-  reason: "Need production database credentials for migration task",
-  risk_tier: 2,
+  action: "refund.create",
+  target_type: "order",
+  target_id: "order_1234",
+  summary: {
+    title: "Refund $49.99",
+    body: "Customer says the order arrived damaged.",
+    fields: [
+      { label: "Order", value: "#1234" },
+      { label: "Reason", value: "Damaged on arrival" },
+    ],
+  },
+  payload: {
+    amount_usd: "49.99",
+    customer_email: "a.user@example.com",
+  },
+  reason: "Customer support ticket #5567",
 });
 
 console.log("Approval ID:", approval.data.id);
 console.log("Status:", approval.data.status); // "pending"
+console.log("Enforced tier:", approval.data.risk_tier);
 ```
 
 </TabItem>
 </Tabs>
+
+### `summary` and `payload` are different things
+
+`summary` is what the human reads. `payload` is what happens if they approve.
+
+Keep them accurate to each other. The risk tier and, later, the auto-approval
+learning are derived from `payload`, never from `summary` — so a flattering
+summary changes what your operator reads and nothing about how strong the
+approval has to be. Both are shown in the dashboard, side by side, which means a
+summary that disagrees with its payload is visible rather than persuasive.
 
 ### Risk tiers
 
@@ -28805,7 +28938,50 @@ console.log("Status:", approval.data.status); // "pending"
 | 2 | Moderate risk | Biometric verification required |
 | 3 | High risk | TOTP code + countdown timer |
 
-Set the risk tier based on the sensitivity of the action. A request to read a test secret might be tier 1. A request to increase a daily spend limit should be tier 3.
+**The server sets the tier.** You may send `declared_risk_tier` to say how
+sensitive *you* believe an action is, and 1claw takes the higher of that and the
+floor it derives itself:
+
+- an amount at or above the threshold in the agent's `action_approval_policy`
+  (default $50) is at least tier 2;
+- a recipient the agent has not paid before is at least tier 2, whatever the amount;
+- actions that grant or destroy authority are tier 3.
+
+So you can ask for a stricter review than the policy requires. You cannot ask for
+a weaker one: an agent declaring tier 1 on a $500 refund gets tier 2, and the
+response returns both `risk_tier` (enforced) and `declared_risk_tier` (asked
+for), with `declared_below_floor: true`. Your operator sees that too — an agent
+that keeps under-declaring is worth looking at.
+
+`risk_tier` is still accepted as the old name for `declared_risk_tier`.
+
+### Telling 1claw when to ask
+
+Set `action_approval_policy` on the agent — in the dashboard under the agent's
+guardrails, or over the API:
+
+```json
+{
+  "default_mode": "deny",
+  "rules": [
+    {
+      "action_type": "refund.create",
+      "mode": "approve",
+      "require_for_amount_above_usd": "50",
+      "summary_template": "Refund {{amount_usd}} to {{customer_email}}"
+    }
+  ]
+}
+```
+
+`summary_template` is filled from the payload and becomes the line sent to SMS,
+push, and email. If a named field is missing from the payload, no summary is
+sent rather than half a sentence.
+
+Editing this policy counts as widening a guardrail — raising a threshold or
+switching a rule to `allow` takes a human out of the loop — so it goes through
+the same approval flow as loosening a transaction limit. Malformed rules are
+rejected when you save them, not ignored when they are read.
 
 ## Deciding an approval
 
@@ -28842,13 +29018,20 @@ await client.approvals.decide(approvalId, { decision: "denied" });
 
 ### Auto-execution on approval
 
-When `action` is `policy_change` and the decision is `approved`, 1claw automatically executes the policy change described in the `summary` JSON. The human does not need to manually create the policy after approving.
+Some approvals do something when approved: 1claw applies the policy change,
+places the card order, or submits the transaction, so the human does not have to
+go and do it afterwards.
+
+Those approvals are created by 1claw itself, on the endpoint that needs them —
+which is why an agent cannot request one directly. A business action is the
+other way round: 1claw records the decision and your code acts on it.
 
 ## Listing pending approvals
 
 ```bash
 curl -s "https://api.1claw.co/v1/approvals?status=pending" \
-  -H "Authorization: Bearer $TOKEN" | jq '.approvals[] | {id, action, summary, risk_tier, created_at}'
+  -H "Authorization: Bearer $TOKEN" \
+  | jq '.approvals[] | {id, action, human_summary, risk_tier, created_at}'
 ```
 
 ## Dashboard
@@ -28858,7 +29041,7 @@ The approval inbox is at `/approvals` in the dashboard. It shows:
 - Pending, approved, and denied requests
 - Risk tier badges (color-coded)
 - Agent name and the human who created the agent
-- Summary and reason text
+- The plain-language summary, its fields, and separately the payload
 - Approve/Reject buttons
 
 The sidebar shows a badge with the count of pending approvals.
@@ -28886,16 +29069,15 @@ try {
   if (err.status === 403) {
     // Request access through the approval flow
     await agentClient.approvals.request({
-      action: "policy_change",
+      action: "access_request",
       target_type: "agent",
       target_id: agentId,
-      summary: JSON.stringify({
+      summary: {
         vault_id: vaultId,
         path_pattern: "production/stripe-key",
         permissions: ["read"],
-      }),
+      },
       reason: "Need Stripe key to process refunds",
-      risk_tier: 2,
     });
   }
 }
@@ -28905,16 +29087,16 @@ try {
 
 ```typescript
 await agentClient.approvals.request({
-  action: "policy_change",
+  action: "policy_request",
   target_type: "agent",
   target_id: agentId,
-  summary: JSON.stringify({
+  summary: {
     update_agent: {
       tx_daily_limit_eth: "10.0",
     },
-  }),
+  },
   reason: "Portfolio rebalancing requires larger daily limit during high-volatility periods",
-  risk_tier: 3,
+  declared_risk_tier: 3,
 });
 ```
 
