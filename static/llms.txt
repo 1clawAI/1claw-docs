@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 174 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 175 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -742,7 +742,7 @@ Complete index of 174 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (73)
+### Other (74)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -773,6 +773,7 @@ Complete index of 174 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [IDE & tool setup (Shroud proxy)](https://docs.1claw.co/docs/agents/shroud/ide-setup)
 - [Shroud](https://docs.1claw.co/docs/agents/shroud/overview)
 - [Shroud Threat Detection](https://docs.1claw.co/docs/agents/shroud/threat-detection)
+- [SMS notifications and approvals](https://docs.1claw.co/docs/agents/sms-approvals)
 - [Automations](https://docs.1claw.co/docs/automations/overview)
 - [Payment Cards](https://docs.1claw.co/docs/cards/overview)
 - [Agents & policies](https://docs.1claw.co/docs/dashboard/agents-policies)

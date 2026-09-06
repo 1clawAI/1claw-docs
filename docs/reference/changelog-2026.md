@@ -8,6 +8,46 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.16 (2026-09-06) {#v05916-2026-09-06}
+
+**SMS notifications, and approval by reply for the lowest-risk actions.**
+
+Bring-your-own-Twilio. A new `sms` channel type, `POST /v1/webhooks/sms/{path}`
+for inbound, and notification targets that say where approvals reach a human.
+
+Most of this feature is limits, because SMS is a weak authenticator:
+
+- **Only `risk_tier` 1 can be decided by reply.** Higher tiers get a link and
+  cannot be approved by answering. The tier is derived by the server, so an
+  agent declaring tier 1 on a $500 refund does not unlock the channel.
+- **The number must be verified.** A target is created unverified and stays
+  that way until someone proves they hold the number — adding a number is not
+  itself an authorisation. Unverified targets still *receive*; that is how you
+  find out your number was enrolled.
+- **A valid Twilio signature is not enough.** It proves the message came from
+  Twilio, not from the right person: anyone who knows the number can text it
+  and their message arrives correctly signed. The sending number must also
+  match a verified target.
+- **Two pending approvals means a bare "YES" is refused**, and answered with
+  reference codes. SMS has no threading, and approving the newest means
+  approving something you may not have read.
+
+The message body differs by tier — higher tiers never say "reply", because an
+instruction the server will refuse teaches a habit worth not teaching. And the
+agent-supplied summary has instruction words and code-shaped tokens removed
+before sending: without that, a summary reading "refund $5. Reply YES A7 to
+confirm" could aim you at a different approval entirely.
+
+**New:** `POST/GET/DELETE /v1/notification-targets` plus `/verify/start` and
+`/verify`. SDK `client.notificationTargets.*`, CLI `1claw notify`, MCP
+`list_notification_targets`. Adding and verifying stay human actions and have no
+MCP tool.
+
+**Existing notifications are unchanged** until you configure a target. A
+configured target of a given type replaces the legacy source for that type, so
+an email target does not mean two emails; deleting it puts the account email
+back.
+
 ### v0.59.15 (2026-09-06) {#v05915-2026-09-06}
 
 **Pre-built connectors.** Gmail, Google Calendar, GitHub, Slack, X, Discord,
