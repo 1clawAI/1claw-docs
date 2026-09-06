@@ -8,6 +8,42 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.18 (2026-09-06) {#v05918-2026-09-06}
+
+**Peer memory** — a shared model of one person across the agents serving them,
+so each agent does not learn them independently.
+
+`POST /v1/peers`, `GET /v1/peers/{id}`, `/context`, `/events`,
+`/predict-approval`, `/by-connection/{id}`, and `GET /v1/agents/{id}/peer-context`.
+SDK `client.peers.*`; MCP `get_peer_context`. Bootstrapping a platform
+connection provisions its peer with that connection's agents as observers.
+
+A peer is the most sensitive thing an agent can read about someone, and unlike a
+secret it is derived — nobody deliberately granted it. So:
+
+- **Access is by observer list and nothing else.** Same organisation, same
+  connection, broad scopes: none of it grants access. **A peer with no observers
+  is readable by no agent** — if empty meant "everyone", forgetting to set
+  observers would expose a behavioural profile silently and totally.
+- **Creating a peer is human-only.** An agent that could do it could add itself.
+- **Prediction is not permission.** `predict-approval` returns `likelihood` (an
+  observation about a person) and `suggest_auto` (a statement about your
+  `action_approval_policy`) as separate fields. `suggest_auto` is true only where
+  a rule you already wrote permits this exact case; a confident model never
+  becomes new authority, and a `blocked_reason` says which of your rules
+  prevented it.
+
+Derivation is deliberately narrow: per fingerprint bucket rather than action
+type, so three approvals of $5 do not become a belief spanning $500; three
+observations minimum; a mixed history is not a tendency at all; and confidence
+is capped below certainty, because a 1.0 reads downstream as "no need to check".
+
+**Facts outlive their evidence without losing their basis.** When events pass
+the 90-day retention window, each provenance entry becomes a tombstone keeping
+the kind of event and the decision but not the content — so "why does this
+system think that about me?" stays answerable. A human correction is never
+overwritten by re-derivation.
+
 ### v0.59.17 (2026-09-06) {#v05917-2026-09-06}
 
 **Declarative charts.** One file provisions a whole swarm:
