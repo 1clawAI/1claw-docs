@@ -8,6 +8,43 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.59.15 (2026-09-06) {#v05915-2026-09-06}
+
+**Pre-built connectors.** Gmail, Google Calendar, GitHub, Slack, X, Discord,
+Notion and Honcho, each installable in one call.
+
+- `GET /v1/connectors/presets` — the catalogue. Public.
+- `POST /v1/agents/{id}/connectors/{slug}/install` — creates the binding and
+  starts the OAuth flow. Human users only; an agent installing for itself is a
+  403.
+- `GET /v1/agents/{id}/connectors` — what is installed, and whether each is
+  actually connected.
+
+The binding an install creates is scoped to the connector — `gmail` can reach
+`gmail.googleapis.com/gmail/v1/` and nothing else. That is the difference from a
+bare OAuth connection: an HTTP binding with no `allowed_hosts` has no host
+restriction, so a binding holding a user's Google token could be pointed
+anywhere.
+
+Requested scopes may narrow a preset's list and never extend it, and may not
+drop a scope the preset marks required. The reviewed scope list is what makes a
+one-click install different from a general OAuth initiator.
+
+:::note Installed is not connected
+A 201 means the binding exists; it holds no credential until the user finishes
+the OAuth round trip. `connected` and `needs_reauth` are reported separately
+from installed, because the gap between them is where someone spends an
+afternoon debugging an agent that never had a token.
+:::
+
+Installing Gmail and Google Calendar — both the `google` provider — now gives
+two bindings with two tokens and two path allowlists, rather than the second
+install landing on the first one's binding.
+
+SDK `client.connectors.*`; MCP `list_connector_presets` and
+`list_installed_connectors`; a connector gallery on the agent's Connections tab.
+Installing has no MCP tool: it stays a human action.
+
 ### v0.59.14 (2026-09-06) {#v05914-2026-09-06}
 
 **Approvals a human can actually read.**

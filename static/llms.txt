@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 173 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 174 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -742,7 +742,7 @@ Complete index of 173 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (72)
+### Other (73)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -754,6 +754,7 @@ Complete index of 173 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Browser Bridge](https://docs.1claw.co/docs/agents/browser-bridge)
 - [Messaging Channels](https://docs.1claw.co/docs/agents/channels)
 - [Agent Communication — Chat & Channels](https://docs.1claw.co/docs/agents/communication)
+- [Connectors](https://docs.1claw.co/docs/agents/connectors)
 - [Agent-to-Agent Delegation](https://docs.1claw.co/docs/agents/delegation)
 - [Agent Discovery](https://docs.1claw.co/docs/agents/discovery)
 - [Managing Agent Fleets](https://docs.1claw.co/docs/agents/fleet-management)
