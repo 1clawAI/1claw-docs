@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 177 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -743,7 +743,7 @@ Complete index of 177 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (75)
+### Other (76)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -784,6 +784,7 @@ Complete index of 177 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Settings & billing](https://docs.1claw.co/docs/dashboard/settings-billing)
 - [Treasury & cards](https://docs.1claw.co/docs/dashboard/treasury-cards)
 - [Vaults & secrets](https://docs.1claw.co/docs/dashboard/vaults-secrets)
+- [Fleet management](https://docs.1claw.co/docs/platform-api/fleets)
 - [Platform API (multi-tenant)](https://docs.1claw.co/docs/platform-api/multi-tenant)
 - [OAuth Connected Accounts](https://docs.1claw.co/docs/platform-api/oauth-connections)
 - [Platform API](https://docs.1claw.co/docs/platform-api/overview)
