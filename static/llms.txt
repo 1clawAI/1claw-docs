@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 182 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -743,7 +743,7 @@ Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (76)
+### Other (80)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -757,6 +757,7 @@ Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Agent Communication — Chat & Channels](https://docs.1claw.co/docs/agents/communication)
 - [Connectors](https://docs.1claw.co/docs/agents/connectors)
 - [Agent-to-Agent Delegation](https://docs.1claw.co/docs/agents/delegation)
+- [Directory job board](https://docs.1claw.co/docs/agents/directory-jobs)
 - [Agent Discovery](https://docs.1claw.co/docs/agents/discovery)
 - [Managing Agent Fleets](https://docs.1claw.co/docs/agents/fleet-management)
 - [Guardrail governance](https://docs.1claw.co/docs/agents/guardrail-governance)
@@ -769,6 +770,7 @@ Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [OIDC federation — use 1claw as an IdP for Anthropic WIF](https://docs.1claw.co/docs/agents/oidc-federation)
 - [Agents overview](https://docs.1claw.co/docs/agents/overview)
 - [Peer memory](https://docs.1claw.co/docs/agents/peer-memory)
+- [Policy presets](https://docs.1claw.co/docs/agents/policy-presets)
 - [Agent Safe accounts (Phase 5)](https://docs.1claw.co/docs/agents/safe-accounts)
 - [Agent Self-Onboarding](https://docs.1claw.co/docs/agents/self-enrollment)
 - [Shroud Configuration & Operations](https://docs.1claw.co/docs/agents/shroud/configuration)
@@ -776,6 +778,7 @@ Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Shroud](https://docs.1claw.co/docs/agents/shroud/overview)
 - [Shroud Threat Detection](https://docs.1claw.co/docs/agents/shroud/threat-detection)
 - [SMS notifications and approvals](https://docs.1claw.co/docs/agents/sms-approvals)
+- [Trust signals](https://docs.1claw.co/docs/agents/trust-signals)
 - [Automations](https://docs.1claw.co/docs/automations/overview)
 - [Payment Cards](https://docs.1claw.co/docs/cards/overview)
 - [Agents & policies](https://docs.1claw.co/docs/dashboard/agents-policies)
@@ -788,6 +791,7 @@ Complete index of 178 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Platform API (multi-tenant)](https://docs.1claw.co/docs/platform-api/multi-tenant)
 - [OAuth Connected Accounts](https://docs.1claw.co/docs/platform-api/oauth-connections)
 - [Platform API](https://docs.1claw.co/docs/platform-api/overview)
+- [Per-end-user usage](https://docs.1claw.co/docs/platform-api/usage-attribution)
 - [Webhooks](https://docs.1claw.co/docs/platform-api/webhooks)
 - [Risk Engine](https://docs.1claw.co/docs/risk-engine/overview)
 - [Runtime Hosting](https://docs.1claw.co/docs/runtimes/hosting)

@@ -133,7 +133,11 @@ const sidebars: SidebarsConfig = {
                         "agents/discovery",
                         "agents/oidc-federation",
                         "agents/bankr-keys",
+                        "agents/connectors",
                         "agents/guardrail-governance",
+                        "agents/policy-presets",
+                        "agents/trust-signals",
+                        "agents/directory-jobs",
                         "agents/safe-accounts",
                         "agents/browser-bridge",
                     ],
@@ -144,8 +148,10 @@ const sidebars: SidebarsConfig = {
                     collapsed: true,
                     items: [
                         "agents/memory",
+                        "agents/peer-memory",
                         "agents/communication",
                         "agents/channels",
+                        "agents/sms-approvals",
                     ],
                 },
                 {
@@ -232,6 +238,7 @@ const sidebars: SidebarsConfig = {
             items: [
                 "platform-api/multi-tenant",
                 "platform-api/fleets",
+                "platform-api/usage-attribution",
                 "platform-api/webhooks",
                 "platform-api/oauth-connections",
             ],
@@ -288,6 +295,7 @@ const sidebars: SidebarsConfig = {
                 "guides/policy-engine-v2",
                 "guides/billing-and-usage",
                 "guides/x402",
+                "guides/declarative-charts",
                 "guides/deploying-updates",
                 "guides/audit-and-compliance",
                 "guides/email-notifications",
