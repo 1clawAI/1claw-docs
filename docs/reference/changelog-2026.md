@@ -8,6 +8,46 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.60.0 (2026-09-06) {#v0600-2026-09-06}
+
+**Fleet management** — every agent one bootstrap template provisioned, managed
+as one cohort.
+
+`GET /v1/platform/apps/{id}/fleets/{template_id}` and `/agents`;
+`POST .../bulk-patch`, `.../rollout`, `.../pause`. CLI
+`1claw platform fleet status|agents|patch|rollout|pause`; SDK
+`client.platform.getFleet` and friends; MCP `platform_get_fleet`,
+`platform_list_fleet_agents`, `platform_plan_fleet_rollout`.
+
+Bootstrapping now stamps the fleet and the template version on each agent, so
+`version_skew` answers "how many are behind?" — and `spec_hash` distinguishes a
+version bump that changed nothing from one that did.
+
+Every route here does what it does a thousand times, and nobody reviews it per
+agent. That is the whole design:
+
+- **Guardrails and capability flags are not bulk-patchable.** Raising a spend
+  limit across a fleet is not a deployment operation; it is a thousand separate
+  decisions that happen to share a form. Enabling `intents_api_enabled` for a
+  cohort is the largest privilege change this API can express. Both stay
+  per-agent. Read `bulk_patchable_fields` off the fleet summary rather than
+  hard-coding it.
+- **A bad field refuses the whole patch**, rather than applying the acceptable
+  parts. A partially-applied bulk patch across a thousand agents is worse than
+  a rejected one.
+- **Hand edits are skipped, not corrected.** An agent changed outside fleet
+  control is left alone and the field is recorded on it — the standing answer
+  to "why is this agent behind?". `force` overrides the skip but still cannot
+  carry a guardrail.
+- **A dry run claims no job**, so it never blocks the real rollout behind the
+  one-rollout-per-template rule. `job_id` is `null` and the type says so.
+- **MCP is read-only here.** `platform_plan_fleet_rollout` always dry-runs, and
+  sets that itself rather than accepting it as an argument. Bulk-patch and
+  pause are absent: a thousand agents changed from one call is a decision for a
+  human at a terminal.
+
+See [Fleet management](/docs/platform-api/fleets).
+
 ### v0.59.18 (2026-09-06) {#v05918-2026-09-06}
 
 **Peer memory** — a shared model of one person across the agents serving them,

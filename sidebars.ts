@@ -231,6 +231,7 @@ const sidebars: SidebarsConfig = {
             collapsed: true,
             items: [
                 "platform-api/multi-tenant",
+                "platform-api/fleets",
                 "platform-api/webhooks",
                 "platform-api/oauth-connections",
             ],
