@@ -24215,6 +24215,45 @@ See [Fleet management](/docs/platform-api/fleets).
 
 ### v0.59.18 (2026-09-06) {#v05918-2026-09-06}
 
+Four features shipped in this release. Peer memory is below; the other three
+were omitted from this entry when it was first written, which made them look
+unreleased to anyone reading the changelog rather than the API.
+
+**Learned auto-approval, shadow-first.**
+`GET /v1/org/approval-learning/shadow-report` reports which approval patterns
+*would* be automated; `POST /v1/org/approval-learning/{profile_id}/promote` is
+the only write, and it is human-only.
+
+Every decision made through the approvals path has been observed since this
+shipped, so the shadow window is already accumulating — the report is a read
+over data that is being collected now, not something that starts when a UI
+appears. Promotion refuses entirely while the org is in shadow mode.
+
+A promoted rule covers only what was actually approved: it is bounded by the
+amount band it was earned in, and a run of approvals for a familiar recipient
+never licenses a new destination. A profile promotes onto the agent whose
+approvals built it and no other.
+See [Guardrail governance](/docs/agents/guardrail-governance).
+
+**Policy presets.** Four plain-language presets — `read-only-assistant`,
+`small-business-spender`, `inbox-agent`, `treasury-operator` — that compile to
+guardrail columns, access policies and approval rules.
+`GET /v1/policy-presets`, `POST /v1/agents/{id}/policy-preset/preview`, and
+`POST /v1/agents/{id}/policy-preset`.
+
+Applying a preset that loosens a guardrail returns 202 or 403, never a silent
+200: a preset builds the same request a person editing by hand would send and
+passes it to the same handler, so it is a friendlier interface to the approval
+flow rather than a way around it. Preview names every field that would widen.
+See [Policy presets](/docs/agents/policy-presets).
+
+**Trust signals on listed agents.** `GET /v1/agents/{id}/trust` returns badges,
+rating and review count for a public listing; `POST /v1/agents/{id}/review` and
+`/report` are human-only, one per person per agent. The public view carries no
+reviewer notes or report reasons — those are queue-internal, and publishing them
+would publish accusations about an agent's owner.
+See [Trust signals](/docs/agents/trust-signals).
+
 **Peer memory** — a shared model of one person across the agents serving them,
 so each agent does not learn them independently.
 
@@ -24854,7 +24893,7 @@ origin cannot be used on the new one; affected users are re-prompted to enrol.
 - Shroud stub handler at `POST /v1/admin/shamir/reconstruct`
 
 **Wallet Access Policies**
-- New CRUD endpoints: `POST/GET/DELETE /v1/wallets/access-policies`
+- New CRUD endpoints: `POST/GET/DELETE /v1/treasury/wallets/access-policies`
 - Per-chain, per-agent/user permission policies with conditions (value caps, token allowlists)
 
 **OpenAPI Specification**
@@ -25438,7 +25477,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 - **Agent Memory** — Three-tier memory system (scratch, durable, semantic) for AI agents. Scratch is ephemeral and auto-cleared per session; durable persists across sessions; semantic enables vector similarity search via pgvector. All tiers encrypted at rest with envelope encryption. Endpoints: `POST/GET/DELETE /v1/agents/{id}/memory`, `POST /v1/agents/{id}/memory/search`. SDK `client.memory.*`, CLI `1claw memory`, MCP tools `memory_put`/`memory_get`/`memory_list`/`memory_search`/`delete_memory`. Dashboard: Memory card on agent detail with tier tabs and search UI.
 - **Automations** — Cron-scheduled, webhook-triggered, and event-driven automation workflows with multi-step pipelines and AI integration. Visual cron builder in the dashboard. Tier-gated: Free 2, Pro 10, Team 50, Business 200. Endpoints: `POST/GET /v1/automations`, `GET/PATCH/DELETE /v1/automations/{id}`, `POST /v1/automations/{id}/trigger`, `GET /v1/automations/{id}/runs`. SDK `client.automations.*`, CLI `1claw automation`, MCP `list_automations`/`trigger_automation`. Dashboard pages at `/automations`, `/automations/new`, `/automations/[id]`.
 - **Cloud Runtimes** — Deploy AI agents in managed containers with resource presets: small (0.5 vCPU/512MB), medium (1 vCPU/1GB), large (2 vCPU/4GB), large-cc (4 vCPU/8GB confidential compute). Public URL hosting, idle auto-stop, log streaming, health monitoring. Endpoints: `POST/GET /v1/runtimes`, `GET/PATCH/DELETE /v1/runtimes/{id}`, start/stop/logs sub-routes. SDK `client.runtimes.*`, CLI `1claw runtime`, MCP `list_runtimes`/`manage_runtime`/`runtime_status`/`runtime_logs`. Dashboard pages at `/runtimes`, `/runtimes/new`, `/runtimes/[id]`.
-- **Agent Discovery** — Public agent directory and platform marketplace. Agents can be made discoverable with capability cards showing A2A/MCP URLs, supported protocols, and pricing. Endpoints: `POST/GET /v1/discovery/agents`, `GET /v1/discovery/agents/{id}`, `POST /v1/agents/{id}/discovery`. SDK `client.discovery.*`, CLI `1claw directory`, MCP `search_directory`. Dashboard: `/directory` public page, discovery card on agent detail.
+- **Agent Discovery** — Public agent directory and platform marketplace. Agents can be made discoverable with capability cards showing A2A/MCP URLs, supported protocols, and pricing. Endpoints: `GET /v1/agents/directory`, `GET /v1/agents/{agent_id}/card`, `POST /v1/agents/{agent_id}/discovery`. SDK `client.discovery.*`, CLI `1claw directory`, MCP `search_directory`. Dashboard: `/directory` public page, discovery card on agent detail.
 - **Platform Delegation** — Platform apps can perform CRUD on connected user resources via `X-Platform-Connection` header. Scoped by `delegation_enabled` and `delegation_scopes` on platform apps. Operations attributed to the platform app in audit logs. DB: migration 151.
 - **OAuth2 Credential Bindings** — Execution Intents bindings support OAuth2 credential type with `authorization_code` and `client_credentials` grant flows. Automatic token refresh before execution. DB: migration 150.
 - **New agent columns:** `llm_default_provider`, `llm_default_model` (migration 143) for agent LLM defaults.
@@ -25858,7 +25897,7 @@ First-class per-key environment variables on vaults, bringing Vercel-style env m
 
 - **New:** Email OTP login — Passwordless authentication for embedded wallet end-users via 6-digit email codes. `POST /v1/auth/email-otp/send` (rate-limited, 5-min expiry) and `POST /v1/auth/email-otp/verify` (returns JWT + auto-provisions treasury wallets on first login). Migration 113.
 - **New:** Sign in with 1Claw — Full OAuth2 authorization code flow with PKCE; 1Claw acts as an OIDC provider for third-party apps. Endpoints: `POST /v1/oauth/authorize` (code grant), `POST /v1/oauth/token` (code exchange), `GET /v1/oauth/userinfo`. Dashboard consent page at `/oauth/authorize`. OIDC discovery updated to advertise `authorization_endpoint`, `userinfo_endpoint`, and PKCE (`S256`). Platform apps configure `redirect_uris` for OAuth client registration. Migration 114.
-- **New:** Wallet spend policies — Per-app default and per-user override policies for treasury wallet sends and swaps. Controls: recipient `to_allowlist`, `max_value_eth` per-tx cap, `daily_limit_eth`, `allowed_chains`. Endpoints: `POST/GET/PATCH/DELETE /v1/spend-policies`. Enforced server-side before signing treasury wallet transactions. Migration 115.
+- **New:** Wallet spend policies — Per-app default and per-user override policies for treasury wallet sends and swaps. Controls: recipient `to_allowlist`, `max_value_eth` per-tx cap, `daily_limit_eth`, `allowed_chains`. Endpoints: `POST/GET/PATCH/DELETE /v1/platform/apps/{app_id}/spend-policies`. Enforced server-side before signing treasury wallet transactions. Migration 115.
 - **New:** Embedded Wallets marketing page — Landing page at `/embedded-wallets` showcasing the platform for developers (feature grid, code snippets, integration steps).
 - **New:** OAuth consent page — User consent UI at `/oauth/authorize` for third-party app authorization with scope display and approve/deny.
 - **SDK:** Added `sendEmailOtp()`, `verifyEmailOtp()`, `exchangeOAuthCode()`, spend policy CRUD methods (`createSpendPolicy`, `listSpendPolicies`, `updateSpendPolicy`, `deleteSpendPolicy`).
