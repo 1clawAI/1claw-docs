@@ -49,9 +49,11 @@ New: `PATCH /v1/agents/{id}/pay/settings`, `POST .../pay/prepare`, `.../pay/sign
 `GET|POST /v1/pay-sessions/{id}`, `POST /v1/pay-sessions/{id}/authorize`,
 `DELETE /v1/pay-grants/{id}`.
 
-Known limits: Base USDC only — another asset is refused rather than converted,
-because the daily limit is denominated in USD and a guessed rate would enter the
-ledger. Signing happens in the vault, not yet in the Shroud TEE. The dashboard
+Supported: USDC/USDT on Base, Optimism, Avalanche, BNB Chain and **Solana** —
+EIP-3009 on the EVM chains, a signed SPL transfer on Solana, chosen by the chain
+rather than by a flag. Every address and mint verified on-chain; BNB Chain
+stables are 18 decimals, not 6, and treating them as 6 would understate a
+payment by 10^12. An unlisted asset is refused rather than guessed at. Signing happens in the vault, not yet in the Shroud TEE. The dashboard
 authorize page is not built; the endpoint behind it is.
 
 See [Paying x402 paywalls](../guides/pay.md).

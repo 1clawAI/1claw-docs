@@ -159,13 +159,51 @@ ONECLAW_PAY_DEV=1 1claw pay --agent any http://localhost:4022/premium
 The dev signer never contacts the vault and produces a header no paywall would
 honour — it exercises the flow without ever being mistakable for a real payment.
 
+## What can be paid
+
+Two schemes, chosen by the chain rather than by a flag — EIP-3009 is an ERC-20
+extension that does not exist on Solana, and an SPL transfer is not something an
+EVM paywall settles.
+
+| Network | Assets | Scheme |
+|---|---|---|
+| Base | USDC, USDbC | EIP-3009 |
+| Base Sepolia | USDC | EIP-3009 |
+| Optimism | USDC, USDT | EIP-3009 |
+| Avalanche | USDC, USDT | EIP-3009 |
+| BNB Chain | USDC, USDT (**18 decimals**) | EIP-3009 |
+| Solana | USDC, USDT | signed SPL transfer |
+| Solana devnet | USDC | signed SPL transfer |
+
+Every address and mint above was verified on-chain by reading `symbol()` and
+`decimals()` (or `getTokenSupply` on Solana). An asset that is not listed is
+**refused, not guessed at** — the daily limit is denominated in USD, and a
+fabricated rate would go both in front of you and into the ledger.
+
+A challenge may name its network as `base`, `eip155:8453` or a bare chain id;
+all three resolve. Assets may be named by contract address, SPL mint, or symbol
+— but a symbol only resolves within the stated network, because the same symbol
+is a different token on every chain.
+
+**Ethereum, Arbitrum and Polygon are absent on purpose.** Their addresses could
+not be verified on-chain when the table was written, and a plausible-looking
+guess is worse than a refusal: a wrong address signs a transfer of the wrong
+token.
+
+**Tron, XRPL, Cardano and Bitcoin cannot be paid at all** — no x402 scheme
+exists for them here. They fail with that reason rather than a pricing one, so
+you are not sent looking for a price oracle you do not need.
+
 ## Limits today
 
-- **Base USDC only.** Another asset is refused rather than converted: the daily
-  limit is denominated in USD, and a guessed rate would put a fabricated number
-  both in front of you and into the ledger.
 - **Signing happens in the vault**, not yet in the Shroud TEE.
 - **No reconciliation**, so limit headroom is never returned automatically.
+- **The Solana payload envelope is unverified against a live facilitator.** The
+  transfer is built and signed correctly; whether a given facilitator expects
+  exactly that JSON has not been tested against a real Solana x402 endpoint.
+- **The `/cli/pay-authorize` page does not exist yet**, so the strict-mode
+  browser flow cannot complete. Unattended mode
+  (`pay_require_passkey: false` plus an allowlisted `payTo`) works today.
 
 ## Endpoints
 
