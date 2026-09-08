@@ -14,6 +14,47 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 - **CLI / SDK** — Ensure your client is configured with the correct base URL. The SDK and CLI default to the production API when not set.
 - **MCP** — For hosted MCP, use `https://mcp.1claw.co/mcp`. For local stdio, `ONECLAW_BASE_URL` defaults to `https://api.1claw.co`; override only if you use a different API host.
 
+## The SDK returns `null` and nothing else
+
+Every SDK method returns an envelope, not the value:
+
+```typescript
+interface OneclawResponse<T> {
+  data: T | null;
+  error: { type: string; message: string; detail?: string } | null;
+  meta?: { status: number; requestId?: string };
+}
+```
+
+`data` is null **whenever** `error` is set. So this reports nothing at all when
+the call is refused:
+
+```typescript
+const { data: secret } = await client.secrets.get(vaultId, "api-keys/test");
+console.log(secret); // null — and the reason was thrown away
+```
+
+Destructure `error` too. A 403 otherwise looks exactly like an empty secret:
+
+```typescript
+const { data, error, meta } = await client.secrets.get(vaultId, "api-keys/test");
+if (error) {
+  console.error(meta?.status, error.type, error.message);
+  console.error("request id:", meta?.requestId); // quote this to support
+}
+```
+
+Once you can see the error, the usual causes are:
+
+- **403 `Insufficient permissions`** — the agent's grant does not cover that
+  path. `GET /v1/vaults/{id}/access` shows the paths actually granted; a
+  "default read access" grant is often scoped to a prefix that excludes yours.
+- **404** — wrong path or wrong vault. `client.secrets.list(vaultId)` returns
+  the keys (no plaintext) and settles it.
+- **403 mentioning the Intents API** — the agent has `intents_api_enabled` and
+  the secret's type is `private_key` or `ssh_key`. Only those two types are
+  blocked from direct reads; other types are unaffected.
+
 ## 401 Unauthorized
 
 - **Missing or invalid token** — Include `Authorization: Bearer <token>`. For agents, get a fresh JWT via `POST /v1/auth/agent-token` (tokens expire; the MCP server refreshes automatically when using agent ID + API key).

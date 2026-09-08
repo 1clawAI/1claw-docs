@@ -48,7 +48,11 @@ await client.secrets.set(vault.id, "STRIPE_KEY", "sk_live_...", {
 });
 
 // Retrieve a secret
-const { data: secret } = await client.secrets.get(vault.id, "STRIPE_KEY");
+const { data: secret, error, meta } = await client.secrets.get(vault.id, "STRIPE_KEY");
+
+// `data` is null whenever `error` is set — check it. A permission problem
+// otherwise reads as an empty secret.
+if (error) throw new Error(`${meta?.status} ${error.message} (${meta?.requestId})`);
 console.log(secret.value); // use securely, don't log in production
 ```
 

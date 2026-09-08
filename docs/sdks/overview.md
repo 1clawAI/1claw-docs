@@ -43,7 +43,18 @@ const client = createClient({
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
-const { data: secret } = await client.secrets.get(VAULT_ID, "api-keys/openai");
+const { data: secret, error, meta } = await client.secrets.get(
+  VAULT_ID,
+  "api-keys/openai",
+);
+
+// Every call returns `{ data, error }`. A null `data` always means `error`
+// says why — without this check a 403 is indistinguishable from an empty
+// secret, which is the most common first-run confusion.
+if (error) {
+  console.error(meta?.status, error.type, error.message);
+  console.error("request id:", meta?.requestId);
+}
 console.log(secret.value);
 ```
 
