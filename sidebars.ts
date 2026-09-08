@@ -295,6 +295,7 @@ const sidebars: SidebarsConfig = {
                 "guides/policy-engine-v2",
                 "guides/billing-and-usage",
                 "guides/x402",
+                "guides/pay",
                 "guides/declarative-charts",
                 "guides/deploying-updates",
                 "guides/audit-and-compliance",

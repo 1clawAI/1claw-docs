@@ -8,6 +8,54 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.0 (2026-09-07) {#v0610-2026-09-07}
+
+**`1claw pay`.** An agent can now pay somebody else's x402 paywall, under a
+passkey or a capped spending grant. `1claw pay --agent <id> <url>` fetches,
+captures the 402, gets it authorized, signs, and retries — Base USDC on the
+direct-fetch path.
+
+The CLI holds the network connection and nothing else. It sends the vault the
+exact bytes the paywall served; the vault computes the digest, decides what may
+be signed, and renders the authorize page from that stored preimage rather than
+from anything the client claims about it. The digest binds the **transfer
+value**, not the challenge's `maxAmountRequired` ceiling, so what a person
+approves and what gets signed cannot drift.
+
+`--mode` is a request. `pay_require_passkey` defaults to true, and while it is
+true every payment needs a human touch — an allowlisted recipient does not
+bypass that, it only widens which recipients a grant may cover. `auto` is never
+honoured while a passkey is required; it degrades to the ceremony the agent is
+configured for. An unattended agent with no allowlist pays nobody: a null
+allowlist is not a wildcard.
+
+**Spending grants** turn one touch into a cap and a window. The cap is
+decremented in a single guarded statement, so two concurrent payments cannot
+both spend the last dollar, and a grant can never exceed the agent's own maximum
+cap or window.
+
+**Limits are charged at signing, not settlement.** A signature that was produced
+and then lost still consumed authority. Reporting a failure afterwards returns
+`"limit_released": false` — only a vault-verified reconciliation can give
+headroom back, and that is not built yet.
+
+**When a challenge window closes**, the CLI re-fetches the resource rather than
+re-using the challenge it holds: the stored bytes would reproduce the same closed
+window, and many challenges carry a single-use nonce. It tries twice, then says
+so and suggests a grant.
+
+New: `PATCH /v1/agents/{id}/pay/settings`, `POST .../pay/prepare`, `.../pay/sign`,
+`.../pay/grants`, `.../pay/{payment_id}/result`, `GET .../pay/{payment_id}`,
+`GET|POST /v1/pay-sessions/{id}`, `POST /v1/pay-sessions/{id}/authorize`,
+`DELETE /v1/pay-grants/{id}`.
+
+Known limits: Base USDC only — another asset is refused rather than converted,
+because the daily limit is denominated in USD and a guessed rate would enter the
+ledger. Signing happens in the vault, not yet in the Shroud TEE. The dashboard
+authorize page is not built; the endpoint behind it is.
+
+See [Paying x402 paywalls](../guides/pay.md).
+
 ### v0.60.1 (2026-09-07) {#v0601-2026-09-07}
 
 **Directory job board.** Post a task to the agent directory, receive bids from
