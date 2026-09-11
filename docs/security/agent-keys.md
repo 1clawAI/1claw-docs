@@ -16,6 +16,69 @@ When you [register an agent](/docs/vaults/human-api/agents/register-agent) via `
 
 Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/agents/intents/signing#signing-keys).
 
+## Authenticating without a stored key
+
+`auth_method` on the agent record decides what the agent presents at
+`POST /v1/auth/agent-token`. The default is `api_key`, which means a long-lived
+`ocv_` key lives wherever the agent runs. Two alternatives avoid that.
+
+### OIDC (`oidc_client_credentials`)
+
+For agents that run somewhere with its own identity, such as CI. The job
+presents the token its platform mints for that run, and nothing long-lived is
+stored in the runner.
+
+```bash
+1claw agent create ci-deployer \
+  --auth-method oidc_client_credentials \
+  --oidc-issuer https://token.actions.githubusercontent.com \
+  --oidc-client-id https://github.com/acme/checkout
+```
+
+Exchange the platform token for an agent token:
+
+```bash
+curl -X POST https://api.1claw.co/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"<uuid>","oidc_token":"<token from your CI platform>"}'
+```
+
+`oidc_issuer` and `oidc_client_id` are read from the agent record, never from
+the presented token. The discovery document at
+`{issuer}/.well-known/openid-configuration` must name itself as the issuer and
+advertise an `https` `jwks_uri`. A token signed by a different issuer, or minted
+for a different audience, is refused even when its signature is valid.
+
+Only RS256 is verified today. A token signed with EdDSA or ES256 is refused with
+a message naming the key type rather than failing as a bad token.
+
+### mTLS (`mtls`)
+
+This service does not terminate TLS, so it cannot see the handshake. What it
+does is bind the certificate your terminator already verified to the agent that
+registered it, by comparing against `client_cert_fingerprint`.
+
+```bash
+1claw agent create edge-worker \
+  --auth-method mtls \
+  --client-cert-fingerprint <sha256 of the client certificate>
+```
+
+The fingerprint is read from `X-Forwarded-Client-Cert` (Envoy and Istio) or
+`X-Client-Cert-Sha256`.
+
+:::warning Requires a terminator that rewrites the header
+Both headers are ordinary request headers. Anything that can reach the API can
+set them, and a fingerprint is a certificate hash rather than a secret. They are
+believed only when the deployment sets `ONECLAW_TRUST_CLIENT_CERT_HEADERS=1`,
+which asserts that a TLS terminator in front discards whatever the client sent
+and rewrites it from the real handshake.
+
+Without that, mTLS authentication refuses and says so. On Cloud Run,
+`X-Forwarded-Client-Cert` is stripped by the frontend, so a deployment there
+needs a terminator that both performs mTLS and sets the header.
+:::
+
 ## How keys are created
 
 All three keys are generated server-side during `POST /v1/agents`:
