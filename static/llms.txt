@@ -612,7 +612,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 182 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 183 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -634,7 +634,7 @@ Complete index of 182 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Trust model](https://docs.1claw.co/docs/concepts/trust-model)
 - [What is 1claw?](https://docs.1claw.co/docs/concepts/what-is-1claw)
 
-### Guides (26)
+### Guides (27)
 
 - [Agent Environment Tagging](https://docs.1claw.co/docs/guides/agent-environment-tagging)
 - [Audit and compliance](https://docs.1claw.co/docs/guides/audit-and-compliance)
@@ -657,6 +657,7 @@ Complete index of 182 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/guides/embedded-wallets/wallet-access-policies)
 - [Environment Variables](https://docs.1claw.co/docs/guides/environment-variables)
 - [5-minute walkthrough: vault, key, transaction](https://docs.1claw.co/docs/guides/five-minute-walkthrough)
+- [Paying x402 paywalls](https://docs.1claw.co/docs/guides/pay)
 - [Policy Engine v2](https://docs.1claw.co/docs/guides/policy-engine-v2)
 - [Principal-Type Audit](https://docs.1claw.co/docs/guides/principal-type-audit)
 - [Setup by client](https://docs.1claw.co/docs/guides/setup-by-client)

@@ -12798,6 +12798,236 @@ The response includes the `tx_hash` you can look up on [Sepolia Etherscan](https
 
 ---
 
+## Paying x402 paywalls
+
+---
+title: Paying x402 paywalls
+description: 1claw pay — let an agent pay for a gated resource, under a passkey or a capped spending grant, with the vault deciding what may be signed.
+sidebar_position: 7
+---
+
+# `1claw pay`
+
+The [x402 guide](./x402.md) covers being on the receiving end of a 402 — paying
+1Claw for overages. This is the other direction: your agent hits somebody else's
+paywall and needs to pay it.
+
+```bash
+1claw pay --agent research-bot https://api.example.com/premium
+```
+
+```
+  402 │ $0.001 → 0x2B62…8Abc
+  Authorize: https://1claw.co/cli/pay-authorize?session=…
+  ✔ Authorized
+  signed │ $0.001
+  200 │ paid
+```
+
+## What holds the money still
+
+The CLI holds the network connection and nothing else. It sends the vault the
+exact bytes the paywall served; the vault decides what may be signed, what you
+are shown, and what the daily ledger says.
+
+That division is the whole design:
+
+- **The digest binds the transfer, not the ceiling.** An x402 challenge's
+  `maxAmountRequired` is what the origin will accept. What leaves the wallet may
+  be less, and it is that value the digest and the authorize page bind — so what
+  you approve and what gets signed cannot drift apart.
+- **The raw challenge is the preimage.** The CLI never parses the 402 into
+  fields and sends those; anything reinterpreted first would fall outside what
+  you actually approved.
+- **Keys never leave the vault.** You get an `X-PAYMENT` header back, never key
+  material.
+
+## Turning it on
+
+Pay is off until a human turns it on, and an agent cannot turn it on for itself.
+
+```bash
+curl -X PATCH https://api.1claw.co/v1/agents/$AGENT_ID/pay/settings \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pay_enabled": true,
+    "pay_max_usd": "1.00",
+    "pay_daily_limit_usd": "10.00"
+  }'
+```
+
+The agent also needs an Ethereum signing key funded with USDC on Base:
+
+```bash
+curl -X POST https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"chain": "ethereum"}'
+```
+
+## The three modes
+
+`--mode` is a **request**. The vault honours it only where the agent's own policy
+already allows it.
+
+| Mode | What it asks for |
+|---|---|
+| `strict` (default) | A passkey touch for each payment. |
+| `session` | One touch creates a capped, time-bounded grant; payments inside it need no further prompt. |
+| `auto` | No ceremony. Only reachable for an agent explicitly configured to run unattended. |
+
+### When each is allowed
+
+`pay_require_passkey` defaults to **true**, and while it is true every payment
+needs a human touch. An allowlisted recipient does **not** bypass that — the
+allowlist only widens which recipients a grant may cover.
+
+| `pay_require_passkey` | `payTo` allowlisted | Requested | Result |
+|---|---|---|---|
+| true | either | `strict` | Passkey for this payment |
+| true | either | `session` | Passkey creates a grant |
+| true | either | `auto` | Refused as auto; degraded to the ceremony the agent is configured for |
+| false | yes | any | Signed if under caps |
+| false | no | any | **Denied** — unattended and unlisted |
+
+An agent with `pay_require_passkey: false` and no allowlist pays nobody. A null
+allowlist is not a wildcard; for an unattended agent it means no one.
+
+## Spending grants
+
+A grant is "allow this agent to spend up to $5 for 15 minutes". It is created by
+a human, over a passkey assertion covering exactly those terms, and it cannot
+exceed the agent's own `pay_grant_max_usd` or `pay_grant_max_ttl_secs` — a grant
+is a delegation inside limits already set, never a way around them.
+
+```bash
+1claw pay --mode session --agent research-bot https://api.example.com/premium
+```
+
+The cap is decremented as payments are signed, in a single guarded statement, so
+two concurrent payments cannot both spend the last dollar. Revoke early:
+
+```bash
+curl -X DELETE https://api.1claw.co/v1/pay-grants/$GRANT_ID \
+  -H "Authorization: Bearer $USER_TOKEN"
+```
+
+## Limits are charged at signing
+
+A payment counts against `pay_daily_limit_usd` the moment it is **signed**, not
+when it settles. A signature that was produced and then lost still consumed
+authority — the paywall may yet present it.
+
+Reporting a failure afterwards does not give the headroom back. The response says
+so explicitly:
+
+```json
+{ "recorded": "signed_failed", "limit_released": false }
+```
+
+Only a vault-verified reconciliation can return headroom, and that is not built
+yet. "The payment failed, let me spend again" is the one claim a client must not
+be able to make.
+
+## When the challenge window closes
+
+Many paywalls give you seconds. If the window closes before you authorize, the
+CLI **re-fetches** the resource for a fresh 402 rather than re-using the one it
+has — the stored bytes would reproduce the same closed window, and many
+challenges carry a single-use nonce.
+
+It tries twice, then stops:
+
+```
+The paywall's challenge window closed 2 times before the payment could be authorized.
+Its window is likely too short for a per-payment approval. Try again, or use a
+spending grant (--mode session) so payments inside the window need no prompt.
+```
+
+`prepare` also flags a window under 30 seconds up front, so you know before you
+open the authorize page.
+
+## Trying it without spending anything
+
+The [`x402-pay-cli` example](https://github.com/1clawAI/examples/tree/main/x402-pay-cli)
+runs a mock paywall locally:
+
+```bash
+node paywall.mjs &
+ONECLAW_PAY_DEV=1 1claw pay --agent any http://localhost:4022/premium
+```
+
+The dev signer never contacts the vault and produces a header no paywall would
+honour — it exercises the flow without ever being mistakable for a real payment.
+
+## What can be paid
+
+Two schemes, chosen by the chain rather than by a flag — EIP-3009 is an ERC-20
+extension that does not exist on Solana, and an SPL transfer is not something an
+EVM paywall settles.
+
+| Network | Assets | Scheme |
+|---|---|---|
+| Base | USDC, USDbC | EIP-3009 |
+| Base Sepolia | USDC | EIP-3009 |
+| Optimism | USDC, USDT | EIP-3009 |
+| Avalanche | USDC, USDT | EIP-3009 |
+| BNB Chain | USDC, USDT (**18 decimals**) | EIP-3009 |
+| Solana | USDC, USDT | signed SPL transfer |
+| Solana devnet | USDC | signed SPL transfer |
+
+Every address and mint above was verified on-chain by reading `symbol()` and
+`decimals()` (or `getTokenSupply` on Solana). An asset that is not listed is
+**refused, not guessed at** — the daily limit is denominated in USD, and a
+fabricated rate would go both in front of you and into the ledger.
+
+A challenge may name its network as `base`, `eip155:8453` or a bare chain id;
+all three resolve. Assets may be named by contract address, SPL mint, or symbol
+— but a symbol only resolves within the stated network, because the same symbol
+is a different token on every chain.
+
+**Ethereum, Arbitrum and Polygon are absent on purpose.** Their addresses could
+not be verified on-chain when the table was written, and a plausible-looking
+guess is worse than a refusal: a wrong address signs a transfer of the wrong
+token.
+
+**Tron, XRPL, Cardano and Bitcoin cannot be paid at all** — no x402 scheme
+exists for them here. They fail with that reason rather than a pricing one, so
+you are not sent looking for a price oracle you do not need.
+
+## Limits today
+
+- **Signing happens in the vault**, not yet in the Shroud TEE.
+- **No reconciliation**, so limit headroom is never returned automatically.
+- **The Solana payload envelope is unverified against a live facilitator.** The
+  transfer is built and signed correctly; whether a given facilitator expects
+  exactly that JSON has not been tested against a real Solana x402 endpoint.
+- **The `/cli/pay-authorize` page does not exist yet**, so the strict-mode
+  browser flow cannot complete. Unattended mode
+  (`pay_require_passkey: false` plus an allowlisted `payTo`) works today.
+
+## Endpoints
+
+| Endpoint | Who |
+|---|---|
+| `POST /v1/agents/{id}/pay/prepare` | Agent or human |
+| `POST /v1/agents/{id}/pay/sign` | Agent or human, plus authorization |
+| `POST /v1/agents/{id}/pay/{payment_id}/result` | Agent or human |
+| `GET /v1/agents/{id}/pay/{payment_id}` | Agent or human |
+| `PATCH /v1/agents/{id}/pay/settings` | **Human only** |
+| `POST /v1/agents/{id}/pay/grants` | **Human only**, plus a passkey assertion |
+| `GET /v1/pay-sessions/{id}` | **The human it was raised for** |
+| `POST /v1/pay-sessions/{id}/authorize` | **The human it was raised for** |
+| `DELETE /v1/pay-grants/{id}` | **Human only** |
+
+A pay session is readable only by the person who must authorize it — not an
+agent, and not another member of the same org. The response decides whether a
+payment may be signed, and a session id is not authorization.
+
+
+---
+
 ## Policy Engine v2
 
 ---
@@ -13126,6 +13356,47 @@ Quick fixes for issues you might hit as a user of the API, SDK, CLI, or MCP.
 - **Base URL** — Use `https://api.1claw.co` for production. The dashboard at 1claw.co proxies `/api/*` to the same API, so from a browser you may use relative `/api/v1/...` when on the same origin.
 - **CLI / SDK** — Ensure your client is configured with the correct base URL. The SDK and CLI default to the production API when not set.
 - **MCP** — For hosted MCP, use `https://mcp.1claw.co/mcp`. For local stdio, `ONECLAW_BASE_URL` defaults to `https://api.1claw.co`; override only if you use a different API host.
+
+## The SDK returns `null` and nothing else
+
+Every SDK method returns an envelope, not the value:
+
+```typescript
+interface OneclawResponse<T> {
+  data: T | null;
+  error: { type: string; message: string; detail?: string } | null;
+  meta?: { status: number; requestId?: string };
+}
+```
+
+`data` is null **whenever** `error` is set. So this reports nothing at all when
+the call is refused:
+
+```typescript
+const { data: secret } = await client.secrets.get(vaultId, "api-keys/test");
+console.log(secret); // null — and the reason was thrown away
+```
+
+Destructure `error` too. A 403 otherwise looks exactly like an empty secret:
+
+```typescript
+const { data, error, meta } = await client.secrets.get(vaultId, "api-keys/test");
+if (error) {
+  console.error(meta?.status, error.type, error.message);
+  console.error("request id:", meta?.requestId); // quote this to support
+}
+```
+
+Once you can see the error, the usual causes are:
+
+- **403 `Insufficient permissions`** — the agent's grant does not cover that
+  path. `GET /v1/vaults/{id}/access` shows the paths actually granted; a
+  "default read access" grant is often scoped to a prefix that excludes yours.
+- **404** — wrong path or wrong vault. `client.secrets.list(vaultId)` returns
+  the keys (no plaintext) and settles it.
+- **403 mentioning the Intents API** — the agent has `intents_api_enabled` and
+  the secret's type is `private_key` or `ssh_key`. Only those two types are
+  blocked from direct reads; other types are unaffected.
 
 ## 401 Unauthorized
 
@@ -24139,6 +24410,56 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.0 (2026-09-07) {#v0610-2026-09-07}
+
+**`1claw pay`.** An agent can now pay somebody else's x402 paywall, under a
+passkey or a capped spending grant. `1claw pay --agent <id> <url>` fetches,
+captures the 402, gets it authorized, signs, and retries — Base USDC on the
+direct-fetch path.
+
+The CLI holds the network connection and nothing else. It sends the vault the
+exact bytes the paywall served; the vault computes the digest, decides what may
+be signed, and renders the authorize page from that stored preimage rather than
+from anything the client claims about it. The digest binds the **transfer
+value**, not the challenge's `maxAmountRequired` ceiling, so what a person
+approves and what gets signed cannot drift.
+
+`--mode` is a request. `pay_require_passkey` defaults to true, and while it is
+true every payment needs a human touch — an allowlisted recipient does not
+bypass that, it only widens which recipients a grant may cover. `auto` is never
+honoured while a passkey is required; it degrades to the ceremony the agent is
+configured for. An unattended agent with no allowlist pays nobody: a null
+allowlist is not a wildcard.
+
+**Spending grants** turn one touch into a cap and a window. The cap is
+decremented in a single guarded statement, so two concurrent payments cannot
+both spend the last dollar, and a grant can never exceed the agent's own maximum
+cap or window.
+
+**Limits are charged at signing, not settlement.** A signature that was produced
+and then lost still consumed authority. Reporting a failure afterwards returns
+`"limit_released": false` — only a vault-verified reconciliation can give
+headroom back, and that is not built yet.
+
+**When a challenge window closes**, the CLI re-fetches the resource rather than
+re-using the challenge it holds: the stored bytes would reproduce the same closed
+window, and many challenges carry a single-use nonce. It tries twice, then says
+so and suggests a grant.
+
+New: `PATCH /v1/agents/{id}/pay/settings`, `POST .../pay/prepare`, `.../pay/sign`,
+`.../pay/grants`, `.../pay/{payment_id}/result`, `GET .../pay/{payment_id}`,
+`GET|POST /v1/pay-sessions/{id}`, `POST /v1/pay-sessions/{id}/authorize`,
+`DELETE /v1/pay-grants/{id}`.
+
+Supported: USDC/USDT on Base, Optimism, Avalanche, BNB Chain and **Solana** —
+EIP-3009 on the EVM chains, a signed SPL transfer on Solana, chosen by the chain
+rather than by a flag. Every address and mint verified on-chain; BNB Chain
+stables are 18 decimals, not 6, and treating them as 6 would understate a
+payment by 10^12. An unlisted asset is refused rather than guessed at. Signing happens in the vault, not yet in the Shroud TEE. The dashboard
+authorize page is not built; the endpoint behind it is.
+
+See [Paying x402 paywalls](../guides/pay.md).
+
 ### v0.60.1 (2026-09-07) {#v0601-2026-09-07}
 
 **Directory job board.** Post a task to the agent directory, receive bids from
@@ -27730,7 +28051,11 @@ await client.secrets.set(vault.id, "STRIPE_KEY", "sk_live_...", {
 });
 
 // Retrieve a secret
-const { data: secret } = await client.secrets.get(vault.id, "STRIPE_KEY");
+const { data: secret, error, meta } = await client.secrets.get(vault.id, "STRIPE_KEY");
+
+// `data` is null whenever `error` is set — check it. A permission problem
+// otherwise reads as an empty secret.
+if (error) throw new Error(`${meta?.status} ${error.message} (${meta?.requestId})`);
 console.log(secret.value); // use securely, don't log in production
 ```
 
@@ -28013,7 +28338,18 @@ const client = createClient({
   apiKey: process.env.ONECLAW_API_KEY,
 });
 
-const { data: secret } = await client.secrets.get(VAULT_ID, "api-keys/openai");
+const { data: secret, error, meta } = await client.secrets.get(
+  VAULT_ID,
+  "api-keys/openai",
+);
+
+// Every call returns `{ data, error }`. A null `data` always means `error`
+// says why — without this check a 403 is indistinguishable from an empty
+// secret, which is the most common first-run confusion.
+if (error) {
+  console.error(meta?.status, error.type, error.message);
+  console.error("request id:", meta?.requestId);
+}
 console.log(secret.value);
 ```
 
@@ -28231,6 +28567,69 @@ When you [register an agent](/docs/vaults/human-api/agents/register-agent) via `
 | **ECDH key** | P-256 (secp256r1) | Key agreement — derive shared secrets for encrypted agent-to-agent messaging | Private key in `__agent-keys` vault; public key on agent record (`ecdh_public_key`) |
 
 Additionally, humans can provision **multi-chain blockchain signing keys** for agents via the [Intents API](/docs/agents/intents/signing#signing-keys).
+
+## Authenticating without a stored key
+
+`auth_method` on the agent record decides what the agent presents at
+`POST /v1/auth/agent-token`. The default is `api_key`, which means a long-lived
+`ocv_` key lives wherever the agent runs. Two alternatives avoid that.
+
+### OIDC (`oidc_client_credentials`)
+
+For agents that run somewhere with its own identity, such as CI. The job
+presents the token its platform mints for that run, and nothing long-lived is
+stored in the runner.
+
+```bash
+1claw agent create ci-deployer \
+  --auth-method oidc_client_credentials \
+  --oidc-issuer https://token.actions.githubusercontent.com \
+  --oidc-client-id https://github.com/acme/checkout
+```
+
+Exchange the platform token for an agent token:
+
+```bash
+curl -X POST https://api.1claw.co/v1/auth/agent-token \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"<uuid>","oidc_token":"<token from your CI platform>"}'
+```
+
+`oidc_issuer` and `oidc_client_id` are read from the agent record, never from
+the presented token. The discovery document at
+`{issuer}/.well-known/openid-configuration` must name itself as the issuer and
+advertise an `https` `jwks_uri`. A token signed by a different issuer, or minted
+for a different audience, is refused even when its signature is valid.
+
+Only RS256 is verified today. A token signed with EdDSA or ES256 is refused with
+a message naming the key type rather than failing as a bad token.
+
+### mTLS (`mtls`)
+
+This service does not terminate TLS, so it cannot see the handshake. What it
+does is bind the certificate your terminator already verified to the agent that
+registered it, by comparing against `client_cert_fingerprint`.
+
+```bash
+1claw agent create edge-worker \
+  --auth-method mtls \
+  --client-cert-fingerprint <sha256 of the client certificate>
+```
+
+The fingerprint is read from `X-Forwarded-Client-Cert` (Envoy and Istio) or
+`X-Client-Cert-Sha256`.
+
+:::warning Requires a terminator that rewrites the header
+Both headers are ordinary request headers. Anything that can reach the API can
+set them, and a fingerprint is a certificate hash rather than a secret. They are
+believed only when the deployment sets `ONECLAW_TRUST_CLIENT_CERT_HEADERS=1`,
+which asserts that a TLS terminator in front discards whatever the client sent
+and rewrites it from the real handshake.
+
+Without that, mTLS authentication refuses and says so. On Cloud Run,
+`X-Forwarded-Client-Cert` is stripped by the frontend, so a deployment there
+needs a terminator that both performs mTLS and sets the header.
+:::
 
 ## How keys are created
 
