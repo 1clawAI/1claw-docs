@@ -8,6 +8,39 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.9 – v0.61.11 (2026-09-12 → 13) {#v0619-2026-09-12}
+
+**Control plane.** [1claw.co/dashboard](https://1claw.co/dashboard) now opens on a
+live topology map of the org — agents, the policies they hold, the vaults those
+grant, the chains they sign on and the systems they call — with a threat
+register ranked by blast radius, metrics, a Sankey of who actually read from
+which vault, and an SSE signal stream with `Last-Event-ID` resume. Every agent
+carries a continuous 0–100 **trust score** recomputed every 30 s from policy
+denials, threat hits, egress blocks and spend velocity; the engine runs in
+recommend-only mode (findings are `shadow: true`) and never auto-suspends.
+Dark mode, touch, keyboard shortcuts (`?`), search (`/`), filters, a minimap
+for large orgs, and per-org layout persistence. Docs:
+[Dashboard → Control plane](/docs/dashboard/control-plane).
+
+**API.** `GET /v1/otel/{stream,topology,threats,summary,metrics,flows}` and
+`GET /v1/otel/agents/{id}/trust` — human users only; agents are 403 so a
+compromised agent cannot read the org's map. Team orgs can fan the same
+signals out to their own collector over OTLP/HTTP JSON
+(`/v1/org/settings/otel-export`). Signal attributes are redacted at the source
+before they are buffered.
+
+**Platform apps** get the same views over *their own connections' agents* —
+`GET /v1/platform/connections/{id}/otel/{topology,threats,summary,stream}`.
+The topology is walked outward from the connection's agents, so a vault shared
+with another tenant's agent never reveals that agent. SDK 0.61.12 adds
+`client.otel` (with an async-iterator `stream()`) and
+`client.platform.getConnectionOtel*`; MCP 0.61.1 adds
+`platform_get_connection_otel_{summary,threats,topology}`.
+
+**Also.** Deleting an agent now removes its access policies (1,427 orphaned
+rows from earlier deletions were swept); trust-score history only records a
+sample when the score moves, and is pruned after 30 days.
+
 ### v0.61.0 (2026-09-07) {#v0610-2026-09-07}
 
 **`1claw pay`.** An agent can now pay somebody else's x402 paywall, under a

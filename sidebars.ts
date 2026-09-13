@@ -249,6 +249,7 @@ const sidebars: SidebarsConfig = {
             link: { type: "doc", id: "dashboard/overview" },
             collapsed: true,
             items: [
+                "dashboard/control-plane",
                 "dashboard/vaults-secrets",
                 "dashboard/agents-policies",
                 "dashboard/treasury-cards",

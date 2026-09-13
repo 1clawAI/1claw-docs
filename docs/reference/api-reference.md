@@ -482,6 +482,25 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | GET    | `/.well-known/jwks.json`     | Public JWKS (EdDSA + RS256 keys)                         |
 | POST   | `/v1/auth/federated-token`   | Exchange agent token for RS256 OIDC JWT (RFC 8693)       |
 
+## Control Plane Telemetry
+
+Human users only (`1ck_` key or session JWT); agents receive 403. Every query is org-scoped.
+
+| Method | Path                                  | Description                                                                 |
+| ------ | ------------------------------------- | --------------------------------------------------------------------------- |
+| GET    | `/v1/otel/stream`                     | Live signals (SSE). `Last-Event-ID` resumes; `event: gap` when it cannot     |
+| GET    | `/v1/otel/topology`                   | Agent / vault / policy / connector / chain graph; capped at 500 nodes        |
+| GET    | `/v1/otel/threats?state=open\|all`    | Threat register, highest blast radius first                                 |
+| GET    | `/v1/otel/summary`                    | Posture score, open threat counts, pending approvals, top five threats      |
+| GET    | `/v1/otel/metrics?window=1h&step=1m`  | Bucketed executions / denials / transactions / LLM calls (window ≤ 30d)     |
+| GET    | `/v1/otel/flows?window=24h`           | Who actually read from which vault, from `secret.read` audit events         |
+| GET    | `/v1/otel/agents/:id/trust`           | One agent's trust components, 24h history and recent audit actions          |
+| GET    | `/v1/org/settings/otel-export`        | OTLP/HTTP export config (Team tier)                                         |
+| PATCH  | `/v1/org/settings/otel-export`        | Set collector URL / headers / enabled                                       |
+| POST   | `/v1/org/settings/otel-export/test`   | Send one test batch (5/min per org)                                         |
+
+Platform apps (`plt_` keys) use the connection-scoped equivalents — see [Platform API](#platform-api).
+
 ## Risk Engine
 
 | Method | Path                               | Description                                    |
@@ -628,6 +647,10 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | GET    | `/v1/platform/connections/:id/grants`         | List active resource grants for a connection                     |
 | DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
 | GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
+| GET    | `/v1/platform/connections/:id/otel/topology`  | Topology restricted to the connection's agents                   |
+| GET    | `/v1/platform/connections/:id/otel/threats`   | Threats on the connection's agents, highest blast radius first   |
+| GET    | `/v1/platform/connections/:id/otel/summary`   | Posture and counts over the connection's agents                  |
+| GET    | `/v1/platform/connections/:id/otel/stream`    | Live signals for the connection's agents (SSE)                   |
 
 ## Cedar Policies (Team+)
 

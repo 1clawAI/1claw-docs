@@ -239,6 +239,10 @@ Inter-agent communication, task delegation, and human-controlled authorization. 
 ### Agent Discovery (v0.42)
 Public agent directory and platform marketplace. Agents can be made discoverable with capability cards showing A2A protocol URLs, MCP server endpoints, supported protocols, pricing, and categories. Public search and browse. Endpoints: `GET /v1/agents/directory` (search/browse, public, no auth), `GET /v1/agents/{id}/card` (get agent's public card, no auth), `PATCH /v1/agents/{id}/discovery` (update discovery settings, human-only), `GET /v1/platform/marketplace` (browse platform app marketplace, public). SDK: `client.discovery.getAgentCard()`, `.directory()`, `.updateDiscovery()`, `.marketplace()`. CLI: `1claw directory search|card`. MCP: `search_agent_directory`. Dashboard: `/directory` public listing page, discovery card on agent detail. DB: migration 148 (`agent_discovery`), 149 (`platform_listing`).
 
+### Control Plane Telemetry (v0.61.9)
+
+The dashboard at 1claw.co/dashboard opens on a live **topology map** of the org: agents → the policies they hold → the vaults those grant, plus the chains they sign on and the systems (execution-intents bindings) they call. Alongside it: a **threat register** ranked by blast radius (vaults + connectors + chains the affected agent reaches), **metrics**, a Sankey of who *actually* read from which vault (from `secret.read` audit events), and an SSE **signal stream** with `Last-Event-ID` resume and `event: gap` when the server cannot resume. Every agent has a continuous 0–100 **trust score** recomputed every 30 s from policy denial rate (25), threat hits (20), egress blocks (15), spend velocity vs its own 7-day baseline (15); off-hours (10) and consensus bypass (15) are not yet sourced and drop out of the weighted average rather than scoring zero. Threat classes: `trust_breach` (score < 50, resolves at ≥ 65), `policy_breach` (≥ 5 denials in 5 min), `prompt_injection` (Shroud score ≥ 0.7), `key_exfil`. The engine is recommend-only: findings are `shadow: true` and nothing auto-suspends. **Human users only** — every `/v1/otel/*` route returns 403 to agent keys so a compromised agent cannot read the org's map. Platform apps read *their own connections' agents* via `/v1/platform/connections/{id}/otel/{topology,threats,summary,stream}` (topology walked outward from the connection's agents; a foreign connection is a 404). Team orgs can export the same signals to their own collector over OTLP/HTTP JSON (`/v1/org/settings/otel-export`). Attributes are redacted before buffering. Docs: https://docs.1claw.co/docs/dashboard/control-plane
+
 ### Platform API (v0.20)
 **Platform delegation (v0.42; scope enforcement v0.44)** — Platform apps can perform CRUD operations on connected user resources by passing the `X-Platform-Connection` header with the connection ID. Scoped by `delegation_enabled` (boolean) and `delegation_scopes` (TEXT[] — e.g. `["vaults:read", "secrets:read", "secrets:write", "agents:read"]`) on platform connections. Delegation scopes enforced on 4 handler groups: secrets, policies, bindings, and discovery. Disconnected connections rejected with 403. All delegated operations attributed to the platform app in audit logs. DB: migrations 151, 170.
 
@@ -334,6 +338,15 @@ Key endpoints:
 - `POST /v1/agents/{id}/transactions/simulate` — Simulate transaction
 - `GET/POST /v1/shroud/activity` — Shroud inspection events and flagged requests
 - `GET /v1/shroud/threat-summary` — Shroud threat detection summary
+- `GET /v1/otel/stream` — Live control-plane signals (SSE; `Last-Event-ID` resume; `event: gap` on a stale cursor). Human users only
+- `GET /v1/otel/topology` — Agent/vault/policy/connector/chain graph, capped at 500 nodes (`truncated`, `total_nodes`)
+- `GET /v1/otel/threats?state=open|all` — Threat register, highest blast radius first; `shadow: true` = recommend-only finding
+- `GET /v1/otel/summary` — Posture score (0–100), open/critical threat counts, pending approvals, top five threats
+- `GET /v1/otel/metrics?window=1h&step=1m` — Bucketed executions/denials/transactions/LLM calls (window ≤ 30d)
+- `GET /v1/otel/flows?window=24h` — Real reads per (agent, vault) from audit events
+- `GET /v1/otel/agents/{id}/trust` — One agent's trust components (null = not measured), 24h history, recent audit actions
+- `GET|PATCH /v1/org/settings/otel-export`, `POST .../test` — OTLP/HTTP JSON export to your own collector (Team tier)
+- `GET /v1/platform/connections/{id}/otel/{topology,threats,summary,stream}` — The same views for a `plt_` key, restricted to that connection's agents
 - `GET /v1/risk/events` — List risk events (filterable by severity, principal_type)
 - `GET /v1/risk/verdicts` — List active risk verdicts
 - `GET /v1/risk/verdicts/{type}/{id}` — Get verdict for a specific principal
@@ -570,14 +583,14 @@ Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit
 
 ## MCP Tools (for AI agents)
 
-The MCP server at mcp.1claw.co provides **67 tools** (plus `vault://secrets` resource):
+The MCP server at mcp.1claw.co provides **154 tools** (plus `vault://secrets` resource):
 - list_secrets, get_secret, put_secret, delete_secret, describe_secret
 - rotate_and_store, rotate_generate, get_env_bundle, list_versions
 - create_vault, list_vaults, grant_access, share_secret
 - simulate_transaction, simulate_bundle, submit_transaction, sign_transaction
 - list_transactions, get_transaction
 - list_signing_keys, provision_signing_key, sign_message, sign_typed_data, sign_digest, get_signing_key_balance
-- platform_list_apps, platform_create_app, platform_bootstrap_user, platform_reissue_claim, platform_rotate_key, platform_siwe_challenge, platform_get_connection, platform_connection_usage, platform_list_entitlements, platform_preview_template, platform_list_connection_approvals, platform_get_connection_approval, platform_list_connection_pending_approvals, platform_get_connection_spend_policy, platform_get_spend_policy, platform_transfer_ownership, platform_delete_app
+- platform_list_apps, platform_create_app, platform_bootstrap_user, platform_reissue_claim, platform_rotate_key, platform_siwe_challenge, platform_get_connection, platform_connection_usage, platform_list_entitlements, platform_preview_template, platform_list_connection_approvals, platform_get_connection_approval, platform_list_connection_pending_approvals, platform_get_connection_spend_policy, platform_get_spend_policy, platform_transfer_ownership, platform_delete_app, platform_get_connection_otel_summary, platform_get_connection_otel_threats, platform_get_connection_otel_topology
 - treasury_propose, treasury_sign_proposal, treasury_list_proposals
 - order_card, order_gift_card, search_gift_cards, list_cards, get_card_status (reveal intentionally omitted — no PAN in tool output)
 - request_approval, list_approvals, get_approval
@@ -612,7 +625,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 183 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 184 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -744,7 +757,7 @@ Complete index of 183 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (80)
+### Other (81)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -783,6 +796,7 @@ Complete index of 183 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Automations](https://docs.1claw.co/docs/automations/overview)
 - [Payment Cards](https://docs.1claw.co/docs/cards/overview)
 - [Agents & policies](https://docs.1claw.co/docs/dashboard/agents-policies)
+- [Control plane](https://docs.1claw.co/docs/dashboard/control-plane)
 - [Dashboard overview](https://docs.1claw.co/docs/dashboard/overview)
 - [Platform wizard](https://docs.1claw.co/docs/dashboard/platform-wizard)
 - [Settings & billing](https://docs.1claw.co/docs/dashboard/settings-billing)

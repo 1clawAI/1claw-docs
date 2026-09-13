@@ -108,7 +108,7 @@ All API endpoints are organized into resource modules:
 | `client.chains`            | `list()`, `get()`                                                                                  |
 | `client.treasury`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `addSigner()`, `removeSigner()`, `propose()`, `listProposals()`, `getProposal()`, `signProposal()`, `executeProposal()` |
 | `client.treasuryWallets`   | `generate()`, `list()`, `get()`, `balance()`, `send()`, `swap()`, `export()`, `rotate()`, `deactivate()`, `getEffectiveSpendPolicy()` |
-| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()` |
+| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()`, `getConnectionOtelTopology()`, `getConnectionOtelThreats()`, `getConnectionOtelSummary()`, `connectionOtelStream()` |
 | `client.devices`           | `list()`, `revoke()`                                                                               |
 | `client.passkeys`          | `list()`, `register()`, `delete()`                                                                 |
 | `client.depositDestinations` | `create()`, `list()`, `get()`, `update()`                                                        |
@@ -127,6 +127,7 @@ All API endpoints are organized into resource modules:
 | `client.opaPolicies`       | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
 | `client.subOrgs`           | `create()`, `list()`, `get()`, `archive()`, `grantPermission()`, `revokePermission()`, `addUser()`, `generateWallets()` |
 | `client.portfolio`         | `get()`                                                                                            |
+| `client.otel`              | `topology()`, `threats()`, `summary()`, `metrics()`, `flows()`, `agentTrust()`, `stream()` — the control plane. Human users only. `stream()` is an async iterator over SSE with `Last-Event-ID` resume; a `{type:"gap"}` event means refetch `topology()` |
 | `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email
@@ -261,6 +262,30 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
 
 Full catalog and run instructions: [examples README](https://github.com/1clawAI/1claw-examples#readme). From the monorepo: `./examples/scripts/test-all-examples.sh`.
+
+## Control plane telemetry
+
+`client.otel` is the dashboard's control plane as an API. It needs a human credential (a `1ck_` key or session JWT) — an agent key is refused, by design.
+
+```ts
+const { data: summary } = await client.otel.summary();
+console.log(summary.posture_score, summary.open_critical);
+
+const { data: threats } = await client.otel.threats("open"); // highest blast radius first
+const { data: trust } = await client.otel.agentTrust(agentId); // components, 24h history, recent actions
+
+// Live signals. Stops when you abort; a gap event means the server could not
+// resume from your cursor — refetch topology() rather than assume continuity.
+const ac = new AbortController();
+let last: number | undefined;
+for await (const ev of client.otel.stream({ lastEventId: last, signal: ac.signal })) {
+  if (ev.type === "gap") { await client.otel.topology(); continue; }
+  last = ev.id;
+  console.log(ev.signal.name, ev.signal.resource.agent_name);
+}
+```
+
+Platform apps use the connection-scoped equivalents with a `plt_` key: `client.platform.getConnectionOtelSummary(connectionId)`, `getConnectionOtelThreats()`, `getConnectionOtelTopology()` and `connectionOtelStream()` — the same shapes, restricted to that connection's agents.
 
 ## OpenAPI types
 

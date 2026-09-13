@@ -8390,6 +8390,102 @@ See also: [Agents overview](/docs/agents/overview), [Approvals](/docs/treasury/a
 
 ---
 
+## Control plane
+
+---
+title: Control plane
+description: The live topology map, threat register, metrics, read flows and trust scores for every agent in your org — the first thing you see at 1claw.co/dashboard.
+sidebar_position: 1
+---
+
+# Control plane
+
+The **control plane** is the default view at [1claw.co/dashboard](https://1claw.co/dashboard). It is one screen that answers "who can touch what, what is happening right now, and which agent should I be worried about" — drawn live from the same events the vault already writes, so nothing here can drift from what actually happened.
+
+Human users only. An agent key gets a 403 on every route behind this screen: a compromised agent reading every other agent's vault paths and threat evidence is precisely the attack the boundary prevents. Platform apps get a [connection-scoped view](#platform-apps) instead.
+
+## Topology
+
+A force-directed map of the org's resources and how they connect.
+
+| Node | Glyph | Meaning |
+|------|-------|---------|
+| Agent | Dark circle, robot face | An agent identity. A ring around it is its **trust score** (full ring = 100), green / amber / red by the engine's bands. Compromised agents glow red; suspended ones are struck through. |
+| Vault | Grey square with a key | A vault. Agents that can reach it sit inside a soft dashed hull carrying the vault's name. |
+| Policy | Red-outlined hexagon | One node per (vault, secret-path pattern). An agent **holds** a policy; a policy **grants** access to a vault. |
+| Chain | Ring with a currency mark (Ξ ◎ ₿) | A chain the agent has an active signing key on. |
+| System | Diamond with an initial | An execution-intents binding the agent **calls**. |
+
+Edges are styled by relation: `holds` / `grants` are dashed brand-red (the reachability story), `signs` is solid graphite, `calls` is dotted. Select a node and its edges get arrowheads, crawl toward their targets, and label themselves with the relation word once you are zoomed in.
+
+**Interacting**
+
+- Scroll to zoom at the cursor, drag empty space to pan, drag a node to rearrange it, double-click empty space to fit. Two fingers pinch on a phone.
+- Click a node for its **detail panel**: for an agent, the trust number with each component as a bar (a component shows *not measured* rather than a zero when this deployment has no source for it), a 24-hour sparkline, the agent's recent audit actions, and everything it reaches as clickable chips. For a vault, the agents that can read it. **Suspend agent** is on the panel; it is `PATCH /v1/agents/{id} {is_active:false}`, which the map reflects on its next refresh.
+- The **legend is the filter**: click a kind to hide it, toggle `ok` / `warn` / `suspended` / `compromised` agents, or hide the vault groups. The counts strip under the title does the same per kind.
+- **Search** (`/`) rings matching nodes and dims the rest; `Enter` jumps to the first match.
+- A **minimap** appears bottom-right whenever part of the graph is off screen.
+- Where you leave the map — positions and zoom — is remembered per org in your browser.
+
+**Keyboard**: `1`–`4` switch tabs · `Space`/`P` pause the stream · `+`/`−` zoom · `F` fit · `0` reset · arrows pan · `Tab`/`]`/`[` cycle agents · `Esc` closes help, then search, then the selection, then leaves · `?` lists all of this.
+
+**Large orgs**: the map caps at 500 nodes and says so in the title (`truncated`, with the real total). Below 0.75× zoom only the selected node, its neighbours and search matches keep labels; below 0.5× agents draw as plain discs. Labels never overprint — the important ones claim their space first.
+
+## Threats
+
+The durable threat register: one row per open finding, **ranked by blast radius** (vaults + connectors + chains the affected agent can reach), then recency — so the row to look at first is first.
+
+| Class | Producer | Fires when |
+|-------|----------|-----------|
+| `trust_breach` | trust engine | An agent's score drops below 50; resolves when it climbs back to 65 (hysteresis, so a score oscillating around the line does not flap). |
+| `policy_breach` | vault policy denials | 5 or more denials by one agent in five minutes. Twice that is `critical`. |
+| `prompt_injection` | Shroud inspection | Injection score ≥ 0.7 on the agent's LLM traffic; three or more hits is `critical`. |
+| `key_exfil` | Shroud inspection | A secret or key pattern in an outbound LLM request. |
+
+`shadow: true` marks a finding produced while the trust engine is in **recommend-only** mode: it is shown, it is ranked, and nothing has acted on it. Auto-suspension on breach is a deliberate later switch, not a flag you can flip by accident.
+
+## Metrics and flows
+
+**Metrics** buckets executions, policy denials, transactions and LLM calls over a window (`1h` to `30d`; steps widen automatically past 500 buckets).
+
+**Flows** is a Sankey of who *actually read* from which vault — counted from `secret.read` audit events, agent actors only — as opposed to the topology, which shows who *could*. Ribbon width is real reads.
+
+## Live stream
+
+The right column (the **Live** tab on a phone) is the org's signal stream: spans for policy evaluation, secret reads, intent execution, transaction signing, approval decisions and content inspection, plus KPIs derived from the last hour. It is Server-Sent Events with `Last-Event-ID` resume; if the server cannot resume (the cursor fell out of its buffer, or a noisy org lagged the subscriber) you get a **Signals missed** card and a one-click topology refresh rather than a silent hole.
+
+Attributes are redacted at the source (`redact_sensitive`, critical-severity PII rules only) before a signal is ever buffered, so nothing on this screen can show a secret value.
+
+## Trust scores
+
+Every agent gets a continuous 0–100 behavioural score, recomputed every 30 seconds from grouped per-org queries (never per agent). Components and weights:
+
+| Component | Weight | Source today |
+|-----------|-------:|--------------|
+| Policy denial rate | 25 | vault + execution denials vs evaluations |
+| Threat hits | 20 | open `otel_threats` |
+| Egress blocks | 15 | Shroud blocks |
+| Spend velocity | 15 | ratio against the agent's own 7-day baseline; no baseline scores neutral |
+| Off-hours activity | 10 | *not measured yet* |
+| Consensus bypass | 15 | *not measured yet* |
+
+Unmeasured components drop out of the weighted average rather than scoring zero — a fresh deployment must not show every agent as untrusted on day one. History is kept for 30 days and only written when the score moves (or hourly on a flat line), so the sparkline is real and the table stays small.
+
+## Export (Team tier)
+
+Settings → Telemetry lets a Team org fan the same signals out to its own collector over **OTLP/HTTP JSON** (`PATCH /v1/org/settings/otel-export`, with a `/test` endpoint rate-limited to 5/min). The collector URL is validated against private ranges *after* DNS resolution and pinned, and custom headers are stored envelope-encrypted.
+
+## API
+
+Everything on the screen is the public API; see the [API reference](/docs/reference/api-reference#control-plane-telemetry) and `client.otel` in the [JavaScript SDK](/docs/sdks/javascript).
+
+## Platform apps
+
+A platform app cannot read an org — the end-user's org may hold agents from other platforms. It can read **its own connections'** agents through `GET /v1/platform/connections/{id}/otel/{topology,threats,summary,stream}`, documented under [Platform API → Connection-scoped operations](/docs/platform-api/overview#observe-the-connections-agents).
+
+
+---
+
 ## Dashboard overview
 
 ---
@@ -20839,6 +20935,34 @@ curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/pending
 
 ---
 
+### Observe the connection's agents
+
+The org-wide control plane at `/v1/otel/*` refuses `plt_` keys: the end-user's org may hold agents from other platforms or the user's own, and none of those are yours to see. The connection-scoped routes give you the same views over **this connection's agents only** — the agents bootstrap attributed to the connection plus any listed on it, constrained to the connection's org.
+
+```bash
+# Posture score, open threats, pending approvals — over this connection's agents
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/summary" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { posture_score: 100, open_threats: 0, open_critical: 0, pending_approvals: 0, agent_count: 1, top_threats: [] }
+
+# Threats ranked by blast radius; ?state=all includes resolved
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/threats" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# The graph: agents → policies → vaults, chains they sign on, systems they call.
+# Walked outward from the connection's agents, so a vault shared with another
+# tenant's agent never reveals that agent.
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/topology" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# Live signals (SSE). Same protocol as /v1/otel/stream: Last-Event-ID resumes,
+# `event: gap` means refetch topology. Signals with no agent are never emitted.
+curl -N "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/stream" \
+  -H "Authorization: Bearer plt_YOUR_KEY" -H "Accept: text/event-stream"
+```
+
+A connection that does not belong to your app is a **404**, not a 403, so the response does not confirm the id exists. Stream slots are counted per app (five), not per connection. SDK: `client.platform.getConnectionOtelSummary()` / `Threats()` / `Topology()` and `connectionOtelStream()` (an async iterator); MCP: `platform_get_connection_otel_{summary,threats,topology}`.
+
 ## Content inspection (REST)
 
 MCP `inspect_content` parity for platform backends:
@@ -24177,6 +24301,25 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | GET    | `/.well-known/jwks.json`     | Public JWKS (EdDSA + RS256 keys)                         |
 | POST   | `/v1/auth/federated-token`   | Exchange agent token for RS256 OIDC JWT (RFC 8693)       |
 
+## Control Plane Telemetry
+
+Human users only (`1ck_` key or session JWT); agents receive 403. Every query is org-scoped.
+
+| Method | Path                                  | Description                                                                 |
+| ------ | ------------------------------------- | --------------------------------------------------------------------------- |
+| GET    | `/v1/otel/stream`                     | Live signals (SSE). `Last-Event-ID` resumes; `event: gap` when it cannot     |
+| GET    | `/v1/otel/topology`                   | Agent / vault / policy / connector / chain graph; capped at 500 nodes        |
+| GET    | `/v1/otel/threats?state=open\|all`    | Threat register, highest blast radius first                                 |
+| GET    | `/v1/otel/summary`                    | Posture score, open threat counts, pending approvals, top five threats      |
+| GET    | `/v1/otel/metrics?window=1h&step=1m`  | Bucketed executions / denials / transactions / LLM calls (window ≤ 30d)     |
+| GET    | `/v1/otel/flows?window=24h`           | Who actually read from which vault, from `secret.read` audit events         |
+| GET    | `/v1/otel/agents/:id/trust`           | One agent's trust components, 24h history and recent audit actions          |
+| GET    | `/v1/org/settings/otel-export`        | OTLP/HTTP export config (Team tier)                                         |
+| PATCH  | `/v1/org/settings/otel-export`        | Set collector URL / headers / enabled                                       |
+| POST   | `/v1/org/settings/otel-export/test`   | Send one test batch (5/min per org)                                         |
+
+Platform apps (`plt_` keys) use the connection-scoped equivalents — see [Platform API](#platform-api).
+
 ## Risk Engine
 
 | Method | Path                               | Description                                    |
@@ -24323,6 +24466,10 @@ Build applications on top of 1Claw. Requires Pro or higher plan. Authenticate wi
 | GET    | `/v1/platform/connections/:id/grants`         | List active resource grants for a connection                     |
 | DELETE | `/v1/platform/connections/:id/grants/:gid`    | Revoke a specific resource grant                                 |
 | GET    | `/v1/platform/apps/:id/audit`                 | Platform audit events                                            |
+| GET    | `/v1/platform/connections/:id/otel/topology`  | Topology restricted to the connection's agents                   |
+| GET    | `/v1/platform/connections/:id/otel/threats`   | Threats on the connection's agents, highest blast radius first   |
+| GET    | `/v1/platform/connections/:id/otel/summary`   | Posture and counts over the connection's agents                  |
+| GET    | `/v1/platform/connections/:id/otel/stream`    | Live signals for the connection's agents (SSE)                   |
 
 ## Cedar Policies (Team+)
 
@@ -24409,6 +24556,39 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-09 (latest)
+
+### v0.61.9 – v0.61.11 (2026-09-12 → 13) {#v0619-2026-09-12}
+
+**Control plane.** [1claw.co/dashboard](https://1claw.co/dashboard) now opens on a
+live topology map of the org — agents, the policies they hold, the vaults those
+grant, the chains they sign on and the systems they call — with a threat
+register ranked by blast radius, metrics, a Sankey of who actually read from
+which vault, and an SSE signal stream with `Last-Event-ID` resume. Every agent
+carries a continuous 0–100 **trust score** recomputed every 30 s from policy
+denials, threat hits, egress blocks and spend velocity; the engine runs in
+recommend-only mode (findings are `shadow: true`) and never auto-suspends.
+Dark mode, touch, keyboard shortcuts (`?`), search (`/`), filters, a minimap
+for large orgs, and per-org layout persistence. Docs:
+[Dashboard → Control plane](/docs/dashboard/control-plane).
+
+**API.** `GET /v1/otel/{stream,topology,threats,summary,metrics,flows}` and
+`GET /v1/otel/agents/{id}/trust` — human users only; agents are 403 so a
+compromised agent cannot read the org's map. Team orgs can fan the same
+signals out to their own collector over OTLP/HTTP JSON
+(`/v1/org/settings/otel-export`). Signal attributes are redacted at the source
+before they are buffered.
+
+**Platform apps** get the same views over *their own connections' agents* —
+`GET /v1/platform/connections/{id}/otel/{topology,threats,summary,stream}`.
+The topology is walked outward from the connection's agents, so a vault shared
+with another tenant's agent never reveals that agent. SDK 0.61.12 adds
+`client.otel` (with an async-iterator `stream()`) and
+`client.platform.getConnectionOtel*`; MCP 0.61.1 adds
+`platform_get_connection_otel_{summary,threats,topology}`.
+
+**Also.** Deleting an agent now removes its access policies (1,427 orphaned
+rows from earlier deletions were swept); trust-score history only records a
+sample when the score moves, and is pruned after 30 days.
 
 ### v0.61.0 (2026-09-07) {#v0610-2026-09-07}
 
@@ -28111,7 +28291,7 @@ All API endpoints are organized into resource modules:
 | `client.chains`            | `list()`, `get()`                                                                                  |
 | `client.treasury`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `addSigner()`, `removeSigner()`, `propose()`, `listProposals()`, `getProposal()`, `signProposal()`, `executeProposal()` |
 | `client.treasuryWallets`   | `generate()`, `list()`, `get()`, `balance()`, `send()`, `swap()`, `export()`, `rotate()`, `deactivate()`, `getEffectiveSpendPolicy()` |
-| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()` |
+| `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()`, `getConnectionOtelTopology()`, `getConnectionOtelThreats()`, `getConnectionOtelSummary()`, `connectionOtelStream()` |
 | `client.devices`           | `list()`, `revoke()`                                                                               |
 | `client.passkeys`          | `list()`, `register()`, `delete()`                                                                 |
 | `client.depositDestinations` | `create()`, `list()`, `get()`, `update()`                                                        |
@@ -28130,6 +28310,7 @@ All API endpoints are organized into resource modules:
 | `client.opaPolicies`       | `create()`, `list()`, `get()`, `delete()`, `test()`                                                |
 | `client.subOrgs`           | `create()`, `list()`, `get()`, `archive()`, `grantPermission()`, `revokePermission()`, `addUser()`, `generateWallets()` |
 | `client.portfolio`         | `get()`                                                                                            |
+| `client.otel`              | `topology()`, `threats()`, `summary()`, `metrics()`, `flows()`, `agentTrust()`, `stream()` — the control plane. Human users only. `stream()` is an async iterator over SSE with `Last-Event-ID` resume; a `{type:"gap"}` event means refetch `topology()` |
 | `client.webhooks`          | `create()`, `list()`, `get()`, `update()`, `delete()`                                              |
 
 ## Sharing by email
@@ -28264,6 +28445,30 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
 
 Full catalog and run instructions: [examples README](https://github.com/1clawAI/1claw-examples#readme). From the monorepo: `./examples/scripts/test-all-examples.sh`.
+
+## Control plane telemetry
+
+`client.otel` is the dashboard's control plane as an API. It needs a human credential (a `1ck_` key or session JWT) — an agent key is refused, by design.
+
+```ts
+const { data: summary } = await client.otel.summary();
+console.log(summary.posture_score, summary.open_critical);
+
+const { data: threats } = await client.otel.threats("open"); // highest blast radius first
+const { data: trust } = await client.otel.agentTrust(agentId); // components, 24h history, recent actions
+
+// Live signals. Stops when you abort; a gap event means the server could not
+// resume from your cursor — refetch topology() rather than assume continuity.
+const ac = new AbortController();
+let last: number | undefined;
+for await (const ev of client.otel.stream({ lastEventId: last, signal: ac.signal })) {
+  if (ev.type === "gap") { await client.otel.topology(); continue; }
+  last = ev.id;
+  console.log(ev.signal.name, ev.signal.resource.agent_name);
+}
+```
+
+Platform apps use the connection-scoped equivalents with a `plt_` key: `client.platform.getConnectionOtelSummary(connectionId)`, `getConnectionOtelThreats()`, `getConnectionOtelTopology()` and `connectionOtelStream()` — the same shapes, restricted to that connection's agents.
 
 ## OpenAPI types
 

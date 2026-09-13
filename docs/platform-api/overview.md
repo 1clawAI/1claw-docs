@@ -628,6 +628,34 @@ curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/pending
 
 ---
 
+### Observe the connection's agents
+
+The org-wide control plane at `/v1/otel/*` refuses `plt_` keys: the end-user's org may hold agents from other platforms or the user's own, and none of those are yours to see. The connection-scoped routes give you the same views over **this connection's agents only** — the agents bootstrap attributed to the connection plus any listed on it, constrained to the connection's org.
+
+```bash
+# Posture score, open threats, pending approvals — over this connection's agents
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/summary" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+# → { posture_score: 100, open_threats: 0, open_critical: 0, pending_approvals: 0, agent_count: 1, top_threats: [] }
+
+# Threats ranked by blast radius; ?state=all includes resolved
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/threats" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# The graph: agents → policies → vaults, chains they sign on, systems they call.
+# Walked outward from the connection's agents, so a vault shared with another
+# tenant's agent never reveals that agent.
+curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/topology" \
+  -H "Authorization: Bearer plt_YOUR_KEY"
+
+# Live signals (SSE). Same protocol as /v1/otel/stream: Last-Event-ID resumes,
+# `event: gap` means refetch topology. Signals with no agent are never emitted.
+curl -N "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/otel/stream" \
+  -H "Authorization: Bearer plt_YOUR_KEY" -H "Accept: text/event-stream"
+```
+
+A connection that does not belong to your app is a **404**, not a 403, so the response does not confirm the id exists. Stream slots are counted per app (five), not per connection. SDK: `client.platform.getConnectionOtelSummary()` / `Threats()` / `Topology()` and `connectionOtelStream()` (an async iterator); MCP: `platform_get_connection_otel_{summary,threats,topology}`.
+
 ## Content inspection (REST)
 
 MCP `inspect_content` parity for platform backends:
