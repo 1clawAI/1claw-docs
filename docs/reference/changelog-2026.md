@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### CLI 0.61.4 (2026-09-15) {#cli-0614-2026-09-15}
+
+**`1claw agent binding proxy <binding>`.** A local HTTP front for one execution
+binding, for vendor CLIs and SDKs that accept a base-URL override. Each request
+becomes `POST /v1/agents/{id}/execute` for the binding; the vault applies the
+host and path allowlists and the agent's policies, injects the credential, and
+the upstream response comes back. The tool's own credential is dropped locally
+and never forwarded, so a placeholder satisfies its "key must be non-empty"
+check. A refusal is a 403; an unreachable vault is a 502 and the tool stops.
+Written for the Bankr CLI (`BANKR_API_URL`), whose `bankr login` otherwise
+leaves the real key in `~/.bankr/config.json` where any agent on the host can
+read it. The [Bankr guide](/docs/agents/bankr-keys) now leads with keeping the
+key off the machine. The Shroud `bankr` provider is documented for what it is:
+the LLM chat endpoint only.
+
 ### v0.61.9 – v0.61.11 (2026-09-12 → 13) {#v0619-2026-09-12}
 
 **Control plane.** [1claw.co/dashboard](https://1claw.co/dashboard) now opens on a

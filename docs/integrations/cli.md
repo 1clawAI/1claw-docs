@@ -100,7 +100,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Signing keys** | `agent keys list`, `agent keys create`, `agent keys rotate`, `agent keys delete`, `agent export-signing-key` |
 | **Unified signing** | `agent sign` — EIP-191, EIP-712, or raw transaction signing |
 | **Transactions** | `agent tx submit`, `agent tx sign`, `agent tx list`, `agent tx get` |
-| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions` |
+| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions`, `agent binding proxy` |
 | **Bankr keys** | `agent bankr-key lease`, `agent bankr-key list`, `agent bankr-key revoke` |
 | **Treasury** | `treasury generate`, `treasury list`, `treasury get`, `treasury balance`, `treasury send`, `treasury swap`, `treasury export`, `treasury rotate`, `treasury deactivate` |
 | **Proposals** | `treasury proposal create`, `treasury proposal list`, `treasury proposal get`, `treasury proposal sign`, `treasury proposal execute`, `treasury proposal cancel` |
@@ -348,6 +348,9 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 1claw agent binding update <agent-id> <binding-id> --active false
 1claw agent binding test <agent-id> <binding-id>
 1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+# Local proxy: a vendor CLI/SDK with a base-URL override runs through the binding, no key on this machine
+1claw agent binding proxy bankr --agent-key "$AGENT_ID:$AGENT_KEY" --port 8787
+#   export BANKR_API_URL=http://127.0.0.1:8787; export BANKR_API_KEY=managed-by-1claw
 1claw agent binding execute <agent-id> \
   --binding stripe-api --intent-type http \
   --params '{"method":"GET","path":"/v1/customers?limit=5"}'
