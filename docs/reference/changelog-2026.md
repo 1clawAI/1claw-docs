@@ -8,9 +8,9 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
-### CLI 0.61.4 (2026-09-15) {#cli-0614-2026-09-15}
+### CLI 0.61.4–0.61.5 (2026-09-15) {#cli-0614-2026-09-15}
 
-**`1claw agent binding proxy <binding>`.** A local HTTP front for one execution
+**`1claw agent binding proxy <binding>`** and **`1claw daemon proxy <secret> --base-url <url>`.** A local HTTP front for one execution
 binding, for vendor CLIs and SDKs that accept a base-URL override. Each request
 becomes `POST /v1/agents/{id}/execute` for the binding; the vault applies the
 host and path allowlists and the agent's policies, injects the credential, and
@@ -21,7 +21,9 @@ Written for the Bankr CLI (`BANKR_API_URL`), whose `bankr login` otherwise
 leaves the real key in `~/.bankr/config.json` where any agent on the host can
 read it. The [Bankr guide](/docs/agents/bankr-keys) now leads with keeping the
 key off the machine. The Shroud `bankr` provider is documented for what it is:
-the LLM chat endpoint only.
+the LLM chat endpoint only. The daemon form runs the same proxy in front of the
+local daemon: policy and injection come from the local vault, and nothing
+leaves the machine except the upstream call.
 
 ### v0.61.9 – v0.61.11 (2026-09-12 → 13) {#v0619-2026-09-12}
 

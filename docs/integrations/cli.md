@@ -351,6 +351,8 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 # Local proxy: a vendor CLI/SDK with a base-URL override runs through the binding, no key on this machine
 1claw agent binding proxy bankr --agent-key "$AGENT_ID:$AGENT_KEY" --port 8787
 #   export BANKR_API_URL=http://127.0.0.1:8787; export BANKR_API_KEY=managed-by-1claw
+# Same, against the local daemon and local vault (policy from `1claw daemon policy add`)
+1claw daemon proxy bankr-api-key --base-url https://api.bankr.bot --port 8787
 1claw agent binding execute <agent-id> \
   --binding stripe-api --intent-type http \
   --params '{"method":"GET","path":"/v1/customers?limit=5"}'

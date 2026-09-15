@@ -75,7 +75,20 @@ export BANKR_API_KEY=managed-by-1claw     # any non-empty placeholder; the proxy
 bankr agent prompt "..."
 ```
 
-The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the binding. The vault checks the host and path allowlists and the agent's policies, injects the real key, and returns the upstream response. Whatever the CLI sends as its own credential is dropped locally. A 1claw refusal comes back as 403; if 1claw is unreachable the proxy answers 502 and the CLI stops. Every call is in the audit log.
+**Local daemon instead of the cloud?** If your agent uses the local vault (`1claw local`, `1claw daemon`), the same proxy runs in front of the daemon and nothing leaves the machine except the upstream call:
+
+```bash
+1claw local add bankr-api-key            # the bk_usr_ key, stored in the encrypted local vault
+1claw daemon policy add bankr-api-key --hosts api.bankr.bot --inject-as header --header-name X-API-Key
+1claw daemon start
+1claw daemon proxy bankr-api-key --base-url https://api.bankr.bot --port 8787
+export BANKR_API_URL=http://127.0.0.1:8787
+export BANKR_API_KEY=managed-by-1claw
+```
+
+The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the binding (or, with the daemon, into a policy-checked injection from the local vault). The vault checks the host and path allowlists and the agent's policies, injects the real key, and returns the upstream response. Whatever the CLI sends as its own credential is dropped locally. A 1claw refusal comes back as 403; if 1claw is unreachable the proxy answers 502 and the CLI stops. Every call is in the audit log.
+
+**If the agent has a Bankr skill or system prompt**, strip every instruction that stores or reads a key (`bankr login`, "set BANKR_API_KEY to your key", reading `~/.bankr/config.json`). The `bankr ...` commands themselves stay as they are; the proxy env vars are the only setup the skill should mention, and the agent must be told that a 502 from Bankr means 1claw is unavailable and the task stops, not that it should look for another credential.
 
 Belt and braces: run the agent inside a 1claw runtime (there is no `~/.bankr` in the container), and block outbound `api.bankr.bot` from the agent host with a firewall rule so a leaked key would be useless from that machine.
 
