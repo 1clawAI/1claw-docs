@@ -90,6 +90,8 @@ The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the bin
 
 **If the agent has a Bankr skill or system prompt**, strip every instruction that stores or reads a key (`bankr login`, "set BANKR_API_KEY to your key", reading `~/.bankr/config.json`). The `bankr ...` commands themselves stay as they are; the proxy env vars are the only setup the skill should mention, and the agent must be told that a 502 from Bankr means 1claw is unavailable and the task stops, not that it should look for another credential.
 
+**The CLI's own session is a separate credential.** `1claw login` stores a cloud session token (24h) in `~/.config/1claw/config.json`, mode 0600. The local vault policy does not cover it, and no file mode can: an agent running as *your* Unix user can read anything you can. If the agent shares your account, run `1claw logout` on that host when you are done, or give the agent its own Unix user and share only the daemon socket with it: `1claw daemon start --socket-group <group>` (socket 0660 for that group; your config stays yours). Sensitive actions (treasury sends, wallet export, secret reads on accounts with `require_passkey_for_vaults`) also need a passkey or step-up the token alone cannot satisfy.
+
 Belt and braces: run the agent inside a 1claw runtime (there is no `~/.bankr` in the container), and block outbound `api.bankr.bot` from the agent host with a firewall rule so a leaked key would be useless from that machine.
 
 ## Setup: dynamic key vending

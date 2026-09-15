@@ -8,7 +8,14 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
-### CLI 0.61.4–0.61.5 (2026-09-15) {#cli-0614-2026-09-15}
+### CLI 0.61.4–0.61.6 (2026-09-15) {#cli-0614-2026-09-15}
+
+**0.61.6.** The CLI config file, which holds the cloud session token, stayed 0600
+only until the next unrelated config write (conf rewrites the file atomically);
+it is 0600 for good now. `1claw daemon start --socket-group <group>` shares the
+daemon socket (0660) with an agent running as its own Unix user, so the agent
+reaches policy-gated secrets but not the human's session; `login` now warns on
+a host that has a local vault or daemon.
 
 **`1claw agent binding proxy <binding>`** and **`1claw daemon proxy <secret> --base-url <url>`.** A local HTTP front for one execution
 binding, for vendor CLIs and SDKs that accept a base-URL override. Each request
