@@ -8,6 +8,20 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.15 (2026-09-16) {#v06115-2026-09-16}
+
+**`DELETE /v1/platform/connections/{id}/runtimes/{runtimeId}`.** A platform app
+could create a runtime on a connection but not remove it: the human
+`DELETE /v1/runtimes/{id}` refuses plt_ keys, and the connection-scoped route
+had only GET and POST. The DELETE is gated exactly like the GET (app owns the
+connection, the connection lists the runtime, the runtime is in the end user's
+org), stops a running runtime at the provider first, cancels any runtime add-on
+before the record goes, trims the connection's runtime list, and writes
+`platform.connection.runtime_deleted` to the audit chain. MCP tool
+`platform_delete_connection_runtime`; SDK client method
+`platformDeleteConnectionRuntime`. Surfaced by the Fathom team, who had a
+stopped probe runtime stranded on a live connection.
+
 ### CLI 0.61.4–0.61.6 (2026-09-15) {#cli-0614-2026-09-15}
 
 **0.61.6.** The CLI config file, which holds the cloud session token, stayed 0600

@@ -410,6 +410,8 @@ Runtimes can be declared three ways in a bootstrap template:
 
 After bootstrap, create additional runtimes with **`POST /v1/platform/connections/{id}/runtimes`** (plt_ key). Do **not** use `POST /v1/runtimes` with a plt_ key — that resolves to the platform org and returns 404 for user-org agents.
 
+Inspect and remove them through the same scope: **`GET /v1/platform/connections/{id}/runtimes/{runtimeId}`** and **`DELETE /v1/platform/connections/{id}/runtimes/{runtimeId}`** (v0.61.15). The DELETE stops a running runtime at the provider, cancels any runtime add-on, removes the record and trims the connection's runtime list; it is the cleanup path for a runtime your app provisioned by mistake. `GET`/`PATCH`/`DELETE /v1/runtimes/{id}` never accept a plt_ key. MCP: `platform_delete_connection_runtime`.
+
 Bootstrapped runtime and automation IDs are tracked on the connection record (`runtime_ids`, `automation_ids`) and returned by `GET /v1/platform/connections/{id}`.
 
 ### `automations` (v0.44+)
