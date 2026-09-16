@@ -26,6 +26,50 @@
       ],
       "destination": "https://docs.1claw.co/:path*",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "1claw-docs.vercel.app"
+        }
+      ],
+      "destination": "https://docs.1claw.co/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "1claw-docs.vercel.app"
+        }
+      ],
+      "destination": "https://docs.1claw.co/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.docs.1claw.co"
+        }
+      ],
+      "destination": "https://docs.1claw.co/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.docs.1claw.co"
+        }
+      ],
+      "destination": "https://docs.1claw.co/:path*",
+      "permanent": true
     }
   ],
   "rewrites": [
