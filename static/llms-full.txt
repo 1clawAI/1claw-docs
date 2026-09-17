@@ -419,7 +419,89 @@ The Bankr key vending system issues short-lived `bk_usr_` API keys to agents on 
 - **Short TTL:** Recommend 5–15 min for autonomous agents; max 86400s (24h).
 :::
 
-## Setup
+## First: keep the key off the agent's machine
+
+Key vending controls what 1claw hands out. It cannot control a key the Bankr CLI already holds. `bankr login` writes the key to `~/.bankr/config.json`, and the CLI also reads `BANKR_API_KEY`; an agent with a shell on that host can read either and call `api.bankr.bot` directly, bypassing every 1claw policy. So the first step of any setup is to make sure the key exists only inside 1claw, and every Bankr call goes through it:
+
+```
+BNKR agent ──► 1claw (binding "bankr") ──► host allowlist api.bankr.bot ──► X-API-Key injected ──► api.bankr.bot
+
+~/.bankr/config.json and BANKR_API_KEY on the agent host: must not contain a real key.
+If 1claw is unavailable, the agent has no route to Bankr and stops.
+```
+
+**1. Store the key as an execution binding** (the credential is injected server-side; the agent only ever sees responses):
+
+```bash
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "bankr",
+    "binding_type": "http",
+    "credential": "bk_usr_...",
+    "config": {
+      "base_url": "https://api.bankr.bot",
+      "auth_type": "header",
+      "auth_header": "X-API-Key",
+      "allowed_hosts": ["api.bankr.bot"],
+      "allowed_paths": ["/agent/*"],
+      "timeout_ms": 30000
+    }
+  }'
+```
+
+and enable intents on the agent: `PATCH /v1/agents/$AGENT_ID` with `{"execution_intents_enabled": true}`. Narrow `allowed_paths` to the Bankr endpoints you use.
+
+**2. Remove the key from the host:**
+
+```bash
+rm -f ~/.bankr/config.json
+unset BANKR_API_KEY BANKR_LLM_KEY      # and remove them from shell rc files, .env, service units
+bankr whoami                            # must now fail: "Not authenticated"
+```
+
+**3. Route Bankr calls through 1claw.** Either call the binding directly —
+
+```bash
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/execute" \
+  -H "Authorization: Bearer $AGENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"binding":"bankr","intent_type":"http","execution_mode":"vault",
+       "params":{"method":"POST","path":"/agent/prompt","body":{"prompt":"..."}}}'
+```
+
+(or the `execute_http` MCP tool with `binding: "bankr"`) — or keep using the Bankr CLI unchanged by pointing it at a local 1claw proxy:
+
+```bash
+1claw agent binding proxy bankr --agent-key "$AGENT_ID:$AGENT_KEY" --port 8787
+export BANKR_API_URL=http://127.0.0.1:8787
+export BANKR_API_KEY=managed-by-1claw     # any non-empty placeholder; the proxy never forwards it
+bankr agent prompt "..."
+```
+
+**Local daemon instead of the cloud?** If your agent uses the local vault (`1claw local`, `1claw daemon`), the same proxy runs in front of the daemon and nothing leaves the machine except the upstream call:
+
+```bash
+1claw local add bankr-api-key            # the bk_usr_ key, stored in the encrypted local vault
+1claw daemon policy add bankr-api-key --hosts api.bankr.bot --inject-as header --header-name X-API-Key
+1claw daemon start
+1claw daemon proxy bankr-api-key --base-url https://api.bankr.bot --port 8787
+export BANKR_API_URL=http://127.0.0.1:8787
+export BANKR_API_KEY=managed-by-1claw
+```
+
+The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the binding (or, with the daemon, into a policy-checked injection from the local vault). The vault checks the host and path allowlists and the agent's policies, injects the real key, and returns the upstream response. Whatever the CLI sends as its own credential is dropped locally. A 1claw refusal comes back as 403; if 1claw is unreachable the proxy answers 502 and the CLI stops. Every call is in the audit log.
+
+**If the agent has a Bankr skill or system prompt**, strip every instruction that stores or reads a key (`bankr login`, "set BANKR_API_KEY to your key", reading `~/.bankr/config.json`). The `bankr ...` commands themselves stay as they are; the proxy env vars are the only setup the skill should mention, and the agent must be told that a 502 from Bankr means 1claw is unavailable and the task stops, not that it should look for another credential.
+
+**The CLI's own session is a separate credential.** `1claw login` stores a cloud session token (24h) in `~/.config/1claw/config.json`, mode 0600. The local vault policy does not cover it, and no file mode can: an agent running as *your* Unix user can read anything you can. If the agent shares your account, run `1claw logout` on that host when you are done, or give the agent its own Unix user and share only the daemon socket with it: `1claw daemon start --socket-group <group>` (socket 0660 for that group; your config stays yours). Sensitive actions (treasury sends, wallet export, secret reads on accounts with `require_passkey_for_vaults`) also need a passkey or step-up the token alone cannot satisfy.
+
+Belt and braces: run the agent inside a 1claw runtime (there is no `~/.bankr` in the container), and block outbound `api.bankr.bot` from the agent host with a firewall rule so a leaked key would be useless from that machine.
+
+## Setup: dynamic key vending
+
+Key vending is for the case where you hold a Bankr **partner** key and want each agent to get its own short-lived user key instead of sharing one static credential. Combine it with the binding pattern above: the leased key is what you put in the binding, or what Shroud injects for the LLM endpoint.
 
 ### 1. Configure Your Org's Bankr Partner Key
 
@@ -487,9 +569,9 @@ Response (agent callers do NOT receive `api_key`):
 }
 ```
 
-### 4. Shroud Resolves the Key
+### 4. Shroud Resolves the Key (LLM endpoint only)
 
-When the agent makes requests with `X-Shroud-Provider: bankr`, Shroud looks up the latest active leased key from `__agent-keys` at `agents/{id}/bankr/{lease_id}` and injects it automatically.
+When the agent sends chat completions through Shroud with `X-Shroud-Provider: bankr`, Shroud looks up the latest active leased key at `agents/{id}/bankr/{lease_id}` and injects it. This covers Bankr's OpenAI-compatible `/v1/chat/completions` endpoint only. The Bankr agent API that the `bankr` CLI uses (`/agent/*`) goes through an execution binding, as described at the top of this page.
 
 ## Endpoints
 
@@ -543,6 +625,7 @@ await client.agents.revokeBankrKey(agentId, leaseId);
 2. **Revoke after task completion** — don't let leases expire naturally if the task is done.
 3. **Monitor via audit log** — events `bankr_key.leased` and `bankr_key.revoked` are recorded (never logs secret values).
 4. **Prefer over static secrets** — dynamic vending with short TTL is safer than storing a static Bankr key in a vault path.
+5. **Never on the agent host** — no `~/.bankr/config.json`, no `BANKR_API_KEY` with a real value. The binding (and the local proxy, if you use the CLI) is the only path to `api.bankr.bot`.
 
 
 ---
@@ -7471,6 +7554,7 @@ funds. Read it rather than copying this table.
 | `wait` | yes | — | Pause for a bounded interval |
 | `memory_get` / `memory_put` | yes | — | Read / write agent memory |
 | `memory_search` | — | — | Search agent memory |
+| `read_contract` | yes | — | `eth_call` a view function and decode the result |
 | `http` | — | — | Call a URL (SSRF-validated) |
 | `condition` | — | — | Branch on an expression over earlier step output |
 | `ai_generate` | — | — | Generate text via the agent's model |
@@ -7680,6 +7764,7 @@ Steps run sequentially with context passing between them. Each step's output is 
 | `memory_get` | — | Read agent memory | `namespace` (default `default`), `key` |
 | `memory_put` | — | Write agent memory | `namespace`, `key`, `value`, `tier`, `ttl_secs?` |
 | `memory_search` | — | Semantic search over agent memory | `namespace`, `query`, `top_k?` (max 50) |
+| `read_contract` | `eth_call` | Read a view function on an EVM chain (v0.61.16) | `chain`, `address`, `function` (e.g. `balanceOf(address)`), `args[]`, `outputs[]` (ABI types; optional when an ABI is uploaded for the contract), `block?` |
 | `notify` | — | Send notifications | `channel` (`webhook`\|`slack`\|`email`), plus channel-specific params |
 | `approval_request` | — | Pause run for human approval | `action?`, `summary`, `reason?`, `risk_tier?` |
 | `condition` | — | Conditional branching | `expression`, `if_true[]`, `if_false[]` |
@@ -7764,7 +7849,27 @@ The `condition` step type provides full if/else branching:
 }
 ```
 
-Sub-steps within `if_true`/`if_false` are limited to: `log`, `http`, `notify`, `ai_generate`, `memory_get`, `memory_put`.
+Sub-steps within `if_true`/`if_false` are limited to: `log`, `http`, `read_contract`, `notify`, `ai_generate`, `memory_get`, `memory_put`.
+
+### `read_contract`
+
+Reads on-chain state before a decision, so a stop-loss or liquidation guardian conditions on the chain rather than on a price API. Static ABI types only (`address`, `bool`, `uintN`, `intN`, `bytesN`); numbers come back as decimal strings because `uint256` does not fit a JSON number. The RPC is the chain registry's; the step never signs anything.
+
+```json
+{
+  "steps": [
+    { "type": "read_contract", "name": "eth_usd",
+      "chain": "base", "address": "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+      "function": "latestRoundData()",
+      "outputs": ["uint80", "int256", "uint256", "uint256", "uint80"] },
+    { "type": "condition",
+      "expression": "{{steps.eth_usd.output.values.1}} < 200000000000",
+      "if_true": [ { "type": "submit_transaction", "chain": "base", "to": "0x…", "value": "0", "data": "0x…" } ] }
+  ]
+}
+```
+
+Step output: `{ "raw": "0x…", "values": [...], "value": values[0], "named": { "answer": "…" } }`. `named` is filled when the org has uploaded the contract's ABI (`POST /v1/contract-abis`), in which case `outputs` can be omitted.
 
 ## Presets
 
@@ -9378,11 +9483,13 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.co/v1/billing/llm-token-billing/disable
 ```
 
-Response shape (fields vary by org and Stripe data availability):
+Response shape (fields vary by org and Stripe data availability). Token usage is **postpaid**: it accrues on the subscription and is invoiced at period end. `credit_balance` is Stripe's prepaid credit-grant balance, which is `0` unless a credit grant was issued for your customer; a zero there is normal and does not block inference — `inference_allowed` is the field to check.
 
 ```json
 {
     "enabled": true,
+    "billing_model": "postpaid_metered",
+    "inference_allowed": true,
     "subscription_status": "active",
     "credit_balance": {
         "available_cents": 0,
@@ -15170,7 +15277,7 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Signing keys** | `agent keys list`, `agent keys create`, `agent keys rotate`, `agent keys delete`, `agent export-signing-key` |
 | **Unified signing** | `agent sign` — EIP-191, EIP-712, or raw transaction signing |
 | **Transactions** | `agent tx submit`, `agent tx sign`, `agent tx list`, `agent tx get` |
-| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions` |
+| **Execution Intents** | `agent binding create`, `agent binding list`, `agent binding get`, `agent binding update`, `agent binding delete`, `agent binding test`, `agent binding rotate-credential`, `agent binding execute`, `agent binding executions`, `agent binding proxy` |
 | **Bankr keys** | `agent bankr-key lease`, `agent bankr-key list`, `agent bankr-key revoke` |
 | **Treasury** | `treasury generate`, `treasury list`, `treasury get`, `treasury balance`, `treasury send`, `treasury swap`, `treasury export`, `treasury rotate`, `treasury deactivate` |
 | **Proposals** | `treasury proposal create`, `treasury proposal list`, `treasury proposal get`, `treasury proposal sign`, `treasury proposal execute`, `treasury proposal cancel` |
@@ -15418,6 +15525,11 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 1claw agent binding update <agent-id> <binding-id> --active false
 1claw agent binding test <agent-id> <binding-id>
 1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+# Local proxy: a vendor CLI/SDK with a base-URL override runs through the binding, no key on this machine
+1claw agent binding proxy bankr --agent-key "$AGENT_ID:$AGENT_KEY" --port 8787
+#   export BANKR_API_URL=http://127.0.0.1:8787; export BANKR_API_KEY=managed-by-1claw
+# Same, against the local daemon and local vault (policy from `1claw daemon policy add`)
+1claw daemon proxy bankr-api-key --base-url https://api.bankr.bot --port 8787
 1claw agent binding execute <agent-id> \
   --binding stripe-api --intent-type http \
   --params '{"method":"GET","path":"/v1/customers?limit=5"}'
@@ -17591,7 +17703,36 @@ For fully offline use where the model should never see secret values:
 
 Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/integrations/cli#local-vault-offline-encrypted) for setup.
 
+## Toolsets — what a session actually sees
+
+The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+
+| Toolset | Offered when | What's in it |
+| --- | --- | --- |
+| `inspect` | always | `inspect_content` |
+| `vault` | any agent | secrets, versions, rotation, env bundles, vaults, sharing, connected accounts |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `intents` | agent has **Intents API** enabled | signing, simulation, submission, signing keys, portfolio, Safe accounts |
+| `execute` | agent has **Execution Intents** enabled | bindings, `execute_http`, `execute_intent`, executions, connectors |
+| `cards` | agent has **Cards** enabled | cards and gift cards |
+| `memory` | agent has **Memory** enabled | memory tools + `get_peer_context` |
+| `channels` | agent has **Shroud** enabled | Telegram / WhatsApp / Discord channels |
+| `directory` | agent is **discoverable** | agent directory + job board |
+| `treasury`, `delegation`, `chat`, `automations`, `runtimes`, `notification` | opt-in only | no per-agent flag exists for these — request them explicitly |
+| `admin` | never on an agent session | human-only endpoints (policies, sub-orgs, approval votes, Safe migration) |
+| `platform` | never | `plt_` endpoints; the MCP server does not accept platform keys |
+
+**Requesting toolsets.** Over stdio set `ONECLAW_MCP_TOOLSETS`; hosted, send the `X-1Claw-Toolsets` header. Both take a comma list (`vault,intents,automations`) or `all`. A request can narrow the defaults or opt into the opt-in sets; it never adds a toolset the agent is not entitled to, and `all` still excludes `admin` and `platform`.
+
+**`execution_require_tee`.** When this flag is on, the vault refuses to return secret *values* to the agent outside a TEE, so `get_secret`, `get_env_bundle` and `resolve_env` are hidden. Writes and metadata (`put_secret`, `rotate_and_store`, `rotate_generate`, `describe_secret`, `list_secrets`, `list_versions`) remain.
+
+**Keeping up with flag changes.** Hosted sessions re-check entitlements every 15 minutes and immediately after a `403` from the vault, then send `notifications/tools/list_changed` so the client re-lists. Over stdio the toolset is fixed at startup — restart the MCP server after changing an agent's flags.
+
+**Degraded lookups.** Each session logs `toolsets=… lookup=full|jwt_only|failed`. `jwt_only` means only the flags carried in the signed token were honoured (intents, execute, shroud); `failed` means the agent defaults were used. A degraded lookup only ever narrows what is offered.
+
 ## Available tools
+
+The groups below list every tool; which ones a given agent sees is decided by the toolsets above.
 
 ### Secrets
 
@@ -20716,6 +20857,8 @@ Runtimes can be declared three ways in a bootstrap template:
 ```
 
 After bootstrap, create additional runtimes with **`POST /v1/platform/connections/{id}/runtimes`** (plt_ key). Do **not** use `POST /v1/runtimes` with a plt_ key — that resolves to the platform org and returns 404 for user-org agents.
+
+Inspect and remove them through the same scope: **`GET /v1/platform/connections/{id}/runtimes/{runtimeId}`** and **`DELETE /v1/platform/connections/{id}/runtimes/{runtimeId}`** (v0.61.15). The DELETE stops a running runtime at the provider, cancels any runtime add-on, removes the record and trims the connection's runtime list; it is the cleanup path for a runtime your app provisioned by mistake. `GET`/`PATCH`/`DELETE /v1/runtimes/{id}` never accept a plt_ key. MCP: `platform_delete_connection_runtime`.
 
 Bootstrapped runtime and automation IDs are tracked on the connection record (`runtime_ids`, `automation_ids`) and returned by `GET /v1/platform/connections/{id}`.
 
@@ -24556,6 +24699,59 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-09 (latest)
+
+### v0.61.16 (2026-09-17) {#v06116-2026-09-17}
+
+**`read_contract` automation step.** `eth_call` a view function (an oracle
+price, a balance, a health factor) and decode the result into
+`steps.<name>.output.values[...]` for a `condition` to act on, so fund-moving
+automations no longer need an `http` step to a price API. Static ABI types;
+output types from the step or from an uploaded contract ABI; allowed in
+agent-created automations (it signs nothing). **Connection record carries
+`email` and `display_name`** on `GET /v1/platform/connections/{id}`, so a
+returning user can be recognised and a passkey ceremony begun from the
+connection alone. **LLM token billing status** now states `billing_model:
+postpaid_metered` and `inference_allowed`; `credit_balance` is Stripe's
+prepaid credit-grant balance and is 0 for most orgs, which does not block
+inference. All three from the Fathom team's integration notes.
+
+### v0.61.15 (2026-09-16) {#v06115-2026-09-16}
+
+**`DELETE /v1/platform/connections/{id}/runtimes/{runtimeId}`.** A platform app
+could create a runtime on a connection but not remove it: the human
+`DELETE /v1/runtimes/{id}` refuses plt_ keys, and the connection-scoped route
+had only GET and POST. The DELETE is gated exactly like the GET (app owns the
+connection, the connection lists the runtime, the runtime is in the end user's
+org), stops a running runtime at the provider first, cancels any runtime add-on
+before the record goes, trims the connection's runtime list, and writes
+`platform.connection.runtime_deleted` to the audit chain. MCP tool
+`platform_delete_connection_runtime`; SDK client method
+`platformDeleteConnectionRuntime`. Surfaced by the Fathom team, who had a
+stopped probe runtime stranded on a live connection.
+
+### CLI 0.61.4–0.61.6 (2026-09-15) {#cli-0614-2026-09-15}
+
+**0.61.6.** The CLI config file, which holds the cloud session token, stayed 0600
+only until the next unrelated config write (conf rewrites the file atomically);
+it is 0600 for good now. `1claw daemon start --socket-group <group>` shares the
+daemon socket (0660) with an agent running as its own Unix user, so the agent
+reaches policy-gated secrets but not the human's session; `login` now warns on
+a host that has a local vault or daemon.
+
+**`1claw agent binding proxy <binding>`** and **`1claw daemon proxy <secret> --base-url <url>`.** A local HTTP front for one execution
+binding, for vendor CLIs and SDKs that accept a base-URL override. Each request
+becomes `POST /v1/agents/{id}/execute` for the binding; the vault applies the
+host and path allowlists and the agent's policies, injects the credential, and
+the upstream response comes back. The tool's own credential is dropped locally
+and never forwarded, so a placeholder satisfies its "key must be non-empty"
+check. A refusal is a 403; an unreachable vault is a 502 and the tool stops.
+Written for the Bankr CLI (`BANKR_API_URL`), whose `bankr login` otherwise
+leaves the real key in `~/.bankr/config.json` where any agent on the host can
+read it. The [Bankr guide](/docs/agents/bankr-keys) now leads with keeping the
+key off the machine. The Shroud `bankr` provider is documented for what it is:
+the LLM chat endpoint only. The daemon form runs the same proxy in front of the
+local daemon: policy and injection come from the local vault, and nothing
+leaves the machine except the upstream call.
 
 ### v0.61.9 – v0.61.11 (2026-09-12 → 13) {#v0619-2026-09-12}
 
@@ -35590,7 +35786,36 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 }
 ```
 
+## Toolsets — what a session actually sees
+
+The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+
+| Toolset | Offered when | What's in it |
+| --- | --- | --- |
+| `inspect` | always | `inspect_content` |
+| `vault` | any agent | secrets, versions, rotation, env bundles, vaults, sharing, connected accounts |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `intents` | agent has **Intents API** enabled | signing, simulation, submission, signing keys, portfolio, Safe accounts |
+| `execute` | agent has **Execution Intents** enabled | bindings, `execute_http`, `execute_intent`, executions, connectors |
+| `cards` | agent has **Cards** enabled | cards and gift cards |
+| `memory` | agent has **Memory** enabled | memory tools + `get_peer_context` |
+| `channels` | agent has **Shroud** enabled | Telegram / WhatsApp / Discord channels |
+| `directory` | agent is **discoverable** | agent directory + job board |
+| `treasury`, `delegation`, `chat`, `automations`, `runtimes`, `notification` | opt-in only | no per-agent flag exists for these — request them explicitly |
+| `admin` | never on an agent session | human-only endpoints (policies, sub-orgs, approval votes, Safe migration) |
+| `platform` | never | `plt_` endpoints; the MCP server does not accept platform keys |
+
+**Requesting toolsets.** Over stdio set `ONECLAW_MCP_TOOLSETS`; hosted, send the `X-1Claw-Toolsets` header. Both take a comma list (`vault,intents,automations`) or `all`. A request can narrow the defaults or opt into the opt-in sets; it never adds a toolset the agent is not entitled to, and `all` still excludes `admin` and `platform`.
+
+**`execution_require_tee`.** When this flag is on, the vault refuses to return secret *values* to the agent outside a TEE, so `get_secret`, `get_env_bundle` and `resolve_env` are hidden. Writes and metadata (`put_secret`, `rotate_and_store`, `rotate_generate`, `describe_secret`, `list_secrets`, `list_versions`) remain.
+
+**Keeping up with flag changes.** Hosted sessions re-check entitlements every 15 minutes and immediately after a `403` from the vault, then send `notifications/tools/list_changed` so the client re-lists. Over stdio the toolset is fixed at startup — restart the MCP server after changing an agent's flags.
+
+**Degraded lookups.** Each session logs `toolsets=… lookup=full|jwt_only|failed`. `jwt_only` means only the flags carried in the signed token were honoured (intents, execute, shroud); `failed` means the agent defaults were used. A degraded lookup only ever narrows what is offered.
+
 ## Tools
+
+The table below is a sample; see the [Tool Reference](/docs/vaults/mcp/tools) for the full catalog.
 
 | Tool               | Description                                                         | Read/Write |
 | ------------------ | ------------------------------------------------------------------- | ---------- |
