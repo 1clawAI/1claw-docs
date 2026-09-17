@@ -49,15 +49,16 @@ Separate asymmetric keys (not envelope KEKs):
 GET https://shroud.1claw.co/v1/shroud/attestation
 ```
 
-Returns `attestation_level`, `identity_token`, `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
+Returns `attestation_level`, `identity_token` (the workload's identity), `node_identity_token` (the node's), `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
 
-1. Decode JWT from `identity_token`
-2. Validate signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
-3. Confirm `aud` is `https://api.1claw.co`
-4. At `confidential` / `sev_snp` levels, verify Confidential Computing claims (`secboot`, `hwmodel`, etc.)
-5. At `sev_snp`, verify image digest / measurement match
+1. Decode both JWTs (`identity_token`, `node_identity_token`)
+2. Validate both signatures against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
+3. Confirm `aud` is `https://api.1claw.co` on both
+4. `identity_token`: `email` is the Shroud workload service account — proves *which* workload
+5. `node_identity_token`: `google.compute_engine.instance_confidentiality == 1` and `project_id` matches — proves the node is a Confidential VM (AMD SEV-SNP)
+6. At `sev_snp`, verify image digest / measurement match
 
-This proves Shroud is running on AMD SEV-SNP hardware with the published image hash when `attestation_level` is `sev_snp`.
+**Current level: `confidential`.** Under GKE Workload Identity the pod's own token cannot carry the Confidential-VM claim, so the node's identity token is relayed into the pod and published alongside. What is attested today is that Shroud runs as its service account on AMD SEV-SNP confidential hardware; the container image measurement (`sev_snp`) is not yet attested. Compare `image_hash` against the published digest at `ghcr.io/1clawai/shroud` yourself.
 
 ### 4. Audit Log Integrity
 

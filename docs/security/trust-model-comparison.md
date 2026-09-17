@@ -14,11 +14,13 @@ This is a structural difference, not a feature delta. An agent that can exfiltra
 curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 ```
 
-Returns a GCE identity token signed by Google's Confidential Computing attestation service. The response includes `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify the JWT against Google's JWKS to confirm:
+Returns two Google-signed identity tokens — the workload's (`identity_token`) and the node's (`node_identity_token`) — plus `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify both JWTs against Google's JWKS to confirm:
 
-- The Shroud enclave is running on confidential hardware
-- The measured image hash matches the published build
-- Signing and redaction happen inside the attested boundary when level is `confidential` or `sev_snp`
+- The Shroud workload runs as its own service account (workload token)
+- On a Confidential VM — AMD SEV-SNP (`google.compute_engine.instance_confidentiality == 1` in the node token)
+- Signing and redaction happen inside that boundary when level is `confidential` or `sev_snp`
+
+The current level is `confidential`: hardware confidentiality is attested at the node level; the container image measurement (`sev_snp`) is not yet. Compare `image_hash` against the published digest yourself.
 
 ### Audit Hash Chain (Live)
 

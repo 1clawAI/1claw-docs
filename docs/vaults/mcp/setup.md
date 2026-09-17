@@ -182,8 +182,20 @@ The server auto-resolves the agent ID via the API key prefix and auto-discovers 
 | `ONECLAW_AGENT_TOKEN` | Yes* (stdio) | — | Static JWT from `POST /v1/auth/agent-token` (alternative to API key; expires ~1 h). |
 | `ONECLAW_VAULT_ID` | No | auto-discovered | UUID of the vault to operate on. When omitted, auto-discovered from the token exchange `vault_ids` or the first org vault. |
 | `ONECLAW_BASE_URL` | No | `https://api.1claw.co` | Override for self-hosted vault |
+| `ONECLAW_MCP_TOOLSETS` | No | entitlement defaults | Comma list of toolsets to expose (or `all`). Narrows or opts in (`automations`, `runtimes`, `chat`, …); never widens past the agent's entitlements. Hosted: send `X-1Claw-Toolsets` instead. See [Toolsets](/docs/vaults/mcp/overview#toolsets--what-a-session-actually-sees). |
 
 \* Set **`ONECLAW_AGENT_API_KEY`** (recommended, simplest) or **`ONECLAW_AGENT_TOKEN`** + **`ONECLAW_VAULT_ID`**.
+
+### Narrower packages
+
+For stdio deployments where "this agent's MCP server cannot sign" must be true of the code on disk, two builds of the same server are published in lockstep:
+
+| Package | Contains | Not in the package |
+| --- | --- | --- |
+| `@1claw/mcp-vault` | `vault` + `approvals` toolsets, `inspect_content`, `vault://secrets` | signing, execute, cards, memory, channels, chat, automations, runtimes, directory, platform, admin |
+| `@1claw/mcp-guard` | `inspect_content` only — no account, no credentials | any vault client at all |
+
+Swap `@1claw/mcp` for `@1claw/mcp-vault` (same env vars) or `@1claw/mcp-guard` (no env vars) in the `args` above.
 
 ## Verifying the connection
 

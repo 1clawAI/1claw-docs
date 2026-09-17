@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.18 (2026-09-17) {#v06118-2026-09-17}
+
+**MCP 0.63.0: split packages.** `@1claw/mcp-vault` (vault + approvals + `inspect_content`; no signing, execute, cards, memory, platform or admin code in the package) and `@1claw/mcp-guard` (`inspect_content` only; no credentials, no vault client) are published in lockstep with `@1claw/mcp`. Internally the server bootstrap moved to `core/server.ts`, toolset modules own their tool lists, and the client is split by domain behind the same `OneClawClient` facade — no tool renamed, no behaviour change for the umbrella. **SDKs:** `TokenResponse.entitlements` typed in `@1claw/sdk` 0.61.13 and `oneclaw` 0.61.1. **CLI 0.61.7:** `1claw agent binding proxy` and `1claw daemon proxy` require a per-run token (printed at startup, or `--token` / `ONECLAW_PROXY_TOKEN`) presented as the tool's API key; other local processes get `401`. **Vault:** OTEL span attributes are allow-listed by key at the collector (unlisted keys dropped, logged once); `rustls` 0.23.45 (RUSTSEC-2026-0285). **Shroud:** attestation now reports `confidential` — the node's Confidential-VM identity token is relayed into the pod (Workload Identity tokens cannot carry it) and published as `node_identity_token`; image measurement (`sev_snp`) is still not attested.
+
 ### v0.61.17 (2026-09-17) {#v06117-2026-09-17}
 
 **Agent token exchange returns `entitlements`.** `POST /v1/auth/agent-token`

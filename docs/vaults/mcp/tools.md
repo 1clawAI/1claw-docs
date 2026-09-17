@@ -6,6 +6,32 @@ sidebar_position: 2
 
 # Tool Reference
 
+:::info Toolsets
+A session is only offered the toolsets its agent is entitled to (see the [overview](/docs/vaults/mcp/overview#toolsets--what-a-session-actually-sees)). The table lists every tool by toolset and when it appears; the sections below document the most-used ones in detail. Tools not in your `tools/list` are not a bug — the agent is not entitled to that toolset, and the server refuses hidden tools by name.
+:::
+
+| Toolset | Offered when | Tools |
+| --- | --- | --- |
+| `inspect` | always | `inspect_content` |
+| `vault` | any agent | `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `list_versions`, `rotate_and_store`, `rotate_generate`, `get_env_bundle`, `resolve_env`, `share_secret`, `grant_access`, `create_vault`, `list_vaults`, `list_oauth_connections`, `list_oauth_providers`, `oauth_revoke_consent`, `oauth_revoke_token` |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `intents` | `intents_api_enabled` | `simulate_transaction`, `simulate_bundle`, `submit_transaction`, `sign_transaction`, `sign_message`, `sign_typed_data`, `sign_digest`, `list_transactions`, `get_transaction`, `provision_signing_key`, `import_signing_key`, `list_signing_keys`, `get_signing_key_balance`, `get_portfolio`, `import_smart_account`, `list_agent_accounts`, `get_safe_module_registry`, `lease_bankr_key` |
+| `execute` | `execution_intents_enabled` | `list_bindings`, `test_binding`, `execute_http`, `execute_intent`, `list_executions`, `list_installed_connectors`, `list_connector_presets` |
+| `cards` | `cards_enabled` | `list_cards`, `get_card_status`, `search_gift_cards`, `order_card`, `order_gift_card` |
+| `memory` | `memory_enabled` | `put_memory`, `get_memory`, `list_memory`, `search_memory`, `delete_memory`, `get_peer_context` |
+| `channels` | `shroud_enabled` | `list_channels`, `create_channel`, `send_channel_message` |
+| `directory` | `discoverable` | `search_agent_directory`, `list_directory_jobs`, `get_directory_job`, `submit_directory_job_bid` |
+| `treasury` | `treasury_signer` on the exchange, else opt-in | `treasury_propose`, `treasury_list_proposals`, `treasury_sign_proposal` |
+| `delegation` | `has_delegations` on the exchange, else opt-in | `list_delegations`, `create_delegation`, `get_effective_delegations`, `delegate_task`, `org_directory` |
+| `chat` | opt-in | `list_chat_conversations`, `send_chat_message` |
+| `automations` | opt-in | `list_automations`, `list_automation_presets`, `create_agent_automation`, `trigger_automation`, `cancel_automation_run` |
+| `runtimes` | opt-in | `list_runtimes`, `manage_runtime`, `runtime_status`, `runtime_logs` |
+| `notification` | opt-in | `list_notification_targets` |
+| `admin` | never on an agent (human JWT over stdio only) | `create_binding`, `create_sub_org`, `list_sub_orgs`, `approve_pending_approval`, `execute_pending_approval`, `migrate_agent_to_safe`, `deprecate_agent_eoa`, `sync_org_safe_allowances`, `list_cedar_policies`, `test_cedar_policy`, `list_opa_policies`, `test_opa_policy`, `get_policy_backend_settings`, `update_policy_backend_settings`, `get_shadow_report`, `get_guardrail_shadow_report`, `list_guardrail_revisions`, `replay_agent_guardrails`, `upload_contract_abi`, `list_contract_abis` |
+| `platform` | never (plt_ keys are rejected) | `platform_list_apps`, `platform_create_app`, `platform_delete_app`, `platform_rotate_key`, `platform_rotate_webhook_secret`, `platform_app_stats`, `platform_list_users`, `platform_bootstrap_user`, `platform_siwe_challenge`, `platform_reissue_claim`, `platform_transfer_ownership`, `platform_grant_access`, `platform_list_grants`, `platform_marketplace`, `platform_list_templates`, `platform_create_template`, `platform_get_template`, `platform_preview_template`, `platform_list_entitlements`, `platform_get_spend_policy`, `platform_get_connection`, `platform_connection_usage`, `platform_get_connection_spend_policy`, `platform_set_connection_spend_policy`, `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_decide_connection_approval`, `platform_list_connection_pending_approvals`, `platform_create_connection_pending_approval`, `platform_decide_connection_pending_approval`, `platform_create_connection_runtime`, `platform_get_connection_runtime`, `platform_delete_connection_runtime`, `platform_connection_agent_chat`, `platform_list_connection_signing_keys`, `platform_get_connection_signing_key`, `platform_deactivate_connection_signing_key`, `platform_patch_connection_agent`, `platform_connection_passkey_enroll_begin`, `platform_connection_passkey_enroll_complete`, `platform_get_connection_portfolio`, `platform_list_connection_automations`, `platform_get_connection_otel_summary`, `platform_get_connection_otel_threats`, `platform_get_connection_otel_topology`, `platform_get_fleet`, `platform_list_fleet_agents`, `platform_plan_fleet_rollout` |
+
+Under `execution_require_tee`, `get_secret`, `get_env_bundle` and `resolve_env` are hidden; writes and metadata stay. Human-only tools (`admin`) exist for a user JWT over stdio and are never offered to an agent, even with `X-1Claw-Toolsets: all`.
+
 ## inspect_content
 
 Analyze arbitrary text for security threats. Works **without vault credentials** (available in local-only mode). Use this to check LLM outputs, user inputs, or any untrusted text before acting on it.

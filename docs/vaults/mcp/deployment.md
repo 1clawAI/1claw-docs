@@ -66,4 +66,6 @@ docker run -p 8080:8080 \
 | `PORT` | HTTP port (default: `8080`) |
 | `ONECLAW_BASE_URL` | Your vault API URL |
 
-Note: In hosted mode, auth credentials come from client request headers (`Authorization` and `X-Vault-ID`), not from environment variables. The server creates a new vault client per connection using the caller's credentials.
+Note: In hosted mode, auth credentials come from client request headers (`Authorization`, optionally `X-Vault-ID` and `X-1Claw-Toolsets`), not from environment variables. The server admits a session once per credential (memoised for 10 minutes), resolves the agent's entitlements at admission, offers only the entitled toolsets, and re-checks entitlements every 15 minutes and after any `403` from the vault.
+
+To self-host a narrower server, build the split packages from the same tree: `npm run build:packages` in `packages/mcp` produces `packages/vault/dist` (`@1claw/mcp-vault`) and `packages/guard/dist` (`@1claw/mcp-guard`); each is pruned to its runtime import closure so the excluded domains are not on disk.
