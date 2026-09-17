@@ -8,6 +8,25 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.17 (2026-09-17) {#v06117-2026-09-17}
+
+**Agent token exchange returns `entitlements`.** `POST /v1/auth/agent-token`
+now carries the flags a client needs to shape its tool surface in one round
+trip — `intents_api`, `execution_intents`, `execution_require_tee`,
+`intents_require_tee`, `cards`, `memory`, `shroud`, `discoverable` — plus two
+facts the agent profile cannot express: `treasury_signer` and
+`has_delegations`. **Claim-bearing PATCHes revoke tokens.** Changing an
+agent's `scopes`, `vault_ids`, `is_active`, `intents_api_enabled`,
+`shroud_enabled`/`shroud_config`, `execution_intents_enabled`,
+`intents_require_tee`, `execution_require_tee` or `environment` now revokes
+the agent's outstanding JWTs (audit event `agent.tokens_revoked`), so a
+downgrade takes effect on the next call instead of at the end of the token
+TTL. **Deleting a running runtime stops it first.** `DELETE /v1/runtimes/{id}`
+(and the platform-scoped sibling) stop the provider-side compute before
+dropping the row and refuse the delete if the stop fails — a deleted row was
+compute nothing could find again. **MCP server 0.62.0** offers each session
+only the toolsets its agent is entitled to; see the MCP docs.
+
 ### v0.61.16 (2026-09-17) {#v06116-2026-09-17}
 
 **`read_contract` automation step.** `eth_call` a view function (an oracle
