@@ -24702,6 +24702,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.18 (2026-09-17) {#v06118-2026-09-17}
+
+**MCP 0.63.0: split packages.** `@1claw/mcp-vault` (vault + approvals + `inspect_content`; no signing, execute, cards, memory, platform or admin code in the package) and `@1claw/mcp-guard` (`inspect_content` only; no credentials, no vault client) are published in lockstep with `@1claw/mcp`. Internally the server bootstrap moved to `core/server.ts`, toolset modules own their tool lists, and the client is split by domain behind the same `OneClawClient` facade — no tool renamed, no behaviour change for the umbrella. **SDKs:** `TokenResponse.entitlements` typed in `@1claw/sdk` 0.61.13 and `oneclaw` 0.61.1. **CLI 0.61.7:** `1claw agent binding proxy` and `1claw daemon proxy` require a per-run token (printed at startup, or `--token` / `ONECLAW_PROXY_TOKEN`) presented as the tool's API key; other local processes get `401`. **Vault:** OTEL span attributes are allow-listed by key at the collector (unlisted keys dropped, logged once); `rustls` 0.23.45 (RUSTSEC-2026-0285). **Shroud:** attestation now reports `confidential` — the node's Confidential-VM identity token is relayed into the pod (Workload Identity tokens cannot carry it) and published as `node_identity_token`; image measurement (`sev_snp`) is still not attested.
+
 ### v0.61.17 (2026-09-17) {#v06117-2026-09-17}
 
 **Agent token exchange returns `entitlements`.** `POST /v1/auth/agent-token`
@@ -29849,11 +29853,13 @@ This is a structural difference, not a feature delta. An agent that can exfiltra
 curl -s https://shroud.1claw.co/v1/shroud/attestation | jq .
 ```
 
-Returns a GCE identity token signed by Google's Confidential Computing attestation service. The response includes `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify the JWT against Google's JWKS to confirm:
+Returns two Google-signed identity tokens — the workload's (`identity_token`) and the node's (`node_identity_token`) — plus `attestation_level` (`none` through `sev_snp`), `image_hash`, and `verification.steps`. Verify both JWTs against Google's JWKS to confirm:
 
-- The Shroud enclave is running on confidential hardware
-- The measured image hash matches the published build
-- Signing and redaction happen inside the attested boundary when level is `confidential` or `sev_snp`
+- The Shroud workload runs as its own service account (workload token)
+- On a Confidential VM — AMD SEV-SNP (`google.compute_engine.instance_confidentiality == 1` in the node token)
+- Signing and redaction happen inside that boundary when level is `confidential` or `sev_snp`
+
+The current level is `confidential`: hardware confidentiality is attested at the node level; the container image measurement (`sev_snp`) is not yet. Compare `image_hash` against the published digest yourself.
 
 ### Audit Hash Chain (Live)
 
@@ -30167,15 +30173,16 @@ Separate asymmetric keys (not envelope KEKs):
 GET https://shroud.1claw.co/v1/shroud/attestation
 ```
 
-Returns `attestation_level`, `identity_token`, `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
+Returns `attestation_level`, `identity_token` (the workload's identity), `node_identity_token` (the node's), `image_hash`, `confidential_claims`, and a `verification` object with step-by-step instructions. Verification summary:
 
-1. Decode JWT from `identity_token`
-2. Validate signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
-3. Confirm `aud` is `https://api.1claw.co`
-4. At `confidential` / `sev_snp` levels, verify Confidential Computing claims (`secboot`, `hwmodel`, etc.)
-5. At `sev_snp`, verify image digest / measurement match
+1. Decode both JWTs (`identity_token`, `node_identity_token`)
+2. Validate both signatures against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`)
+3. Confirm `aud` is `https://api.1claw.co` on both
+4. `identity_token`: `email` is the Shroud workload service account — proves *which* workload
+5. `node_identity_token`: `google.compute_engine.instance_confidentiality == 1` and `project_id` matches — proves the node is a Confidential VM (AMD SEV-SNP)
+6. At `sev_snp`, verify image digest / measurement match
 
-This proves Shroud is running on AMD SEV-SNP hardware with the published image hash when `attestation_level` is `sev_snp`.
+**Current level: `confidential`.** Under GKE Workload Identity the pod's own token cannot carry the Confidential-VM claim, so the node's identity token is relayed into the pod and published alongside. What is attested today is that Shroud runs as its service account on AMD SEV-SNP confidential hardware; the container image measurement (`sev_snp`) is not yet attested. Compare `image_hash` against the published digest at `ghcr.io/1clawai/shroud` yourself.
 
 ### 4. Audit Log Integrity
 
@@ -35738,7 +35745,9 @@ docker run -p 8080:8080 \
 | `PORT` | HTTP port (default: `8080`) |
 | `ONECLAW_BASE_URL` | Your vault API URL |
 
-Note: In hosted mode, auth credentials come from client request headers (`Authorization` and `X-Vault-ID`), not from environment variables. The server creates a new vault client per connection using the caller's credentials.
+Note: In hosted mode, auth credentials come from client request headers (`Authorization`, optionally `X-Vault-ID` and `X-1Claw-Toolsets`), not from environment variables. The server admits a session once per credential (memoised for 10 minutes), resolves the agent's entitlements at admission, offers only the entitled toolsets, and re-checks entitlements every 15 minutes and after any `403` from the vault.
+
+To self-host a narrower server, build the split packages from the same tree: `npm run build:packages` in `packages/mcp` produces `packages/vault/dist` (`@1claw/mcp-vault`) and `packages/guard/dist` (`@1claw/mcp-guard`); each is pruned to its runtime import closure so the excluded domains are not on disk.
 
 
 ---
@@ -36253,8 +36262,20 @@ The server auto-resolves the agent ID via the API key prefix and auto-discovers 
 | `ONECLAW_AGENT_TOKEN` | Yes* (stdio) | — | Static JWT from `POST /v1/auth/agent-token` (alternative to API key; expires ~1 h). |
 | `ONECLAW_VAULT_ID` | No | auto-discovered | UUID of the vault to operate on. When omitted, auto-discovered from the token exchange `vault_ids` or the first org vault. |
 | `ONECLAW_BASE_URL` | No | `https://api.1claw.co` | Override for self-hosted vault |
+| `ONECLAW_MCP_TOOLSETS` | No | entitlement defaults | Comma list of toolsets to expose (or `all`). Narrows or opts in (`automations`, `runtimes`, `chat`, …); never widens past the agent's entitlements. Hosted: send `X-1Claw-Toolsets` instead. See [Toolsets](/docs/vaults/mcp/overview#toolsets--what-a-session-actually-sees). |
 
 \* Set **`ONECLAW_AGENT_API_KEY`** (recommended, simplest) or **`ONECLAW_AGENT_TOKEN`** + **`ONECLAW_VAULT_ID`**.
+
+### Narrower packages
+
+For stdio deployments where "this agent's MCP server cannot sign" must be true of the code on disk, two builds of the same server are published in lockstep:
+
+| Package | Contains | Not in the package |
+| --- | --- | --- |
+| `@1claw/mcp-vault` | `vault` + `approvals` toolsets, `inspect_content`, `vault://secrets` | signing, execute, cards, memory, channels, chat, automations, runtimes, directory, platform, admin |
+| `@1claw/mcp-guard` | `inspect_content` only — no account, no credentials | any vault client at all |
+
+Swap `@1claw/mcp` for `@1claw/mcp-vault` (same env vars) or `@1claw/mcp-guard` (no env vars) in the `args` above.
 
 ## Verifying the connection
 
@@ -36286,6 +36307,32 @@ sidebar_position: 2
 ---
 
 # Tool Reference
+
+:::info Toolsets
+A session is only offered the toolsets its agent is entitled to (see the [overview](/docs/vaults/mcp/overview#toolsets--what-a-session-actually-sees)). The table lists every tool by toolset and when it appears; the sections below document the most-used ones in detail. Tools not in your `tools/list` are not a bug — the agent is not entitled to that toolset, and the server refuses hidden tools by name.
+:::
+
+| Toolset | Offered when | Tools |
+| --- | --- | --- |
+| `inspect` | always | `inspect_content` |
+| `vault` | any agent | `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `list_versions`, `rotate_and_store`, `rotate_generate`, `get_env_bundle`, `resolve_env`, `share_secret`, `grant_access`, `create_vault`, `list_vaults`, `list_oauth_connections`, `list_oauth_providers`, `oauth_revoke_consent`, `oauth_revoke_token` |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `intents` | `intents_api_enabled` | `simulate_transaction`, `simulate_bundle`, `submit_transaction`, `sign_transaction`, `sign_message`, `sign_typed_data`, `sign_digest`, `list_transactions`, `get_transaction`, `provision_signing_key`, `import_signing_key`, `list_signing_keys`, `get_signing_key_balance`, `get_portfolio`, `import_smart_account`, `list_agent_accounts`, `get_safe_module_registry`, `lease_bankr_key` |
+| `execute` | `execution_intents_enabled` | `list_bindings`, `test_binding`, `execute_http`, `execute_intent`, `list_executions`, `list_installed_connectors`, `list_connector_presets` |
+| `cards` | `cards_enabled` | `list_cards`, `get_card_status`, `search_gift_cards`, `order_card`, `order_gift_card` |
+| `memory` | `memory_enabled` | `put_memory`, `get_memory`, `list_memory`, `search_memory`, `delete_memory`, `get_peer_context` |
+| `channels` | `shroud_enabled` | `list_channels`, `create_channel`, `send_channel_message` |
+| `directory` | `discoverable` | `search_agent_directory`, `list_directory_jobs`, `get_directory_job`, `submit_directory_job_bid` |
+| `treasury` | `treasury_signer` on the exchange, else opt-in | `treasury_propose`, `treasury_list_proposals`, `treasury_sign_proposal` |
+| `delegation` | `has_delegations` on the exchange, else opt-in | `list_delegations`, `create_delegation`, `get_effective_delegations`, `delegate_task`, `org_directory` |
+| `chat` | opt-in | `list_chat_conversations`, `send_chat_message` |
+| `automations` | opt-in | `list_automations`, `list_automation_presets`, `create_agent_automation`, `trigger_automation`, `cancel_automation_run` |
+| `runtimes` | opt-in | `list_runtimes`, `manage_runtime`, `runtime_status`, `runtime_logs` |
+| `notification` | opt-in | `list_notification_targets` |
+| `admin` | never on an agent (human JWT over stdio only) | `create_binding`, `create_sub_org`, `list_sub_orgs`, `approve_pending_approval`, `execute_pending_approval`, `migrate_agent_to_safe`, `deprecate_agent_eoa`, `sync_org_safe_allowances`, `list_cedar_policies`, `test_cedar_policy`, `list_opa_policies`, `test_opa_policy`, `get_policy_backend_settings`, `update_policy_backend_settings`, `get_shadow_report`, `get_guardrail_shadow_report`, `list_guardrail_revisions`, `replay_agent_guardrails`, `upload_contract_abi`, `list_contract_abis` |
+| `platform` | never (plt_ keys are rejected) | `platform_list_apps`, `platform_create_app`, `platform_delete_app`, `platform_rotate_key`, `platform_rotate_webhook_secret`, `platform_app_stats`, `platform_list_users`, `platform_bootstrap_user`, `platform_siwe_challenge`, `platform_reissue_claim`, `platform_transfer_ownership`, `platform_grant_access`, `platform_list_grants`, `platform_marketplace`, `platform_list_templates`, `platform_create_template`, `platform_get_template`, `platform_preview_template`, `platform_list_entitlements`, `platform_get_spend_policy`, `platform_get_connection`, `platform_connection_usage`, `platform_get_connection_spend_policy`, `platform_set_connection_spend_policy`, `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_decide_connection_approval`, `platform_list_connection_pending_approvals`, `platform_create_connection_pending_approval`, `platform_decide_connection_pending_approval`, `platform_create_connection_runtime`, `platform_get_connection_runtime`, `platform_delete_connection_runtime`, `platform_connection_agent_chat`, `platform_list_connection_signing_keys`, `platform_get_connection_signing_key`, `platform_deactivate_connection_signing_key`, `platform_patch_connection_agent`, `platform_connection_passkey_enroll_begin`, `platform_connection_passkey_enroll_complete`, `platform_get_connection_portfolio`, `platform_list_connection_automations`, `platform_get_connection_otel_summary`, `platform_get_connection_otel_threats`, `platform_get_connection_otel_topology`, `platform_get_fleet`, `platform_list_fleet_agents`, `platform_plan_fleet_rollout` |
+
+Under `execution_require_tee`, `get_secret`, `get_env_bundle` and `resolve_env` are hidden; writes and metadata stay. Human-only tools (`admin`) exist for a user JWT over stdio and are never offered to an agent, even with `X-1Claw-Toolsets: all`.
 
 ## inspect_content
 
