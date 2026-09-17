@@ -112,7 +112,36 @@ For fully offline use where the model should never see secret values:
 
 Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_secrets` (names only) and `proxy_request` (inject a secret into an HTTP call without exposing the value). See [Local Vault & Daemon](/docs/integrations/cli#local-vault-offline-encrypted) for setup.
 
+## Toolsets — what a session actually sees
+
+The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+
+| Toolset | Offered when | What's in it |
+| --- | --- | --- |
+| `inspect` | always | `inspect_content` |
+| `vault` | any agent | secrets, versions, rotation, env bundles, vaults, sharing, connected accounts |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `intents` | agent has **Intents API** enabled | signing, simulation, submission, signing keys, portfolio, Safe accounts |
+| `execute` | agent has **Execution Intents** enabled | bindings, `execute_http`, `execute_intent`, executions, connectors |
+| `cards` | agent has **Cards** enabled | cards and gift cards |
+| `memory` | agent has **Memory** enabled | memory tools + `get_peer_context` |
+| `channels` | agent has **Shroud** enabled | Telegram / WhatsApp / Discord channels |
+| `directory` | agent is **discoverable** | agent directory + job board |
+| `treasury`, `delegation`, `chat`, `automations`, `runtimes`, `notification` | opt-in only | no per-agent flag exists for these — request them explicitly |
+| `admin` | never on an agent session | human-only endpoints (policies, sub-orgs, approval votes, Safe migration) |
+| `platform` | never | `plt_` endpoints; the MCP server does not accept platform keys |
+
+**Requesting toolsets.** Over stdio set `ONECLAW_MCP_TOOLSETS`; hosted, send the `X-1Claw-Toolsets` header. Both take a comma list (`vault,intents,automations`) or `all`. A request can narrow the defaults or opt into the opt-in sets; it never adds a toolset the agent is not entitled to, and `all` still excludes `admin` and `platform`.
+
+**`execution_require_tee`.** When this flag is on, the vault refuses to return secret *values* to the agent outside a TEE, so `get_secret`, `get_env_bundle` and `resolve_env` are hidden. Writes and metadata (`put_secret`, `rotate_and_store`, `rotate_generate`, `describe_secret`, `list_secrets`, `list_versions`) remain.
+
+**Keeping up with flag changes.** Hosted sessions re-check entitlements every 15 minutes and immediately after a `403` from the vault, then send `notifications/tools/list_changed` so the client re-lists. Over stdio the toolset is fixed at startup — restart the MCP server after changing an agent's flags.
+
+**Degraded lookups.** Each session logs `toolsets=… lookup=full|jwt_only|failed`. `jwt_only` means only the flags carried in the signed token were honoured (intents, execute, shroud); `failed` means the agent defaults were used. A degraded lookup only ever narrows what is offered.
+
 ## Available tools
+
+The groups below list every tool; which ones a given agent sees is decided by the toolsets above.
 
 ### Secrets
 
