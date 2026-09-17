@@ -42,6 +42,7 @@ funds. Read it rather than copying this table.
 | `wait` | yes | — | Pause for a bounded interval |
 | `memory_get` / `memory_put` | yes | — | Read / write agent memory |
 | `memory_search` | — | — | Search agent memory |
+| `read_contract` | yes | — | `eth_call` a view function and decode the result |
 | `http` | — | — | Call a URL (SSRF-validated) |
 | `condition` | — | — | Branch on an expression over earlier step output |
 | `ai_generate` | — | — | Generate text via the agent's model |
@@ -251,6 +252,7 @@ Steps run sequentially with context passing between them. Each step's output is 
 | `memory_get` | — | Read agent memory | `namespace` (default `default`), `key` |
 | `memory_put` | — | Write agent memory | `namespace`, `key`, `value`, `tier`, `ttl_secs?` |
 | `memory_search` | — | Semantic search over agent memory | `namespace`, `query`, `top_k?` (max 50) |
+| `read_contract` | `eth_call` | Read a view function on an EVM chain (v0.61.16) | `chain`, `address`, `function` (e.g. `balanceOf(address)`), `args[]`, `outputs[]` (ABI types; optional when an ABI is uploaded for the contract), `block?` |
 | `notify` | — | Send notifications | `channel` (`webhook`\|`slack`\|`email`), plus channel-specific params |
 | `approval_request` | — | Pause run for human approval | `action?`, `summary`, `reason?`, `risk_tier?` |
 | `condition` | — | Conditional branching | `expression`, `if_true[]`, `if_false[]` |
@@ -335,7 +337,27 @@ The `condition` step type provides full if/else branching:
 }
 ```
 
-Sub-steps within `if_true`/`if_false` are limited to: `log`, `http`, `notify`, `ai_generate`, `memory_get`, `memory_put`.
+Sub-steps within `if_true`/`if_false` are limited to: `log`, `http`, `read_contract`, `notify`, `ai_generate`, `memory_get`, `memory_put`.
+
+### `read_contract`
+
+Reads on-chain state before a decision, so a stop-loss or liquidation guardian conditions on the chain rather than on a price API. Static ABI types only (`address`, `bool`, `uintN`, `intN`, `bytesN`); numbers come back as decimal strings because `uint256` does not fit a JSON number. The RPC is the chain registry's; the step never signs anything.
+
+```json
+{
+  "steps": [
+    { "type": "read_contract", "name": "eth_usd",
+      "chain": "base", "address": "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+      "function": "latestRoundData()",
+      "outputs": ["uint80", "int256", "uint256", "uint256", "uint80"] },
+    { "type": "condition",
+      "expression": "{{steps.eth_usd.output.values.1}} < 200000000000",
+      "if_true": [ { "type": "submit_transaction", "chain": "base", "to": "0x…", "value": "0", "data": "0x…" } ] }
+  ]
+}
+```
+
+Step output: `{ "raw": "0x…", "values": [...], "value": values[0], "named": { "answer": "…" } }`. `named` is filled when the org has uploaded the contract's ABI (`POST /v1/contract-abis`), in which case `outputs` can be omitted.
 
 ## Presets
 

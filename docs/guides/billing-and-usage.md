@@ -369,11 +369,13 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.co/v1/billing/llm-token-billing/disable
 ```
 
-Response shape (fields vary by org and Stripe data availability):
+Response shape (fields vary by org and Stripe data availability). Token usage is **postpaid**: it accrues on the subscription and is invoiced at period end. `credit_balance` is Stripe's prepaid credit-grant balance, which is `0` unless a credit grant was issued for your customer; a zero there is normal and does not block inference — `inference_allowed` is the field to check.
 
 ```json
 {
     "enabled": true,
+    "billing_model": "postpaid_metered",
+    "inference_allowed": true,
     "subscription_status": "active",
     "credit_balance": {
         "available_cents": 0,

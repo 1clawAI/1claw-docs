@@ -8,6 +8,21 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.16 (2026-09-17) {#v06116-2026-09-17}
+
+**`read_contract` automation step.** `eth_call` a view function (an oracle
+price, a balance, a health factor) and decode the result into
+`steps.<name>.output.values[...]` for a `condition` to act on, so fund-moving
+automations no longer need an `http` step to a price API. Static ABI types;
+output types from the step or from an uploaded contract ABI; allowed in
+agent-created automations (it signs nothing). **Connection record carries
+`email` and `display_name`** on `GET /v1/platform/connections/{id}`, so a
+returning user can be recognised and a passkey ceremony begun from the
+connection alone. **LLM token billing status** now states `billing_model:
+postpaid_metered` and `inference_allowed`; `credit_balance` is Stripe's
+prepaid credit-grant balance and is 0 for most orgs, which does not block
+inference. All three from the Fathom team's integration notes.
+
 ### v0.61.15 (2026-09-16) {#v06115-2026-09-16}
 
 **`DELETE /v1/platform/connections/{id}/runtimes/{runtimeId}`.** A platform app
