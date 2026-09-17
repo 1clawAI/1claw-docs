@@ -322,7 +322,7 @@ api_key = resp.data.get("api_key")  # shown once
 All agent guardrails (allowlists, value caps, daily limits) are enforced exactly as for submit. The transaction is recorded for audit and daily-limit tracking.
 
 :::tip TEE signing
-When using Shroud (`shroud.1claw.co`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting.
+When using Shroud (`shroud.1claw.co`), the `/transactions/sign` endpoint performs signing inside the TEE — the private key never leaves the secure enclave, and you get full control over broadcasting. Agents with `intents_require_tee` get this on `api.1claw.co` too: the vault forwards to Shroud for them. See [Requiring the TEE](/docs/agents/intents/guardrails#requiring-the-tee-intents_require_tee).
 :::
 
 ## Transaction simulation (Tenderly) {#simulation}

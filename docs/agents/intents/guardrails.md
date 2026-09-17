@@ -173,6 +173,16 @@ Both `api.1claw.co` and the TEE hosts serve the full Intents API. Choose based o
 
 `intents.1claw.co` is an alias for the same GKE backend as `shroud.1claw.co` — use it when you want a dedicated hostname for the Intents API. Shroud also provides LLM proxy capabilities; see the [Shroud guide](/docs/agents/shroud/overview).
 
+### Requiring the TEE (`intents_require_tee`)
+
+Set `intents_require_tee: true` on an agent (Pro+, human-only) and every transaction submit or sign for that agent is signed inside the TEE, **whichever host the client called**. A client that only knows `api.1claw.co` — the MCP server, the SDK, the CLI — does not have to change anything: the vault carries the intent to Shroud itself, replaying the agent's own JWT, and returns Shroud's response. Shroud enforces the agent's guardrails, signs and broadcasts inside the enclave, and records the transaction back to the vault, exactly as a direct call to `shroud.1claw.co` would.
+
+The vault still refuses (403) when it cannot honour the requirement on the caller's behalf: no Shroud endpoint is configured, the credential is a platform-delegated or human one rather than the agent's own JWT, or the token is DPoP-bound (a bound token cannot be replayed by design — call Shroud directly in that case). `execution_require_tee` behaves the same way for Execution Intents: a direct execute is carried to Shroud's execution surface rather than refused.
+
+### Nonces and failed broadcasts
+
+The vault serialises nonces per agent, chain and address. A transaction whose broadcast fails (for example `insufficient funds for gas × price + value` when a caller-supplied `gas_limit` is far above what the transfer needs) is returned with `status: "signed"` and an `error_message` — it was **not** sent — and its nonce is released so the next submit does not skip ahead of a hole. If the vault's tracker is ahead of the chain's pending nonce and the gap is not covered by transactions it broadcast in the last ten minutes, it trusts the chain. Passing an explicit `nonce` bypasses the tracker entirely.
+
 ## Security model
 
 - **Keys never leave the HSM boundary** — the vault decrypts the key, signs the transaction, and zeroes the memory. The plaintext key is never returned to the caller.

@@ -73,7 +73,7 @@ Shroud includes **20 inspection layers** covering threat detection, secret prote
 
 Shroud exposes an LLM proxy so your agent sends requests to Shroud instead of directly to the provider. Shroud authenticates the agent, (optionally) resolves the provider API key from the vault, runs threat detection, then forwards the request to the upstream LLM. The proxy uses **OpenAI-compatible** paths where applicable; some providers (e.g. Google) use their native path internally.
 
-Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.co` and `shroud.1claw.co` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory.
+Shroud also serves the **Intents API** (transaction signing). Both `api.1claw.co` and `shroud.1claw.co` expose the full Intents API; when you route to Shroud, signing happens inside the TEE — private keys never leave confidential memory. An agent with `intents_require_tee` set gets TEE signing on either host: the vault forwards its submit/sign to Shroud server-side, so MCP, SDK and CLI clients need no special routing.
 
 ### Endpoint
 
