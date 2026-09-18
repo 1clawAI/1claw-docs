@@ -42,12 +42,13 @@ curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 
 ## MPC vs Shamir key custody
 
-Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation. 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today.
+Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation. 1Claw does not offer Turnkey-equivalent threshold ECDSA/EdDSA signing today: every key is `custody: server`, and 1Claw can sign with it alone. Passkey-held 2-party threshold keys (`custody: client_tss`) are in progress — the label, the client-share storage and the server-side refusal are live; the protocol is not. See [Key custody](/docs/security/custody) for the honest version of this comparison.
 
 | | Turnkey | 1Claw |
 |---|---------|-------|
 | **Primary Shamir/MPC use** | Threshold **transaction signing** | Threshold **envelope encryption** (KEK/DEK custody) |
-| **Where full key material exists** | Never assembled outside QuorumOS enclave | DEK reconstructed briefly in Vault memory on authorized read; org KEK reconstruction targeted to Shroud TEE |
+| **Where full key material exists** | Never assembled outside QuorumOS enclave | `server` keys: unwrapped briefly in Vault memory (or only inside Shroud's TEE with `intents_require_tee`); org KEK reconstruction targeted to Shroud TEE. `client_tss` keys (in progress): never assembled anywhere |
+| **Sanctions screening** | Policy-configurable | Mandatory on every signing path, OFAC SDN, fail-closed after 7 days |
 | **Governance quorum** | On-chain signature quorum | Control-plane `consensus_trigger` (approvals before sign/export/policy change) |
 
 ---

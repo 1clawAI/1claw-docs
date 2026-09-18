@@ -8,6 +8,10 @@ sidebar_position: 11
 
 Embedded wallets inherit 1Claw's HSM-backed key hierarchy, envelope encryption, and audit hash chain. This page explains what your users' keys are protected by, what your platform can and cannot do, and how step-up auth fits in.
 
+## Who can sign
+
+Every treasury wallet and agent signing key carries `custody: "server"` today: 1Claw holds the whole private key (envelope-encrypted, HSM-wrapped) and can sign after policy and approvals without a second party. That is custodial, and the controls below limit who *else* can reach the key, not whether 1Claw can. Passkey-held 2-party threshold keys (`custody: "client_tss"`, where neither 1Claw nor the user can sign alone) are in progress — see [Key custody](/docs/security/custody) before making a non-custodial claim about wallets built on this API.
+
 ## Key storage model
 
 | Layer | What it protects |
@@ -37,9 +41,10 @@ See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee
 Before any treasury wallet transaction is signed, the server evaluates guardrails in order:
 
 1. **Human step-up** — `X-Auth-Confirm` (password) or `X-Passkey-Token` (WebAuthn bound to tx digest)
-2. **[Spend policies](/docs/guides/embedded-wallets/spend-policies)** — app default + optional per-user override (`validate_wallet_send()`)
-3. **[Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies)** — role/principal grants (Pro+; API live, runtime enforcement rolling out)
-4. **Account lockout** — failed re-auth on export/send/swap increments lockout counter (10 failures → 15-minute lock)
+2. **Sanctions screen** — destination and any ERC-20 recipient in the calldata checked against the OFAC SDN list; refused with `403` and audited as `sanctions.blocked`; fails closed (`503`) if the list is older than 7 days. Not configurable. See [Key custody](/docs/security/custody).
+3. **[Spend policies](/docs/guides/embedded-wallets/spend-policies)** — app default + optional per-user override (`validate_wallet_send()`)
+4. **[Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies)** — role/principal grants (Pro+; API live, runtime enforcement rolling out)
+5. **Account lockout** — failed re-auth on export/send/swap increments lockout counter (10 failures → 15-minute lock)
 
 Clients and widgets cannot bypass server-side checks — a blocked transaction never reaches signing.
 

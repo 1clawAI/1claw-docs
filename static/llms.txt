@@ -624,7 +624,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 184 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 185 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -684,11 +684,12 @@ Complete index of 184 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [SDKs overview](https://docs.1claw.co/docs/sdks/overview)
 - [Python SDK](https://docs.1claw.co/docs/sdks/python)
 
-### Security (13)
+### Security (14)
 
 - [Agent keys](https://docs.1claw.co/docs/security/agent-keys)
 - [Audit Hash Chain Verification](https://docs.1claw.co/docs/security/audit-verification)
 - [Compliance](https://docs.1claw.co/docs/security/compliance)
+- [Key custody](https://docs.1claw.co/docs/security/custody)
 - [HSM overview](https://docs.1claw.co/docs/security/hsm-overview)
 - [Human Factor Auth (HFA)](https://docs.1claw.co/docs/security/human-factor-auth)
 - [Key hierarchy](https://docs.1claw.co/docs/security/key-hierarchy)
