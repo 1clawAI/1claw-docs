@@ -81,7 +81,7 @@ Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `t
 | --- | --- | --- |
 | Provision | `POST /v1/agents/{id}/signing-keys` | `client.signingKeys.create(agentId, { chain })` |
 | List | `GET /v1/agents/{id}/signing-keys` | `client.signingKeys.list(agentId)` |
-| Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.balance(agentId, chain)` |
+| Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.getBalance(agentId, chain)` |
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |

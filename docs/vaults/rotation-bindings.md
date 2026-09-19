@@ -37,8 +37,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/apis/stripe-key" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.secrets.put(vaultId, "apis/stripe-key", {
-  value: "sk_live_new_key_value",
+await client.secrets.set(vaultId, "apis/stripe-key", "sk_live_new_key_value", {
   type: "api_key",
 });
 ```

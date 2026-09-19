@@ -88,10 +88,9 @@ curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/demo/api-key" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.secrets.put(vaultId, "demo/api-key", {
-  value: "sk-test-abc123def456",
+await client.secrets.set(vaultId, "demo/api-key", "sk-test-abc123def456", {
   type: "api_key",
-  description: "Demo API key for walkthrough",
+  metadata: { description: "Demo API key for walkthrough" },
 });
 ```
 

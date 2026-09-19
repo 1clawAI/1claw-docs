@@ -119,10 +119,10 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
 
 ```bash
 # Write
-1claw memory put <agent-id> --namespace preferences --key timezone --value "America/New_York" --tier durable
+1claw memory put <agent-id> timezone "America/New_York" --namespace preferences --tier durable
 
 # Read
-1claw memory get <agent-id> --namespace preferences --key timezone
+1claw memory get <agent-id> timezone --namespace preferences
 
 # List entries in a namespace
 1claw memory list <agent-id> --namespace preferences
@@ -131,7 +131,7 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
 1claw memory search <agent-id> --namespace knowledge --query "how many vaults?"
 
 # Delete
-1claw memory delete <agent-id> --namespace session --key last-query
+1claw memory delete <agent-id> last-query --namespace session
 ```
 
 </TabItem>

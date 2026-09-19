@@ -2853,7 +2853,7 @@ Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `t
 | --- | --- | --- |
 | Provision | `POST /v1/agents/{id}/signing-keys` | `client.signingKeys.create(agentId, { chain })` |
 | List | `GET /v1/agents/{id}/signing-keys` | `client.signingKeys.list(agentId)` |
-| Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.balance(agentId, chain)` |
+| Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.getBalance(agentId, chain)` |
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
 | Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |
@@ -4479,10 +4479,10 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
 
 ```bash
 # Write
-1claw memory put <agent-id> --namespace preferences --key timezone --value "America/New_York" --tier durable
+1claw memory put <agent-id> timezone "America/New_York" --namespace preferences --tier durable
 
 # Read
-1claw memory get <agent-id> --namespace preferences --key timezone
+1claw memory get <agent-id> timezone --namespace preferences
 
 # List entries in a namespace
 1claw memory list <agent-id> --namespace preferences
@@ -4491,7 +4491,7 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
 1claw memory search <agent-id> --namespace knowledge --query "how many vaults?"
 
 # Delete
-1claw memory delete <agent-id> --namespace session --key last-query
+1claw memory delete <agent-id> last-query --namespace session
 ```
 
 </TabItem>
@@ -12866,10 +12866,9 @@ curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/demo/api-key" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.secrets.put(vaultId, "demo/api-key", {
-  value: "sk-test-abc123def456",
+await client.secrets.set(vaultId, "demo/api-key", "sk-test-abc123def456", {
   type: "api_key",
-  description: "Demo API key for walkthrough",
+  metadata: { description: "Demo API key for walkthrough" },
 });
 ```
 
@@ -17751,7 +17750,7 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 
 ## Toolsets — what a session actually sees
 
-The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -17859,6 +17858,7 @@ Per-key encrypted env vars on vaults replace path-based `config/prod/*` bundles 
 | Tool | What it does |
 |------|-------------|
 | `lease_bankr_key` | Lease a scoped Bankr wallet API key (metadata only — key never in tool output) |
+| `spend_from_passkey_safe` | Spend from a human's passkey-owned Safe under an on-chain Allowance Module grant (cap enforced by the module; guardrails + sanctions first) |
 
 ### Safe accounts & guardrail governance (v0.56+)
 
@@ -18511,7 +18511,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 151 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 156 tools |
 
 ### 5. API Mapping
 
@@ -18538,11 +18538,17 @@ const result = await turnkey.apiClient().signTransaction({ ... });
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
 const client = new OneclawClient({ baseUrl, apiKey });
-const result = await client.agents.signIntent(agentId, {
-  intent_type: "transaction",
+// Sign + broadcast a transaction under the agent's guardrails
+const result = await client.agents.submitTransaction(agentId, {
   chain: "ethereum",
   to: "0x...",
   value: "1000000000000000000",
+});
+// Or sign a message / typed data / digest
+const sig = await client.agents.sign(agentId, {
+  intent_type: "personal_sign",
+  chain: "ethereum",
+  message: "hello",
 });
 ```
 
@@ -23055,7 +23061,7 @@ live pointer, resolved at execution time, so rotating the secret changes what th
 uses with no edit here.
 
 ```bash
-1claw binding create <agent-id> \
+1claw agent binding create <agent-id> \
   --name stripe \
   --type http \
   --config '{"base_url":"https://api.stripe.com"}' \
@@ -23068,13 +23074,13 @@ Types: `http`, `graphql`, `postgres`, `mysql`, `redis`, `grpc`, `smtp`, `s3`,
 ### 2. Check it before the agent depends on it
 
 ```bash
-1claw binding test <agent-id> <binding-id>
+1claw agent binding test <agent-id> <binding-id>
 ```
 
 ### 3. Execute (agent)
 
 ```bash
-1claw binding execute <agent-id> \
+1claw agent binding execute <agent-id> \
   --binding stripe \
   --intent-type http \
   --params '{"method":"GET","path":"/v1/charges"}'
@@ -23105,8 +23111,8 @@ touching the secret.
 
 Guardrails are per binding — host and path allowlists, method limits, and for GraphQL
 `--allow-mutations`, `--allow-introspection`, `--max-query-depth`, `--max-aliases`. An
-agent cannot widen them; `1claw binding update` takes an `approval_id` for a queued
-widening. Review runs with `1claw binding executions <agent-id>`.
+agent cannot widen them; `1claw agent binding update` takes an `approval_id` for a queued
+widening. Review runs with `1claw agent binding executions <agent-id>`.
 
 ---
 
@@ -23162,7 +23168,7 @@ Choose the interface that matches where your code runs:
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
 | **[Shroud proxy](/docs/agents/shroud/overview)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
-| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw binding create` → `1claw binding execute` |
+| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw agent binding create` → `1claw agent binding execute` |
 | **[Intents API](/docs/agents/intents/overview)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
 | **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
 | **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
@@ -36029,7 +36035,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -36085,6 +36091,7 @@ The table below is a sample; see the [Tool Reference](/docs/vaults/mcp/tools) fo
 | `sign_typed_data`  | Sign EIP-712 typed structured data                                  | Write      |
 | `sign_digest`      | Sign a raw 32-byte digest (blind signing, requires `raw_signing_enabled`) | Write |
 | `lease_bankr_key`  | Lease a short-lived Bankr wallet API key                            | Write      |
+| `spend_from_passkey_safe` | Spend from a passkey-owned Safe under an Allowance Module grant | Write      |
 | `platform_list_apps` | List platform apps in the organization                            | Read       |
 | `platform_create_app` | Register a new platform app                                      | Write      |
 | `platform_bootstrap_user` | Bootstrap resources for a connected user from a template    | Write      |
@@ -38451,8 +38458,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/apis/stripe-key" \
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-await client.secrets.put(vaultId, "apis/stripe-key", {
-  value: "sk_live_new_key_value",
+await client.secrets.set(vaultId, "apis/stripe-key", "sk_live_new_key_value", {
   type: "api_key",
 });
 ```

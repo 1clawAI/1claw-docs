@@ -114,7 +114,7 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 
 ## Toolsets — what a session actually sees
 
-The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -222,6 +222,7 @@ Per-key encrypted env vars on vaults replace path-based `config/prod/*` bundles 
 | Tool | What it does |
 |------|-------------|
 | `lease_bankr_key` | Lease a scoped Bankr wallet API key (metadata only — key never in tool output) |
+| `spend_from_passkey_safe` | Spend from a human's passkey-owned Safe under an on-chain Allowance Module grant (cap enforced by the module; guardrails + sanctions first) |
 
 ### Safe accounts & guardrail governance (v0.56+)
 

@@ -156,7 +156,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 151 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 156 tools |
 
 ### 5. API Mapping
 
@@ -183,11 +183,17 @@ const result = await turnkey.apiClient().signTransaction({ ... });
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
 const client = new OneclawClient({ baseUrl, apiKey });
-const result = await client.agents.signIntent(agentId, {
-  intent_type: "transaction",
+// Sign + broadcast a transaction under the agent's guardrails
+const result = await client.agents.submitTransaction(agentId, {
   chain: "ethereum",
   to: "0x...",
   value: "1000000000000000000",
+});
+// Or sign a message / typed data / digest
+const sig = await client.agents.sign(agentId, {
+  intent_type: "personal_sign",
+  chain: "ethereum",
+  message: "hello",
 });
 ```
 

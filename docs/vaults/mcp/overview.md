@@ -62,7 +62,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 155 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -118,6 +118,7 @@ The table below is a sample; see the [Tool Reference](/docs/vaults/mcp/tools) fo
 | `sign_typed_data`  | Sign EIP-712 typed structured data                                  | Write      |
 | `sign_digest`      | Sign a raw 32-byte digest (blind signing, requires `raw_signing_enabled`) | Write |
 | `lease_bankr_key`  | Lease a short-lived Bankr wallet API key                            | Write      |
+| `spend_from_passkey_safe` | Spend from a passkey-owned Safe under an Allowance Module grant | Write      |
 | `platform_list_apps` | List platform apps in the organization                            | Read       |
 | `platform_create_app` | Register a new platform app                                      | Write      |
 | `platform_bootstrap_user` | Bootstrap resources for a connected user from a template    | Write      |

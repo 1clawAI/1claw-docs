@@ -193,7 +193,7 @@ live pointer, resolved at execution time, so rotating the secret changes what th
 uses with no edit here.
 
 ```bash
-1claw binding create <agent-id> \
+1claw agent binding create <agent-id> \
   --name stripe \
   --type http \
   --config '{"base_url":"https://api.stripe.com"}' \
@@ -206,13 +206,13 @@ Types: `http`, `graphql`, `postgres`, `mysql`, `redis`, `grpc`, `smtp`, `s3`,
 ### 2. Check it before the agent depends on it
 
 ```bash
-1claw binding test <agent-id> <binding-id>
+1claw agent binding test <agent-id> <binding-id>
 ```
 
 ### 3. Execute (agent)
 
 ```bash
-1claw binding execute <agent-id> \
+1claw agent binding execute <agent-id> \
   --binding stripe \
   --intent-type http \
   --params '{"method":"GET","path":"/v1/charges"}'
@@ -243,8 +243,8 @@ touching the secret.
 
 Guardrails are per binding — host and path allowlists, method limits, and for GraphQL
 `--allow-mutations`, `--allow-introspection`, `--max-query-depth`, `--max-aliases`. An
-agent cannot widen them; `1claw binding update` takes an `approval_id` for a queued
-widening. Review runs with `1claw binding executions <agent-id>`.
+agent cannot widen them; `1claw agent binding update` takes an `approval_id` for a queued
+widening. Review runs with `1claw agent binding executions <agent-id>`.
 
 ---
 
@@ -300,7 +300,7 @@ Choose the interface that matches where your code runs:
 | **[TypeScript SDK](/docs/sdks/javascript)** | Node.js apps, agents, platform backends | `npm install @1claw/sdk` |
 | **[REST API](/docs/reference/api-reference)** | Any language, curl, Postman | [Human](/docs/quickstart/humans) or [Agent](/docs/quickstart/agents) quickstart |
 | **[Shroud proxy](/docs/agents/shroud/overview)** | LLM traffic — redaction, injection detection, vault-backed provider keys | `1claw proxy` or agent with Shroud enabled |
-| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw binding create` → `1claw binding execute` |
+| **[Execution bindings](#execution-path-call-an-api-without-holding-the-key)** | Agent calls an API, database or mailbox without the credential entering its process | `1claw agent binding create` → `1claw agent binding execute` |
 | **[Intents API](/docs/agents/intents/overview)** | On-chain signing without exposing private keys | Enable on agent → `1claw agent tx submit` |
 | **Local vault + daemon** | Offline dev, secret never in model context | `1claw local init` → `1claw setup --local` |
 | **Docker agent runtime** | Isolated agent in a container, chat UI on :3000 | `1claw init --docker` |
