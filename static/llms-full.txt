@@ -24746,6 +24746,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.25 (2026-09-19) {#v06125-2026-09-19}
+
+**Two wraps before funds, enforced.** A self-custody (`client_tss`) wallet's address and **Receive** are held back on the wallet card until the owner's share is recoverable from two places; `GET /v1/treasury/wallets` now reports `owner_wraps` (passkey PRF + recovery-code wraps; runtime holder wraps do not count). New **Backups** dialog: **Add a passkey** (rewrap under a second PRF passkey), **Create / Rotate recovery code** (32-character code shown once, never stored by 1Claw; the share is wrapped under HKDF of the code with a fresh salt), and **Restore from code** (re-wraps the share under a new passkey when every holding passkey is gone). Runtime base image moves to Node 24 (openclaw requires ≥ 24.16). OpenAPI spec 0.61.23, `@1claw/sdk` 0.61.16 (generated types).
+
 ### v0.61.24 (2026-09-18) {#v06124-2026-09-18}
 
 **Agent pairing with a fingerprint.** `POST /v1/agents/enroll` takes an optional `public_key`; the response carries the key's `SHA256:` fingerprint, which the approval page now shows for the human to compare with what the agent printed, and a `poll_token` the agent uses on `GET /v1/agents/enroll/{pairing_id}/status` to learn the decision and collect its API key itself, once — no key in an email. `1claw agent enroll --pair` does the whole ceremony (CLI 0.61.8); `AgentsResource.pair()` in `@1claw/sdk` 0.61.15, `enrollment_status()` in `oneclaw` 0.61.3. **Proposals** (`/proposals`): agent signing requests — messages, typed data, digests, transactions — rendered structurally with a decided history, "Refresh status", and passkey step-up for tier-2 signatures; the same view ships as `<OneclawProposalDetail />` in `@1claw/wallet-react` 0.6.0 with `client.listProposals/getProposal/decideProposal`. **Home**: an agent activity feed ("Nothing needs you" / N updates). OpenAPI spec 0.61.22.
@@ -29465,7 +29469,7 @@ Treasury → **Self-custody Solana wallet**. What happens:
 3. **Sending**: `POST /v1/treasury/wallets/solana/tss/prepare` builds the unsigned message after wallet-access, sanctions and spend-policy checks. Your touch (bound to `tss_sign` + the SHA-256 of the message) unwraps your share; the vault decodes the message and screens every transfer destination again, then both halves sign (`/v1/keys/{id}/tss/sign/begin` → `complete`). The vault verifies the aggregate under the group key before returning it, and `…/tss/broadcast` submits only a message whose signature verifies and whose `to` is inside it. The vault's signing nonces are deleted before they are used, so a retried request can never reuse them.
 4. The server signing path refuses the key: there is no `private_key` secret for it to unwrap — only a `tss_share`, which is one Shamir share of a 2-of-2 key.
 
-Fund it only after a second wrap exists (a second passkey via **rewrap**, or a recovery code): synced passkeys survive device loss, but 1Claw holds one share and can never hold two.
+Fund it only after a second wrap exists: synced passkeys survive device loss, but 1Claw holds one share and can never hold two. The wallet card holds the address and **Receive** back until there are two owner wraps — open **Backups** and either **Add a passkey** (a touch from a passkey that already holds the share, then a touch from the new one) or **Create recovery code** (a touch from a holding passkey, then a 32-character code shown once, which 1Claw does not store). **Restore from code** puts the share back under a new passkey if every holding passkey is gone. The list response carries `owner_wraps` so this is a fact from the vault, not a browser guess; runtime holder wraps are not counted.
 
 ## Passkey-owned Safes on EVM (available now)
 
@@ -29497,7 +29501,7 @@ Two deployment switches exist for the transition, both off until an operator tur
 
 1. **Register a passkey** under Settings → Security. The browser is asked whether the authenticator supports the PRF extension; the answer is stored as `prf_supported` and shown as **Can hold wallet keys** on the passkey. Most platform passkeys (iCloud Keychain, Google Password Manager, recent Windows Hello) and YubiKey 5 support it.
 2. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores your wrapped share for a key you own — one wrap per passkey (`passkey_prf`) and one recovery-code wrap (`recovery_code`). `GET` returns your wraps, unopened. `POST …/rewrap` adds a wrap for a newly added passkey while the share is in memory. The vault never reads the blob for any other purpose; a build-time guard test holds that line.
-3. **Two wraps before funds.** A `client_tss` wallet cannot receive value until it has two wraps (two passkeys, or a passkey plus the recovery code). Synced passkeys survive device loss; a second credential survives the first one's loss; the recovery code is yours alone. 1Claw holds one share and can never hold two.
+3. **Two wraps before funds.** The dashboard does not show a `client_tss` wallet's address until it has two owner wraps (two passkeys, or a passkey plus the recovery code; `GET /v1/treasury/wallets` reports `owner_wraps`). Synced passkeys survive device loss; a second credential survives the first one's loss; the recovery code is yours alone. 1Claw holds one share and can never hold two.
 
 ## What happens to existing users and agents
 

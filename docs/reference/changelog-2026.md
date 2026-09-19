@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.25 (2026-09-19) {#v06125-2026-09-19}
+
+**Two wraps before funds, enforced.** A self-custody (`client_tss`) wallet's address and **Receive** are held back on the wallet card until the owner's share is recoverable from two places; `GET /v1/treasury/wallets` now reports `owner_wraps` (passkey PRF + recovery-code wraps; runtime holder wraps do not count). New **Backups** dialog: **Add a passkey** (rewrap under a second PRF passkey), **Create / Rotate recovery code** (32-character code shown once, never stored by 1Claw; the share is wrapped under HKDF of the code with a fresh salt), and **Restore from code** (re-wraps the share under a new passkey when every holding passkey is gone). Runtime base image moves to Node 24 (openclaw requires ≥ 24.16). OpenAPI spec 0.61.23, `@1claw/sdk` 0.61.16 (generated types).
+
 ### v0.61.24 (2026-09-18) {#v06124-2026-09-18}
 
 **Agent pairing with a fingerprint.** `POST /v1/agents/enroll` takes an optional `public_key`; the response carries the key's `SHA256:` fingerprint, which the approval page now shows for the human to compare with what the agent printed, and a `poll_token` the agent uses on `GET /v1/agents/enroll/{pairing_id}/status` to learn the decision and collect its API key itself, once — no key in an email. `1claw agent enroll --pair` does the whole ceremony (CLI 0.61.8); `AgentsResource.pair()` in `@1claw/sdk` 0.61.15, `enrollment_status()` in `oneclaw` 0.61.3. **Proposals** (`/proposals`): agent signing requests — messages, typed data, digests, transactions — rendered structurally with a decided history, "Refresh status", and passkey step-up for tier-2 signatures; the same view ships as `<OneclawProposalDetail />` in `@1claw/wallet-react` 0.6.0 with `client.listProposals/getProposal/decideProposal`. **Home**: an agent activity feed ("Nothing needs you" / N updates). OpenAPI spec 0.61.22.

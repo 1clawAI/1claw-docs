@@ -49,7 +49,7 @@ Treasury → **Self-custody Solana wallet**. What happens:
 3. **Sending**: `POST /v1/treasury/wallets/solana/tss/prepare` builds the unsigned message after wallet-access, sanctions and spend-policy checks. Your touch (bound to `tss_sign` + the SHA-256 of the message) unwraps your share; the vault decodes the message and screens every transfer destination again, then both halves sign (`/v1/keys/{id}/tss/sign/begin` → `complete`). The vault verifies the aggregate under the group key before returning it, and `…/tss/broadcast` submits only a message whose signature verifies and whose `to` is inside it. The vault's signing nonces are deleted before they are used, so a retried request can never reuse them.
 4. The server signing path refuses the key: there is no `private_key` secret for it to unwrap — only a `tss_share`, which is one Shamir share of a 2-of-2 key.
 
-Fund it only after a second wrap exists (a second passkey via **rewrap**, or a recovery code): synced passkeys survive device loss, but 1Claw holds one share and can never hold two.
+Fund it only after a second wrap exists: synced passkeys survive device loss, but 1Claw holds one share and can never hold two. The wallet card holds the address and **Receive** back until there are two owner wraps — open **Backups** and either **Add a passkey** (a touch from a passkey that already holds the share, then a touch from the new one) or **Create recovery code** (a touch from a holding passkey, then a 32-character code shown once, which 1Claw does not store). **Restore from code** puts the share back under a new passkey if every holding passkey is gone. The list response carries `owner_wraps` so this is a fact from the vault, not a browser guess; runtime holder wraps are not counted.
 
 ## Passkey-owned Safes on EVM (available now)
 
@@ -81,7 +81,7 @@ Two deployment switches exist for the transition, both off until an operator tur
 
 1. **Register a passkey** under Settings → Security. The browser is asked whether the authenticator supports the PRF extension; the answer is stored as `prf_supported` and shown as **Can hold wallet keys** on the passkey. Most platform passkeys (iCloud Keychain, Google Password Manager, recent Windows Hello) and YubiKey 5 support it.
 2. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores your wrapped share for a key you own — one wrap per passkey (`passkey_prf`) and one recovery-code wrap (`recovery_code`). `GET` returns your wraps, unopened. `POST …/rewrap` adds a wrap for a newly added passkey while the share is in memory. The vault never reads the blob for any other purpose; a build-time guard test holds that line.
-3. **Two wraps before funds.** A `client_tss` wallet cannot receive value until it has two wraps (two passkeys, or a passkey plus the recovery code). Synced passkeys survive device loss; a second credential survives the first one's loss; the recovery code is yours alone. 1Claw holds one share and can never hold two.
+3. **Two wraps before funds.** The dashboard does not show a `client_tss` wallet's address until it has two owner wraps (two passkeys, or a passkey plus the recovery code; `GET /v1/treasury/wallets` reports `owner_wraps`). Synced passkeys survive device loss; a second credential survives the first one's loss; the recovery code is yours alone. 1Claw holds one share and can never hold two.
 
 ## What happens to existing users and agents
 
