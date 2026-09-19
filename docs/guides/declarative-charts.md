@@ -1,6 +1,6 @@
 ---
 title: Declarative charts (`1claw apply`)
-description: Provision a whole swarm from one file — vaults, agents, policies and connectors — with a preview you can trust and refusals you can act on.
+description: Provision a whole swarm from one file — vaults, agents, policies, connectors and bindings — with a preview you can trust and refusals you can act on.
 sidebar_position: 30
 ---
 
@@ -27,12 +27,55 @@ spec:
       connectors:
         - preset: gmail
           scopes: [https://www.googleapis.com/auth/gmail.readonly]
+      bindings:
+        - name: crm
+          binding_type: http
+          config: { base_url: https://crm.example.com }
+          guardrails: { allowed_hosts: [crm.example.com] }
+          credential: { vault_ref: inbox-vault, path: crm/token }
   policies:
     - vault_ref: inbox-vault
       principal_ref: agent:inbox-triage
       paths: [integrations/**]
       permissions: [read]
 ```
+
+Apply walks the chart in dependency order — vaults, agents, then policies,
+connectors and bindings — and reports each one:
+
+```
+  ✓ created vault/inbox-vault
+  ✓ created agent/inbox-triage
+  ✓ created policy/inbox-vault:inbox-triage:integrations/**
+  ✓ created connector/inbox-triage/gmail
+      sign in to finish: https://accounts.google.com/o/oauth2/…
+  ✓ created binding/inbox-triage/crm
+```
+
+## Bindings from a spec
+
+A service block in a bot's config becomes an execution-intent binding without a
+dashboard round trip. A chart binding is declared in full — the same fields
+`POST /v1/agents/{id}/bindings` takes — with two rules the API alone does not
+impose:
+
+- **`guardrails.allowed_hosts` is required and non-empty.** The binding's
+  egress is the declaration. A binding created from a file with no allowlist
+  would be wider than anything a person is asked to approve, so the chart is
+  rejected before anything is created.
+- **The credential is a pointer, never a value.** `credential: {vault_ref,
+  path}` names a secret in a chart vault (a `vault_ref` credential source,
+  resolved at execution time). A chart is a file that gets committed; a token
+  in it is a token in the repository.
+
+`binding_type` is any type the bindings API accepts on a paid plan (`http`,
+`graphql`, `grpc`, `postgres`, `mysql`, `redis`, `s3`, `smtp`, `cloud_sdk`,
+`custom`). Bindings and connectors share one namespace per agent, so a binding
+and a connector cannot both be called `crm`.
+
+Config and guardrails are create-only. A chart that would change a live
+binding's hosts is refused, because that is a guardrail edit and those route
+through the approval flow on `PATCH …/bindings/{id}`.
 
 ## What apply will not do
 
@@ -118,13 +161,35 @@ field you were looking for had vanished.
 ## Connectors need a person
 
 A chart can install the Gmail connector. Someone still has to sign in. Apply
-returns the authorization URL and says so rather than pretending the binding is
-usable:
+creates the binding, returns the authorization URL on the resource, and says so
+rather than pretending the binding is usable:
 
 ```
+  ✓ created connector/inbox-triage/gmail
+      sign in to finish: https://accounts.google.com/o/oauth2/…
+
   warning: agent 'inbox-triage' installs the Gmail connector, which needs
            someone to sign in before it can be used.
 ```
+
+OAuth consent is the only human step. Re-applying after the sign-in reports the
+connector `unchanged`.
+
+## Policies
+
+Each path in a policy entry is its own row, keyed `vault:agent:path`, so a
+second apply that adds a path creates one policy and leaves the others
+`unchanged`. Permissions are create-only: widening or narrowing a grant is
+refused and points at the policy endpoint, where consensus and the audit trail
+for that live.
+
+## What waits on what
+
+A policy on a vault that consensus queued this run cannot be created yet. It is
+reported as `skipped` — "waiting on vault 'inbox-vault', which was not created
+this run" — and the next apply, once the vault exists, creates it. One gated
+resource is not a failed deployment, and a dependent resource is not a failed
+one either.
 
 ## Where the reconciler lives
 
@@ -147,6 +212,9 @@ currently read.
 
 ## Current limits
 
-v1 creates and reports. In-place patching of existing resources is not enabled
-yet — a chart that would change one says so and does nothing. There is no
-prune, and no offline apply.
+Apply creates, and patches an agent's `description` and `system_prompt` in place
+(through the same `update_agent` gate a dashboard edit takes, so consensus on
+`agent.update` applies). Everything else — vault fields, policy permissions,
+binding config and guardrails, connector presets — is create-only and a
+difference is refused with the endpoint that owns it. There is no prune, and no
+offline apply.
