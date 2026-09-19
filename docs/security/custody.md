@@ -60,6 +60,23 @@ Treasury → **Passkey-owned Safes** → *New passkey Safe*. Pick a chain (Base,
 - **Recovery** is the passkey's: a synced platform passkey (iCloud Keychain, Google Password Manager) survives device loss; a hardware key does not. Adding a second owner to the Safe is on the roadmap; until then, use a synced passkey.
 - Audit events: `passkey_safe.created`, `passkey_safe.executed` (with the SafeTx hash and both transaction hashes).
 
+## Agents signing without a touch (runtime share holder)
+
+An agent cannot touch a passkey. For unattended, below-cap operation the second share of a `client_tss` wallet can live in the **Shroud sidecar inside your hosted runtime**:
+
+1. The sidecar generates a P-256 key at boot and registers it (`POST /v1/runtimes/{id}/tss/holder`).
+2. From the wallet card, **Runtime signing** → pick the runtime: one passkey touch unlocks your share, which is re-wrapped to the sidecar's key (ECIES) and stored with the vault as ciphertext only that sidecar can open (`PUT /v1/keys/{id}/client-share/holder`). The wallet must already be delegated to that runtime's agent.
+3. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
+4. Revoke by deleting the runtime, deleting the wrap, or removing the delegation. The vault still holds one share only; the sidecar's private key never leaves the container, and your own passkey wraps are untouched.
+
+The sidecar runs the same FROST crate as your browser (compiled to WebAssembly, executed with wazero), so there are not two implementations of the protocol to keep in step.
+
+## Moving an existing wallet to self-custody (re-key)
+
+A server-custody Solana wallet shows **Move to self-custody** on its card. The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time — a sweep of its balance to the new address — the old wallet is deactivated, and the whole move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep signature). If the old wallet was empty its key is destroyed outright; otherwise it is kept until the sweep confirms.
+
+Two deployment switches exist for the transition, both off until an operator turns them on: `ONECLAW_SERVER_CUSTODY_GENERATION=deny` stops minting new server-custody keys for every org except a named exception list, and `ONECLAW_LAZY_WALLET_PROVISIONING=true` stops signup from creating a treasury wallet on your behalf (wallets are created when you ask for one).
+
 ## Passkeys and shares
 
 1. **Register a passkey** under Settings → Security. The browser is asked whether the authenticator supports the PRF extension; the answer is stored as `prf_supported` and shown as **Can hold wallet keys** on the passkey. Most platform passkeys (iCloud Keychain, Google Password Manager, recent Windows Hello) and YubiKey 5 support it.
@@ -70,6 +87,10 @@ Treasury → **Passkey-owned Safes** → *New passkey Safe*. Pick a chain (Base,
 
 Nothing, until the owner acts. Every existing key stays `server` and signs exactly as before. A user with a PRF passkey can, once threshold signing ships, re-key an empty wallet silently at their next passkey session or move a funded one through a one-time ceremony they start. Agents inside 1Claw runtimes keep their autonomy through a bounded second share in the runtime sidecar; above-cap transactions return `authorization_required` and wait for the owner's touch instead of signing. Unmigrated keys never return it.
 
+## Proof, not promise
+
+`vault/tests/no_server_only_reconstruction.rs` enumerates every place the vault can read signing material and fails the build if any of them is not (a) a server-custody path gated on `custody`, (b) the threshold path, or (c) the passkey-owner path. `client_shares_are_opaque.rs` holds that the vault never reads a customer share except to return it to its owner or its holder. `sanctions_screen_on_every_signing_path.rs` holds that every one of those paths screens. A new signing path that is not listed does not compile past CI.
+
 ## Inventory
 
-`scripts/custody-inventory.sh` writes `audits/custody-inventory.md`: every key store by chain and custody label, with counts and who can reconstruct each. It is the baseline against which the move to `client_tss` is measured.
+`scripts/custody-inventory.sh` writes `audits/custody-inventory.md`: every key store by chain and custody label, with counts and who can reconstruct each. It is the baseline against which the move to `client_tss` is measured. As of 2026-09-18: 1,575 agent signing keys and 2,342 treasury wallets, all `server`; 0 `client_tss`; 0 passkey-owned Safes; 11 passkeys registered, none yet re-registered with PRF.
