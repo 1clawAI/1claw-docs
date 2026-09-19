@@ -98,18 +98,25 @@ Other paths (e.g. `/v1/messages` for Anthropic) are supported; the proxy routes 
 | `X-Shroud-Api-Key` | Provider API key. If omitted, Shroud tries to resolve the key from the vault (see [Vault key resolution](#vault-key-resolution)). |
 | `X-Shroud-Model` | Model name (e.g. `gpt-4o-mini`, `gemini-2.5-flash`). Can also be set in the request body for some providers. See [Shroud supported models](/docs/reference/shroud-supported-models). |
 
-### Auth format: `X-Shroud-Agent-Key`
+### Auth: static Bearer or `X-Shroud-Agent-Key` {#auth}
 
-The value must be exactly:
+The gateway takes the credential from `X-Shroud-Agent-Key` or, failing that, `Authorization: Bearer …`. Any of these forms work in either header:
 
-```text
-agent_id:api_key
+| Form | Example | Who uses it |
+|------|---------|-------------|
+| **Router key** | `sk-shroud-v1-Q2c5o0yQ3bHkT9m1vXz8Lw7nRp4aEf6u` | Stock OpenAI / Anthropic / LangChain SDKs: set `api_key` to the router key and `base_url` to `https://shroud.1claw.co/v1`. The `sk-` prefix satisfies SDK validation; the gateway exchanges it for the agent's token itself. |
+| **Agent key** | `ocv_abc123…` | 1Claw-native agents. Exchanged key-only, no agent id needed. |
+| **`agent_id:api_key`** | `550e8400-…:ocv_abc123…` | The original form; still accepted. |
+| **Agent JWT** | `eyJ…` | Pre-minted tokens (runtimes, automations). Verified locally. |
+| **`x402`** | `Authorization: Bearer x402` | The payment rail: answered with a **402** challenge (`x402Version`, `accepts[]`) rather than a 401, so a paying client can settle and retry. |
+
+**Router keys** are minted per agent by a human — `POST /v1/agents/{agent_id}/router-keys` (`name`, optional `max_concurrent_streams`, `spend_cap_usd`) returns the plaintext **once** plus `base_url`; `GET` lists keys (prefix only); `DELETE …/{key_id}` revokes. The agent must have `shroud_enabled: true`; up to 20 live keys per agent. A router-key token lives at most **60 s** and the gateway re-exchanges on expiry, so a revoke takes effect within a minute. The token carries a `router_key` claim (`id`, `max_concurrent_streams`, `spend_cap_micro_usd`); the gateway counts open streams per router key, so one key's fleet cannot exhaust another's.
+
+```python
+from openai import OpenAI
+client = OpenAI(api_key="sk-shroud-v1-…", base_url="https://shroud.1claw.co/v1",
+                default_headers={"X-Shroud-Provider": "openai"})
 ```
-
-- `agent_id`: the agent’s UUID from 1Claw (e.g. from the dashboard or `GET /v1/agents/me`).
-- `api_key`: the agent’s API key (e.g. `ocv_...`).
-
-Example: `X-Shroud-Agent-Key: 550e8400-e29b-41d4-a716-446655440000:ocv_abc123...`
 
 ### Vault key resolution
 
