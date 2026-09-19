@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.36 (2026-09-19) {#v06136-2026-09-19}
+
+**No more plan trials.** `POST /v1/billing/subscribe` no longer starts a 14-day Stripe trial: checkout collects a payment method and charges on completion, for every tier. The request's `trial` field is accepted and ignored (deprecated in the spec) so older clients are not rejected; existing subscriptions already in a trial run to their end unchanged. The pricing page, homepage, billing settings and the in-wizard upgrade prompt now offer a single **Subscribe** action and say what every paid plan includes (one Small/Medium Agent Runtime). Guard test `checkout_never_starts_a_trial`. The spec's `SubscribeRequest` enums also caught up with the code (`tier: pro | team | business`, `interval: monthly | annual`). The Free tier's limited runtime access (10 hours, 3-day window) is unchanged. OpenAPI spec 0.61.29.
+
 ### v0.61.35 (2026-09-19) {#v06135-2026-09-19}
 
 **Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 159 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
