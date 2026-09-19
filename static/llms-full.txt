@@ -2772,7 +2772,7 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 
 ---
 title: Multi-Chain Signing
-description: HSM-backed signing for Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron. Provision keys, sign transactions, and broadcast — the private key never leaves hardware.
+description: Server-custody signing for Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron. Provision keys, sign transactions, and broadcast — the private key is never returned to the agent.
 sidebar_position: 14
 ---
 
@@ -2781,7 +2781,7 @@ import TabItem from '@theme/TabItem';
 
 # Multi-Chain Signing
 
-1Claw signs and broadcasts transactions for **six blockchains** from inside the HSM (or the Shroud TEE). The private key never leaves hardware. Agents submit transaction intents; the server signs, optionally broadcasts, and returns the result.
+1Claw signs and broadcasts transactions for **six blockchains**. Keys are envelope-encrypted under a KEK held in Cloud KMS (HSM on paid tiers) and unwrapped in the vault — or inside the Shroud TEE for agents with `intents_require_tee` — only to sign. Agents submit transaction intents; the server signs, optionally broadcasts, and returns the result. The private key is never returned to the agent. These are `custody: server` keys; see [Custody](/docs/security/custody) for the threshold and passkey-owner models.
 
 This page consolidates everything you need: key provisioning, supported chains, transaction signing, and guardrails. For the full Intents API reference (EVM-specific features like EIP-712, simulation, gasless transactions), see [Intents API](/docs/agents/intents/overview).
 
@@ -3726,7 +3726,7 @@ Part of the [Intents API](/docs/agents/intents/overview) guide.
 
 ## Multi-chain signing keys {#signing-keys}
 
-Instead of manually storing a raw private key in a vault, you can provision HSM-backed signing keys directly on the agent. 1claw generates the keypair inside the HSM and stores the private key in the org's `__agent-keys` vault — the key never leaves hardware.
+Instead of manually storing a raw private key in a vault, you can provision signing keys directly on the agent. 1claw generates the keypair in the vault and stores the private key in the org's `__agent-keys` vault, envelope-encrypted under a KEK that never leaves Cloud KMS (HSM on paid tiers). The agent never sees the key; the vault (or the Shroud TEE) unwraps it to sign and drops it. This is `custody: server` — 1Claw can sign on the agent's behalf. For keys 1Claw cannot sign with alone, see [Custody](/docs/security/custody).
 
 ### Supported chains
 
@@ -3804,7 +3804,7 @@ If you're using the [Platform API](/docs/platform-api/overview), signing keys ca
 
 ## Non-EVM transaction signing {#non-evm}
 
-The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
+The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the vault (or the Shroud TEE) after the key is unwrapped with the KMS-held KEK; the private key is never returned to the agent.
 
 Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl-rust) for **31 supported transaction types** — a 1Claw subset, not the full XRPL catalog.
 
@@ -18370,6 +18370,18 @@ If your agents access secrets, call LLMs, run automations, communicate through c
 - **Deep transaction inspection** (`deep_inspect` for multicall, Safe, ERC-4337)
 - **Cedar/OPA** formal policy backends for enterprise compliance
 
+## Custody: read the label before you compare
+
+Turnkey users ask this first, so here it is first. Turnkey generates keys inside an enclave and has no server-side path that can produce a signature without the enclave's policy engine. 1Claw has three custody models, and every key carries a `custody` field that says which one it is:
+
+| `custody` | Who can sign alone | Chains | Turnkey analogue |
+|---|---|---|---|
+| `server` (the default today) | **1Claw**, after policy, guardrails, approvals and the OFAC screen. The key is envelope-encrypted under a KMS KEK and unwrapped in the vault (or Shroud's TEE) to sign. | All six | None — this is closer to a hosted wallet with a policy engine in front |
+| `client_tss` | **Nobody.** 2-of-2 FROST: 1Claw holds one share, the user's passkey (WebAuthn PRF) wraps the other. The server signing path refuses the key outright. An agent can co-sign unattended only through a runtime share holder the user provisioned. | Solana | Turnkey's enclave guarantee, with the second share in the user's hands rather than in a second enclave |
+| `passkey_owner` | **Nobody.** A Safe whose only owner is the user's passkey (Safe's WebAuthn signer + P-256 verifier / RIP-7212). 1Claw relays gas; no key exists. | Base, Optimism, Arbitrum, Polygon, Ethereum | Closest to a Turnkey passkey wallet |
+
+Details, guard tests and the counsel-facing statement are on the [Custody](/docs/security/custody) page. The honest migration answer: if your product promised users a non-custodial wallet on Turnkey, provision `passkey_owner` Safes (EVM) or `client_tss` wallets (Solana) on 1Claw; if it was a server-side signer behind Turnkey policies, `server` custody plus 1Claw's policy engine is the like-for-like move and the rest of this guide is about that.
+
 ## Migration Checklist
 
 ### 1. Map Your Turnkey Wallets to 1Claw Signing Keys
@@ -18533,6 +18545,18 @@ const result = await client.agents.signIntent(agentId, {
   value: "1000000000000000000",
 });
 ```
+
+### 7. End-user UX mapping (wallet apps)
+
+For a consumer wallet that used Turnkey's dashboard-style flows, the same surfaces exist:
+
+| Turnkey UX | 1Claw |
+|---|---|
+| Add an agent by scanning / pasting its key and comparing a fingerprint | `1claw agent enroll --pair` (or `agents.pair()` in the SDK): the agent generates an ed25519 identity, the approval page shows its `SHA256:` fingerprint next to what the agent printed, and the agent collects its API key itself on approval |
+| Proposals tab — "Sign personal message", full payload, provider, expiry, status | `/proposals` in the dashboard, and `<OneclawProposalDetail />` from `@1claw/wallet-react` (`client.listProposals / getProposal / decideProposal`) with passkey step-up for tier-2 signatures |
+| Home activity feed | Agent activity feed on the dashboard home (approvals, sends, guardrail rejections, sanctions blocks, pairings) |
+| Passkey sign-in and per-action touch | Passkeys with step-up (`X-Passkey-Token`), risk tiers, and — for self-custody keys — the touch that unlocks the user's share |
+| Export wallet | `POST …/export` for `server` keys (step-up + control-plane consensus); not applicable to `client_tss` / `passkey_owner`, where there is nothing on the server to export |
 
 ## Migration Support
 
@@ -19021,7 +19045,7 @@ import TabItem from '@theme/TabItem';
 | Transaction guardrails | Engine admin controls | Per-agent allowlists, spend caps, daily limits |
 | AI agent integration | Not built in | Native agent auth, MCP, policy engine |
 
-**Key difference:** Thirdweb Engine is a self-hosted backend signer you run on your own infrastructure. 1claw is a managed service where signing happens inside HSM/TEE and keys never leave the secure boundary. If you are already running Engine and happy with the ops burden, keep it. If you want managed signing with policy enforcement, use 1claw.
+**Key difference:** Thirdweb Engine is a self-hosted backend signer you run on your own infrastructure. 1claw is a managed service where keys are envelope-encrypted under a KMS-held KEK and unwrapped only to sign (in the vault, or the Shroud TEE), with policy and guardrails in front. If you are already running Engine and happy with the ops burden, keep it. If you want managed signing with policy enforcement, use 1claw.
 
 ## Replacing Thirdweb Engine with 1claw
 
@@ -19651,7 +19675,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/vaults/cmek) (client-side encryption layer) and [MPC](/docs/vaults/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.co` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
-- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
+- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server unwraps the key with a KMS-held KEK, signs (in the vault or in Shroud’s TEE) and broadcasts. The private key is never returned to the agent.
 - **Treasury** provides native multi-chain wallet generation (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) for human users and tracks onchain multisig treasuries with agent access requests.
 
 **Task walkthroughs** (setup, billing, compliance, troubleshooting) live under **[Guides](/docs/category/guides)**. Product docs are organized by area in the sidebar.
@@ -23088,8 +23112,10 @@ widening. Review runs with `1claw binding executions <agent-id>`.
 
 ## Intents path: sign without holding the key
 
-Same idea for chains. The private key is generated in an HSM and never leaves it; the
-agent submits an intent and the vault signs after checking guardrails.
+Same idea for chains. The private key is generated by the vault and stored envelope-encrypted
+under a KMS-held KEK; the agent never sees it. It submits an intent and the vault (or Shroud's TEE)
+unwraps the key, checks guardrails and signs. That is `custody: server` — see [Custody](/docs/security/custody)
+for the self-custody models.
 
 ### 1. Provision a signing key (human)
 
@@ -29887,7 +29913,7 @@ Agent Runtime (untrusted)
     │
     ├── Shroud TEE Proxy (AMD SEV-SNP attested)
     │       ├── LLM inspection + redaction
-    │       └── Transaction signing (keys never leave TEE)
+    │       └── Transaction signing (key unwrapped only inside the TEE)
     │
     └── Vault API (Cloud Run, HSM-backed encryption)
             ├── Envelope encryption (GCP KMS / AWS KMS / Azure Key Vault)

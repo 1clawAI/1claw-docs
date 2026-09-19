@@ -12,7 +12,7 @@ Part of the [Intents API](/docs/agents/intents/overview) guide.
 
 ## Multi-chain signing keys {#signing-keys}
 
-Instead of manually storing a raw private key in a vault, you can provision HSM-backed signing keys directly on the agent. 1claw generates the keypair inside the HSM and stores the private key in the org's `__agent-keys` vault — the key never leaves hardware.
+Instead of manually storing a raw private key in a vault, you can provision signing keys directly on the agent. 1claw generates the keypair in the vault and stores the private key in the org's `__agent-keys` vault, envelope-encrypted under a KEK that never leaves Cloud KMS (HSM on paid tiers). The agent never sees the key; the vault (or the Shroud TEE) unwraps it to sign and drops it. This is `custody: server` — 1Claw can sign on the agent's behalf. For keys 1Claw cannot sign with alone, see [Custody](/docs/security/custody).
 
 ### Supported chains
 
@@ -90,7 +90,7 @@ If you're using the [Platform API](/docs/platform-api/overview), signing keys ca
 
 ## Non-EVM transaction signing {#non-evm}
 
-The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the HSM (or the Shroud TEE); the private key never leaves hardware.
+The Intents API signs and broadcasts native transactions for **Bitcoin, Solana, XRP, Cardano, and Tron** in addition to EVM chains. The same endpoints (`POST /v1/agents/:id/transactions` for sign + broadcast, `POST /v1/agents/:id/transactions/sign` for sign-only) dispatch by chain family — you only change the `chain` and provide chain-appropriate fields. Signing happens in the vault (or the Shroud TEE) after the key is unwrapped with the KMS-held KEK; the private key is never returned to the agent.
 
 Bitcoin signing uses the official [`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crate (v0.32) with full support for P2PKH, P2SH, P2WPKH, P2WSH, and P2TR (Taproot) recipient addresses. Solana signing uses the official [`solana-sdk`](https://docs.rs/solana-sdk) crate (v4) with native PDA derivation and SPL token transfer support. XRP uses [`xrpl-rust`](https://crates.io/crates/xrpl-rust) for **31 supported transaction types** — a 1Claw subset, not the full XRPL catalog.
 

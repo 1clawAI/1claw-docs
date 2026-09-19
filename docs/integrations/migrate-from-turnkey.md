@@ -15,6 +15,18 @@ If your agents access secrets, call LLMs, run automations, communicate through c
 - **Deep transaction inspection** (`deep_inspect` for multicall, Safe, ERC-4337)
 - **Cedar/OPA** formal policy backends for enterprise compliance
 
+## Custody: read the label before you compare
+
+Turnkey users ask this first, so here it is first. Turnkey generates keys inside an enclave and has no server-side path that can produce a signature without the enclave's policy engine. 1Claw has three custody models, and every key carries a `custody` field that says which one it is:
+
+| `custody` | Who can sign alone | Chains | Turnkey analogue |
+|---|---|---|---|
+| `server` (the default today) | **1Claw**, after policy, guardrails, approvals and the OFAC screen. The key is envelope-encrypted under a KMS KEK and unwrapped in the vault (or Shroud's TEE) to sign. | All six | None — this is closer to a hosted wallet with a policy engine in front |
+| `client_tss` | **Nobody.** 2-of-2 FROST: 1Claw holds one share, the user's passkey (WebAuthn PRF) wraps the other. The server signing path refuses the key outright. An agent can co-sign unattended only through a runtime share holder the user provisioned. | Solana | Turnkey's enclave guarantee, with the second share in the user's hands rather than in a second enclave |
+| `passkey_owner` | **Nobody.** A Safe whose only owner is the user's passkey (Safe's WebAuthn signer + P-256 verifier / RIP-7212). 1Claw relays gas; no key exists. | Base, Optimism, Arbitrum, Polygon, Ethereum | Closest to a Turnkey passkey wallet |
+
+Details, guard tests and the counsel-facing statement are on the [Custody](/docs/security/custody) page. The honest migration answer: if your product promised users a non-custodial wallet on Turnkey, provision `passkey_owner` Safes (EVM) or `client_tss` wallets (Solana) on 1Claw; if it was a server-side signer behind Turnkey policies, `server` custody plus 1Claw's policy engine is the like-for-like move and the rest of this guide is about that.
+
 ## Migration Checklist
 
 ### 1. Map Your Turnkey Wallets to 1Claw Signing Keys
@@ -178,6 +190,18 @@ const result = await client.agents.signIntent(agentId, {
   value: "1000000000000000000",
 });
 ```
+
+### 7. End-user UX mapping (wallet apps)
+
+For a consumer wallet that used Turnkey's dashboard-style flows, the same surfaces exist:
+
+| Turnkey UX | 1Claw |
+|---|---|
+| Add an agent by scanning / pasting its key and comparing a fingerprint | `1claw agent enroll --pair` (or `agents.pair()` in the SDK): the agent generates an ed25519 identity, the approval page shows its `SHA256:` fingerprint next to what the agent printed, and the agent collects its API key itself on approval |
+| Proposals tab — "Sign personal message", full payload, provider, expiry, status | `/proposals` in the dashboard, and `<OneclawProposalDetail />` from `@1claw/wallet-react` (`client.listProposals / getProposal / decideProposal`) with passkey step-up for tier-2 signatures |
+| Home activity feed | Agent activity feed on the dashboard home (approvals, sends, guardrail rejections, sanctions blocks, pairings) |
+| Passkey sign-in and per-action touch | Passkeys with step-up (`X-Passkey-Token`), risk tiers, and — for self-custody keys — the touch that unlocks the user's share |
+| Export wallet | `POST …/export` for `server` keys (step-up + control-plane consensus); not applicable to `client_tss` / `passkey_owner`, where there is nothing on the server to export |
 
 ## Migration Support
 

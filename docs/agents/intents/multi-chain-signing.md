@@ -1,6 +1,6 @@
 ---
 title: Multi-Chain Signing
-description: HSM-backed signing for Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron. Provision keys, sign transactions, and broadcast — the private key never leaves hardware.
+description: Server-custody signing for Ethereum, Bitcoin, Solana, XRP, Cardano, and Tron. Provision keys, sign transactions, and broadcast — the private key is never returned to the agent.
 sidebar_position: 14
 ---
 
@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 # Multi-Chain Signing
 
-1Claw signs and broadcasts transactions for **six blockchains** from inside the HSM (or the Shroud TEE). The private key never leaves hardware. Agents submit transaction intents; the server signs, optionally broadcasts, and returns the result.
+1Claw signs and broadcasts transactions for **six blockchains**. Keys are envelope-encrypted under a KEK held in Cloud KMS (HSM on paid tiers) and unwrapped in the vault — or inside the Shroud TEE for agents with `intents_require_tee` — only to sign. Agents submit transaction intents; the server signs, optionally broadcasts, and returns the result. The private key is never returned to the agent. These are `custody: server` keys; see [Custody](/docs/security/custody) for the threshold and passkey-owner models.
 
 This page consolidates everything you need: key provisioning, supported chains, transaction signing, and guardrails. For the full Intents API reference (EVM-specific features like EIP-712, simulation, gasless transactions), see [Intents API](/docs/agents/intents/overview).
 

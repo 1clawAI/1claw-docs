@@ -23,7 +23,7 @@ import TabItem from '@theme/TabItem';
 | Transaction guardrails | Engine admin controls | Per-agent allowlists, spend caps, daily limits |
 | AI agent integration | Not built in | Native agent auth, MCP, policy engine |
 
-**Key difference:** Thirdweb Engine is a self-hosted backend signer you run on your own infrastructure. 1claw is a managed service where signing happens inside HSM/TEE and keys never leave the secure boundary. If you are already running Engine and happy with the ops burden, keep it. If you want managed signing with policy enforcement, use 1claw.
+**Key difference:** Thirdweb Engine is a self-hosted backend signer you run on your own infrastructure. 1claw is a managed service where keys are envelope-encrypted under a KMS-held KEK and unwrapped only to sign (in the vault, or the Shroud TEE), with policy and guardrails in front. If you are already running Engine and happy with the ops burden, keep it. If you want managed signing with policy enforcement, use 1claw.
 
 ## Replacing Thirdweb Engine with 1claw
 

@@ -32,7 +32,7 @@ Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-ex
 
 - **Vault** is the core: dashboard, REST API, MCP server, CLI, and SDKs all talk to the same vault. Create vaults, store secrets at paths, register agents, and attach policies that grant read/write access. Advanced encryption options include [CMEK](/docs/vaults/cmek) (client-side encryption layer) and [MPC](/docs/vaults/mpc) (split DEKs across multiple HSM providers so no single provider holds the complete key).
 - **Shroud** sits between your agent and the LLM provider. Send requests to `shroud.1claw.co` instead of directly to the provider; Shroud enforces policies, redacts secrets, and detects prompt injection.
-- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server signs in the HSM (or in Shroud’s TEE) and broadcasts. The private key never leaves the vault.
+- **Intents** extends the vault with transaction signing. Enable the Intents API on an agent; the agent submits transaction intents; the server unwraps the key with a KMS-held KEK, signs (in the vault or in Shroud’s TEE) and broadcasts. The private key is never returned to the agent.
 - **Treasury** provides native multi-chain wallet generation (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron) for human users and tracks onchain multisig treasuries with agent access requests.
 
 **Task walkthroughs** (setup, billing, compliance, troubleshooting) live under **[Guides](/docs/category/guides)**. Product docs are organized by area in the sidebar.

@@ -23,7 +23,7 @@ Agent Runtime (untrusted)
     │
     ├── Shroud TEE Proxy (AMD SEV-SNP attested)
     │       ├── LLM inspection + redaction
-    │       └── Transaction signing (keys never leave TEE)
+    │       └── Transaction signing (key unwrapped only inside the TEE)
     │
     └── Vault API (Cloud Run, HSM-backed encryption)
             ├── Envelope encryption (GCP KMS / AWS KMS / Azure Key Vault)
