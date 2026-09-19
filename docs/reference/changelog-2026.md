@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.37 (2026-09-19) {#v06137-2026-09-19}
+
+**Content inspection catches prompt injection and pasted API keys.** `POST /v1/shroud/inspect-content`, the MCP `inspect_content` tool (`@1claw/mcp` 0.63.4, local mode too) and the OTEL redactor now flag instruction overrides ("ignore all previous instructions"), role manipulation, delimiter attacks, system-prompt extraction, indirect injection and encoding evasion — the rule set ported from Shroud's request-pipeline detector — plus Stripe, OpenAI, Anthropic, GitHub, Slack, Google and 1Claw keys by shape (critical; redacted in telemetry). **1claw.co:** the hero now has a live, no-sign-in inspector — paste anything an agent might read and watch the verdict — running that same engine in-process at `/api/demo/inspect` (rate-limited, no LLM call). A **weekly newsletter** signup in the footer (`/api/newsletter` → Resend audience), with `scripts/send-weekly-newsletter.mjs` and `weekly-newsletter.yml` to send an issue from `newsletter/`.
+
 ### v0.61.36 (2026-09-19) {#v06136-2026-09-19}
 
 **No more plan trials.** `POST /v1/billing/subscribe` no longer starts a 14-day Stripe trial: checkout collects a payment method and charges on completion, for every tier. The request's `trial` field is accepted and ignored (deprecated in the spec) so older clients are not rejected; existing subscriptions already in a trial run to their end unchanged. The pricing page, homepage, billing settings and the in-wizard upgrade prompt now offer a single **Subscribe** action and say what every paid plan includes (one Small/Medium Agent Runtime). Guard test `checkout_never_starts_a_trial`. The spec's `SubscribeRequest` enums also caught up with the code (`tier: pro | team | business`, `interval: monthly | annual`). The Free tier's limited runtime access (10 hours, 3-day window) is unchanged. OpenAPI spec 0.61.29.
