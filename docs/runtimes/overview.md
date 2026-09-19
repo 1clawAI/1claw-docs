@@ -154,26 +154,28 @@ https://{slug}.run.1claw.co
 
 ## Presets and pricing
 
-| Preset | vCPU | Memory | Tier required | Included hours |
-|--------|------|--------|---------------|---------------|
-| `small` | 0.5 | 512 MB | Free | 10h/mo |
-| `medium` | 1 | 1 GB | Pro | 100h/mo |
-| `large` | 2 | 4 GB | Pro | 100h/mo |
-| `small-cc` | 0.5 | 512 MB | Business | 2000h/mo |
-| `medium-cc` | 1 | 2 GB | Business | 2000h/mo |
-| `large-cc` | 4 | 8 GB | Business | 2000h/mo |
+| Preset | vCPU | Memory | Tier required | Billing |
+|--------|------|--------|---------------|---------|
+| `small` | 0.5 | 512 MB | Pro | **Included** for your first runtime (Pro+), otherwise $15/mo add-on |
+| `medium` | 1 | 2 GB | Pro | **Included** for your first runtime (Pro+), otherwise $39/mo add-on |
+| `large` | 2 | 4 GB | Pro | $99/mo add-on |
+| `small-cc` | 0.5 | 512 MB | Business | add-on (TEE) |
+| `medium-cc` | 1 | 2 GB | Business | add-on (TEE) |
+| `large-cc` | 4 | 8 GB | Business | add-on (TEE) |
+
+**Every plan from Pro up includes one runtime at no charge** — Small or Medium (up to 1 vCPU / 2 GB), with no monthly hour cap and no subscription item. The vault assigns the included slot automatically to the first small/medium runtime you create (`billing_kind: included` on the runtime; `GET /v1/runtimes` returns `included_runtime: { allowance, used, presets }`). Deleting it frees the slot. Large and the `-cc` presets are always paid add-ons; additional small/medium runtimes beyond the included one are add-ons too. Runtimes without an add-on or the included slot (`billing_kind: pool`) draw from the plan's pool hours below.
 
 `-cc` presets run on Confidential Compute (AMD SEV-SNP) for TEE isolation.
 
 ### Tier limits
 
-| Tier | Max runtimes | Hours / month |
-|------|-------------|---------------|
-| Free | 1 | 10 |
-| Pro | 3 | 100 |
-| Team | 10 | 500 |
-| Business | 25 | 2,000 |
-| Enterprise | Custom | Custom |
+| Tier | Max runtimes | Included runtime (no hour cap) | Pool hours / month |
+|------|-------------|-------------------------------|--------------------|
+| Free | 1 (trial) | — | 10 |
+| Pro | 3 | 1 (small or medium) | 100 |
+| Team | 10 | 1 (small or medium) | 500 |
+| Business | 25 | 1 (small or medium) | 2,000 |
+| Enterprise | Custom | 1 (small or medium) | Custom |
 
 ## Runtime Chat (Hermes / OpenClaw / OpenClaude)
 
@@ -235,9 +237,7 @@ Disable idle timeout for always-on agents:
 
 ## Trial system (Free tier)
 
-Free tier users get **1 runtime** with **10 hours/month**. The runtime auto-stops when hours are exhausted. Hours reset at the start of each billing cycle.
-
-To unlock more runtimes and hours, upgrade to Pro or higher at **Settings → Billing**.
+Cloud Runtimes require Pro or higher; the free tier's 10 pool hours apply only to trial runtimes provisioned by onboarding. Upgrade at **Settings → Billing** — every paid plan includes one runtime (up to Medium) at no charge.
 
 ## Next steps
 

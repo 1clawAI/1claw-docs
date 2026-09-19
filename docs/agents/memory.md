@@ -18,9 +18,11 @@ Agent Memory gives your agents persistent state across sessions. Three tiers cov
 |------|------------|----------|--------|
 | **Scratch** | TTL-based (auto-expires) | Session context, temp results | Key lookup |
 | **Durable** | Permanent until deleted | Preferences, config, facts | Key lookup |
-| **Semantic** | Permanent + vector-indexed | Knowledge base, RAG context | Similarity search |
+| **Semantic** | Permanent, searchable | Knowledge base, RAG context | Text search over key + value |
 
 All tiers are **encrypted at rest** with the org's KEK via envelope encryption (same pattern as vault secrets).
+
+**How search works (honestly):** values are encrypted, so the database matches keys only. `POST …/memory/search` therefore decrypts the namespace's entries (bounded, most recent 500 first, plus the shared namespace when the agent may read it) and scores each on key + value: an exact match scores 1.0, a query that occurs as a substring 0.95, and otherwise the share of query tokens present, scaled 0.3–0.9. It is lexical, not embedding-based — there is no vector index yet — but it matches text stored in the value, which it did not before 2026-09-19.
 
 ## Quickstart
 
@@ -75,7 +77,7 @@ await client.memory.put(agentId, "preferences", "timezone", {
   value: "America/New_York",
 });
 
-// Write semantic memory (auto-embedded for vector search)
+// Write semantic memory (searchable over key + value)
 await client.memory.put(agentId, "knowledge", "api-limits", {
   value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
 });
@@ -84,13 +86,13 @@ await client.memory.put(agentId, "knowledge", "api-limits", {
 const { data } = await client.memory.get(agentId, "preferences", "timezone");
 console.log(data.value); // "America/New_York"
 
-// Semantic search
+// Search (lexical over decrypted key + value; exact 1.0, substring 0.95, token overlap 0.3–0.9)
 const { data: results } = await client.memory.search(agentId, {
   namespace: "knowledge",
   query: "how many vaults can I create?",
   top_k: 5,
 });
-results.entries.forEach((e) => console.log(e.key, e.score));
+results.results.forEach((e) => console.log(e.key, e.score));
 ```
 
 </TabItem>

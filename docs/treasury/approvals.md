@@ -234,6 +234,20 @@ curl -s "https://api.1claw.co/v1/approvals?status=pending" \
   | jq '.approvals[] | {id, action, human_summary, risk_tier, created_at}'
 ```
 
+An **agent** may call the same route with its own token and gets only the approvals it created — enough to find one whose id was lost across a restart, never the organization's queue. `total` is the agent's own pending count.
+
+## Cancelling a request you made
+
+An agent that answered locally, or no longer needs the decision, withdraws the request so the human is not asked for something already settled:
+
+```bash
+curl -s -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/cancel" \
+  -H "Authorization: Bearer $AGENT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"reason":"answered locally"}'
+```
+
+First answer wins: if the human decided before the cancel landed, the response is the existing decision (200) and nothing changes. A cancellation reaches webhook subscribers as `approval.decided` with `decision: "cancelled"` and is audited as `approval.cancelled`. The human it was addressed to may cancel too. SDK: `client.approvals.cancel(id, reason?)`; Python `client.approvals.cancel(id, reason=)`; MCP `cancel_approval`.
+
 ## Dashboard
 
 The approval inbox is at `/approvals` in the dashboard. It shows:

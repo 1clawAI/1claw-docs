@@ -28,7 +28,26 @@ Public — this describes what 1Claw supports, not anything belonging to you.
 | `x` | X | `api.x.com/2/` |
 | `discord` | Discord | `discord.com/api/` |
 | `notion` | Notion | `api.notion.com/v1/` |
+| `google-sheets` | Google | `sheets.googleapis.com/v4/spreadsheets` |
+| `google-drive` | Google | `www.googleapis.com/drive/v3/`, `/upload/drive/v3/` (`drive.file` + `drive.readonly`) |
+| `google-business` | Google | `mybusiness*.googleapis.com` (`business.manage`) |
+| `stripe` | Stripe (Connect) | `api.stripe.com/v1/`, `files.stripe.com` (`read_only`, optionally `read_write`) |
+| `hubspot` | HubSpot | `api.hubapi.com/crm/v3/`, `/crm/v4/` |
+| `linkedin` | LinkedIn | `api.linkedin.com/v2/`, `/rest/` (`w_member_social` needs Marketing Developer Platform approval) |
 | `honcho` | — (API key) | `demo.honcho.dev`, `api.honcho.dev` |
+| `api-token` | — (pasted bearer token) | the one HTTPS host you name at install |
+
+### Any HTTPS API with a pasted token
+
+`api-token` is the generic "paste a token" connector: you name the host and paste the bearer token at install, the token is stored in the vault, and the binding is pinned to that host — so pasting a token never means pasting it into a third-party app's env file.
+
+```bash
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/connectors/api-token/install" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"binding_name":"acme","host":"api.acme.example","token":"acme_live_…"}'
+```
+
+`host` is a bare hostname and goes through the same rules as every binding URL (no private, loopback, link-local, metadata or `.internal` hosts). `token` is optional — omit it and set the credential later with `PATCH …/bindings/{id}`. Every other preset pins its own host and refuses `host`/`token`.
 
 ## Installing one
 

@@ -1226,7 +1226,26 @@ Public — this describes what 1Claw supports, not anything belonging to you.
 | `x` | X | `api.x.com/2/` |
 | `discord` | Discord | `discord.com/api/` |
 | `notion` | Notion | `api.notion.com/v1/` |
+| `google-sheets` | Google | `sheets.googleapis.com/v4/spreadsheets` |
+| `google-drive` | Google | `www.googleapis.com/drive/v3/`, `/upload/drive/v3/` (`drive.file` + `drive.readonly`) |
+| `google-business` | Google | `mybusiness*.googleapis.com` (`business.manage`) |
+| `stripe` | Stripe (Connect) | `api.stripe.com/v1/`, `files.stripe.com` (`read_only`, optionally `read_write`) |
+| `hubspot` | HubSpot | `api.hubapi.com/crm/v3/`, `/crm/v4/` |
+| `linkedin` | LinkedIn | `api.linkedin.com/v2/`, `/rest/` (`w_member_social` needs Marketing Developer Platform approval) |
 | `honcho` | — (API key) | `demo.honcho.dev`, `api.honcho.dev` |
+| `api-token` | — (pasted bearer token) | the one HTTPS host you name at install |
+
+### Any HTTPS API with a pasted token
+
+`api-token` is the generic "paste a token" connector: you name the host and paste the bearer token at install, the token is stored in the vault, and the binding is pinned to that host — so pasting a token never means pasting it into a third-party app's env file.
+
+```bash
+curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/connectors/api-token/install" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"binding_name":"acme","host":"api.acme.example","token":"acme_live_…"}'
+```
+
+`host` is a bare hostname and goes through the same rules as every binding URL (no private, loopback, link-local, metadata or `.internal` hosts). `token` is optional — omit it and set the credential later with `PATCH …/bindings/{id}`. Every other preset pins its own host and refuses `host`/`token`.
 
 ## Installing one
 
@@ -4378,9 +4397,11 @@ Agent Memory gives your agents persistent state across sessions. Three tiers cov
 |------|------------|----------|--------|
 | **Scratch** | TTL-based (auto-expires) | Session context, temp results | Key lookup |
 | **Durable** | Permanent until deleted | Preferences, config, facts | Key lookup |
-| **Semantic** | Permanent + vector-indexed | Knowledge base, RAG context | Similarity search |
+| **Semantic** | Permanent, searchable | Knowledge base, RAG context | Text search over key + value |
 
 All tiers are **encrypted at rest** with the org's KEK via envelope encryption (same pattern as vault secrets).
+
+**How search works (honestly):** values are encrypted, so the database matches keys only. `POST …/memory/search` therefore decrypts the namespace's entries (bounded, most recent 500 first, plus the shared namespace when the agent may read it) and scores each on key + value: an exact match scores 1.0, a query that occurs as a substring 0.95, and otherwise the share of query tokens present, scaled 0.3–0.9. It is lexical, not embedding-based — there is no vector index yet — but it matches text stored in the value, which it did not before 2026-09-19.
 
 ## Quickstart
 
@@ -4435,7 +4456,7 @@ await client.memory.put(agentId, "preferences", "timezone", {
   value: "America/New_York",
 });
 
-// Write semantic memory (auto-embedded for vector search)
+// Write semantic memory (searchable over key + value)
 await client.memory.put(agentId, "knowledge", "api-limits", {
   value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
 });
@@ -4444,13 +4465,13 @@ await client.memory.put(agentId, "knowledge", "api-limits", {
 const { data } = await client.memory.get(agentId, "preferences", "timezone");
 console.log(data.value); // "America/New_York"
 
-// Semantic search
+// Search (lexical over decrypted key + value; exact 1.0, substring 0.95, token overlap 0.3–0.9)
 const { data: results } = await client.memory.search(agentId, {
   namespace: "knowledge",
   query: "how many vaults can I create?",
   top_k: 5,
 });
-results.entries.forEach((e) => console.log(e.key, e.score));
+results.results.forEach((e) => console.log(e.key, e.score));
 ```
 
 </TabItem>
@@ -17750,7 +17771,7 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 
 ## Toolsets — what a session actually sees
 
-The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 157 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -18511,7 +18532,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 156 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 157 tools |
 
 ### 5. API Mapping
 
@@ -24778,6 +24799,14 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.29 (2026-09-19) {#v06129-2026-09-19}
+
+**Connector catalogue: Google Drive, Google Business Profile, Stripe, HubSpot, LinkedIn, and a generic `api-token` connector** (host named at install, token stored in the vault, same SSRF rules as every binding; migration 269 seeds the three new OAuth providers and the Google `drive.file` / `business.manage` scopes). **Three things nanobots asked for.** `POST /v1/agents/{id}/memory/search` now matches text stored in *values* — it decrypts the namespace (bounded, most recent 500 + shared) and scores key + value lexically (exact 1.0, substring 0.95, token overlap 0.3–0.9); it returned nothing for any value text before. `POST /v1/approvals/{id}/cancel` lets the requesting agent (or the addressed human) withdraw a pending approval, first-answer-wins, delivered to subscribers as `approval.decided` with `decision: "cancelled"` (new status `cancelled`, migration 268). `GET /v1/approvals` as an agent returns the approvals that agent created. SDK `approvals.cancel`, Python `approvals.cancel`, MCP `cancel_approval` (157 tools). The memory prod suite now asserts a value-text hit instead of accepting zero results.
+
+### v0.61.28 (2026-09-19) {#v06128-2026-09-19}
+
+**One Agent Runtime included with every paid plan.** Pro, Team, Business and Enterprise each include one Cloud Runtime at no charge — Small or Medium (up to 1 vCPU / 2 GB), with no monthly hour cap and no Stripe add-on. The vault assigns the included slot to the first small/medium runtime you create (`billing_kind: included`; `GET /v1/runtimes` reports `included_runtime: { allowance, used, presets }`), the create wizard shows "Included with your plan" instead of a price, and deleting the runtime frees the slot. Large and Confidential Compute presets, and further small/medium runtimes, remain paid add-ons; pool runtimes still draw from the plan's hours. Medium is now 1 vCPU / 2 GB (was 1 GB). Migration 267. OpenAPI spec 0.61.25, `@1claw/sdk` 0.61.19. **Also:** passkey-Safe `execute` checks the relayer's gas balance before signing and names the address, chain and amount to fund; the Safe card shows the gas payer. Pairing approve/deny now read the pairing columns (the previous column list dropped them, so `--pair` never received its key) — caught by the new `scripts/test-custody-prod.sh` on its first run.
+
 ### v0.61.27 (2026-09-19) {#v06127-2026-09-19}
 
 **Passkeys registered on the old domain no longer lock an account.** A credential is bound to the rpId it was registered under, so a `1claw.xyz` passkey cannot answer on `1claw.co`; every step-up gate now counts only passkeys usable on the current domain — registering a new passkey no longer demands a step-up nothing can satisfy, and a stranded credential on an account with no other factor can be removed with the live session (audited). The security page marks such passkeys "Only works on 1claw.xyz". **Custody deny switch at the insert:** `ONECLAW_SERVER_CUSTODY_GENERATION=deny` now covers signup auto-provisioning, platform bootstrap and the smart-account signer, because the check lives where every server-custody key is inserted. **Agent TSS parity:** agent-driven threshold sends honour per-agent wallet-access policies (and so do delegated server-custody key reads); a background sweeper reaps abandoned ceremonies' round secrets; a failed ledger write after broadcast is an error and an audit event, not silence; runtime-share provisioning refuses platform-claim sessions. Admin usage-pattern reads are audited. PostHog identify no longer sends platform-admin status. Runtime negative tests for forged passkey assertions and server-share-only signing. New prod suite `scripts/test-custody-prod.sh`.
@@ -28166,26 +28195,28 @@ https://{slug}.run.1claw.co
 
 ## Presets and pricing
 
-| Preset | vCPU | Memory | Tier required | Included hours |
-|--------|------|--------|---------------|---------------|
-| `small` | 0.5 | 512 MB | Free | 10h/mo |
-| `medium` | 1 | 1 GB | Pro | 100h/mo |
-| `large` | 2 | 4 GB | Pro | 100h/mo |
-| `small-cc` | 0.5 | 512 MB | Business | 2000h/mo |
-| `medium-cc` | 1 | 2 GB | Business | 2000h/mo |
-| `large-cc` | 4 | 8 GB | Business | 2000h/mo |
+| Preset | vCPU | Memory | Tier required | Billing |
+|--------|------|--------|---------------|---------|
+| `small` | 0.5 | 512 MB | Pro | **Included** for your first runtime (Pro+), otherwise $15/mo add-on |
+| `medium` | 1 | 2 GB | Pro | **Included** for your first runtime (Pro+), otherwise $39/mo add-on |
+| `large` | 2 | 4 GB | Pro | $99/mo add-on |
+| `small-cc` | 0.5 | 512 MB | Business | add-on (TEE) |
+| `medium-cc` | 1 | 2 GB | Business | add-on (TEE) |
+| `large-cc` | 4 | 8 GB | Business | add-on (TEE) |
+
+**Every plan from Pro up includes one runtime at no charge** — Small or Medium (up to 1 vCPU / 2 GB), with no monthly hour cap and no subscription item. The vault assigns the included slot automatically to the first small/medium runtime you create (`billing_kind: included` on the runtime; `GET /v1/runtimes` returns `included_runtime: { allowance, used, presets }`). Deleting it frees the slot. Large and the `-cc` presets are always paid add-ons; additional small/medium runtimes beyond the included one are add-ons too. Runtimes without an add-on or the included slot (`billing_kind: pool`) draw from the plan's pool hours below.
 
 `-cc` presets run on Confidential Compute (AMD SEV-SNP) for TEE isolation.
 
 ### Tier limits
 
-| Tier | Max runtimes | Hours / month |
-|------|-------------|---------------|
-| Free | 1 | 10 |
-| Pro | 3 | 100 |
-| Team | 10 | 500 |
-| Business | 25 | 2,000 |
-| Enterprise | Custom | Custom |
+| Tier | Max runtimes | Included runtime (no hour cap) | Pool hours / month |
+|------|-------------|-------------------------------|--------------------|
+| Free | 1 (trial) | — | 10 |
+| Pro | 3 | 1 (small or medium) | 100 |
+| Team | 10 | 1 (small or medium) | 500 |
+| Business | 25 | 1 (small or medium) | 2,000 |
+| Enterprise | Custom | 1 (small or medium) | Custom |
 
 ## Runtime Chat (Hermes / OpenClaw / OpenClaude)
 
@@ -28247,9 +28278,7 @@ Disable idle timeout for always-on agents:
 
 ## Trial system (Free tier)
 
-Free tier users get **1 runtime** with **10 hours/month**. The runtime auto-stops when hours are exhausted. Hours reset at the start of each billing cycle.
-
-To unlock more runtimes and hours, upgrade to Pro or higher at **Settings → Billing**.
+Cloud Runtimes require Pro or higher; the free tier's 10 pool hours apply only to trial runtimes provisioned by onboarding. Upgrade at **Settings → Billing** — every paid plan includes one runtime (up to Medium) at no charge.
 
 ## Next steps
 
@@ -29515,7 +29544,7 @@ Fund it only after a second wrap exists: synced passkeys survive device loss, bu
 
 Treasury → **Passkey-owned Safes** → *New passkey Safe*. Pick a chain (Base, Optimism, Arbitrum, Polygon, Ethereum, or the Sepolia testnets) and the passkey that will own it. The Safe (v1.4.1, canonical Safe deployments) is counterfactual — a CREATE2 address you can fund immediately — and is deployed by your first send.
 
-- **Sending**: `POST /v1/treasury/passkey-safes/{id}/prepare` runs the sanctions screen and your spend policies, reads the Safe's nonce, and returns the SafeTx hash. Your browser signs that hash as a WebAuthn challenge with `userVerification: "required"`. `POST …/execute` recomputes the hash, verifies the assertion itself (this passkey, this hash, a 1Claw origin, UV flag), wraps it in Safe's contract-signature format and relays `execTransaction` (and the proxy deployment on the first send) from your Ethereum treasury wallet. That wallet pays gas; it is not an owner and cannot move the Safe's funds.
+- **Sending**: `POST /v1/treasury/passkey-safes/{id}/prepare` runs the sanctions screen and your spend policies, reads the Safe's nonce, and returns the SafeTx hash. Your browser signs that hash as a WebAuthn challenge with `userVerification: "required"`. `POST …/execute` recomputes the hash, verifies the assertion itself (this passkey, this hash, a 1Claw origin, UV flag), wraps it in Safe's contract-signature format and relays `execTransaction` (and the proxy deployment on the first send) from your Ethereum treasury wallet. That wallet pays gas — keep a little native gas token on each chain you use (the first send also deploys the Safe, ~0.0006 ETH on Base); `execute` checks its balance before signing and names the address if it is short. It is not an owner and cannot move the Safe's funds.
 - **What 1claw holds**: your passkey's public key and the Safe address. There is no private key, share, or export.
 - **Which passkey**: only the one chosen at creation can ever sign for the Safe, and a WebAuthn credential is bound to the domain it was registered on — a passkey registered on `1claw.xyz` cannot sign on `1claw.co` (the browser shows the cross-device QR and waits). The card names the owning passkey, the create dialog only offers passkeys registered on the current domain, and `create`/`prepare` refuse a passkey from another domain with the reason. `prepare` returns the passkey's `transports` so a Mac passkey gets Touch ID rather than the QR.
 - **Recovery** is the passkey's: a synced platform passkey (iCloud Keychain, Google Password Manager) survives device loss; a hardware key does not. Adding a second owner to the Safe is on the roadmap; until then, use a synced passkey.
@@ -31531,6 +31560,20 @@ curl -s "https://api.1claw.co/v1/approvals?status=pending" \
   -H "Authorization: Bearer $TOKEN" \
   | jq '.approvals[] | {id, action, human_summary, risk_tier, created_at}'
 ```
+
+An **agent** may call the same route with its own token and gets only the approvals it created — enough to find one whose id was lost across a restart, never the organization's queue. `total` is the agent's own pending count.
+
+## Cancelling a request you made
+
+An agent that answered locally, or no longer needs the decision, withdraws the request so the human is not asked for something already settled:
+
+```bash
+curl -s -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/cancel" \
+  -H "Authorization: Bearer $AGENT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"reason":"answered locally"}'
+```
+
+First answer wins: if the human decided before the cancel landed, the response is the existing decision (200) and nothing changes. A cancellation reaches webhook subscribers as `approval.decided` with `decision: "cancelled"` and is audited as `approval.cancelled`. The human it was addressed to may cancel too. SDK: `client.approvals.cancel(id, reason?)`; Python `client.approvals.cancel(id, reason=)`; MCP `cancel_approval`.
 
 ## Dashboard
 
@@ -36035,7 +36078,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 156 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 157 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
