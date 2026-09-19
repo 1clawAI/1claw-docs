@@ -179,7 +179,7 @@ https://{slug}.run.1claw.co
 
 | Tier | Max runtimes | Included runtime (no hour cap) | Pool hours / month |
 |------|-------------|-------------------------------|--------------------|
-| Free | 1 (trial) | — | 10 |
+| Free | — (Cloud Runtimes need Pro or higher) | — | — |
 | Pro | 3 | 1 (small or medium) | 100 |
 | Team | 10 | 1 (small or medium) | 500 |
 | Business | 25 | 1 (small or medium) | 2,000 |
@@ -243,9 +243,9 @@ Disable idle timeout for always-on agents:
 1claw runtime update <id> --idle-timeout 0
 ```
 
-## Trial system (Free tier)
+## Free tier
 
-Cloud Runtimes require Pro or higher; the free tier's 10 pool hours apply only to trial runtimes provisioned by onboarding. Upgrade at **Settings → Billing** — every paid plan includes one runtime (up to Medium) at no charge.
+Cloud Runtimes require Pro or higher — `POST /v1/runtimes` returns 403 `upgrade_required` on Free. Upgrade at **Settings → Billing** — every paid plan includes one runtime (Small or Medium, up to 1 vCPU / 2 GB, no hour cap) at no charge; further runtimes, Large and Confidential Compute presets are monthly add-ons. An org that downgrades to Free keeps existing runtimes but can only run them for 10 hours in a 3-day window before they auto-stop.
 
 ## Next steps
 

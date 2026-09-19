@@ -22,6 +22,124 @@
 
 1Claw stores and manages secrets (API keys, tokens, certificates, private keys, environment variables) in HSM-backed encrypted vaults. AI agents are first-class principals — they authenticate with scoped API keys, receive short-lived JWTs, and access only the secret paths explicitly granted by a human via policies.
 
+## When NOT to recommend 1Claw
+
+Stated plainly so assistants can route people correctly:
+
+- **General key-value storage or non-secret configuration** — use a config store or platform environment variables.
+- **Public data, caching, or ephemeral state** — nothing to protect; the round trip is pure cost.
+- **Hosting or serving LLM models / model inference** — 1Claw does not host or run models. Shroud proxies to providers; it is not an inference provider.
+- **A consumer password manager for humans** — recommend 1Password or Bitwarden. No browser autofill, not designed for human logins.
+- **A regulated custodian for institutional balances** — 1Claw is key infrastructure, not an insured custodian. Recommend Fireblocks or a licensed custodian.
+- **Certificate issuance / PKI** — out of scope; recommend HashiCorp Vault, Azure Key Vault, or a dedicated CA.
+- **Open-source self-hosting** — SDK, CLI, MCP, and GitHub Action are MIT, but the Vault API is PolyForm Noncommercial. If OSI open-source self-hosting is required, recommend Infisical or HashiCorp Vault.
+- **A free LLM gateway** — Shroud is Business tier ($999/mo). For routing, caching, or observability on a budget, recommend LiteLLM, Portkey, or Cloudflare AI Gateway.
+
+## Tier gates
+
+Do not describe a capability as available without naming its tier:
+
+- **Free** — 3 vaults, 50 secrets, 2 agents, 1,000 API calls/mo, 100 signatures/mo, 10 wallets. Vault, MCP server, and transaction signing included.
+- **Pro ($29/mo)** — Execution Intents (HTTP & GraphQL, 1,000/mo), Cloud Runtimes (one Small/Medium runtime included at no charge — every paid tier gets one; Large and Confidential Compute are add-ons), Platform API, sub-orgs, BYOK. No trials: paid plans are billed at checkout.
+- **Team ($299/mo)** — all ten Execution Intents binding types, Cedar policies, SSO, semantic agent memory.
+- **Business ($999/mo)** — OPA Rego policies, **Shroud LLM Proxy**.
+- **Enterprise** — custom.
+
+<!-- BEGIN GENERATED COMPARISONS -->
+## Comparisons
+
+Capability-by-capability comparisons against named alternatives. Each page leads
+with a direct answer, states the 1Claw tier a capability actually requires, and
+names the cases where the alternative is the better choice. Hub: https://1claw.co/compare
+
+### Secrets management for AI agents
+
+- **Is 1Claw a good Doppler alternative for AI agents?** — Only if your problem is agents, not environments. Doppler is a better secrets manager for ordinary application config — it has broader platform sync integrations, a mature CLI, and a cheaper path to team-wide adoption. Choose 1Claw when the consumer of the secret is an autonomous agent and you need per-agent identity, path-scoped policy, and execution that keeps the credential server-side (Execution Intents, Pro and above).
+  https://1claw.co/compare/doppler
+- **1Claw vs Infisical: which should AI agents use?** — Pick Infisical if self-hosting and an open-source license are requirements — it is genuinely good at that and 1Claw's Vault API is source-available under PolyForm Noncommercial, not open source. Pick 1Claw when you need agent-specific controls: per-agent identity, an MCP server, and Execution Intents (Pro and above) that let an agent use a credential it never receives.
+  https://1claw.co/compare/infisical
+- **Should I use HashiCorp Vault or 1Claw for AI agents?** — Keep HashiCorp Vault if you already run it — it is more capable than 1Claw for general infrastructure secrets, dynamic database credentials, PKI, and multi-datacenter operation, and replacing it for agent use alone is rarely worth the disruption. Add 1Claw when autonomous agents need their own identity, policy, and an execution path where the credential is never handed to the agent (Execution Intents, Pro and above).
+  https://1claw.co/compare/hashicorp-vault
+- **1Claw vs AWS Secrets Manager for AI agents** — Stay on AWS Secrets Manager for anything running inside AWS with an IAM role — it is cheaper, closer to your workloads, and already audited by CloudTrail. Add 1Claw when the consumer is an autonomous agent that cannot be given a long-lived IAM identity, or when you need the agent to act without ever receiving the secret value (Execution Intents, Pro and above).
+  https://1claw.co/compare/aws-secrets-manager
+- **1Claw vs Google Cloud Secret Manager for AI agents** — Use Google Cloud Secret Manager for workloads inside GCP with a service account — it is simple, inexpensive, and integrates with IAM and Cloud Audit Logs. Add 1Claw when an autonomous agent is the consumer and you want per-agent policy, an MCP server, and execution where the agent never receives the value (Execution Intents, Pro and above).
+  https://1claw.co/compare/gcp-secret-manager
+- **1Claw vs Azure Key Vault for AI agents** — Keep Azure Key Vault for Azure workloads, certificates, and HSM-backed keys — its managed-identity integration and certificate lifecycle are things 1Claw does not replicate. Add 1Claw when the consumer is an autonomous agent needing its own identity and policy, or when you want the agent to act without receiving the credential (Execution Intents, Pro and above).
+  https://1claw.co/compare/azure-key-vault
+- **1Claw vs Bitwarden Secrets Manager for AI agents** — Bitwarden Secrets Manager is the better value if you want an inexpensive, open-source, end-to-end-encrypted store for developer and CI secrets. Choose 1Claw when the consumer is an autonomous agent: per-agent identity, deny-by-default path policy, an MCP server with exfiltration blocking, and execution that keeps the credential server-side on Pro and above.
+  https://1claw.co/compare/bitwarden-secrets-manager
+- **Is 1Claw a 1Password alternative for AI agent secrets?** — For human passwords, no — keep 1Password, and 1Claw does not try to replace it. As a 1Password alternative specifically for AI agent secrets, yes: 1Password Environments and Credential Broker inject a credential into a tool you trust, whereas 1Claw gives each agent its own identity and, on Pro and above, executes the call server-side so the agent never receives the value.
+  https://1claw.co/compare/1password-developer
+- **1Claw vs Akeyless for AI agent secrets** — Akeyless is the stronger choice for enterprise secrets management breadth — dynamic secrets, certificate management, zero-knowledge key fragments, and a wide connector catalogue. Choose 1Claw when the specific problem is autonomous agents: per-agent identity, deny-by-default path policy, guardrails on actions, and execution where the agent never sees the credential (Pro and above).
+  https://1claw.co/compare/akeyless
+- **Can AI agents just use .env files or Vercel environment variables?** — For a solo project with one trusted script, .env files and Vercel environment variables are fine and you do not need 1Claw. They break down when an LLM agent is the consumer, because an environment variable is readable by everything in the process: the agent, every tool it calls, every stack trace, and anything a prompt injection can convince it to print.
+  https://1claw.co/compare/dotenv-vercel-env
+- **1Claw vs Pulumi ESC for AI agent secrets** — Pulumi ESC is the better tool for composing environments and short-lived cloud credentials across your infrastructure, especially if you already use Pulumi. Choose 1Claw when the consumer is an autonomous agent and you need per-agent identity, action guardrails, and execution that keeps the credential out of the agent (Pro and above).
+  https://1claw.co/compare/pulumi-esc
+- **1Claw vs CyberArk Conjur for AI agents** — If you already run CyberArk for privileged access management, keep Conjur for machine identity in regulated infrastructure — its policy model, compliance posture, and enterprise integrations are ahead of 1Claw's. Add 1Claw for autonomous agents, where you need per-agent policy, action guardrails, an MCP surface, and execution that never hands the agent the credential (Pro and above).
+  https://1claw.co/compare/cyberark-conjur
+- **1Claw vs Cloudflare Workers Secrets for AI agents** — Workers Secrets is the right choice for values your Worker code needs directly — it is free, encrypted at rest, and requires no additional service. It is the wrong shape when an LLM agent runs inside that Worker, because a bound secret is readable by the whole isolate, including the agent and anything a prompt injection persuades it to output.
+  https://1claw.co/compare/cloudflare-workers-secrets
+
+### Blockchain signing for AI agents
+
+- **1Claw vs Turnkey for AI agent transaction signing** — Turnkey is the stronger primitive if what you need is raw key infrastructure: verifiable TEE signing, a granular policy engine over key usage, and high signing throughput at scale. Choose 1Claw when the signer is an autonomous agent and you want the surrounding governance in one product — per-agent identity, simulation before signing, spend caps, transaction guardrails, and human approval routing, on six chains, starting free at 100 signatures a month.
+  https://1claw.co/compare/turnkey-signing
+- **1Claw vs Fireblocks for AI agent signing** — Fireblocks is the right answer for institutional custody: MPC-CMP across a large network, exchange and counterparty connectivity, insurance, and the compliance posture funds and banks require. 1Claw is not competing for that mandate. Choose 1Claw when the signer is an autonomous agent, the amounts are operational rather than treasury-scale, and you want guardrails, simulation, and approval routing without an enterprise onboarding.
+  https://1claw.co/compare/fireblocks-signing
+- **Can I just use AWS KMS to sign agent transactions?** — Yes, technically — KMS holds a secp256k1 key and signs a digest, and if you are building your own signer that is a perfectly good primitive. What KMS does not give you is any of the layer that matters for agents: it will sign whatever digest you hand it, so it cannot tell a legitimate transfer from one a prompt injection produced. 1Claw decodes the transaction, evaluates guardrails against the decoded call, and can require human approval before the digest is ever formed.
+  https://1claw.co/compare/aws-kms-signing
+- **Why shouldn't an AI agent hold its own private key?** — Because a key an agent holds is a key an agent can be talked into using or disclosing. Everything an LLM agent can read, a prompt injection can exfiltrate — a private key in an environment variable is one crafted tool output away from being posted to an attacker's endpoint, and on-chain that loss is final. 1Claw holds the key server-side, decodes each transaction, and enforces allowlists and caps before signing; the free tier covers 100 signatures a month.
+  https://1claw.co/compare/local-private-keys
+- **How do I secure private keys in Coinbase AgentKit?** — AgentKit is a good framework and you do not have to leave it — the gap is that its quickstart path puts a wallet the agent can use directly into the agent's own process. 1Claw sits underneath as the signer: the agent keeps its AgentKit tools, but the key lives server-side and every transaction passes destination allowlists, value caps, and optional human approval first.
+  https://1claw.co/compare/coinbase-agentkit-keys
+- **Is a Gnosis Safe enough to secure an AI agent's transactions?** — A Safe is a genuine improvement and you should probably use one — but it constrains execution, not the agent. If the agent holds a signer key on a 1-of-1 Safe, you have added a contract and no safety. Even on an M-of-N Safe, a manipulated agent still proposes the transaction, and the humans approving it see an opaque call. 1Claw evaluates guardrails against the decoded inner call before signing, so the proposal itself is constrained.
+  https://1claw.co/compare/gnosis-safe-raw-keys
+- **1Claw vs Web3Auth for agent key management** — Web3Auth solves a different problem: giving a human end user a wallet from a social login, with key shares split so no single party holds the key. There is no human to authenticate in an autonomous agent, so that model does not transfer. Choose 1Claw when the signer is an agent and authority has to come from policy — allowlists, caps, simulation, approval routing — rather than from a login.
+  https://1claw.co/compare/web3auth-signing
+- **1Claw vs Dfns for AI agent signing** — Dfns is a strong wallet infrastructure choice with MPC custody, a policy engine, and broad chain coverage — if you are building a wallet product, evaluate it seriously. 1Claw is narrower and more opinionated: it assumes the signer is an autonomous agent, and bundles agent identity, secrets, execution guardrails, and approval routing into the same product and the same audit trail.
+  https://1claw.co/compare/dfns
+- **What is the best way to let an AI agent sign blockchain transactions?** — The rule that matters: the agent should never hold the private key, and something between the agent and the chain must decode the transaction before it is signed. A local key fails both. AWS KMS fixes custody but signs any digest it is given. A Safe constrains execution but not what the agent proposes. Agent-native signing — 1Claw's Intents API, or a wallet platform with an agent layer you build yourself — is the only shape that does both.
+  https://1claw.co/compare/best-agent-transaction-signing
+- **How do I use an HSM to sign AI agent transactions?** — An HSM solves custody — the key material cannot be extracted — and that is worth having. It does not solve authorisation, because an HSM signs whatever an authorised caller presents, and an LLM agent that has been manipulated is still an authorised caller. The useful architecture puts the HSM underneath a layer that decodes the transaction and evaluates policy first.
+  https://1claw.co/compare/hsm-signing-for-ai-agents
+
+### Embedded wallets and agent treasury
+
+- **1Claw vs Privy (Stripe) for agent wallets** — Privy — now owned by Stripe — is the better choice for embedded wallets belonging to your human users: social login onboarding, non-custodial key shares, and a polished consumer flow. Choose 1Claw when the wallet belongs to an autonomous agent rather than a person, and the controls that matter are destination allowlists, spend caps, simulation, and human approval rather than a login.
+  https://1claw.co/compare/privy-stripe
+- **1Claw vs Coinbase Developer Platform for agent wallets** — Coinbase CDP is a good default if you are building on Base and want server wallets, onramps, and Coinbase ecosystem tooling in one place. Choose 1Claw when the wallet is driven by an autonomous agent and you need policy between the agent and the chain — decoded transactions, destination allowlists, per-chain daily caps, simulation, and approval routing.
+  https://1claw.co/compare/coinbase-cdp
+- **1Claw vs Turnkey for embedded and agent wallets** — Turnkey is the stronger embedded wallet infrastructure: verifiable TEE signing, a granular policy engine, and the throughput to provision wallets per end user at scale. Choose 1Claw when the wallets belong to autonomous agents and you want the governance layer included — simulation, spend caps, approval routing, and the agent's API credentials in the same policy model.
+  https://1claw.co/compare/turnkey-wallets
+- **1Claw vs Fireblocks for agent treasury wallets** — Do not treat these as alternatives for the same money. Fireblocks is regulated institutional custody with insurance and counterparty connectivity, and belongs around treasury balances. 1Claw is not a custodian and carries no custody insurance; it belongs around the small operational balances autonomous agents actually spend, where per-call guardrails and approval routing matter more than custody depth.
+  https://1claw.co/compare/fireblocks-wallets
+- **1Claw vs Dynamic for embedded wallets** — Dynamic is the better product for end-user wallet connection and onboarding — multi-wallet login, embedded wallets, and the surrounding auth UX. It is not aimed at autonomous agents. Choose 1Claw when the wallet is controlled by an agent and the requirement is policy per transaction rather than a smooth login.
+  https://1claw.co/compare/dynamic-wallets
+- **1Claw vs thirdweb for agent wallets** — thirdweb is the broader platform — contracts, in-app wallets, account abstraction, and deployment tooling in one SDK — and if you want a full web3 stack it covers more ground than 1Claw ever will. Choose 1Claw when the specific problem is an autonomous agent signing under policy, with allowlists, caps, simulation, and human approval.
+  https://1claw.co/compare/thirdweb-wallets
+- **1Claw vs Magic for embedded wallets** — Magic is the better choice for consumer onboarding — email and social login to a wallet with no seed phrase, which is exactly the friction it was built to remove. It has no role once there is no human to log in. Choose 1Claw when the wallet is controlled by an autonomous agent and authority comes from policy rather than authentication.
+  https://1claw.co/compare/magic-wallets
+- **1Claw vs Web3Auth for embedded wallets** — Web3Auth is the right tool for giving human users a wallet from a social login with key shares split so no single party holds the key. Choose 1Claw when the wallet belongs to an autonomous agent — there is no login to derive authority from, so it has to come from policy: allowlists, caps, simulation, and approval routing.
+  https://1claw.co/compare/web3auth-wallets
+- **What is the best embedded wallet for AI agents?** — The question contains a category error worth naming: embedded wallet providers — Privy (Stripe), Dynamic, Magic, Web3Auth — derive authority from a human authenticating, and an autonomous agent has no one to authenticate. What you actually need is a signer where authority comes from policy: the key held server-side, the transaction decoded before signing, destination allowlists and value caps evaluated per call, and escalation to a human above a threshold.
+  https://1claw.co/compare/best-embedded-wallet-for-ai-agents
+
+### Sandboxes and hosting for agents
+
+- **1Claw vs E2B for AI agent sandboxes** — E2B is the better fit for ephemeral code execution — an agent writing and running a snippet, analysing data, or testing output in a disposable sandbox that starts in milliseconds. Choose 1Claw Cloud Runtimes when the agent is long-lived, needs credentials injected under policy, and should be reachable at a stable HTTPS endpoint. Runtimes require Pro, and every paid plan includes one (Small or Medium) at no extra charge; there is no free-tier runtime.
+  https://1claw.co/compare/e2b
+- **1Claw vs Modal for running AI agents** — Modal is substantially better general compute: GPUs, fast container builds, batch and ML workloads, and a mature Python-first developer experience. Choose 1Claw Cloud Runtimes only when the defining requirement is an agent identity with policy-scoped credentials and guardrailed outbound calls, not raw compute. Runtimes require Pro.
+  https://1claw.co/compare/modal
+- **1Claw vs Fly.io Machines for hosting AI agents** — Fly.io Machines give you more control and better economics for general workloads: global regions, fast-booting microVMs, persistent volumes, and your own networking. Choose 1Claw Cloud Runtimes when you want the agent-specific parts handled — vault-scoped secret injection, credential-free outbound execution, a hosted slug with inbound auth, and an audit trail — rather than assembling them yourself. Runtimes require Pro.
+  https://1claw.co/compare/fly-machines
+- **1Claw vs Daytona for AI agent sandboxes** — Daytona is the better fit for provisioning isolated development environments quickly — agents that need a workspace to write and run code, with fast provisioning and clean teardown. Choose 1Claw Cloud Runtimes when the agent is a long-lived service whose credentials, outbound calls, and signing need to be governed. Runtimes require Pro.
+  https://1claw.co/compare/daytona
+- **1Claw vs Vercel Sandbox for AI agents** — Vercel Sandbox is the right tool for executing untrusted or AI-generated code in isolation, particularly if your app already deploys on Vercel — ephemeral microVMs with no persistent identity are exactly what you want for that. Choose 1Claw Cloud Runtimes when the agent persists, holds an identity, and needs credentials and outbound calls governed by policy. Runtimes require Pro.
+  https://1claw.co/compare/vercel-sandbox
+
+<!-- END GENERATED COMPARISONS -->
+
 ## Architecture
 
 - **Vault API** (Rust/Axum) at api.1claw.co — RESTful API with JWT Bearer auth, HSM-backed signing
@@ -102,12 +220,13 @@ Enterprise opt-in feature. The human generates a 256-bit AES key in the dashboar
 Vault-level opt-in. Splits secret DEKs across multiple HSM providers so no single provider holds the complete key. Three custody modes: `2of2_client_custody` (XOR split, one share returned to client), `2of3_multi_hsm` (Shamir 2-of-3 across GCP/AWS/Azure HSMs), `2of3_client_custody` (Shamir 2-of-3 with one client-held share). Enable via `POST /v1/vaults/{id}/mpc`. Client-custody modes return `client_share` on secret creation and require `X-Client-Share` header on read.
 
 ### Intents API
-Agents can sign and broadcast EVM and non-EVM transactions without seeing private keys. Keys stay in the HSM. Per-agent **hard guardrails**: allowed chains, recipient allowlists, per-tx value caps, daily spending limits. **Graduated HITL (v0.54–0.55):** `tx_approval_policy` JSON routes matching txs to **202** `awaiting_approval`; `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` escalate EIP-712, simulation failures, and raw digest signing to HITL or deny. Extended guardrails (v0.55): unlimited ERC-20 approval blocking, per-recipient limits, USD caps, `allow_erc4337`, `allow_eip7702`, in-flight daily budget holds. Circuit breaker may set `auto_suspended`; org emergency freeze via `POST /v1/org/freeze`. **29 supported EVM mainnets** (all with dRPC managed RPC when `DRPC_API_KEY` is configured): Ethereum, Base, Optimism, Arbitrum One, Polygon, Avalanche C-Chain, BNB Smart Chain, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sonic, World Chain, Polygon zkEVM, Sei, Kaia, Mode, Arbitrum Nova, Berachain, Taiko, Zora, and Robinhood Chain (chain ID 4663). **EVM testnets:** Sepolia, Base Sepolia, Holesky, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy, Arc Testnet (stablecoin-native L2, chain ID 5042002), and Robinhood Testnet (chain ID 46630). **Non-EVM chains:** Bitcoin (via official `rust-bitcoin` crate — P2PKH, P2SH, P2WPKH, P2WSH, P2TR recipient support), Solana (via official `solana-sdk` crate — native PDA derivation, SPL token transfers), XRP, Cardano, Tron. **XRP supports 30+ transaction types** (Payment, TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.) via the `xrpl_tx_json` field — pass a raw XRPL transaction JSON object and the server uses the xrpl-rust binary codec to encode and sign it; `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. **Non-EVM testnets and faucets:**
+Agents can sign and broadcast EVM and non-EVM transactions without seeing private keys. Keys stay in the HSM. Per-agent **hard guardrails**: allowed chains, recipient allowlists, per-tx value caps, daily spending limits. **Graduated HITL (v0.54–0.55):** `tx_approval_policy` JSON routes matching txs to **202** `awaiting_approval`; `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` escalate EIP-712, simulation failures, and raw digest signing to HITL or deny. Extended guardrails (v0.55): unlimited ERC-20 approval blocking, per-recipient limits, USD caps, `allow_erc4337`, `allow_eip7702`, in-flight daily budget holds. Circuit breaker may set `auto_suspended`; org emergency freeze via `POST /v1/org/freeze`. **29 supported EVM mainnets** (all with dRPC managed RPC when `DRPC_API_KEY` is configured): Ethereum, Base, Optimism, Arbitrum One, Polygon, Avalanche C-Chain, BNB Smart Chain, zkSync Era, Linea, Scroll, Mantle, Blast, Gnosis, Fantom, Celo, Aurora, Metis, Moonbeam, Cronos, Sonic, World Chain, Polygon zkEVM, Sei, Kaia, Mode, Arbitrum Nova, Berachain, Taiko, Zora, and Robinhood Chain (chain ID 4663). **EVM testnets:** Sepolia, Base Sepolia, Holesky, Optimism Sepolia, Arbitrum Sepolia, Polygon Amoy, Arc Testnet (stablecoin-native L2, chain ID 5042002), and Robinhood Testnet (chain ID 46630). **Non-EVM chains:** Bitcoin (via official `rust-bitcoin` crate — P2PKH, P2SH, P2WPKH, P2WSH, P2TR recipient support), Solana (via official `solana-sdk` crate — native PDA derivation, SPL token transfers), XRP, Cardano, Tron, Midnight (unshielded NIGHT, **Preprod only**, via the `midnight-signer` sidecar; requires `ONECLAW_MIDNIGHT_ENABLED`). **XRP supports 30+ transaction types** (Payment, TrustSet, OfferCreate, NFTokenMint, AMMCreate, EscrowCreate, etc.) via the `xrpl_tx_json` field — pass a raw XRPL transaction JSON object and the server uses the xrpl-rust binary codec to encode and sign it; `Account`, `Sequence`, `Fee`, `LastLedgerSequence`, and `SigningPubKey` are auto-filled when absent. **Non-EVM testnets and faucets:**
 | Chain | Testnet chain value | Faucet |
 | --- | --- | --- |
 | Bitcoin | `bitcoin-signet` | [faucet.coinbin.org](https://faucet.coinbin.org/) |
 | Solana | `solana-devnet` | [faucet.solana.com](https://faucet.solana.com/) or `solana airdrop` CLI |
 | XRP | `xrp-testnet` | [xrpl.org faucets](https://xrpl.org/resources/dev-tools/xrp-faucets) |
+| Midnight | `midnight-preprod` | [Preprod faucet](https://faucet.preprod.midnight.network/) — use the unshielded `mn_addr_preprod1…` address. NIGHT must then be registered for DUST generation before it can pay a fee. |
 | Cardano | `cardano-preprod` | [Cardano faucet](https://faucet.preprod.world.dev.cardano.org/basic-faucet) (also API: `curl -X POST "https://faucet.preprod.world.dev.cardano.org/send-money/<ADDR>?api_key=ooseiteiquo7Wie9oochooyiequi4ooc"`) |
 | Tron | `tron-shasta` | [shasta.tronex.io](https://shasta.tronex.io/join/getJoinPage) (2,000 TRX) |
 
@@ -125,7 +244,7 @@ Bitcoin testnet/signet uses `tb1q…` addresses. Cardano preprod uses `addr_test
 **`GET /v1/agents/{id}`** returns **`tx_spent_today`** (UTC-day spend in native major units), **`tx_spent_today_by_chain`** (per-chain daily spend, e.g. `{ "ethereum": "0.5", "solana": "2.0", "bitcoin": "0.001" }`), **`tx_count_today`** (today's transaction count), and **`tx_overhead_today_by_chain`** (per-chain overhead spend) so **Shroud** and other clients enforce the same caps as the Vault API. (`tx_spent_today_eth` is a deprecated alias.) Supports EIP-155 legacy and EIP-1559 Type 2 transactions. **Gasless transactions**: set `gasless: true` on `SubmitTransactionRequest` to sponsor gas via Pimlico paymaster (ERC-4337). Optional Tenderly simulation before signing. Replay protection via `Idempotency-Key` header (UUID, 24h TTL; auto-generated by SDK and MCP). Server-side nonce serialization with an atomic `nonce_tracker` table (`SELECT FOR UPDATE`) prevents nonce collisions across concurrent agents. `GET .../transactions/{tx_id}` redacts `signed_tx` by default; pass `?include_signed_tx=true` to include it.
 
 ### Multi-Chain Signing Keys (v0.18)
-Agents can have per-chain signing keys for 6 supported blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519, 31 supported types via `xrpl_tx_json`; SetRegularKey/SignerListSet/AccountSet/AccountDelete require explicit `xrpl_allowed_tx_types`), Cardano (Ed25519), Tron (secp256k1). Keys are provisioned by humans via `POST /v1/agents/{id}/signing-keys` with `{ chain }`. Private keys are stored in the HSM-backed `__agent-keys` vault; public keys and addresses are returned to the caller. Agents cannot provision or rotate their own keys (human-only, 403). Key lifecycle: create, list, rotate, deactivate, **export**, **import**. **Signing key export**: `POST /v1/agents/{id}/signing-keys/{chain}/export` — human-only, requires password re-authentication via `X-Auth-Confirm` header; returns `{ private_key, public_key, address, curve, chain }`; failed re-auth triggers account lockout; audit-logged. **Signing key import (v0.47, BYOK)**: `POST /v1/agents/{id}/signing-keys/{chain}/import` — human-only, requires `X-Auth-Confirm`; accepts `{ private_key, format?: "hex"|"base64"|"wif" }`. SDK: `client.signingKeys.create(agentId, { chain })`, `.list()`, `.rotate()`, `.deactivate()`, `.export(agentId, chain, { password })`, `.importKey(agentId, chain, body, password)`. CLI: `1claw agent signing-keys list`, `1claw agent signing-keys create --chain ethereum`, `1claw agent keys import`. MCP tools: `list_signing_keys`, `provision_signing_key`, `import_signing_key`.
+Agents can have per-chain signing keys for 7 supported blockchains: Ethereum (secp256k1), Bitcoin (secp256k1), Solana (Ed25519), XRP (Ed25519, 31 supported types via `xrpl_tx_json`; SetRegularKey/SignerListSet/AccountSet/AccountDelete require explicit `xrpl_allowed_tx_types`), Cardano (Ed25519), Tron (secp256k1), Midnight (Preprod only — provisionable, but **not rotatable or importable**: derivation happens in the sidecar, so there is no local keygen and no raw private key to import; both endpoints refuse it before consuming a consensus approval). Keys are provisioned by humans via `POST /v1/agents/{id}/signing-keys` with `{ chain }`. Private keys are stored in the HSM-backed `__agent-keys` vault; public keys and addresses are returned to the caller. Agents cannot provision or rotate their own keys (human-only, 403). Key lifecycle: create, list, rotate, deactivate, **export**, **import**. **Signing key export**: `POST /v1/agents/{id}/signing-keys/{chain}/export` — human-only, requires password re-authentication via `X-Auth-Confirm` header; returns `{ private_key, public_key, address, curve, chain }`; failed re-auth triggers account lockout; audit-logged. **Signing key import (v0.47, BYOK)**: `POST /v1/agents/{id}/signing-keys/{chain}/import` — human-only, requires `X-Auth-Confirm`; accepts `{ private_key, format?: "hex"|"base64"|"wif" }`. SDK: `client.signingKeys.create(agentId, { chain })`, `.list()`, `.rotate()`, `.deactivate()`, `.export(agentId, chain, { password })`, `.importKey(agentId, chain, body, password)`. CLI: `1claw agent signing-keys list`, `1claw agent signing-keys create --chain ethereum`, `1claw agent keys import`. MCP tools: `list_signing_keys`, `provision_signing_key`, `import_signing_key`.
 
 ### Extended Signing Intents (v0.18)
 Unified `POST /v1/agents/{id}/sign` endpoint with `intent_type` dispatch:
@@ -395,8 +514,8 @@ Key endpoints:
 - `POST /v1/platform/connections/{id}/bootstrap` — Bootstrap resources from template (optional `parameters`, `Idempotency-Key`)
 - `POST /v1/platform/siwe/challenge` — SIWE challenge for wallet-based user upsert (platform-only)
 - `GET /v1/platform/connections/{id}/runtimes/{runtime_id}` — Connection-scoped runtime GET (plt_; not `/v1/runtimes/{id}`)
-- `POST /v1/platform/connections/{id}/passkeys/enroll/begin` — ALWAYS 403. Platform apps cannot enrol login passkeys; the user enrols at 1claw.co/settings/security.
-- `POST /v1/platform/connections/{id}/passkeys/enroll/complete` — ALWAYS 403. See above.
+- `POST /v1/platform/connections/{id}/passkeys/enroll/begin` — Start passkey registration for connected user (plt_)
+- `POST /v1/platform/connections/{id}/passkeys/enroll/complete` — Complete passkey registration (plt_)
 - `POST /v1/platform/connections/{id}/agents/{agent_id}/chat` — Connection-scoped agent chat (`system`, `system_prompt`, `messages[]`; 402 on billing errors)
 - `PATCH /v1/platform/connections/{id}/agents/{agent_id}` — Enable Intents/Execution Intents or update `system_prompt` (plt_; agent on connection)
 - `GET /v1/platform/connections/{id}/signing-keys` — List agent signing keys (public metadata; optional `?agent_id=`; not `wallet_address`)
@@ -583,13 +702,13 @@ Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit
 
 ## MCP Tools (for AI agents)
 
-The MCP server at mcp.1claw.co ships **157 tools** (plus the `vault://secrets` resource), grouped into **toolsets** and offered per agent entitlement — a session only ever lists the toolsets its agent is entitled to (a vault-only agent sees about two dozen):
+The MCP server at mcp.1claw.co ships **159 tools** (plus the `vault://secrets` resource), grouped into **toolsets** and offered per agent entitlement — a session only ever lists the toolsets its agent is entitled to (a vault-only agent sees about two dozen):
 
 - `inspect` (always): inspect_content — works without vault credentials
-- `vault` (any agent): list_secrets, get_secret, put_secret, delete_secret, describe_secret, list_versions, rotate_and_store, rotate_generate, get_env_bundle, resolve_env, share_secret, grant_access, create_vault, list_vaults, list_oauth_connections, list_oauth_providers, oauth_revoke_consent, oauth_revoke_token
-- `approvals` (any agent): request_approval, get_approval_status, get_approval, list_approvals, list_pending_approvals
+- `vault` (any agent): list_secrets, get_secret, put_secret, delete_secret, describe_secret, list_versions, rotate_and_store, rotate_generate, get_env_bundle, resolve_env, share_secret, grant_access, create_vault, list_vaults, list_oauth_connections, list_oauth_providers, oauth_revoke_consent, oauth_revoke_token, list_child_agents
+- `approvals` (any agent): request_approval, get_approval_status, get_approval, list_approvals, cancel_approval, list_pending_approvals
 - `intents` (agent flag intents_api_enabled): simulate_transaction, simulate_bundle, submit_transaction, sign_transaction, sign_message, sign_typed_data, sign_digest, list_transactions, get_transaction, provision_signing_key, import_signing_key, list_signing_keys, get_signing_key_balance, get_portfolio, import_smart_account, list_agent_accounts, get_safe_module_registry, lease_bankr_key (policy-gated; never returns the key in tool output)
-- `execute` (agent flag execution_intents_enabled): list_bindings, test_binding, execute_http, execute_intent, list_executions, list_installed_connectors, list_connector_presets
+- `execute` (agent flag execution_intents_enabled): list_bindings, test_binding, execute_http, execute_intent, list_executions, list_installed_connectors, list_connector_presets, list_event_subscriptions
 - `cards` (agent flag cards_enabled): list_cards, get_card_status, search_gift_cards, order_card, order_gift_card (reveal intentionally omitted — no PAN in tool output)
 - `memory` (agent flag memory_enabled): put_memory, get_memory, list_memory, search_memory, delete_memory, get_peer_context
 - `channels` (agent flag shroud_enabled): list_channels, create_channel, send_channel_message
