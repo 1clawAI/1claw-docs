@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.33 (2026-09-19) {#v06133-2026-09-19}
+
+**OAuth callback default fixed.** When an org's OAuth app credentials named no `redirect_uri` — the dashboard's recommended setting — the vault built the default on the dashboard host (`https://1claw.co/v1/oauth/callback`), which the dashboard answers with "This is the dashboard", so the consent round trip could never complete. The default is now `https://api.1claw.co/v1/oauth/callback` (the vault's public URL). Register that URI on every provider app. Guarded by a test.
+
 ### v0.61.32 (2026-09-19) {#v06132-2026-09-19}
 
 **Connector event triggers — the polling interim** (nanobots plan, item 4). Event-triggered automations were limited to vault and policy lifecycle events; a reactive swarm had to poll on a cron and dedupe itself. Connector presets now advertise `event_sources` (Gmail `gmail.message.received`; Drive `drive.file.changed`; Calendar `calendar.event.changed`; GitHub `github.notification.received`; Stripe invoices, customers, payment intents; HubSpot contacts, deals), and `POST /v1/agents/{agent_id}/event-subscriptions` (human-only; `GET`, `DELETE`, `POST …/{id}/poll`) subscribes an installed binding to one. A leader-elected poller reads the source through the binding's own executor — same allowlists, credential and SSRF guard — keeps the last 500 item ids, primes on the first poll (emits nothing), emits at most 25 new items a poll oldest-first as automation events of that type, backs off on failure and switches off after 20 in a row. Migration 272. SDK `connectors.subscribe/listSubscriptions/unsubscribe/pollNow` (and the connector types are now exported from the package index), Python `client.connectors` (new resource: `list_presets`, `install`, `subscribe`, …). New prod suite `scripts/test-event-subscriptions-prod.sh`. OpenAPI spec 0.61.28, `@1claw/sdk` 0.61.22, `oneclaw` 0.61.9 (0.61.7 and 0.61.8 never published: mypy caught `list[str]` annotations shadowed by the resources' own `list` method — now `builtins.list`).
