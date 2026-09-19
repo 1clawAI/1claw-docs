@@ -152,6 +152,27 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 - **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
+### Tool calling (`tools`, `tool_choice`, `tool_calls`)
+
+Tool calling works through the proxy exactly as it does against the provider — send `tools` and `tool_choice` in the body, get `tool_calls` back, post the `role: "tool"` result on the next turn. Shroud does not rewrite the body; it inspects it. That applies to the funded path (no `X-Shroud-Api-Key`, billed to your 1Claw account), to BYO keys, and to `stream: true` (tool-call deltas are forwarded as the provider emits them).
+
+```bash
+curl -X POST https://shroud.1claw.co/v1/chat/completions \
+  -H "X-Shroud-Agent-Key: $AGENT_ID:$AGENT_API_KEY" -H "X-Shroud-Provider: openai" \
+  -H "Content-Type: application/json" -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role":"user","content":"Weather in Paris? Use the tool."}],
+    "tools": [{"type":"function","function":{"name":"get_weather",
+      "parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}}],
+    "tool_choice": "auto"
+  }'
+# → "finish_reason": "tool_calls", "message": { "tool_calls": [{ "function": { "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" } }] }
+```
+
+What Shroud adds on top of passthrough, per agent (`shroud_config.tool_call_inspection`, see [Tool call inspection](/docs/agents/shroud/threat-detection#tool-call-inspection)): an `allowed_tool_names` / `denied_tool_names` list, argument scanning for credentials and exfiltration URLs, and `action: block | redact | log`. A blocked tool call returns the same error shape as any other detection. Anthropic `tool_use` / `tool_result` blocks on `/v1/messages` are handled the same way.
+
+Rehydrating vault secrets *into* tool arguments (so the model never holds the credential) is a separate, planned capability — today a tool argument contains exactly what the model wrote.
+
 ### Configuring the LLM Model
 
 You can specify which model to use in two ways:
