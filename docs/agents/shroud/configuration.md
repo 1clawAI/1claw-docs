@@ -21,6 +21,10 @@ Controls what happens when threats are detected:
 sanitization_mode: "block"  // block | surgical | log_only
 ```
 
+### Streaming Inspection
+
+`streaming_inspection_mode` picks how `stream: true` responses are inspected before frames reach the client (default `rolling`). `rolling` releases text behind a tail buffer sized to the org's longest vault secret (≤ 256 bytes) and treats the injection heuristics as warn-only; `holdback` buffers `streaming_holdback_chars` (default 512) and blocks on injection like the buffered path. Tool-call deltas are held until complete in both modes. `max_concurrent_streams` (default 20) caps open streams per agent key; excess requests get `429` + `Retry-After`. Details in [Streaming](./overview.md#streaming).
+
 ### Threat Logging
 
 When enabled, all detected threats are logged to the audit system regardless of the action taken:
@@ -133,6 +137,9 @@ const agent = await client.agents.create({
       action: "warn"
     },
     flagged_request_retention_days: 30,
+    streaming_inspection_mode: "rolling",   // or "holdback"
+    streaming_holdback_chars: 512,          // holdback mode only (64–65536)
+    max_concurrent_streams: 20,             // open streams per agent key (1–1000)
     sanitization_mode: "block",
     threat_logging: true
   }

@@ -154,7 +154,7 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 
 ### Tool calling (`tools`, `tool_choice`, `tool_calls`)
 
-Tool calling works through the proxy exactly as it does against the provider — send `tools` and `tool_choice` in the body, get `tool_calls` back, post the `role: "tool"` result on the next turn. Shroud does not rewrite the body; it inspects it. That applies to the funded path (no `X-Shroud-Api-Key`, billed to your 1Claw account), to BYO keys, and to `stream: true` (tool-call deltas are forwarded as the provider emits them).
+Tool calling works through the proxy exactly as it does against the provider — send `tools` and `tool_choice` in the body, get `tool_calls` back, post the `role: "tool"` result on the next turn. Shroud does not rewrite the body; it inspects it. That applies to the funded path (no `X-Shroud-Api-Key`, billed to your 1Claw account), to BYO keys, and to `stream: true` (tool-call deltas are held until the call is complete, checked against the agent's tool policy, then forwarded in the original frames and order — see [Streaming](#streaming)).
 
 ```bash
 curl -X POST https://shroud.1claw.co/v1/chat/completions \
@@ -172,6 +172,15 @@ curl -X POST https://shroud.1claw.co/v1/chat/completions \
 What Shroud adds on top of passthrough, per agent (`shroud_config.tool_call_inspection`, see [Tool call inspection](/docs/agents/shroud/threat-detection#tool-call-inspection)): an `allowed_tool_names` / `denied_tool_names` list, argument scanning for credentials and exfiltration URLs, and `action: block | redact | log`. A blocked tool call returns the same error shape as any other detection. Anthropic `tool_use` / `tool_result` blocks on `/v1/messages` are handled the same way.
 
 Rehydrating vault secrets *into* tool arguments (so the model never holds the credential) is a separate, planned capability — today a tool argument contains exactly what the model wrote.
+
+### Streaming {#streaming}
+
+`stream: true` works on the OpenAI-style and Anthropic paths and is inspected **per frame inside the proxy** — never forwarded raw and checked at the end. Two modes, set per agent in `shroud_config.streaming_inspection_mode`:
+
+- **`rolling`** (default): text deltas are released behind a tail buffer at least as long as the longest secret in your vault (capped at 256 bytes; longer values such as PEM keys are matched by their first 256 bytes and the rest is swallowed as it arrives). A secret split across two chunks is redacted to its `[REDACTED:#…]` tag before any byte of it reaches the client. The heuristic injection scanner is warn-only in this mode; the stream is aborted only on high-confidence signals (a vault secret literal, a denied tool, a secret in tool arguments, an exfil URL next to a redaction).
+- **`holdback`**: `streaming_holdback_chars` (default 512) are buffered before release, and the injection scanner blocks as it does on the buffered path. Slower first token, full parity — for regulated agents.
+
+In both modes tool-call deltas are assembled until `finish_reason` / `content_block_stop`, policy-checked, then released in order. A block mid-stream sends one error frame (`{"error":{"type":"shroud_blocked",…}}` then `[DONE]`, or an Anthropic `event: error`) and closes cleanly. OpenAI-format requests get `stream_options.include_usage` added so token counts still land on the last chunk; Shroud Activity rows are finalised when the stream ends. Gemini streams stay on the buffered path. Each agent key may hold **20 open streams** (`max_concurrent_streams`); beyond that the request gets `429` with `Retry-After: 1`. Responses carry `x-shroud-stream-inspection: per-frame`.
 
 ### Configuring the LLM Model
 
