@@ -10,7 +10,7 @@ sidebar_label: "2026"
 
 ### v0.61.33 (2026-09-19) {#v06133-2026-09-19}
 
-**OAuth callback default fixed.** When an org's OAuth app credentials named no `redirect_uri` — the dashboard's recommended setting — the vault built the default on the dashboard host (`https://1claw.co/v1/oauth/callback`), which the dashboard answers with "This is the dashboard", so the consent round trip could never complete. The default is now `https://api.1claw.co/v1/oauth/callback` (the vault's public URL). Register that URI on every provider app. Guarded by a test.
+**Chart bindings wait for their secret; api-token hosts.** A chart binding whose `credential` names a secret not yet stored (the vault is usually created by the same apply) is now `skipped` as "waiting on secret … store it and apply again" instead of `failed`; the next apply creates it (`test-chart-apply-prod.sh` §5 exercises the three-apply sequence). The `api-token` connector refused hosts that merely *start* with `http` — `httpbin.org` — because of a scheme check written as a prefix test; it now checks for a scheme separator and refuses ports. **OAuth callback default fixed.** When an org's OAuth app credentials named no `redirect_uri` — the dashboard's recommended setting — the vault built the default on the dashboard host (`https://1claw.co/v1/oauth/callback`), which the dashboard answers with "This is the dashboard", so the consent round trip could never complete. The default is now `https://api.1claw.co/v1/oauth/callback` (the vault's public URL). Register that URI on every provider app. Guarded by a test.
 
 ### v0.61.32 (2026-09-19) {#v06132-2026-09-19}
 

@@ -191,6 +191,14 @@ this run" — and the next apply, once the vault exists, creates it. One gated
 resource is not a failed deployment, and a dependent resource is not a failed
 one either.
 
+The same applies to a binding's credential. A chart names the secret
+(`credential: {vault_ref, path}`) but never contains it, and the vault it
+lives in is usually created by the same apply — so on a first apply the
+binding is `skipped` as "waiting on secret 'crm/token' in vault … — store it
+and apply again". Store the secret (`PUT /v1/vaults/{id}/secrets/crm/token`),
+apply again, and the binding is created while everything else reports
+`unchanged`.
+
 ## Where the reconciler lives
 
 Server-side, and only server-side. `1claw apply` parses your YAML, posts it to
