@@ -62,7 +62,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 157 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 159 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |

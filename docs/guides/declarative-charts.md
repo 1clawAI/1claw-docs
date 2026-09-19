@@ -214,6 +214,17 @@ the CLI:
 | `POST /v1/org/apply/diff` | What would change. Read-only. |
 | `POST /v1/org/apply` | Make it so. |
 
+```typescript
+const chart = YAML.parse(fs.readFileSync("chart.yaml", "utf8"));
+const diff = await client.org.diffChart(chart, appliedState);      // read-only
+const applied = await client.org.applyChart(chart, appliedState);  // save applied.data.applied_state
+```
+
+```python
+client.org.diff_chart(chart, applied_state)
+client.org.apply_chart(chart, applied_state)
+```
+
 Both are human-only. A chart provisions agents, vaults and access policies, so
 an agent that could apply one could grant itself access to a vault it cannot
 currently read.

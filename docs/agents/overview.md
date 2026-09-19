@@ -41,6 +41,9 @@ A parent agent can be given cheap sub-agents for fan-out work — one child per 
 - **Free of the agent cap.** Children do not count against the plan's agent limit. Agent responses carry `agent_type` (`standard` | `child`) and `parent_agent_id`; `GET /v1/agents/{agent_id}/children` lists a parent's children.
 
 ```bash
+1claw agent create-child $PARENT summariser-7 --scopes secrets:read --namespaces child:doc-7
+1claw agent children $PARENT
+
 curl -X POST https://api.1claw.co/v1/agents/$PARENT/children \
   -H "Authorization: Bearer $USER_JWT" -H "Content-Type: application/json" \
   -d '{"name":"summariser-7","scopes":["secrets:read"],"memory_namespace_allowlist":["child:doc-7"]}'

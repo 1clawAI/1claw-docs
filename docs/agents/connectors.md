@@ -127,6 +127,25 @@ const install = await client.connectors.install(agentId, "slack", {
   redirect_after: `/agents/${agentId}`,
 });
 window.location.href = install.data.authorization_url!;
+
+// Polled event source → automation events (vault ≥ 0.61.32)
+const sub = await client.connectors.subscribe(agentId, {
+  binding_id: install.data.binding_id,
+  event_type: "gmail.message.received",
+});
+await client.connectors.pollNow(agentId, sub.data!.id); // first poll primes, emits nothing
+```
+
+```python
+client.connectors.install(agent_id, "stripe")
+client.connectors.subscribe(agent_id, binding_id, "stripe.invoice.created", interval_secs=120)
+client.connectors.list_subscriptions(agent_id)
+```
+
+```bash
+1claw connector install <agent-id> api-token --name crm --host api.example.com --token $TOKEN
+1claw connector subscribe <agent-id> <binding-id> gmail.message.received
+1claw connector subscriptions <agent-id>
 ```
 
 ## Event sources
@@ -140,8 +159,9 @@ in the SDK) and trigger an automation on the event type. See
 
 ## MCP
 
-`list_connector_presets` and `list_installed_connectors` let an agent see what
-exists and what it has. There is no install tool: that stays a human action.
+`list_connector_presets`, `list_installed_connectors` and `list_event_subscriptions` let an
+agent see what exists, what it has, and which event sources it is subscribed to. There is no
+install or subscribe tool: those stay human actions.
 
 ## Prerequisites
 

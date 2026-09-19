@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.35 (2026-09-19) {#v06135-2026-09-19}
+
+**Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 159 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
+
 ### v0.61.34 (2026-09-19) {#v06134-2026-09-19}
 
 **Meta Muse connector** (`packages/muse-connector`, new submodule, Apache-2.0, `muse.1claw.co`). Muse builds Custom Connectors from a service's API description plus a stored credential, so 1Claw now ships that API: a read-and-decide surface — pending approvals from both queues in one shape, approve/reject (the only write, consensus votes bound to the `payload_hash` the connector read), portfolio, balances, automations, activity — in front of the Platform API, scoped per user by an HMAC connector token (`mcn_…`) that names one platform connection and is revoked by disconnecting the Muse app. New dashboard page `/connect/muse` mints the token after the standard link consent and the connected-apps agent grant. Unit tests and a 19-check production E2E; submission kit for muse.ai/platform. **`@1claw/sdk` 0.61.23:** the published `.d.ts` files carried extensionless relative imports, so under `moduleResolution: NodeNext` (with `skipLibCheck`) the whole client typed as `any` — declarations now get `.js` extensions too, guarded by a test.
