@@ -31,6 +31,21 @@ Agents do **not** get blanket vault access. Humans attach **policies** that gran
 | **Delegation** | Inter-agent task delegation (human-approved) | [Delegation](/docs/agents/delegation) |
 | **OIDC federation** | Exchange agent JWT for RS256 tokens (WIF) | [OIDC federation](/docs/agents/oidc-federation) |
 
+## Child agents
+
+A parent agent can be given cheap sub-agents for fan-out work — one child per document to summarise, one per lead to qualify — without each one being a full, human-registered agent.
+
+- **Created by a human** with `POST /v1/agents/{agent_id}/children` (`agents.createChild` in the SDK, `create_child` in Python). Up to 50 per parent; a child cannot have children.
+- **Bounded by the parent.** A child's `vault_ids` and `scopes` default to the parent's and must be a subset of them — a superset is refused. Vault policies and guardrails are inherited from the parent (policy lookups include the parent's), so a child can never do more than its parent.
+- **Its own identity.** Each child has its own `ocv_` API key, its own memory namespaces (default `child:{child_id}`) and its own `action_approval_policy`, so its actions are attributable and its approvals are separate.
+- **Free of the agent cap.** Children do not count against the plan's agent limit. Agent responses carry `agent_type` (`standard` | `child`) and `parent_agent_id`; `GET /v1/agents/{agent_id}/children` lists a parent's children.
+
+```bash
+curl -X POST https://api.1claw.co/v1/agents/$PARENT/children \
+  -H "Authorization: Bearer $USER_JWT" -H "Content-Type: application/json" \
+  -d '{"name":"summariser-7","scopes":["secrets:read"],"memory_namespace_allowlist":["child:doc-7"]}'
+```
+
 ## Signing keys
 
 Humans provision per-chain signing keys (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron). Private keys live in `__agent-keys`; agents sign via Intents API only.

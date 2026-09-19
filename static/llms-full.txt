@@ -4841,6 +4841,21 @@ Agents do **not** get blanket vault access. Humans attach **policies** that gran
 | **Delegation** | Inter-agent task delegation (human-approved) | [Delegation](/docs/agents/delegation) |
 | **OIDC federation** | Exchange agent JWT for RS256 tokens (WIF) | [OIDC federation](/docs/agents/oidc-federation) |
 
+## Child agents
+
+A parent agent can be given cheap sub-agents for fan-out work — one child per document to summarise, one per lead to qualify — without each one being a full, human-registered agent.
+
+- **Created by a human** with `POST /v1/agents/{agent_id}/children` (`agents.createChild` in the SDK, `create_child` in Python). Up to 50 per parent; a child cannot have children.
+- **Bounded by the parent.** A child's `vault_ids` and `scopes` default to the parent's and must be a subset of them — a superset is refused. Vault policies and guardrails are inherited from the parent (policy lookups include the parent's), so a child can never do more than its parent.
+- **Its own identity.** Each child has its own `ocv_` API key, its own memory namespaces (default `child:{child_id}`) and its own `action_approval_policy`, so its actions are attributable and its approvals are separate.
+- **Free of the agent cap.** Children do not count against the plan's agent limit. Agent responses carry `agent_type` (`standard` | `child`) and `parent_agent_id`; `GET /v1/agents/{agent_id}/children` lists a parent's children.
+
+```bash
+curl -X POST https://api.1claw.co/v1/agents/$PARENT/children \
+  -H "Authorization: Bearer $USER_JWT" -H "Content-Type: application/json" \
+  -d '{"name":"summariser-7","scopes":["secrets:read"],"memory_namespace_allowlist":["child:doc-7"]}'
+```
+
 ## Signing keys
 
 Humans provision per-chain signing keys (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron). Private keys live in `__agent-keys`; agents sign via Intents API only.
@@ -7968,9 +7983,22 @@ Every trigger produces a **run** with status, duration, and output:
 | `running` | Currently executing |
 | `success` | Finished without error |
 | `failed` | Failed (see `error` field) |
-| `timed_out` | Exceeded 300-second timeout |
+| `timed_out` | Exceeded the 300-second run clock, or parked on an approval nobody decided within 72 hours |
 | `cancelled` | Cancelled by a human user |
-| `awaiting_approval` | Paused on an `approval_request` step |
+| `awaiting_approval` | Paused on an `approval_request` step — the clock is stopped |
+
+### Approval steps park the run, and the decision resumes it
+
+An `approval_request` step creates an approval, parks the run in `awaiting_approval` with its state so far, and stops the 300-second clock. When the approval is decided — from the dashboard, the API (`POST /v1/approvals/{id}/decide`), the one-tap email link, or the phone — the run continues automatically: **approved** resumes from the next step (the approval step's output is `{ "status": "approved", "approval_id": … }`, so later steps can read `{{steps.N.status}}`), **rejected** fails the run with `approval rejected at step N`. Time spent parked does not count against the run clock; a parked run that nobody decides within 72 hours becomes `timed_out`.
+
+If the decision was made somewhere else, hand it off:
+
+```
+POST /v1/automations/{automation_id}/runs/{run_id}/resume
+{"payload": {"ticket": "OPS-42"}}
+```
+
+Human-only. It marks the approval approved on your behalf and continues the run; `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
 
 ### Cancel a run
 
@@ -24799,6 +24827,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.30 (2026-09-19) {#v06130-2026-09-19}
+
+**`binary` runtime template** — run a compiled program (Go, Rust, …) from a release asset (`env_public.BINARY_URL`, HTTPS, pinned by `BINARY_SHA256`, archives unpacked) or a `startup_command` after a repo clone; the create call refuses a binary runtime with nothing to run. CLI 0.61.11 `runtime create` lists the real templates/presets and gains `--source-repo`, `--source-branch`, `--startup-command`. **Platform-default OAuth apps** — `ONECLAW_OAUTH_DEFAULT_APPS` (JSON, per provider) lets connections use a 1Claw-owned app when the org registered none; org credentials always win; the dashboard shows "Using 1Claw default"; `GET …/oauth/app-credentials` returns `platform_defaults`. Registering the apps and Google's restricted-scope verification remain the operator's decision. **Automation runs resume after their approval.** An `approval_request` step already parked the run and stopped the clock; nothing woke it up (nanobots plan, item 5). Now the run's state is saved at the step (migration 270), deciding the approval resumes it automatically (approved → next step, rejected → failed with the reason), `POST /v1/automations/{id}/runs/{run_id}/resume` hands off a decision made elsewhere (human-only, optional `payload` as `{{resume.*}}`), the resumed segment gets its own 300-second clock, and a run parked for more than 72 hours becomes `timed_out`. New webhook event `automation.run.resumed`. SDK `automations.resumeRun`, Python `resume_run`. **Child agents** (nanobots plan, item 3) — `POST /v1/agents/{agent_id}/children` creates a sub-agent under a parent (human-only, up to 50 per parent, migration 271): it gets its own API key, memory namespaces (default `child:{id}`) and action-approval policy; its vault_ids and scopes must be a subset of the parent's (a superset is refused); it inherits the parent's vault policies and guardrails; it does not count against the plan's agent cap, cannot have children of its own, and reports `agent_type: "child"` / `parent_agent_id` on every agent response. `GET …/children` lists them. SDK `agents.createChild` / `listChildren`, Python `create_child` / `list_children`. OpenAPI spec 0.61.26, `@1claw/sdk` 0.61.20, `oneclaw` 0.61.7.
+
 ### v0.61.29 (2026-09-19) {#v06129-2026-09-19}
 
 **Connector catalogue: Google Drive, Google Business Profile, Stripe, HubSpot, LinkedIn, and a generic `api-token` connector** (host named at install, token stored in the vault, same SSRF rules as every binding; migration 269 seeds the three new OAuth providers and the Google `drive.file` / `business.manage` scopes). **Three things nanobots asked for.** `POST /v1/agents/{id}/memory/search` now matches text stored in *values* — it decrypts the namespace (bounded, most recent 500 + shared) and scores key + value lexically (exact 1.0, substring 0.95, token overlap 0.3–0.9); it returned nothing for any value text before. `POST /v1/approvals/{id}/cancel` lets the requesting agent (or the addressed human) withdraw a pending approval, first-answer-wins, delivered to subscribers as `approval.decided` with `decision: "cancelled"` (new status `cancelled`, migration 268). `GET /v1/approvals` as an agent returns the approvals that agent created. SDK `approvals.cancel`, Python `approvals.cancel`, MCP `cancel_approval` (157 tools). The memory prod suite now asserts a value-text hit instead of accepting zero results.
@@ -28077,7 +28109,15 @@ rather than discovering it at provision time.
 | `claude-code` | Anthropic's Claude Code CLI | yes | proprietary | yes — Claude subscription or `ANTHROPIC_API_KEY` |
 | `codex` | OpenAI's Codex CLI | yes | Apache-2.0 | yes — ChatGPT plan or `OPENAI_API_KEY` |
 | `amp` | Sourcegraph Amp | yes | proprietary | yes — paid Amp subscription |
+| `binary` | A compiled program you ship (Go, Rust, …) — a release asset from `env_public.BINARY_URL` (`https://`, pinned by `BINARY_SHA256`; `.tar.gz`/`.zip` are unpacked to `bin/unpacked/`) or a `startup_command` after a `source_repo` clone; 1Claw CLI, curl, git and the sidecar are in the image | — | Apache-2.0 | no |
 | *(omitted)* + `image` | Any Dockerfile | — | — | — |
+
+```bash
+# A Go program published as a GitHub release asset
+1claw runtime create my-bot --template binary --agent-id <id> \
+  --env BINARY_URL=https://github.com/acme/bot/releases/download/v1.2.0/bot-linux-amd64 \
+  --env BINARY_SHA256=3f0c…e91a
+```
 
 "Chat" means `POST /v1/runtimes/{id}/chat` is available for that template.
 

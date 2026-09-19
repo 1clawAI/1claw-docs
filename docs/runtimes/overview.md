@@ -36,7 +36,15 @@ rather than discovering it at provision time.
 | `claude-code` | Anthropic's Claude Code CLI | yes | proprietary | yes — Claude subscription or `ANTHROPIC_API_KEY` |
 | `codex` | OpenAI's Codex CLI | yes | Apache-2.0 | yes — ChatGPT plan or `OPENAI_API_KEY` |
 | `amp` | Sourcegraph Amp | yes | proprietary | yes — paid Amp subscription |
+| `binary` | A compiled program you ship (Go, Rust, …) — a release asset from `env_public.BINARY_URL` (`https://`, pinned by `BINARY_SHA256`; `.tar.gz`/`.zip` are unpacked to `bin/unpacked/`) or a `startup_command` after a `source_repo` clone; 1Claw CLI, curl, git and the sidecar are in the image | — | Apache-2.0 | no |
 | *(omitted)* + `image` | Any Dockerfile | — | — | — |
+
+```bash
+# A Go program published as a GitHub release asset
+1claw runtime create my-bot --template binary --agent-id <id> \
+  --env BINARY_URL=https://github.com/acme/bot/releases/download/v1.2.0/bot-linux-amd64 \
+  --env BINARY_SHA256=3f0c…e91a
+```
 
 "Chat" means `POST /v1/runtimes/{id}/chat` is available for that template.
 

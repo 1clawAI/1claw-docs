@@ -396,9 +396,22 @@ Every trigger produces a **run** with status, duration, and output:
 | `running` | Currently executing |
 | `success` | Finished without error |
 | `failed` | Failed (see `error` field) |
-| `timed_out` | Exceeded 300-second timeout |
+| `timed_out` | Exceeded the 300-second run clock, or parked on an approval nobody decided within 72 hours |
 | `cancelled` | Cancelled by a human user |
-| `awaiting_approval` | Paused on an `approval_request` step |
+| `awaiting_approval` | Paused on an `approval_request` step — the clock is stopped |
+
+### Approval steps park the run, and the decision resumes it
+
+An `approval_request` step creates an approval, parks the run in `awaiting_approval` with its state so far, and stops the 300-second clock. When the approval is decided — from the dashboard, the API (`POST /v1/approvals/{id}/decide`), the one-tap email link, or the phone — the run continues automatically: **approved** resumes from the next step (the approval step's output is `{ "status": "approved", "approval_id": … }`, so later steps can read `{{steps.N.status}}`), **rejected** fails the run with `approval rejected at step N`. Time spent parked does not count against the run clock; a parked run that nobody decides within 72 hours becomes `timed_out`.
+
+If the decision was made somewhere else, hand it off:
+
+```
+POST /v1/automations/{automation_id}/runs/{run_id}/resume
+{"payload": {"ticket": "OPS-42"}}
+```
+
+Human-only. It marks the approval approved on your behalf and continues the run; `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
 
 ### Cancel a run
 
