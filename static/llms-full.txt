@@ -5281,6 +5281,35 @@ npx @1claw/cli agent enroll my-agent
 
 **Rate limits:** One enrollment per email per 10 minutes (when email is used), caps on pending enrollments, plus IP-based rate limiting.
 
+### Pairing with a fingerprint (no email, nothing to copy)
+
+An agent that enrols with its **own public key** gets a pairing ceremony instead of an emailed key: the human sees the key's fingerprint on the approval page and compares it with what the agent printed — a mutual check that the right agent is talking to the right account — and the agent collects its API key itself by polling.
+
+```bash
+npx @1claw/cli agent enroll my-agent --pair
+# Fingerprint (the human must see exactly this on the approval page):
+#   SHA256:Q2hlY2sgdGhpcyBmaW5nZXJwcmludCBvbiB0aGUgcGFn
+# Waiting for the account holder to allow or deny…
+```
+
+By hand:
+
+```bash
+# 1. Enrol with an Ed25519 public key (ssh-ed25519 line or base64 of the raw 32 bytes)
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","public_key":"ssh-ed25519 AAAAC3Nza…"}'
+# → { pairing_id, fingerprint: "SHA256:…", poll_token, approval_url, expires_at }
+
+# 2. Show `fingerprint` to the human; they open approval_url and compare.
+
+# 3. Poll until the decision (3 s is fine). The first `approved` response carries the key, once.
+curl -s "https://api.1claw.co/v1/agents/enroll/$PAIRING_ID/status?poll=$POLL_TOKEN"
+# → { status: "pending" | "approved" | "denied" | "expired", api_key?, agent_id?, vault_ids? }
+```
+
+The SDKs wrap this: `AgentsResource.pair(baseUrl, { name, public_key }, onFingerprint)` in TypeScript, `agents.enroll(name, public_key=…)` + `agents.enrollment_status(pairing_id, poll_token)` in Python. The public key becomes the agent's identity key (`ssh_public_key`) on approval. The parked key expires 15 minutes after approval if never collected.
+
 ## 2. Human grants access
 
 The human receives an email with the agent's ID and API key. In the [dashboard](https://1claw.co):
@@ -24717,6 +24746,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.24 (2026-09-18) {#v06124-2026-09-18}
+
+**Agent pairing with a fingerprint.** `POST /v1/agents/enroll` takes an optional `public_key`; the response carries the key's `SHA256:` fingerprint, which the approval page now shows for the human to compare with what the agent printed, and a `poll_token` the agent uses on `GET /v1/agents/enroll/{pairing_id}/status` to learn the decision and collect its API key itself, once — no key in an email. `1claw agent enroll --pair` does the whole ceremony (CLI 0.61.8); `AgentsResource.pair()` in `@1claw/sdk` 0.61.15, `enrollment_status()` in `oneclaw` 0.61.3. **Proposals** (`/proposals`): agent signing requests — messages, typed data, digests, transactions — rendered structurally with a decided history, "Refresh status", and passkey step-up for tier-2 signatures; the same view ships as `<OneclawProposalDetail />` in `@1claw/wallet-react` 0.6.0 with `client.listProposals/getProposal/decideProposal`. **Home**: an agent activity feed ("Nothing needs you" / N updates). OpenAPI spec 0.61.22.
+
 ### v0.61.23 (2026-09-18) {#v06123-2026-09-18}
 
 **Agents sign with self-custody keys, unattended.** The second share of a `client_tss` wallet can be held by the Shroud sidecar in a hosted runtime: the sidecar registers a P-256 key at boot (`POST /v1/runtimes/{id}/tss/holder`), the owner's passkey re-wraps their share to it (`PUT /v1/keys/{id}/client-share/holder`, ECIES, opaque to the vault), and the agent sends through `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` — `prepare` applies the agent's guardrails and the sanctions screen and records the message, `sign/begin` refuses anything unprepared, `broadcast` verifies and records the transaction. Sidecar 1.1.0 runs the same FROST crate as the browser via wazero (`POST /tss/send` on its loopback API). **Re-key to self-custody**: a server-custody Solana wallet can be replaced by a threshold key in one ceremony (`replace_existing`), the old key's last signature sweeping its balance across (audit `treasury_wallet.rekeyed`). **Custody policy switches**: `ONECLAW_SERVER_CUSTODY_GENERATION=deny` (with an exception list) and `ONECLAW_LAZY_WALLET_PROVISIONING`. **Proof**: `no_server_only_reconstruction.rs` fails the build for any key read that is not gated on custody, threshold, or passkey-owner — and found two ungated server paths (card orders, x402 pay) which are now gated. OpenAPI spec 0.61.21.
@@ -27963,7 +27996,7 @@ rather than discovering it at provision time.
 | `template` | Runtime | Chat | Licence | Needs your own vendor account |
 |---|---|---|---|---|
 | `python` | Python 3.12 + pip | — | Apache-2.0 | no |
-| `node` | Node 22 + pnpm | — | Apache-2.0 | no |
+| `node` | Node 24 + pnpm | — | Apache-2.0 | no |
 | `hermes` | 1Claw Hermes runtime | yes | Apache-2.0 | no |
 | `openclaw` | Rust-based minimal | yes | Apache-2.0 | no |
 | `openclaude` | OpenClaude + 1Claw sidecar | yes | Apache-2.0 | no |

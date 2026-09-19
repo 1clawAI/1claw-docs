@@ -117,6 +117,35 @@ npx @1claw/cli agent enroll my-agent
 
 **Rate limits:** One enrollment per email per 10 minutes (when email is used), caps on pending enrollments, plus IP-based rate limiting.
 
+### Pairing with a fingerprint (no email, nothing to copy)
+
+An agent that enrols with its **own public key** gets a pairing ceremony instead of an emailed key: the human sees the key's fingerprint on the approval page and compares it with what the agent printed — a mutual check that the right agent is talking to the right account — and the agent collects its API key itself by polling.
+
+```bash
+npx @1claw/cli agent enroll my-agent --pair
+# Fingerprint (the human must see exactly this on the approval page):
+#   SHA256:Q2hlY2sgdGhpcyBmaW5nZXJwcmludCBvbiB0aGUgcGFn
+# Waiting for the account holder to allow or deny…
+```
+
+By hand:
+
+```bash
+# 1. Enrol with an Ed25519 public key (ssh-ed25519 line or base64 of the raw 32 bytes)
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","public_key":"ssh-ed25519 AAAAC3Nza…"}'
+# → { pairing_id, fingerprint: "SHA256:…", poll_token, approval_url, expires_at }
+
+# 2. Show `fingerprint` to the human; they open approval_url and compare.
+
+# 3. Poll until the decision (3 s is fine). The first `approved` response carries the key, once.
+curl -s "https://api.1claw.co/v1/agents/enroll/$PAIRING_ID/status?poll=$POLL_TOKEN"
+# → { status: "pending" | "approved" | "denied" | "expired", api_key?, agent_id?, vault_ids? }
+```
+
+The SDKs wrap this: `AgentsResource.pair(baseUrl, { name, public_key }, onFingerprint)` in TypeScript, `agents.enroll(name, public_key=…)` + `agents.enrollment_status(pairing_id, poll_token)` in Python. The public key becomes the agent's identity key (`ssh_public_key`) on approval. The parked key expires 15 minutes after approval if never collected.
+
 ## 2. Human grants access
 
 The human receives an email with the agent's ID and API key. In the [dashboard](https://1claw.co):

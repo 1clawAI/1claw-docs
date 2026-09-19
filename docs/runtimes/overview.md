@@ -28,7 +28,7 @@ rather than discovering it at provision time.
 | `template` | Runtime | Chat | Licence | Needs your own vendor account |
 |---|---|---|---|---|
 | `python` | Python 3.12 + pip | — | Apache-2.0 | no |
-| `node` | Node 22 + pnpm | — | Apache-2.0 | no |
+| `node` | Node 24 + pnpm | — | Apache-2.0 | no |
 | `hermes` | 1Claw Hermes runtime | yes | Apache-2.0 | no |
 | `openclaw` | Rust-based minimal | yes | Apache-2.0 | no |
 | `openclaude` | OpenClaude + 1Claw sidecar | yes | Apache-2.0 | no |
