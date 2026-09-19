@@ -233,6 +233,57 @@ Set `trigger_type: "event"` and `event_filter: { "event_type": "<event>" }`. Sup
 
 Event payload is injected into the workflow as `_event` (`type` + `payload`).
 
+### Connector events (polled)
+
+An automation can also react to what happens in a connected account — a new
+Gmail message, a new Stripe invoice, a Drive file changed — without polling on
+a cron and deduping itself. Subscribe an installed connector binding to one of
+its preset's event sources and 1Claw does the polling centrally:
+
+```bash
+# What each connector offers: `event_sources` on GET /v1/connectors/presets
+curl -X POST https://api.1claw.co/v1/agents/$AGENT_ID/event-subscriptions \
+  -H "Authorization: Bearer $USER_JWT" -H "Content-Type: application/json" \
+  -d '{"binding_id":"'$GMAIL_BINDING'","event_type":"gmail.message.received"}'
+```
+
+Then `trigger_type: "event"` with `event_filter: { "event_type":
+"gmail.message.received" }`. The payload is `{ "subscription_id",
+"binding_id", "binding", "connector", "item" }` where `item` is the list
+entry the source returned (for Gmail, `{id, threadId}` — fetch the message with
+an `execute_intent` step on the same binding).
+
+| Connector | Event types |
+|-----------|-------------|
+| `gmail` | `gmail.message.received` |
+| `google-drive` | `drive.file.changed` |
+| `google-calendar` | `calendar.event.changed` |
+| `github` | `github.notification.received` |
+| `stripe` | `stripe.invoice.created`, `stripe.customer.created`, `stripe.payment_intent.created` |
+| `hubspot` | `hubspot.contact.created`, `hubspot.deal.created` |
+
+How it behaves, so you can rely on it:
+
+- **Same reach as the binding.** Every poll goes through the binding's own
+  executor — its host and path allowlists, its credential, the SSRF guard. A
+  source cannot read anything the binding could not.
+- **The first poll primes.** It records what already exists and emits nothing,
+  so a new subscription does not replay the whole inbox as fresh events.
+- **Deduplicated by item identity.** The poller keeps the last 500 item ids per
+  subscription; a Drive file counts as new again when its `modifiedTime`
+  changes. At most 25 new items are emitted per poll, oldest first; only the
+  source's first page is read.
+- **Intervals have a floor** per source (60–120 s) and a ceiling of a day.
+  Failures back off exponentially on the interval and switch the subscription
+  off after 20 in a row; `POST …/event-subscriptions/{id}/poll` retries now and
+  switches it back on if that works.
+- **Human-only** to create, delete and poll now. Agents can list their own.
+  The agent needs Execution Intents enabled.
+
+This is the polling interim. Provider push (Gmail `watch`, Drive change
+channels) with registration and renewal is the next step and will keep the
+same event types and payload shape.
+
 ## Workflow steps
 
 Steps run sequentially with context passing between them. Each step's output is available to subsequent steps via template variables.

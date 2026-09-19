@@ -129,6 +129,15 @@ const install = await client.connectors.install(agentId, "slack", {
 window.location.href = install.data.authorization_url!;
 ```
 
+## Event sources
+
+Some connectors advertise `event_sources` in the catalogue — list endpoints
+1Claw can poll on your behalf and turn into automation events (`gmail.message.received`,
+`stripe.invoice.created`, `drive.file.changed`, …). Subscribe an installed
+binding with `POST /v1/agents/{agent_id}/event-subscriptions` (`connectors.subscribe`
+in the SDK) and trigger an automation on the event type. See
+[Automations → Connector events](/docs/automations/overview#connector-events-polled).
+
 ## MCP
 
 `list_connector_presets` and `list_installed_connectors` let an agent see what
