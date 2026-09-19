@@ -624,7 +624,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 185 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 186 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -713,7 +713,7 @@ Complete index of 185 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Request pipeline](https://docs.1claw.co/docs/reference/request-pipeline)
 - [Shroud supported models](https://docs.1claw.co/docs/reference/shroud-supported-models)
 
-### Integrations (27)
+### Integrations (28)
 
 - [Agent discovery & machine-readable metadata](https://docs.1claw.co/docs/integrations/agent-discovery)
 - [Agent frameworks (Eliza, GOAT, LangChain, CrewAI)](https://docs.1claw.co/docs/integrations/agent-frameworks)
@@ -735,6 +735,7 @@ Complete index of 185 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Migrate from Dynamic](https://docs.1claw.co/docs/integrations/migrate-from-dynamic)
 - [Migrate from Privy](https://docs.1claw.co/docs/integrations/migrate-from-privy)
 - [Migrate From Turnkey to 1Claw](https://docs.1claw.co/docs/integrations/migrate-from-turnkey)
+- [Meta Muse](https://docs.1claw.co/docs/integrations/muse)
 - [1claw OpenClaw Plugin](https://docs.1claw.co/docs/integrations/openclaw-plugin)
 - [Using 1claw with OpenClaw](https://docs.1claw.co/docs/integrations/openclaw)
 - [Integrations overview](https://docs.1claw.co/docs/integrations/overview)

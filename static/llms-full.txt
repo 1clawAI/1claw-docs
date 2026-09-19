@@ -6188,6 +6188,27 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 - **Google (Gemini):** Shroud accepts an OpenAI-compatible request and maps it to the Google `generateContent` API; use `model` values such as `gemini-2.5-flash`, `gemini-2.5-pro` ([full list](/docs/reference/shroud-supported-models#google-gemini-models)).
 - **Anthropic:** Uses `/v1/messages`; request/response follow Anthropic’s API.
 
+### Tool calling (`tools`, `tool_choice`, `tool_calls`)
+
+Tool calling works through the proxy exactly as it does against the provider — send `tools` and `tool_choice` in the body, get `tool_calls` back, post the `role: "tool"` result on the next turn. Shroud does not rewrite the body; it inspects it. That applies to the funded path (no `X-Shroud-Api-Key`, billed to your 1Claw account), to BYO keys, and to `stream: true` (tool-call deltas are forwarded as the provider emits them).
+
+```bash
+curl -X POST https://shroud.1claw.co/v1/chat/completions \
+  -H "X-Shroud-Agent-Key: $AGENT_ID:$AGENT_API_KEY" -H "X-Shroud-Provider: openai" \
+  -H "Content-Type: application/json" -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role":"user","content":"Weather in Paris? Use the tool."}],
+    "tools": [{"type":"function","function":{"name":"get_weather",
+      "parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}}],
+    "tool_choice": "auto"
+  }'
+# → "finish_reason": "tool_calls", "message": { "tool_calls": [{ "function": { "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" } }] }
+```
+
+What Shroud adds on top of passthrough, per agent (`shroud_config.tool_call_inspection`, see [Tool call inspection](/docs/agents/shroud/threat-detection#tool-call-inspection)): an `allowed_tool_names` / `denied_tool_names` list, argument scanning for credentials and exfiltration URLs, and `action: block | redact | log`. A blocked tool call returns the same error shape as any other detection. Anthropic `tool_use` / `tool_result` blocks on `/v1/messages` are handled the same way.
+
+Rehydrating vault secrets *into* tool arguments (so the model never holds the credential) is a separate, planned capability — today a tool argument contains exactly what the model wrote.
+
 ### Configuring the LLM Model
 
 You can specify which model to use in two ways:
@@ -18761,6 +18782,76 @@ Contact ops@1claw.co for assisted migration, including:
 
 ---
 
+## Meta Muse
+
+---
+title: Meta Muse
+description: Approve what your agents are asking for, and see what they did, from Meta's Muse assistant — via the 1Claw Muse connector.
+sidebar_position: 45
+---
+
+# Meta Muse
+
+[Muse](https://muse.ai) is Meta's personal AI assistant. It can add services as
+**Custom Connectors**: you tell Muse about a service's API and give it a credential, and Muse
+stores that credential and calls the API on your behalf.
+
+1Claw ships a connector built for exactly that: a small, read-and-decide API at
+`https://muse.1claw.co` in front of your 1Claw account, so you can ask Muse things like:
+
+- "Is anything waiting on me in 1Claw?"
+- "Approve the payment my trading agent asked for" / "No — reject it, we're over budget."
+- "How much is in my agents' wallets?"
+- "What did my agents do today?"
+
+Muse **cannot** read your secrets, move funds, or create or change an agent through this
+connector. Those stay in the dashboard.
+
+## Connect (once)
+
+1. Signed in to 1Claw, open **[1claw.co/connect/muse](https://1claw.co/connect/muse)** and click
+   **Connect Muse**. The first time, 1Claw asks you to confirm linking the Muse app.
+2. Under **Settings → Connected apps → Muse**, grant the **agents** Muse may see. A connection with
+   no grants shows Muse nothing — that is the whole permission model.
+3. Copy the connector token (`mcn_…`; shown once). In Muse, ask to add a custom connector for
+   1Claw and give it:
+   - Base URL: `https://muse.1claw.co`
+   - API description: `https://muse.1claw.co/openapi.json`
+   - Credential: the token, as a Bearer token
+
+Revoke any time: **Settings → Connected apps → Muse → Disconnect**. The token stops working on the
+next request.
+
+## What Muse can call
+
+| Route | What it returns |
+|---|---|
+| `GET /v1/me` | Which account, and what Muse has been granted |
+| `GET /v1/approvals` | Everything waiting on you — consensus approvals and agent action requests in one list, each with a one-line summary |
+| `GET /v1/approvals/{id}` | Full details of one |
+| `POST /v1/approvals/{id}/decide` | `{ "decision": "approve" \| "reject", "reason"? }` — the only write. One item per decision |
+| `GET /v1/portfolio`, `GET /v1/balances` | Wallets on the granted agents |
+| `GET /v1/automations` | The agents' scheduled and event-driven jobs |
+| `GET /v1/activity` | Recent delegated actions |
+
+Errors are RFC 9457 problem JSON; a `401` means the token expired or Muse was disconnected.
+
+## How it is secured
+
+- The token is an HMAC-signed statement naming one platform connection on the 1Claw-owned
+  **Muse** platform app. It is not a 1Claw account credential (the `mcn_` prefix is unknown to the
+  vault), and the connector's own platform key never leaves the service.
+- Every call is a [Platform API](/docs/platform-api/overview) call scoped to your connection, so
+  your grants, each agent's guardrails, the sanctions screen and the audit log apply unchanged.
+  Decisions are recorded in your audit log as you, via the Muse app.
+- Consensus decisions bind to what was shown: the connector echoes the approval's `payload_hash`
+  it read, never one supplied in the request.
+- The connector is stateless and stores nothing about you. Source:
+  [github.com/1clawAI/muse-connector](https://github.com/1clawAI/muse-connector) (Apache-2.0).
+
+
+---
+
 ## 1claw OpenClaw Plugin
 
 ---
@@ -24962,6 +25053,10 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-09 (latest)
+
+### v0.61.34 (2026-09-19) {#v06134-2026-09-19}
+
+**Meta Muse connector** (`packages/muse-connector`, new submodule, Apache-2.0, `muse.1claw.co`). Muse builds Custom Connectors from a service's API description plus a stored credential, so 1Claw now ships that API: a read-and-decide surface — pending approvals from both queues in one shape, approve/reject (the only write, consensus votes bound to the `payload_hash` the connector read), portfolio, balances, automations, activity — in front of the Platform API, scoped per user by an HMAC connector token (`mcn_…`) that names one platform connection and is revoked by disconnecting the Muse app. New dashboard page `/connect/muse` mints the token after the standard link consent and the connected-apps agent grant. Unit tests and a 19-check production E2E; submission kit for muse.ai/platform. **`@1claw/sdk` 0.61.23:** the published `.d.ts` files carried extensionless relative imports, so under `moduleResolution: NodeNext` (with `skipLibCheck`) the whole client typed as `any` — declarations now get `.js` extensions too, guarded by a test.
 
 ### v0.61.33 (2026-09-19) {#v06133-2026-09-19}
 
