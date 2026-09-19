@@ -583,7 +583,7 @@ Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit
 
 ## MCP Tools (for AI agents)
 
-The MCP server at mcp.1claw.co ships **155 tools** (plus the `vault://secrets` resource), grouped into **toolsets** and offered per agent entitlement — a session only ever lists the toolsets its agent is entitled to (a vault-only agent sees about two dozen):
+The MCP server at mcp.1claw.co ships **156 tools** (plus the `vault://secrets` resource), grouped into **toolsets** and offered per agent entitlement — a session only ever lists the toolsets its agent is entitled to (a vault-only agent sees about two dozen):
 
 - `inspect` (always): inspect_content — works without vault credentials
 - `vault` (any agent): list_secrets, get_secret, put_secret, delete_secret, describe_secret, list_versions, rotate_and_store, rotate_generate, get_env_bundle, resolve_env, share_secret, grant_access, create_vault, list_vaults, list_oauth_connections, list_oauth_providers, oauth_revoke_consent, oauth_revoke_token
