@@ -15,7 +15,11 @@ This page answers one question plainly: **who can produce a signature with a key
 | `server` | 1Claw generates the key and stores it as an envelope-encrypted secret (AES-256-GCM per-key DEK, wrapped by your org's KEK in Cloud KMS, HSM on paid tiers). Signing unwraps it in vault memory — or in [Shroud's TEE](/docs/security/trust-model-comparison#tee-attestation-live) when `intents_require_tee` is set — signs, and drops it. | **1Claw.** After policy, guardrails, approvals and the sanctions screen, the vault can sign on your behalf without a second party. That is what makes it custodial. |
 | `client_tss` | A 2-party threshold key. 1Claw holds one share, KMS-wrapped. Your share is wrapped in your browser under a secret only your passkey can re-derive (WebAuthn PRF) or under a recovery code, and stored with us as ciphertext we cannot open (`client_key_shares`). | **Nobody.** The server signing path refuses a `client_tss` key outright; the only way to sign is the threshold protocol, which needs your passkey touch. |
 
-Every key that existed before 2026-09-18 is `server`. `client_tss` is live for **Solana** (Ed25519, 2-of-2 FROST — Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser). EVM, Bitcoin and Tron keys (secp256k1) stay `server` for now: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines; the EVM answer that needs no MPC at all — a Safe whose owner is your passkey (RIP-7212) — is the next phase. Nothing moves from `server` to `client_tss` until you do it.
+Every key that existed before 2026-09-18 is `server`. `client_tss` is live for **Solana** (Ed25519, 2-of-2 FROST — Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser). For **EVM** the non-custodial answer needs no MPC at all: a **passkey-owned Safe** (below), `custody: passkey_owner`. Bitcoin and Tron keys (secp256k1) stay `server`: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines. Nothing moves from `server` until you do it.
+
+| `custody` | Where the private material is | Who can sign alone |
+|---|---|---|
+| `passkey_owner` (EVM Safes) | Nowhere. The Safe's only owner is Safe's WebAuthn shared signer, configured on-chain with your passkey's P-256 public key. Signing is a WebAuthn assertion whose challenge is the SafeTx hash, verified on-chain through the RIP-7212 precompile (Base, OP, Arbitrum, Polygon) or a Solidity verifier. | **Only your passkey.** 1claw computes the hash, checks the assertion, and relays; the relayer pays gas and is not an owner. |
 
 Read the label on any key: `custody` is on `GET /v1/treasury/wallets` and `GET /v1/agents/{id}/signing-keys` responses, and the dashboard shows a **Custodial** or **Self-custody** badge on each wallet.
 
@@ -46,6 +50,15 @@ Treasury → **Self-custody Solana wallet**. What happens:
 4. The server signing path refuses the key: there is no `private_key` secret for it to unwrap — only a `tss_share`, which is one Shamir share of a 2-of-2 key.
 
 Fund it only after a second wrap exists (a second passkey via **rewrap**, or a recovery code): synced passkeys survive device loss, but 1Claw holds one share and can never hold two.
+
+## Passkey-owned Safes on EVM (available now)
+
+Treasury → **Passkey-owned Safes** → *New passkey Safe*. Pick a chain (Base, Optimism, Arbitrum, Polygon, Ethereum, or the Sepolia testnets) and the passkey that will own it. The Safe (v1.4.1, canonical Safe deployments) is counterfactual — a CREATE2 address you can fund immediately — and is deployed by your first send.
+
+- **Sending**: `POST /v1/treasury/passkey-safes/{id}/prepare` runs the sanctions screen and your spend policies, reads the Safe's nonce, and returns the SafeTx hash. Your browser signs that hash as a WebAuthn challenge with `userVerification: "required"`. `POST …/execute` recomputes the hash, verifies the assertion itself (this passkey, this hash, a 1Claw origin, UV flag), wraps it in Safe's contract-signature format and relays `execTransaction` (and the proxy deployment on the first send) from your Ethereum treasury wallet. That wallet pays gas; it is not an owner and cannot move the Safe's funds.
+- **What 1claw holds**: your passkey's public key and the Safe address. There is no private key, share, or export.
+- **Recovery** is the passkey's: a synced platform passkey (iCloud Keychain, Google Password Manager) survives device loss; a hardware key does not. Adding a second owner to the Safe is on the roadmap; until then, use a synced passkey.
+- Audit events: `passkey_safe.created`, `passkey_safe.executed` (with the SafeTx hash and both transaction hashes).
 
 ## Passkeys and shares
 

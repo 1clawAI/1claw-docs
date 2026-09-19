@@ -24717,6 +24717,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.22 (2026-09-18) {#v06122-2026-09-18}
+
+**Passkey-owned Safes on EVM (`custody: passkey_owner`).** A Safe v1.4.1 whose only owner is Safe's WebAuthn shared signer configured with your passkey's P-256 key — no private key exists anywhere. `POST /v1/treasury/passkey-safes` derives the counterfactual address; `…/{id}/prepare` runs the sanctions screen and spend policies and returns the SafeTx hash, which your passkey signs as its WebAuthn challenge; `…/{id}/execute` verifies the assertion locally (this passkey, this hash, a 1Claw origin, user verification) and relays `execTransaction` — deploying the Safe on the first send — from your Ethereum treasury wallet, which pays gas and is not an owner. Base, Optimism, Arbitrum and Polygon verify through the RIP-7212 precompile; Ethereum and the Sepolias through the Daimo P-256 verifier. Treasury → *Passkey-owned Safes* in the dashboard. **Safe registry corrected:** the pinned v1.4.1 singleton and proxy creation code were not the canonical ones (the singleton had no code on any chain) and the SafeTx struct hash double-hashed `data`; counterfactual addresses now match `SafeProxyFactory.createProxyWithNonce` on Base byte for byte, and the Allowance Module pin is v1.0.0. No existing account was affected (no counterfactual agent Safes had been created). OpenAPI spec 0.61.20.
+
 ### v0.61.21 (2026-09-18) {#v06121-2026-09-18}
 
 **Self-custody Solana wallets (`custody: client_tss`).** A 2-of-2 FROST/Ed25519 key generated between the vault and your browser (`@1claw/tss-wasm`); the private key never exists. Your share is wrapped under your passkey's PRF output and stored opaque; the vault's is a `tss_share` secret no server signing path reads. New: `POST /v1/keys/tss/keygen/{begin,round2,complete}`, `POST /v1/keys/{id}/tss/sign/{begin,complete}` (passkey-bound to the message digest; the vault decodes the message and runs the sanctions screen on every transfer inside it; nonces are single-use), `POST /v1/treasury/wallets/{chain}/tss/{prepare,broadcast}` (wallet access, sanctions, spend policies; broadcast only a verified signature over the screened message). Treasury → *Self-custody Solana wallet* in the dashboard; tx-assert actions `tss_keygen` / `tss_sign`. **Server-side product analytics**: the vault reports named API actions (token exchange, secret read/write, sign/submit, approvals, runtime chat/shell, treasury sends) to PostHog under the same identity as the dashboard, grouped by org. OpenAPI spec 0.61.19. EVM/Bitcoin/Tron keys remain `server` custody; see [Key custody](/docs/security/custody).
@@ -29390,7 +29394,11 @@ This page answers one question plainly: **who can produce a signature with a key
 | `server` | 1Claw generates the key and stores it as an envelope-encrypted secret (AES-256-GCM per-key DEK, wrapped by your org's KEK in Cloud KMS, HSM on paid tiers). Signing unwraps it in vault memory — or in [Shroud's TEE](/docs/security/trust-model-comparison#tee-attestation-live) when `intents_require_tee` is set — signs, and drops it. | **1Claw.** After policy, guardrails, approvals and the sanctions screen, the vault can sign on your behalf without a second party. That is what makes it custodial. |
 | `client_tss` | A 2-party threshold key. 1Claw holds one share, KMS-wrapped. Your share is wrapped in your browser under a secret only your passkey can re-derive (WebAuthn PRF) or under a recovery code, and stored with us as ciphertext we cannot open (`client_key_shares`). | **Nobody.** The server signing path refuses a `client_tss` key outright; the only way to sign is the threshold protocol, which needs your passkey touch. |
 
-Every key that existed before 2026-09-18 is `server`. `client_tss` is live for **Solana** (Ed25519, 2-of-2 FROST — Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser). EVM, Bitcoin and Tron keys (secp256k1) stay `server` for now: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines; the EVM answer that needs no MPC at all — a Safe whose owner is your passkey (RIP-7212) — is the next phase. Nothing moves from `server` to `client_tss` until you do it.
+Every key that existed before 2026-09-18 is `server`. `client_tss` is live for **Solana** (Ed25519, 2-of-2 FROST — Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser). For **EVM** the non-custodial answer needs no MPC at all: a **passkey-owned Safe** (below), `custody: passkey_owner`. Bitcoin and Tron keys (secp256k1) stay `server`: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines. Nothing moves from `server` until you do it.
+
+| `custody` | Where the private material is | Who can sign alone |
+|---|---|---|
+| `passkey_owner` (EVM Safes) | Nowhere. The Safe's only owner is Safe's WebAuthn shared signer, configured on-chain with your passkey's P-256 public key. Signing is a WebAuthn assertion whose challenge is the SafeTx hash, verified on-chain through the RIP-7212 precompile (Base, OP, Arbitrum, Polygon) or a Solidity verifier. | **Only your passkey.** 1claw computes the hash, checks the assertion, and relays; the relayer pays gas and is not an owner. |
 
 Read the label on any key: `custody` is on `GET /v1/treasury/wallets` and `GET /v1/agents/{id}/signing-keys` responses, and the dashboard shows a **Custodial** or **Self-custody** badge on each wallet.
 
@@ -29421,6 +29429,15 @@ Treasury → **Self-custody Solana wallet**. What happens:
 4. The server signing path refuses the key: there is no `private_key` secret for it to unwrap — only a `tss_share`, which is one Shamir share of a 2-of-2 key.
 
 Fund it only after a second wrap exists (a second passkey via **rewrap**, or a recovery code): synced passkeys survive device loss, but 1Claw holds one share and can never hold two.
+
+## Passkey-owned Safes on EVM (available now)
+
+Treasury → **Passkey-owned Safes** → *New passkey Safe*. Pick a chain (Base, Optimism, Arbitrum, Polygon, Ethereum, or the Sepolia testnets) and the passkey that will own it. The Safe (v1.4.1, canonical Safe deployments) is counterfactual — a CREATE2 address you can fund immediately — and is deployed by your first send.
+
+- **Sending**: `POST /v1/treasury/passkey-safes/{id}/prepare` runs the sanctions screen and your spend policies, reads the Safe's nonce, and returns the SafeTx hash. Your browser signs that hash as a WebAuthn challenge with `userVerification: "required"`. `POST …/execute` recomputes the hash, verifies the assertion itself (this passkey, this hash, a 1Claw origin, UV flag), wraps it in Safe's contract-signature format and relays `execTransaction` (and the proxy deployment on the first send) from your Ethereum treasury wallet. That wallet pays gas; it is not an owner and cannot move the Safe's funds.
+- **What 1claw holds**: your passkey's public key and the Safe address. There is no private key, share, or export.
+- **Recovery** is the passkey's: a synced platform passkey (iCloud Keychain, Google Password Manager) survives device loss; a hardware key does not. Adding a second owner to the Safe is on the roadmap; until then, use a synced passkey.
+- Audit events: `passkey_safe.created`, `passkey_safe.executed` (with the SafeTx hash and both transaction hashes).
 
 ## Passkeys and shares
 
