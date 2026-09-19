@@ -120,7 +120,7 @@ After bootstrap, load secrets from `.env.elizaos` or paste values into your char
 ## Security
 
 - Agents only access paths granted by human policies.
-- Private signing keys never leave the HSM/TEE.
+- Private signing keys never reach the agent: server-custody keys are unwrapped only inside the vault (or the Shroud TEE) to sign; self-custody keys need the user's passkey.
 - Per-agent guardrails (allowlists, caps, daily limits) are enforced server-side when Intents API is enabled.
 
 ## Links

@@ -185,7 +185,7 @@ The vault serialises nonces per agent, chain and address. A transaction whose br
 
 ## Security model
 
-- **Keys never leave the HSM boundary** — the vault decrypts the key, signs the transaction, and zeroes the memory. The plaintext key is never returned to the caller.
+- **Keys never reach the agent** — for a `custody: server` key the vault unwraps it under the HSM-held KEK, signs, and zeroes the memory; the plaintext key is never returned to the caller. For a `client_tss` key the vault holds only one share; for a passkey-owned Safe there is no key at all. See [Key custody](/docs/security/custody).
 - **Full audit trail** — every transaction is logged with the agent ID, chain, recipient, value, and resulting `tx_hash`.
 - **Policy enforcement** — the agent still needs a policy granting access to the vault path that holds the signing key. The proxy doesn't bypass access control.
 - **Transaction guardrails** — per-agent chain allowlists, recipient allowlists, per-tx caps, and daily spend limits enforced server-side before signing.
