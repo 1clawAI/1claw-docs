@@ -233,6 +233,36 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 
 API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
 
+## Scheduled start and stop
+
+A runtime can run on a clock without a workflow around it:
+
+```
+PATCH /v1/runtimes/{id}
+{ "schedule": { "start_cron": "0 2 * * *", "timezone": "America/Chicago", "stop_after_secs": 3600 } }
+```
+
+The scheduler starts the container when `start_cron` fires (5-field cron, minimum
+one minute, IANA `timezone`) and stops it `stop_after_secs` later (60 s – 24 h);
+leave `stop_after_secs` null to let the idle reconciler stop it. A scheduled start
+goes through exactly the gates a manual start does (plan, included slot, provider),
+and `next_scheduled_start_at` / `scheduled_stop_at` on the runtime say what is
+coming. `"schedule": null` clears it.
+
+## Attested image
+
+Every runtime records the image it is actually running (`image_digest`, digest form
+when the provider reports one, else the reference it started from), and agent
+tokens minted for that runtime carry it as the `runtime_image` claim. An access
+policy can require it:
+
+```json
+{ "conditions": { "runtime_image_in": ["us-west1-docker.pkg.dev/…/runtime-base@sha256:…"] } }
+```
+
+Only tokens from a runtime running one of the listed images pass; a bare API key
+or a token with no runtime image is refused. Exact match — pin the digest.
+
 ## Idle auto-stop
 
 Runtimes with no inbound requests for `idle_timeout_secs` (default: 300s for Free, 900s for Pro+) are automatically stopped to save resources. They restart on the next request (cold start ~2–5s).

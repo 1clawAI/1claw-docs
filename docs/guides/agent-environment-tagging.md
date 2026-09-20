@@ -40,6 +40,14 @@ Built-in access policies support an `environment_in` array in the `conditions` J
 
 Agents without an environment tag do not match `environment_in` conditions.
 
+## Policy scoping with `runtime_image_in`
+
+The same `conditions` object accepts `runtime_image_in`: a list of resolved
+container images. Only agent tokens minted for a cloud runtime running one of
+them pass (`runtime_image` claim; see the runtimes guide). Unlike
+`environment_in`, a caller without the claim is **refused**, which is the point —
+the secret is limited to that attested image, not to whoever holds the key.
+
 ## Env var auto-resolve
 
 When `env_auto_resolve` is `true` on an agent:

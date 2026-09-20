@@ -33,9 +33,35 @@ Edges are styled by relation: `holds` / `grants` are dashed brand-red (the reach
 - A **minimap** appears bottom-right whenever part of the graph is off screen.
 - Where you leave the map — positions and zoom — is remembered per org in your browser.
 
-**Keyboard**: `1`–`4` switch tabs · `Space`/`P` pause the stream · `+`/`−` zoom · `F` fit · `0` reset · arrows pan · `Tab`/`]`/`[` cycle agents · `Esc` closes help, then search, then the selection, then leaves · `?` lists all of this.
+**Keyboard**: `1`–`8` switch tabs · `Space`/`P` pause the stream · `+`/`−` zoom · `F` fit · `0` reset · arrows pan · `Tab`/`]`/`[` cycle agents · `Esc` closes help, then search, then the selection, then leaves · `?` lists all of this.
 
 **Large orgs**: the map caps at 500 nodes and says so in the title (`truncated`, with the real total). Below 0.75× zoom only the selected node, its neighbours and search matches keep labels; below 0.5× agents draw as plain discs. Labels never overprint — the important ones claim their space first.
+
+## Overview
+
+The **Overview** tab (`5`, or the sidebar's *Activity* entry) is the whole system on one
+screen, from a single call to `GET /v1/org/overview?hours=…` (1 h to 7 d):
+
+- **Needs attention** — open threats, approvals waiting (and older than 24 h), consensus
+  decisions pending, parked automation runs, automations whose last run failed, runtimes in
+  error, auto-suspended agents, secrets expiring within 7 days, active agents with no access
+  policy, agents idle 7+ days. Each line links to where you act on it.
+- **Activity** for the window — API requests, secret reads/writes, denials, executions
+  (and failures), transactions (and failures), Shroud requests / blocked / redacted /
+  injection signals, automation runs (failed, parked), approvals pending/decided, consensus
+  pending, risk events and open threats.
+- **Inventory** — vaults, secrets, agents (active / total / children), access policies,
+  runtimes (running / total), automations (active / total), execution bindings, wallets and
+  agent keys, platform apps and connections, team members.
+- **Spend** for the window — inference (USD and tokens), execution and automation cost, credit
+  balance and plan.
+- **7-day trend** — audit events, denials, Shroud requests and blocks, automation runs,
+  transactions per day.
+
+The former *Activity* pages are tabs here too: **Shroud** (per-request Shroud activity with
+filters and CSV export, `6`), **Risk** (risk-engine events, `7`) and **Audit** (the audit log,
+`8`). `/platform-activity/*` redirects to the matching tab; `?view=` on `/dashboard` deep-links
+to any tab.
 
 ## Threats
 

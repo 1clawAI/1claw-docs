@@ -498,6 +498,7 @@ The ledger stores **micro-USD** (`balance_micro_usd`); `balance_cents` is derive
 
 | Method | Path                       | Description            |
 | ------ | -------------------------- | ---------------------- |
+| GET    | `/v1/org/overview`         | Whole-system snapshot: inventory, activity (`?hours=`), spend, health, 7-day trend |
 | GET    | `/v1/org/members`          | List org members       |
 | POST   | `/v1/org/invite`           | Invite member by email |
 | PATCH  | `/v1/org/members/:user_id` | Update member role     |
