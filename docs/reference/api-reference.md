@@ -323,6 +323,8 @@ Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows
 | PATCH  | `/v1/automations/:id`                                                 | Update automation                            |
 | DELETE | `/v1/automations/:id`                                                 | Delete automation                            |
 | POST   | `/v1/automations/:id/trigger`                                         | Trigger now (`{input, idempotency_key}`; same key → existing run, 200) |
+| POST   | `/v1/automations/dry-run` · `/v1/automations/:id/dry-run`             | Preview a run: resolved inputs, effects, error policy, unresolved templates — nothing runs |
+| POST   | `/v1/automations/:id/runs/:run_id/rerun`                              | New run seeded with this run's results up to `from_step` |
 | GET    | `/v1/automations/:id/versions`                                        | Every spec version (newest first)            |
 | POST   | `/v1/automations/:id/versions/:n/rollback`                            | Republish version n as current (widening → `automation.widen` consensus) |
 | POST   | `/v1/automations/:id/runs/:run_id/callback/:token`                    | Continue a run parked on `awaiting_callback` (public, per-run token) |

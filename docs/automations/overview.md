@@ -103,6 +103,26 @@ until it continues:
 
 Parks are refused inside `condition` branches, `for_each` bodies and sub-workflows.
 
+### Preview a run (dry run)
+
+`POST /v1/automations/{id}/dry-run` (or `POST /v1/automations/dry-run` with a
+`workflow_spec` that is not saved yet) renders every step after template
+substitution against a simulated context and reports, per step: the resolved
+fields, the side effect it would have, its `on_error` policy, templates that
+would resolve to nothing, conditions that would skip it, and the point at which
+the budget would be exceeded. Nothing runs. The dashboard's **Preview run**
+button (editor and detail page) is this endpoint; SDK `automations.dryRun()`.
+
+### Re-run from a step
+
+`POST /v1/automations/{id}/runs/{run_id}/rerun` `{ "from_step": N }` starts a
+new run seeded with the finished run's results up to step `N` and continues
+from there, on the spec version that run executed. The new run carries
+`parent_run_id` and `trigger_source: "rerun"`. On the run timeline in the
+dashboard every step has **Re-run from here**. Step results now record
+`duration_ms`, `attempts`, `continued` and the resolved `input` (credentials
+removed), which is what the timeline shows.
+
 ### Versions and rollback
 
 Every `workflow_spec` an automation has had is kept: version 1 is the spec it was
