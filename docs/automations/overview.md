@@ -50,11 +50,80 @@ funds. Read it rather than copying this table.
 | `approval_request` | — | — | Raise a human approval from inside the run |
 | `submit_transaction` | — | **yes** | Sign and broadcast as the agent |
 | `swap` | — | **yes** | Quote and execute a swap as the agent |
-| `execute_intent` | — | **yes** | Run an execution-intent binding as the agent |
+| `execute_intent` | yes | **yes** | Run one of the agent's execution-intent bindings — the binding's host/path/method allowlists, conditions, secret scan and approval policy apply, and a policy that wants a human parks the run |
+| `wait_until` | yes | — | Park until a time (`until`, RFC 3339) or for `duration_secs`, up to 72 h; no wall clock is spent parked |
+| `awaiting_callback` | yes | — | Park until an external system POSTs to `{{run.callback_url}}`; `timeout_secs` up to 72 h |
+| `for_each` | — | — | Run `steps` once per element of `items` (max 50) with `{{item}}` / `{{index}}` in scope |
+| `call_automation` | — | — | Run another automation of the org inline as a sub-workflow (depth 1) |
 
-**Agent-created automations** are restricted to the five marked above, capped at
+**Agent-created automations** are restricted to the types marked above, capped at
 10 steps, and may only use `manual` or `webhook` triggers. Platform- and
 human-created automations may use every type, capped at 50 steps.
+
+### Error policy, budgets and parks (engine v2)
+
+Every step may carry **`on_error`**: `"fail"` (default), `"continue"` (record a
+`failed` result and go on — later steps see `{{steps.N.status}} == "failed"`),
+`"retry"` (3 attempts, 2 s linear backoff) or
+`{"action": "retry", "max_attempts": 5, "backoff_secs": 10}` (max 5 / 30 s). Steps
+that move funds (`submit_transaction`, `swap`, `execute_intent`) and steps that
+park the run are never retried automatically — a failure after broadcast retried
+is a double spend.
+
+A spec may carry a **`budget`**: `{"max_tokens": …, "max_cost_cents": …, "max_steps": …}`.
+The engine-wide ceiling (500 cents, 500 steps) still applies above it. `max_steps`
+counts every `for_each` iteration and sub-workflow step, which is what bounds fan-out.
+A run over budget fails closed at the step that crossed it.
+
+Three step types **park** the run — the row moves to `awaiting_approval`, `waiting`
+or `awaiting_callback`, its state is snapshotted, and the 300-second clock stops
+until it continues:
+
+- `approval_request` — continues when the approval is decided (see below).
+- `wait_until` — the scheduler wakes it at `until`. Waits under 5 minutes sleep inline.
+- `awaiting_callback` — continues when something POSTs to the run's callback URL.
+  A spec containing this step gets a per-run token at start, exposed as
+  `{{run.callback_url}}` and `{{run.callback_token}}`; a preceding `http` or
+  `notify` step hands the URL to the external system. The POST body becomes
+  `{{resume.*}}`. Unclaimed within `timeout_secs` (default 1 h, max 72 h) the run
+  becomes `timed_out`.
+
+```json
+{
+  "budget": { "max_cost_cents": 200, "max_steps": 40 },
+  "steps": [
+    { "type": "http", "name": "kickoff", "url": "https://ops.example/jobs",
+      "method": "POST", "body": { "callback": "{{run.callback_url}}" },
+      "on_error": { "action": "retry", "max_attempts": 4, "backoff_secs": 5 } },
+    { "type": "awaiting_callback", "timeout_secs": 7200 },
+    { "type": "notify", "channel": "email", "message": "Job finished: {{resume.result}}" }
+  ]
+}
+```
+
+Parks are refused inside `condition` branches, `for_each` bodies and sub-workflows.
+
+### Versions and rollback
+
+Every `workflow_spec` an automation has had is kept: version 1 is the spec it was
+created with, and each update that changes the spec publishes the next version
+(`GET /v1/automations/{id}/versions`). Runs record the version they executed;
+a run parked mid-way is pinned to the version it started on and refuses to
+continue if the spec changed while it was parked. `POST …/versions/{n}/rollback`
+republishes an earlier spec as a new version. Edits and rollbacks that **widen**
+the automation — adding `submit_transaction`, `swap`, `execute_intent`, `http`,
+`rotate_generate`, `call_automation` or `ai_generate` where there was none, or
+raising/removing a `budget` cap — go through the org's control-plane consensus
+policy under the `automation.widen` action; pass `approval_id` on the request
+once approved. Narrowing never needs approval.
+
+### Idempotent triggers
+
+`POST /v1/automations/{id}/trigger` takes `{ "input": …, "idempotency_key": "…" }`
+(or an `Idempotency-Key` header). The same key twice returns the run already
+started for it with **200** rather than starting another (**201**). Webhook
+deliveries use `X-GitHub-Delivery`, a Stripe `evt_…` id or `Idempotency-Key` the
+same way, so provider retries never double-run.
 
 ### Steps that move funds
 
@@ -86,6 +155,23 @@ appears to succeed without doing anything.
 | `manual` | API call or dashboard button | One-off test runs |
 
 ## Webhook triggers
+
+### Signed deliveries
+
+The token in the URL proves the URL; a **signature** proves the sender. Set a
+scheme on the automation and unsigned or mis-signed deliveries start nothing:
+
+```
+PATCH /v1/automations/{id}
+{ "webhook_signature": { "scheme": "stripe", "secret": "whsec_…" } }
+```
+
+Schemes: `stripe` (`Stripe-Signature: t=…,v1=…` over `<t>.<body>`, 5-minute
+tolerance), `github` (`X-Hub-Signature-256: sha256=…` over the body) and
+`hmac_sha256` (`<header>: <hex|base64>` over the body; set `header`). The secret
+is stored encrypted in the org's agent-keys vault and never returned; the
+automation exposes only `webhook_signature_scheme`. Send `"webhook_signature": null`
+to remove it.
 
 When `trigger_type` is `webhook`, the create response includes **one-time** credentials:
 
@@ -462,7 +548,9 @@ POST /v1/automations/{automation_id}/runs/{run_id}/resume
 {"payload": {"ticket": "OPS-42"}}
 ```
 
-Human-only. It marks the approval approved on your behalf and continues the run; `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
+Human-only. It carries an approval that was already decided forward (a still-pending approval is 409 — decide it via `POST /v1/approvals/{id}/decide`, which enforces approver identity, expiry and step-up, and the run resumes on its own). A run parked on `wait_until` or `awaiting_callback` can be pushed on by an org owner/admin the same way. `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
+
+An `execute_intent` step whose binding approval policy wants a human parks the run the same way; on approval the **same step runs again** with the approval granted, so the call is made exactly once and only after a human saw it.
 
 ### Cancel a run
 

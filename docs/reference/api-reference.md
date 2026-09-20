@@ -312,7 +312,7 @@ Three-tier memory: scratch (TTL-based), durable (persistent KV), and semantic (v
 
 ## Automations
 
-Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows. Multi-step pipelines with 14 step types.
+Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows. Multi-step pipelines with 19 step types; per-step `on_error` policy; per-run `budget`; parks (`approval_request`, `wait_until`, `awaiting_callback`) that stop the clock; spec versions with rollback; idempotent triggers; signed inbound webhooks.
 
 | Method | Path                                                                  | Description                                  |
 | ------ | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -322,7 +322,11 @@ Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows
 | GET    | `/v1/automations/:id`                                                 | Get automation details                       |
 | PATCH  | `/v1/automations/:id`                                                 | Update automation                            |
 | DELETE | `/v1/automations/:id`                                                 | Delete automation                            |
-| POST   | `/v1/automations/:id/trigger`                                         | Manually trigger an automation               |
+| POST   | `/v1/automations/:id/trigger`                                         | Trigger now (`{input, idempotency_key}`; same key → existing run, 200) |
+| GET    | `/v1/automations/:id/versions`                                        | Every spec version (newest first)            |
+| POST   | `/v1/automations/:id/versions/:n/rollback`                            | Republish version n as current (widening → `automation.widen` consensus) |
+| POST   | `/v1/automations/:id/runs/:run_id/callback/:token`                    | Continue a run parked on `awaiting_callback` (public, per-run token) |
+| POST   | `/v1/automations/:id/runs/:run_id/resume`                             | Carry a decided approval forward / push a timed or callback park on |
 | GET    | `/v1/automations/:id/runs`                                            | List automation runs                         |
 | GET    | `/v1/automations/:id/runs/:run_id`                                    | Get run details                              |
 | POST   | `/v1/automations/:id/runs/:run_id/cancel`                             | Cancel a running/awaiting run (human-only)   |
