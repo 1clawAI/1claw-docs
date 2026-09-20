@@ -118,6 +118,20 @@ client = OpenAI(api_key="sk-shroud-v1-…", base_url="https://shroud.1claw.co/v1
                 default_headers={"X-Shroud-Provider": "openai"})
 ```
 
+### Placeholders and rehydration {#placeholders}
+
+When the gateway holds its enclave key (released by the vault only after attestation), a vault secret found in a prompt is replaced by a **placeholder** the model can place but never read:
+
+```text
+⟦sk:pg-dsn:7f3a9c2e3bq4⟧      ⟦sk:bearer:k2m9x1p0c7hz⟧
+```
+
+The tag is deterministic per (org, secret) — the same token every turn and every conversation, so long system prompts stay in the provider's prompt cache — and changes when the secret rotates. The type hint (`pg-dsn`, `bearer`, `pem`, `opaque`, …) tells the model where the value belongs; the last two characters are a checksum. Cross-org, placeholders are minted from separate indexes; cross-agent, seeing a placeholder authorises nothing. Without the enclave key the older opaque `[REDACTED:#…]` tag is used and nothing can be rehydrated.
+
+**Rehydration happens only inside the enclave, only inside an authorised tool-call argument.** A **tool binding** (`POST /v1/agents/{agent_id}/tool-bindings`) says: the secret at `secret_path` may be substituted for agent X into tool `tool_name` at `arg_path` (a JSON pointer such as `/headers/Authorization`, `/connection_string`, `/body/*`, or `*`), and only when the call's destination host is one of `destination_hosts` (`api.stripe.com`, `*.googleapis.com`). When the agent runs the tool through the TEE executor (`POST /v1/agents/{id}/execute` with `execution_mode: "tee"`), the enclave substitutes within strings (`Bearer ⟦sk:…⟧`, `postgresql://⟦sk:…⟧`), performs the call, and reports which secret paths it used — never the values. A placeholder in an unbound argument, toward another host, with a bad checksum, an unknown tag, or repeated more than four times in one call is a **403** and nothing is sent. Cluster-local services, the vault and the gateway are on a deny-list no allowlist can open. The model, the client and every log see placeholders only.
+
+This is a confidentiality claim — *the model never holds the credential* — not a misuse claim: an authorised tool with an authorised argument still runs whatever the model asked (argument constraints are policy work, not redaction).
+
 ### Paying for inspection (router rail) {#inspection-fee}
 
 Router-key traffic is paid from request one: every inspected request debits the org's prepaid ledger **$0.005** (5,000 micro-USD) at accept — before the stream opens — so a stream in flight is never cut off for billing; it is the *next* request that gets **402 `insufficient_credits`** when the ledger cannot cover the fee. Router-rail bodies are capped at **1 MB** (413). 1Claw-native agents using `ocv_` keys or agent JWTs are not charged here; they stay on their plan's request quotas.
