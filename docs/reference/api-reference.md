@@ -33,7 +33,7 @@ All endpoints are under **/v1**.
 | ------ | --------------------------- | --------------------------------------------------- |
 | POST   | `/v1/auth/signup`           | Self-service signup (email + password) → JWT        |
 | POST   | `/v1/auth/token`            | Email/password → JWT                                |
-| POST   | `/v1/auth/agent-token`      | Agent ID + API key → JWT                            |
+| POST   | `/v1/auth/agent-token`      | Agent credentials → JWT: `agent_id` + `api_key`, a lone `ocv_` key, or an `sk-shroud-v1` router key (`api_key` alone; token ≤ 60 s, `router_key` claim) |
 | POST   | `/v1/auth/api-key-token`    | Personal API key → JWT                              |
 | POST   | `/v1/auth/google`           | Google id_token → JWT                               |
 | DELETE | `/v1/auth/token`            | Revoke token                                        |
@@ -159,6 +159,36 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 | PATCH  | `/v1/agents/:agent_id`            | Update agent (name, description, intents_api_enabled)  |
 | DELETE | `/v1/agents/:agent_id`            | Deactivate agent                                        |
 | POST   | `/v1/agents/:agent_id/rotate-key` | Rotate agent API key                                    |
+| POST   | `/v1/agents/:agent_id/children`   | Create a child agent (subset of the parent's vaults/scopes, own key; human-only) |
+| GET    | `/v1/agents/:agent_id/children`   | List child agents                                       |
+
+### Router keys (Shroud gateway static Bearer)
+
+| Method | Path                                        | Description                                                                 |
+| ------ | ------------------------------------------- | --------------------------------------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/router-keys`          | Mint an `sk-shroud-v1-<32>` key (plaintext once, with `base_url`; human-only; Shroud-enabled agents; per-key `max_concurrent_streams`, `spend_cap_usd`) |
+| GET    | `/v1/agents/:agent_id/router-keys`          | List router keys (prefix only)                                              |
+| DELETE | `/v1/agents/:agent_id/router-keys/:key_id`  | Revoke (gateway refuses within 60 s)                                        |
+
+### Secret → tool bindings (rehydration policy)
+
+| Method | Path                                             | Description                                                                              |
+| ------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/tool-bindings`             | Allow the enclave to rehydrate a secret's `⟦sk:…⟧` placeholder into `tool_name` at `arg_path`, only toward `destination_hosts` (human-only) |
+| GET    | `/v1/agents/:agent_id/tool-bindings`             | List bindings                                                                            |
+| DELETE | `/v1/agents/:agent_id/tool-bindings/:binding_id` | Remove a binding                                                                         |
+
+## Connectors
+
+| Method | Path                                                  | Description                                                                 |
+| ------ | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| GET    | `/v1/connectors/presets`                              | Catalogue (public): presets with guardrails, auth type and `event_sources`  |
+| GET    | `/v1/agents/:agent_id/connectors`                     | Installed connectors (bindings) for an agent                                |
+| POST   | `/v1/agents/:agent_id/connectors/:slug/install`       | Install a preset (OAuth → `authorization_url`; api-token → `host`/`token`)  |
+| POST   | `/v1/agents/:agent_id/event-subscriptions`            | Subscribe to a preset event source (polled; human-only)                     |
+| GET    | `/v1/agents/:agent_id/event-subscriptions`            | List subscriptions                                                          |
+| DELETE | `/v1/agents/:agent_id/event-subscriptions/:id`        | Unsubscribe                                                                 |
+| POST   | `/v1/agents/:agent_id/event-subscriptions/:id/poll`   | Poll now                                                                    |
 
 ## Sharing
 
@@ -448,6 +478,9 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | GET    | `/v1/billing/credits/transactions` | Paginated credit transaction ledger                   |
 | PATCH  | `/v1/billing/overage-method`       | Toggle overage method (credits or x402)               |
 | POST   | `/v1/billing/webhooks`             | Stripe webhook handler (no auth — signature verified) |
+| POST   | `/v1/x402/topup`                   | Wallet rail (no auth): 402 quote → `X-PAYMENT` → ledger credit; first settled payment from an unknown wallet provisions a shadow org + Shroud agent + router key |
+
+The ledger stores **micro-USD** (`balance_micro_usd`); `balance_cents` is derived. One inspected Shroud router-key request costs 5,000 micro-USD ($0.005).
 
 ## Audit
 
@@ -463,6 +496,8 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | POST   | `/v1/org/invite`           | Invite member by email |
 | PATCH  | `/v1/org/members/:user_id` | Update member role     |
 | DELETE | `/v1/org/members/:user_id` | Remove member          |
+| POST   | `/v1/org/apply/diff`       | Plan a declarative chart (vaults, agents, policies, connectors, bindings) against the live org |
+| POST   | `/v1/org/apply`            | Apply a chart in dependency order (human-only)      |
 
 ## Webhooks
 

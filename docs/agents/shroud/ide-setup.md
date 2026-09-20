@@ -8,7 +8,7 @@ tags: [shroud, cli, cursor, ide]
 
 # IDE & tool setup (Shroud proxy)
 
-Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.co`** with the correct Shroud headers.
+Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud accepts the editor's `Authorization: Bearer` directly when it carries an **`sk-shroud-v1` router key** (mint one with `1claw agent create-router-key <agent-id>`; set the editor's base URL to `https://shroud.1claw.co/v1` and add an `X-Shroud-Provider` header where the editor allows custom headers) — no local proxy needed. Where an editor cannot send custom headers, the **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.co`** with the correct Shroud headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`).
 
 **Parent doc:** [Shroud → IDE Integration](/docs/agents/shroud/overview#ide-integration-1claw-proxy)
 

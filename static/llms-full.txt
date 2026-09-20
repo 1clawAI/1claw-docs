@@ -5973,7 +5973,7 @@ tags: [shroud, cli, cursor, ide]
 
 # IDE & tool setup (Shroud proxy)
 
-Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud expects **`X-Shroud-Agent-Key`** and related headers instead. The **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.co`** with the correct Shroud headers.
+Most editors speak **OpenAI**-compatible (`/v1/chat/completions`) or **Anthropic**-compatible (`/v1/messages`) APIs. Shroud accepts the editor's `Authorization: Bearer` directly when it carries an **`sk-shroud-v1` router key** (mint one with `1claw agent create-router-key <agent-id>`; set the editor's base URL to `https://shroud.1claw.co/v1` and add an `X-Shroud-Provider` header where the editor allows custom headers) — no local proxy needed. Where an editor cannot send custom headers, the **1Claw CLI** includes a local **`1claw proxy`** that accepts editor traffic and forwards it to **`https://shroud.1claw.co`** with the correct Shroud headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`).
 
 **Parent doc:** [Shroud → IDE Integration](/docs/agents/shroud/overview#ide-integration-1claw-proxy)
 
@@ -8491,7 +8491,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 ### Shroud (LLM proxy)
 
-**What it is:** A proxy at [shroud.1claw.co](https://shroud.1claw.co). Your agent sends LLM requests to Shroud with `X-Shroud-Agent-Key` and `X-Shroud-Provider`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
+**What it is:** A proxy at [shroud.1claw.co](https://shroud.1claw.co). Your agent sends LLM requests to Shroud with `X-Shroud-Provider` and its credential — an `sk-shroud-v1` router key as a plain `Authorization: Bearer` (what a stock OpenAI/Anthropic SDK sends), or `X-Shroud-Agent-Key`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
 
 **When to use it:** When you want to prevent prompt injection, redact secrets from prompts, or centralize provider API keys in the vault. See [Shroud](/docs/agents/shroud/overview).
 
@@ -24432,7 +24432,7 @@ All endpoints are under **/v1**.
 | ------ | --------------------------- | --------------------------------------------------- |
 | POST   | `/v1/auth/signup`           | Self-service signup (email + password) → JWT        |
 | POST   | `/v1/auth/token`            | Email/password → JWT                                |
-| POST   | `/v1/auth/agent-token`      | Agent ID + API key → JWT                            |
+| POST   | `/v1/auth/agent-token`      | Agent credentials → JWT: `agent_id` + `api_key`, a lone `ocv_` key, or an `sk-shroud-v1` router key (`api_key` alone; token ≤ 60 s, `router_key` claim) |
 | POST   | `/v1/auth/api-key-token`    | Personal API key → JWT                              |
 | POST   | `/v1/auth/google`           | Google id_token → JWT                               |
 | DELETE | `/v1/auth/token`            | Revoke token                                        |
@@ -24558,6 +24558,36 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 | PATCH  | `/v1/agents/:agent_id`            | Update agent (name, description, intents_api_enabled)  |
 | DELETE | `/v1/agents/:agent_id`            | Deactivate agent                                        |
 | POST   | `/v1/agents/:agent_id/rotate-key` | Rotate agent API key                                    |
+| POST   | `/v1/agents/:agent_id/children`   | Create a child agent (subset of the parent's vaults/scopes, own key; human-only) |
+| GET    | `/v1/agents/:agent_id/children`   | List child agents                                       |
+
+### Router keys (Shroud gateway static Bearer)
+
+| Method | Path                                        | Description                                                                 |
+| ------ | ------------------------------------------- | --------------------------------------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/router-keys`          | Mint an `sk-shroud-v1-<32>` key (plaintext once, with `base_url`; human-only; Shroud-enabled agents; per-key `max_concurrent_streams`, `spend_cap_usd`) |
+| GET    | `/v1/agents/:agent_id/router-keys`          | List router keys (prefix only)                                              |
+| DELETE | `/v1/agents/:agent_id/router-keys/:key_id`  | Revoke (gateway refuses within 60 s)                                        |
+
+### Secret → tool bindings (rehydration policy)
+
+| Method | Path                                             | Description                                                                              |
+| ------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| POST   | `/v1/agents/:agent_id/tool-bindings`             | Allow the enclave to rehydrate a secret's `⟦sk:…⟧` placeholder into `tool_name` at `arg_path`, only toward `destination_hosts` (human-only) |
+| GET    | `/v1/agents/:agent_id/tool-bindings`             | List bindings                                                                            |
+| DELETE | `/v1/agents/:agent_id/tool-bindings/:binding_id` | Remove a binding                                                                         |
+
+## Connectors
+
+| Method | Path                                                  | Description                                                                 |
+| ------ | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| GET    | `/v1/connectors/presets`                              | Catalogue (public): presets with guardrails, auth type and `event_sources`  |
+| GET    | `/v1/agents/:agent_id/connectors`                     | Installed connectors (bindings) for an agent                                |
+| POST   | `/v1/agents/:agent_id/connectors/:slug/install`       | Install a preset (OAuth → `authorization_url`; api-token → `host`/`token`)  |
+| POST   | `/v1/agents/:agent_id/event-subscriptions`            | Subscribe to a preset event source (polled; human-only)                     |
+| GET    | `/v1/agents/:agent_id/event-subscriptions`            | List subscriptions                                                          |
+| DELETE | `/v1/agents/:agent_id/event-subscriptions/:id`        | Unsubscribe                                                                 |
+| POST   | `/v1/agents/:agent_id/event-subscriptions/:id/poll`   | Poll now                                                                    |
 
 ## Sharing
 
@@ -24847,6 +24877,9 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | GET    | `/v1/billing/credits/transactions` | Paginated credit transaction ledger                   |
 | PATCH  | `/v1/billing/overage-method`       | Toggle overage method (credits or x402)               |
 | POST   | `/v1/billing/webhooks`             | Stripe webhook handler (no auth — signature verified) |
+| POST   | `/v1/x402/topup`                   | Wallet rail (no auth): 402 quote → `X-PAYMENT` → ledger credit; first settled payment from an unknown wallet provisions a shadow org + Shroud agent + router key |
+
+The ledger stores **micro-USD** (`balance_micro_usd`); `balance_cents` is derived. One inspected Shroud router-key request costs 5,000 micro-USD ($0.005).
 
 ## Audit
 
@@ -24862,6 +24895,8 @@ Agent-ordered prepaid/gift cards via x402 on Base. Agent never sees PAN/CVV.
 | POST   | `/v1/org/invite`           | Invite member by email |
 | PATCH  | `/v1/org/members/:user_id` | Update member role     |
 | DELETE | `/v1/org/members/:user_id` | Remove member          |
+| POST   | `/v1/org/apply/diff`       | Plan a declarative chart (vaults, agents, policies, connectors, bindings) against the live org |
+| POST   | `/v1/org/apply`            | Apply a chart in dependency order (human-only)      |
 
 ## Webhooks
 
@@ -25136,6 +25171,10 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-09 (latest)
+
+### v0.61.43 (2026-09-20) {#v06143-2026-09-20}
+
+**Router-rail fixes found in production, and the site catches up.** The inspection-fee debit now reaches the vault: Shroud calls it over `SHROUD_VAULT_INTERNAL_URL` (the public API host proxies only `/v1/*`) and the route lives in the authenticated group rather than the Intents-gated one (a router-key agent need not have the Intents API on) — before this every router-key `POST` failed closed. The 1 MB router-rail cap runs right after authentication, ahead of provider-key resolution (413, never a 401 about a missing key). `POST /v1/x402/topup` claims the payment proof before looking the wallet up, so a replay never opens a shadow org. Shroud rollouts that stall on node-pool capacity with ≥ 2 new pods ready are treated as deployed; the HPA no longer scales on memory. Docs: API reference gains child agents, router keys, tool bindings, connectors/event subscriptions, charts and the x402 top-up; `/for-ai` gains four Shroud cards; `1claw.co/shroud` gains the drop-in section; the billing page explains what credits pay for. New example `examples/shroud-router-key`. `@1claw/sdk` 0.61.28, `oneclaw` 0.61.13 (READMEs). Ops runbook `internal-docs/runbooks/shroud-ai-router-rail.md`.
 
 ### v0.61.42 (2026-09-20) {#v06142-2026-09-20}
 

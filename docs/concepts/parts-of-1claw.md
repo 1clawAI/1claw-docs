@@ -44,7 +44,7 @@ Vault is the foundation: Shroud and Intents extend it (Shroud for LLM traffic, I
 
 ### Shroud (LLM proxy)
 
-**What it is:** A proxy at [shroud.1claw.co](https://shroud.1claw.co). Your agent sends LLM requests to Shroud with `X-Shroud-Agent-Key` and `X-Shroud-Provider`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
+**What it is:** A proxy at [shroud.1claw.co](https://shroud.1claw.co). Your agent sends LLM requests to Shroud with `X-Shroud-Provider` and its credential — an `sk-shroud-v1` router key as a plain `Authorization: Bearer` (what a stock OpenAI/Anthropic SDK sends), or `X-Shroud-Agent-Key`; Shroud authenticates the agent, (optionally) pulls the provider API key from the vault, runs threat detection and secret redaction, then forwards to the upstream provider. Supports OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, and OpenRouter.
 
 **When to use it:** When you want to prevent prompt injection, redact secrets from prompts, or centralize provider API keys in the vault. See [Shroud](/docs/agents/shroud/overview).
 
