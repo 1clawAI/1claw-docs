@@ -6184,6 +6184,18 @@ client = OpenAI(api_key="sk-shroud-v1-…", base_url="https://shroud.1claw.co/v1
                 default_headers={"X-Shroud-Provider": "openai"})
 ```
 
+### Paying for inspection (router rail) {#inspection-fee}
+
+Router-key traffic is paid from request one: every inspected request debits the org's prepaid ledger **$0.005** (5,000 micro-USD) at accept — before the stream opens — so a stream in flight is never cut off for billing; it is the *next* request that gets **402 `insufficient_credits`** when the ledger cannot cover the fee. Router-rail bodies are capped at **1 MB** (413). 1Claw-native agents using `ocv_` keys or agent JWTs are not charged here; they stay on their plan's request quotas.
+
+The ledger stores **micro-USD** (`balance_micro_usd` on `GET /v1/billing/credits/balance`; `balance_cents` is derived and rounds down). Three ways to fund it:
+
+- **Card** — `POST /v1/billing/credits/topup` (`amount_usd`, $5 minimum) returns a Stripe Checkout URL; $5 buys exactly 1,000 inspected requests.
+- **Wallet (x402)** — send `Authorization: Bearer x402` to the gateway. Without `X-PAYMENT` you get a **402 quote** (`accepts[]` for $1 of USDC on Base; `X-Shroud-Topup-Usd` picks a larger chunk, up to $100). Sign the EIP-3009 authorization, retry with `X-PAYMENT`, and the request is served: the vault verifies with the facilitator, credits the payer wallet's org and settles. An unknown wallet's first settled payment **provisions the account** — a shadow org, one Shroud-enabled agent and one router key returned once in the `x-shroud-router-key` response header (switch to it to stop paying per call) — after the wallet is screened against the OFAC SDN list and the caller's region against the geofence. Same wallet = same org, always. Every response on this rail carries `x-shroud-balance-micro-usd`.
+- **BYOK** — your provider key (`X-Shroud-Api-Key` or a vault-stored key) pays for tokens; the ledger still pays the inspection fee, so pair it with a top-up.
+
+Per router key you can set `spend_cap_usd` (the key stops at the cap; other keys keep working) and `max_concurrent_streams`.
+
 ### Vault key resolution
 
 If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
@@ -25110,6 +25122,10 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-09 (latest)
+
+### v0.61.40 (2026-09-19) {#v06140-2026-09-19}
+
+**Router rail is paid from request one; the ledger is micro-USD; the x402 agent door opens.** Migration 274 moves the prepaid ledger to micro-USD (`organizations.credit_balance_micro_usd`, `credit_transactions.*_micro_usd`; the cents columns every reader used become derived, so nothing that read them changes) and `GET /v1/billing/credits/balance` / the subscription response now carry `balance_micro_usd` and dollars at the ledger's precision. Shroud debits **$0.005** per inspected router-key request at accept (`POST /internal/v1/shroud/inspection-debit`: idempotent on the request id, FIFO across top-ups, counted against the key's `spend_cap_usd`, TEE-origin gated); an in-flight stream is never cut off for billing — the next request gets 402. Router-rail bodies cap at 1 MB (413). `POST /v1/x402/topup` is the wallet rail: a 402 quote for $1 of USDC on Base (up to $100), then verify → claim → credit → settle; an unknown wallet's first settled top-up provisions a shadow org + Shroud agent + router key (returned once) after OFAC SDN screening (fails closed) and the geofence — migration 275 `x402_wallet_orgs`, same wallet = same org. The gateway drives it for `Authorization: Bearer x402`: no `X-PAYMENT` → the quote; with one → the request is served on a ≤60 s token and answers carry `x-shroud-router-key` (first time) and `x-shroud-balance-micro-usd`. Metrics `shroud_inspection_fees`, `shroud_inspection_fee_refusals`, `shroud_x402_challenges`, `shroud_x402_topups`. Spec 0.61.32.
 
 ### v0.61.39 (2026-09-19) {#v06139-2026-09-19}
 
