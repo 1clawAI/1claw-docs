@@ -23,7 +23,8 @@ connector. Those stay in the dashboard.
 
 ## Connect (once)
 
-1. Signed in to 1Claw, open **[1claw.co/connect/muse](https://1claw.co/connect/muse)** and click
+1. Signed in to 1Claw, go to **Settings → Connected Apps → Connect Muse** (or open
+   **[1claw.co/connect/muse](https://1claw.co/connect/muse)** directly) and click
    **Connect Muse**. The first time, 1Claw asks you to confirm linking the Muse app.
 2. Under **Settings → Connected apps → Muse**, grant the **agents** Muse may see. A connection with
    no grants shows Muse nothing — that is the whole permission model.
