@@ -26,8 +26,11 @@ connector. Those stay in the dashboard.
 1. Signed in to 1Claw, go to **Settings → Connected Apps → Connect Muse** (or open
    **[1claw.co/connect/muse](https://1claw.co/connect/muse)** directly) and click
    **Connect Muse**. The first time, 1Claw asks you to confirm linking the Muse app.
-2. Under **Settings → Connected apps → Muse**, grant the **agents** Muse may see. A connection with
-   no grants shows Muse nothing — that is the whole permission model.
+2. Under **Settings → Connected Apps**, expand the **Muse** entry and click **Grant agents & vaults**
+   (the same screen is `1claw.co/connect/muse/grant?connection=<connection id>`). Pick the
+   **agents** Muse may see. A connection with no grants shows Muse nothing — that is the whole
+   permission model. The *Management Access* switch and delegation scopes on that card are a
+   different control (what the app may do on your behalf); Muse's view comes from grants only.
 3. Copy the connector token (`mcn_…`; shown once). In Muse, ask to add a custom connector for
    1Claw and give it:
    - Base URL: `https://muse.1claw.co`
