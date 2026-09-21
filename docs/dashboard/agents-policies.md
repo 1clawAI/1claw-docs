@@ -35,7 +35,7 @@ Zone** at the foot of the page, whichever tab is open.
 
 ## Creating an agent
 
-**Agents → Create** or the **agent wizard**:
+**Agents → New Agent** (the wizard; `/agents/new` redirects to it):
 
 1. Name, description, auth method (`api_key` default), scopes
 2. *(Advanced)* expiry, token scoping and vault binding, transaction policy,
