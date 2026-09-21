@@ -11,7 +11,7 @@ The **Platform wizard** at `/platform/wizard` walks developers through building 
 ## Steps
 
 1. **Create platform app** — Name, slug, redirect URIs, billing model
-2. **Create bootstrap template** — Visual Template Spec Builder or JSON spec (vault, agents, policies, signing keys, optional runtimes/automations)
+2. **Create bootstrap template** — Visual Template Spec Builder or JSON spec (vault, agents, policies, signing keys, optional runtimes/automations). In Simple mode the agent switches, signing keys and access policy are summarised (*Shroud on, Intents off, no signing keys, `**` read+write*) with a **Customise** button; the **Advanced** switch shows them.
 3. **Provision first user** — `upsert_user` + `bootstrap` flow; copy claim URL for end-user
 
 ## Platform home (`/platform`)

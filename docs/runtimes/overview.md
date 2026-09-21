@@ -74,15 +74,40 @@ you expected and nothing reports a problem. Check the value against
 `GET /v1/runtimes/templates` before provisioning.
 :::
 
+### NemoClaw and NanoClaw
+
+[NVIDIA NemoClaw](https://www.nvidia.com/en-us/ai/nemoclaw) (OpenClaw inside an
+OpenShell sandbox) and [NanoClaw](https://nanoclaw.dev/) are themselves sandbox
+runtimes: each needs a container runtime on the host (OpenShell runs a K3s
+cluster in Docker with Landlock/seccomp; NanoClaw starts one container per
+chat), so neither can be nested inside a hosted 1Claw runtime. Run them on your
+own machine and give the agent 1Claw from inside the sandbox instead: the
+[1claw-nemoclaw](https://github.com/1clawAI/1claw-nemoclaw) policy, plugin and
+blueprint for NemoClaw, or the [1Claw CLI/MCP](/docs/guides/setup-by-client)
+inside a NanoClaw agent container. An OpenShell-backed *provider* (1Claw
+starting sandboxes on your OpenShell host) is on the roadmap.
+
 ## Create via dashboard
 
-1. Go to **Runtimes** in the sidebar
-2. Click **Create Runtime**
-3. Choose a template (or upload Dockerfile)
-4. Select a preset (small / medium / large)
-5. Configure environment variables
-6. Optionally enable hosting (public URL)
-7. Click **Deploy**
+The wizard is built to fit on one screen per step. **Simple** mode (the
+default) is three steps plus a review; the **Advanced** switch in the header
+adds a Runtime Options step and the model/tool tuning.
+
+1. **Choose a template** — agent frameworks first (Hermes, OpenClaw, OpenCode,
+   OpenClaude), then bring-your-own-code (Python, Node, compiled binary,
+   custom Docker).
+2. **Choose a size** — small / medium / large, with confidential (TEE)
+   variants; an included slot shows as *Included with your plan*.
+3. **Agent & behaviour** — name (pre-filled), the agent it runs as (an
+   existing one, or **New agent** to create one with keys and a default-vault
+   grant in the same call), the chat channel for framework templates, and a
+   system prompt.
+4. *(Advanced only)* **Runtime options** — source repo and startup command,
+   public HTTP endpoint and auth mode, env vars, shell access, idle timeout.
+5. **Review & create** — the review lists the defaults in use with a
+   **Customise** button that jumps to the options step.
+
+A greyed **Next** always says what is missing ("To continue: pick an agent").
 
 ## Create via CLI
 

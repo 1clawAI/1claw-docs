@@ -23,7 +23,7 @@ After login, your session is stored in an **httpOnly cookie** (`_claims`); the d
 
 | Section | What you manage |
 |---------|-----------------|
-| **Dashboard home** | Usage summary, getting-started banner, quick links |
+| **Dashboard home** | Control plane: Topology first, then **Overview** (needs-attention, activity, inventory, spend, trend), Threats, Metrics, Flows, Shroud, Risk, Audit, Live |
 | **Vaults** | Create vaults, browse secrets, policies, CMEK/MPC settings |
 | **Agents** | Register agents, enable Shroud/Intents, guardrails, delegations |
 | **Automations** | Workflow builder, presets, run history |
@@ -34,6 +34,15 @@ After login, your session is stored in an **httpOnly cookie** (`_claims`); the d
 | **Platform** | Platform apps, templates, connected users |
 | **Security** | Risk events, honeytokens, Shroud activity |
 | **Settings** | Account, team, billing, MFA, passkeys, API keys |
+
+### Getting around
+
+- **Command palette** — `⌘K` / `Ctrl+K` (or the Search button in the header) jumps to any page, agent, vault, runtime, automation or pending approval, starts a create flow, and toggles theme and wizard mode. Type `?` anywhere for the shortcut list.
+- **Two-key shortcuts** — `g` then a letter goes somewhere (`g a` agents, `g v` vaults, `g r` runtimes, `g w` automations, `g p` approvals, `g c` consensus, `g d` dashboard, `g s` settings, `g t` treasury); `n` then a letter starts a wizard (`n a` agent, `n v` vault, `n r` runtime, `n w` automation). They are ignored while you type in a field.
+- **On a phone** — the sidebar folds away under a hamburger and a bottom tab bar (Home · Vaults · Agents · Runtimes · Approvals, with the pending count, and **More** for the rest). Long tab strips scroll sideways.
+- **Simple and Advanced** — every wizard and the agent page carry one **Advanced** switch (remembered per browser). Simple mode asks only for what cannot be guessed and shows the defaults for the rest with a **Customise** button; Advanced shows every option. The same switch is in the command palette.
+- **Approvals** — when the pending count rises while you are elsewhere, a toast offers to open the queue; the sidebar and bottom-bar badges update every 30 seconds.
+- **Deleting things** — every detail page ends with a red **Danger Zone**; deletes ask you to type the resource name.
 
 ## Related docs
 

@@ -12,6 +12,11 @@ sidebar_position: 2
 
 ## Agent detail tabs
 
+In **Simple** mode the page shows Overview, Access, Wallets and Channels; the
+rest sit under **More ▾**. Flip the **Advanced** switch (top right, remembered
+per browser) to see every tab. Rotate key and Delete live in the **Danger
+Zone** at the foot of the page, whichever tab is open.
+
 | Tab | Contents |
 |-----|----------|
 | **Overview** | API key prefix, auth method, vault binding, scopes, federation, token TTL |
@@ -32,11 +37,15 @@ sidebar_position: 2
 
 **Agents → Create** or the **agent wizard**:
 
-1. Name, description, optional vault binding
-2. Auth method (`api_key` default)
-3. Optional: enable Intents, Shroud, memory, execution intents
-4. Guardrail fields when Intents is on
-5. One-time API key display — copy before leaving the page
+1. Name, description, auth method (`api_key` default), scopes
+2. *(Advanced)* expiry, token scoping and vault binding, transaction policy,
+   Shroud, execution intents, environment tag — all have safe defaults and
+   are folded away in Simple mode with a one-line summary and **Customise**
+3. One-time API key display — copy before leaving the page
+
+The wizard's Capabilities block (Shroud proxy, Intents API, execution
+intents) is likewise Advanced-only; Simple mode uses *Shroud on, Intents on,
+execution intents off*.
 
 ## Approvals inbox
 

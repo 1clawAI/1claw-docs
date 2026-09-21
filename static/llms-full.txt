@@ -7739,11 +7739,100 @@ funds. Read it rather than copying this table.
 | `approval_request` | — | — | Raise a human approval from inside the run |
 | `submit_transaction` | — | **yes** | Sign and broadcast as the agent |
 | `swap` | — | **yes** | Quote and execute a swap as the agent |
-| `execute_intent` | — | **yes** | Run an execution-intent binding as the agent |
+| `execute_intent` | yes | **yes** | Run one of the agent's execution-intent bindings — the binding's host/path/method allowlists, conditions, secret scan and approval policy apply, and a policy that wants a human parks the run |
+| `wait_until` | yes | — | Park until a time (`until`, RFC 3339) or for `duration_secs`, up to 72 h; no wall clock is spent parked |
+| `awaiting_callback` | yes | — | Park until an external system POSTs to `{{run.callback_url}}`; `timeout_secs` up to 72 h |
+| `for_each` | — | — | Run `steps` once per element of `items` (max 50) with `{{item}}` / `{{index}}` in scope |
+| `call_automation` | — | — | Run another automation of the org inline as a sub-workflow (depth 1) |
 
-**Agent-created automations** are restricted to the five marked above, capped at
+**Agent-created automations** are restricted to the types marked above, capped at
 10 steps, and may only use `manual` or `webhook` triggers. Platform- and
 human-created automations may use every type, capped at 50 steps.
+
+### Error policy, budgets and parks (engine v2)
+
+Every step may carry **`on_error`**: `"fail"` (default), `"continue"` (record a
+`failed` result and go on — later steps see `{{steps.N.status}} == "failed"`),
+`"retry"` (3 attempts, 2 s linear backoff) or
+`{"action": "retry", "max_attempts": 5, "backoff_secs": 10}` (max 5 / 30 s). Steps
+that move funds (`submit_transaction`, `swap`, `execute_intent`) and steps that
+park the run are never retried automatically — a failure after broadcast retried
+is a double spend.
+
+A spec may carry a **`budget`**: `{"max_tokens": …, "max_cost_cents": …, "max_steps": …}`.
+The engine-wide ceiling (500 cents, 500 steps) still applies above it. `max_steps`
+counts every `for_each` iteration and sub-workflow step, which is what bounds fan-out.
+A run over budget fails closed at the step that crossed it.
+
+Three step types **park** the run — the row moves to `awaiting_approval`, `waiting`
+or `awaiting_callback`, its state is snapshotted, and the 300-second clock stops
+until it continues:
+
+- `approval_request` — continues when the approval is decided (see below).
+- `wait_until` — the scheduler wakes it at `until`. Waits under 5 minutes sleep inline.
+- `awaiting_callback` — continues when something POSTs to the run's callback URL.
+  A spec containing this step gets a per-run token at start, exposed as
+  `{{run.callback_url}}` and `{{run.callback_token}}`; a preceding `http` or
+  `notify` step hands the URL to the external system. The POST body becomes
+  `{{resume.*}}`. Unclaimed within `timeout_secs` (default 1 h, max 72 h) the run
+  becomes `timed_out`.
+
+```json
+{
+  "budget": { "max_cost_cents": 200, "max_steps": 40 },
+  "steps": [
+    { "type": "http", "name": "kickoff", "url": "https://ops.example/jobs",
+      "method": "POST", "body": { "callback": "{{run.callback_url}}" },
+      "on_error": { "action": "retry", "max_attempts": 4, "backoff_secs": 5 } },
+    { "type": "awaiting_callback", "timeout_secs": 7200 },
+    { "type": "notify", "channel": "email", "message": "Job finished: {{resume.result}}" }
+  ]
+}
+```
+
+Parks are refused inside `condition` branches, `for_each` bodies and sub-workflows.
+
+### Preview a run (dry run)
+
+`POST /v1/automations/{id}/dry-run` (or `POST /v1/automations/dry-run` with a
+`workflow_spec` that is not saved yet) renders every step after template
+substitution against a simulated context and reports, per step: the resolved
+fields, the side effect it would have, its `on_error` policy, templates that
+would resolve to nothing, conditions that would skip it, and the point at which
+the budget would be exceeded. Nothing runs. The dashboard's **Preview run**
+button (editor and detail page) is this endpoint; SDK `automations.dryRun()`.
+
+### Re-run from a step
+
+`POST /v1/automations/{id}/runs/{run_id}/rerun` `{ "from_step": N }` starts a
+new run seeded with the finished run's results up to step `N` and continues
+from there, on the spec version that run executed. The new run carries
+`parent_run_id` and `trigger_source: "rerun"`. On the run timeline in the
+dashboard every step has **Re-run from here**. Step results now record
+`duration_ms`, `attempts`, `continued` and the resolved `input` (credentials
+removed), which is what the timeline shows.
+
+### Versions and rollback
+
+Every `workflow_spec` an automation has had is kept: version 1 is the spec it was
+created with, and each update that changes the spec publishes the next version
+(`GET /v1/automations/{id}/versions`). Runs record the version they executed;
+a run parked mid-way is pinned to the version it started on and refuses to
+continue if the spec changed while it was parked. `POST …/versions/{n}/rollback`
+republishes an earlier spec as a new version. Edits and rollbacks that **widen**
+the automation — adding `submit_transaction`, `swap`, `execute_intent`, `http`,
+`rotate_generate`, `call_automation` or `ai_generate` where there was none, or
+raising/removing a `budget` cap — go through the org's control-plane consensus
+policy under the `automation.widen` action; pass `approval_id` on the request
+once approved. Narrowing never needs approval.
+
+### Idempotent triggers
+
+`POST /v1/automations/{id}/trigger` takes `{ "input": …, "idempotency_key": "…" }`
+(or an `Idempotency-Key` header). The same key twice returns the run already
+started for it with **200** rather than starting another (**201**). Webhook
+deliveries use `X-GitHub-Delivery`, a Stripe `evt_…` id or `Idempotency-Key` the
+same way, so provider retries never double-run.
 
 ### Steps that move funds
 
@@ -7775,6 +7864,23 @@ appears to succeed without doing anything.
 | `manual` | API call or dashboard button | One-off test runs |
 
 ## Webhook triggers
+
+### Signed deliveries
+
+The token in the URL proves the URL; a **signature** proves the sender. Set a
+scheme on the automation and unsigned or mis-signed deliveries start nothing:
+
+```
+PATCH /v1/automations/{id}
+{ "webhook_signature": { "scheme": "stripe", "secret": "whsec_…" } }
+```
+
+Schemes: `stripe` (`Stripe-Signature: t=…,v1=…` over `<t>.<body>`, 5-minute
+tolerance), `github` (`X-Hub-Signature-256: sha256=…` over the body) and
+`hmac_sha256` (`<header>: <hex|base64>` over the body; set `header`). The secret
+is stored encrypted in the org's agent-keys vault and never returned; the
+automation exposes only `webhook_signature_scheme`. Send `"webhook_signature": null`
+to remove it.
 
 When `trigger_type` is `webhook`, the create response includes **one-time** credentials:
 
@@ -8151,7 +8257,9 @@ POST /v1/automations/{automation_id}/runs/{run_id}/resume
 {"payload": {"ticket": "OPS-42"}}
 ```
 
-Human-only. It marks the approval approved on your behalf and continues the run; `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
+Human-only. It carries an approval that was already decided forward (a still-pending approval is 409 — decide it via `POST /v1/approvals/{id}/decide`, which enforces approver identity, expiry and step-up, and the run resumes on its own). A run parked on `wait_until` or `awaiting_callback` can be pushed on by an org owner/admin the same way. `payload` reaches later steps as `{{resume.*}}`. Idempotent — a run that is not parked is returned unchanged. SDK: `client.automations.resumeRun(automationId, runId, payload?)`; Python `resume_run`. Webhook: `automation.run.resumed`.
+
+An `execute_intent` step whose binding approval policy wants a human parks the run the same way; on approval the **same step runs again** with the approval granted, so the call is made exactly once and only after a human saw it.
 
 ### Cancel a run
 
@@ -8699,6 +8807,11 @@ sidebar_position: 2
 
 ## Agent detail tabs
 
+In **Simple** mode the page shows Overview, Access, Wallets and Channels; the
+rest sit under **More ▾**. Flip the **Advanced** switch (top right, remembered
+per browser) to see every tab. Rotate key and Delete live in the **Danger
+Zone** at the foot of the page, whichever tab is open.
+
 | Tab | Contents |
 |-----|----------|
 | **Overview** | API key prefix, auth method, vault binding, scopes, federation, token TTL |
@@ -8719,11 +8832,15 @@ sidebar_position: 2
 
 **Agents → Create** or the **agent wizard**:
 
-1. Name, description, optional vault binding
-2. Auth method (`api_key` default)
-3. Optional: enable Intents, Shroud, memory, execution intents
-4. Guardrail fields when Intents is on
-5. One-time API key display — copy before leaving the page
+1. Name, description, auth method (`api_key` default), scopes
+2. *(Advanced)* expiry, token scoping and vault binding, transaction policy,
+   Shroud, execution intents, environment tag — all have safe defaults and
+   are folded away in Simple mode with a one-line summary and **Customise**
+3. One-time API key display — copy before leaving the page
+
+The wizard's Capabilities block (Shroud proxy, Intents API, execution
+intents) is likewise Advanced-only; Simple mode uses *Shroud on, Intents on,
+execution intents off*.
 
 ## Approvals inbox
 
@@ -8773,9 +8890,35 @@ Edges are styled by relation: `holds` / `grants` are dashed brand-red (the reach
 - A **minimap** appears bottom-right whenever part of the graph is off screen.
 - Where you leave the map — positions and zoom — is remembered per org in your browser.
 
-**Keyboard**: `1`–`4` switch tabs · `Space`/`P` pause the stream · `+`/`−` zoom · `F` fit · `0` reset · arrows pan · `Tab`/`]`/`[` cycle agents · `Esc` closes help, then search, then the selection, then leaves · `?` lists all of this.
+**Keyboard**: `1`–`8` switch tabs · `Space`/`P` pause the stream · `+`/`−` zoom · `F` fit · `0` reset · arrows pan · `Tab`/`]`/`[` cycle agents · `Esc` closes help, then search, then the selection, then leaves · `?` lists all of this.
 
 **Large orgs**: the map caps at 500 nodes and says so in the title (`truncated`, with the real total). Below 0.75× zoom only the selected node, its neighbours and search matches keep labels; below 0.5× agents draw as plain discs. Labels never overprint — the important ones claim their space first.
+
+## Overview
+
+The **Overview** tab (`5`, or the sidebar's *Activity* entry) is the whole system on one
+screen, from a single call to `GET /v1/org/overview?hours=…` (1 h to 7 d):
+
+- **Needs attention** — open threats, approvals waiting (and older than 24 h), consensus
+  decisions pending, parked automation runs, automations whose last run failed, runtimes in
+  error, auto-suspended agents, secrets expiring within 7 days, active agents with no access
+  policy, agents idle 7+ days. Each line links to where you act on it.
+- **Activity** for the window — API requests, secret reads/writes, denials, executions
+  (and failures), transactions (and failures), Shroud requests / blocked / redacted /
+  injection signals, automation runs (failed, parked), approvals pending/decided, consensus
+  pending, risk events and open threats.
+- **Inventory** — vaults, secrets, agents (active / total / children), access policies,
+  runtimes (running / total), automations (active / total), execution bindings, wallets and
+  agent keys, platform apps and connections, team members.
+- **Spend** for the window — inference (USD and tokens), execution and automation cost, credit
+  balance and plan.
+- **7-day trend** — audit events, denials, Shroud requests and blocks, automation runs,
+  transactions per day.
+
+The former *Activity* pages are tabs here too: **Shroud** (per-request Shroud activity with
+filters and CSV export, `6`), **Risk** (risk-engine events, `7`) and **Audit** (the audit log,
+`8`). `/platform-activity/*` redirects to the matching tab; `?view=` on `/dashboard` deep-links
+to any tab.
 
 ## Threats
 
@@ -8859,7 +9002,7 @@ After login, your session is stored in an **httpOnly cookie** (`_claims`); the d
 
 | Section | What you manage |
 |---------|-----------------|
-| **Dashboard home** | Usage summary, getting-started banner, quick links |
+| **Dashboard home** | Control plane: Topology first, then **Overview** (needs-attention, activity, inventory, spend, trend), Threats, Metrics, Flows, Shroud, Risk, Audit, Live |
 | **Vaults** | Create vaults, browse secrets, policies, CMEK/MPC settings |
 | **Agents** | Register agents, enable Shroud/Intents, guardrails, delegations |
 | **Automations** | Workflow builder, presets, run history |
@@ -8870,6 +9013,15 @@ After login, your session is stored in an **httpOnly cookie** (`_claims`); the d
 | **Platform** | Platform apps, templates, connected users |
 | **Security** | Risk events, honeytokens, Shroud activity |
 | **Settings** | Account, team, billing, MFA, passkeys, API keys |
+
+### Getting around
+
+- **Command palette** — `⌘K` / `Ctrl+K` (or the Search button in the header) jumps to any page, agent, vault, runtime, automation or pending approval, starts a create flow, and toggles theme and wizard mode. Type `?` anywhere for the shortcut list.
+- **Two-key shortcuts** — `g` then a letter goes somewhere (`g a` agents, `g v` vaults, `g r` runtimes, `g w` automations, `g p` approvals, `g c` consensus, `g d` dashboard, `g s` settings, `g t` treasury); `n` then a letter starts a wizard (`n a` agent, `n v` vault, `n r` runtime, `n w` automation). They are ignored while you type in a field.
+- **On a phone** — the sidebar folds away under a hamburger and a bottom tab bar (Home · Vaults · Agents · Runtimes · Approvals, with the pending count, and **More** for the rest). Long tab strips scroll sideways.
+- **Simple and Advanced** — every wizard and the agent page carry one **Advanced** switch (remembered per browser). Simple mode asks only for what cannot be guessed and shows the defaults for the rest with a **Customise** button; Advanced shows every option. The same switch is in the command palette.
+- **Approvals** — when the pending count rises while you are elsewhere, a toast offers to open the queue; the sidebar and bottom-bar badges update every 30 seconds.
+- **Deleting things** — every detail page ends with a red **Danger Zone**; deletes ask you to type the resource name.
 
 ## Related docs
 
@@ -8901,7 +9053,7 @@ The **Platform wizard** at `/platform/wizard` walks developers through building 
 ## Steps
 
 1. **Create platform app** — Name, slug, redirect URIs, billing model
-2. **Create bootstrap template** — Visual Template Spec Builder or JSON spec (vault, agents, policies, signing keys, optional runtimes/automations)
+2. **Create bootstrap template** — Visual Template Spec Builder or JSON spec (vault, agents, policies, signing keys, optional runtimes/automations). In Simple mode the agent switches, signing keys and access policy are summarised (*Shroud on, Intents off, no signing keys, `**` read+write*) with a **Customise** button; the **Advanced** switch shows them.
 3. **Provision first user** — `upsert_user` + `bootstrap` flow; copy claim URL for end-user
 
 ## Platform home (`/platform`)
@@ -9084,7 +9236,7 @@ Edit and delete policies inline. Policy changes **revoke active agent JWTs** so 
 
 ## Onboarding wizards
 
-- **Vault wizard** (`/vaults/wizard`) — Create vault → store secret → next steps
+- **Vault wizard** (`/vaults/wizard`) — Create vault → store secret → next steps. Key protection (Standard HSM vs the MPC split-key modes) is under the **Advanced** switch; Simple mode uses Standard.
 - **Onboarding hub** (`/onboarding`) — Progress checks for vault and agent setup
 
 See also: [Vaults overview](/docs/vaults/overview), [Golden path](/docs/vaults/golden-path), [CMEK](/docs/vaults/cmek).
@@ -9135,6 +9287,14 @@ Built-in access policies support an `environment_in` array in the `conditions` J
 ```
 
 Agents without an environment tag do not match `environment_in` conditions.
+
+## Policy scoping with `runtime_image_in`
+
+The same `conditions` object accepts `runtime_image_in`: a list of resolved
+container images. Only agent tokens minted for a cloud runtime running one of
+them pass (`runtime_image` claim; see the runtimes guide). Unlike
+`environment_in`, a caller without the claim is **refused**, which is the point —
+the secret is limited to that attested image, not to whoever holds the key.
 
 ## Env var auto-resolve
 
@@ -18892,10 +19052,14 @@ connector. Those stay in the dashboard.
 
 ## Connect (once)
 
-1. Signed in to 1Claw, open **[1claw.co/connect/muse](https://1claw.co/connect/muse)** and click
+1. Signed in to 1Claw, go to **Settings → Connected Apps → Connect Muse** (or open
+   **[1claw.co/connect/muse](https://1claw.co/connect/muse)** directly) and click
    **Connect Muse**. The first time, 1Claw asks you to confirm linking the Muse app.
-2. Under **Settings → Connected apps → Muse**, grant the **agents** Muse may see. A connection with
-   no grants shows Muse nothing — that is the whole permission model.
+2. Under **Settings → Connected Apps**, expand the **Muse** entry and click **Grant agents & vaults**
+   (the same screen is `1claw.co/connect/muse/grant?connection=<connection id>`). Pick the
+   **agents** Muse may see. A connection with no grants shows Muse nothing — that is the whole
+   permission model. The *Management Access* switch and delegation scopes on that card are a
+   different control (what the app may do on your behalf); Muse's view comes from grants only.
 3. Copy the connector token (`mcn_…`; shown once). In Muse, ask to add a custom connector for
    1Claw and give it:
    - Base URL: `https://muse.1claw.co`
@@ -24711,7 +24875,7 @@ Three-tier memory: scratch (TTL-based), durable (persistent KV), and semantic (v
 
 ## Automations
 
-Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows. Multi-step pipelines with 14 step types.
+Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows. Multi-step pipelines with 19 step types; per-step `on_error` policy; per-run `budget`; parks (`approval_request`, `wait_until`, `awaiting_callback`) that stop the clock; spec versions with rollback; idempotent triggers; signed inbound webhooks.
 
 | Method | Path                                                                  | Description                                  |
 | ------ | --------------------------------------------------------------------- | -------------------------------------------- |
@@ -24721,7 +24885,13 @@ Cron-scheduled, webhook-triggered, event-driven, and manual automation workflows
 | GET    | `/v1/automations/:id`                                                 | Get automation details                       |
 | PATCH  | `/v1/automations/:id`                                                 | Update automation                            |
 | DELETE | `/v1/automations/:id`                                                 | Delete automation                            |
-| POST   | `/v1/automations/:id/trigger`                                         | Manually trigger an automation               |
+| POST   | `/v1/automations/:id/trigger`                                         | Trigger now (`{input, idempotency_key}`; same key → existing run, 200) |
+| POST   | `/v1/automations/dry-run` · `/v1/automations/:id/dry-run`             | Preview a run: resolved inputs, effects, error policy, unresolved templates — nothing runs |
+| POST   | `/v1/automations/:id/runs/:run_id/rerun`                              | New run seeded with this run's results up to `from_step` |
+| GET    | `/v1/automations/:id/versions`                                        | Every spec version (newest first)            |
+| POST   | `/v1/automations/:id/versions/:n/rollback`                            | Republish version n as current (widening → `automation.widen` consensus) |
+| POST   | `/v1/automations/:id/runs/:run_id/callback/:token`                    | Continue a run parked on `awaiting_callback` (public, per-run token) |
+| POST   | `/v1/automations/:id/runs/:run_id/resume`                             | Carry a decided approval forward / push a timed or callback park on |
 | GET    | `/v1/automations/:id/runs`                                            | List automation runs                         |
 | GET    | `/v1/automations/:id/runs/:run_id`                                    | Get run details                              |
 | POST   | `/v1/automations/:id/runs/:run_id/cancel`                             | Cancel a running/awaiting run (human-only)   |
@@ -24737,6 +24907,9 @@ Managed containers with lifecycle management, hosting, idle auto-stop, and inter
 | Method | Path                                            | Description                                  |
 | ------ | ----------------------------------------------- | -------------------------------------------- |
 | POST   | `/v1/runtimes`                                  | Create a runtime                             |
+| POST   | `/v1/runtimes/provision`                        | Agent (new or existing) + keys + grant + runtime + start in one call |
+| GET    | `/v1/runtimes/:id/env/resolved`                 | Every env var the container gets, by source (vault/minted values masked) |
+| POST   | `/v1/runtimes/:id/rollback`                     | Restart on the previous image                |
 | GET    | `/v1/runtimes`                                  | List runtimes                                |
 | GET    | `/v1/runtimes/:id`                              | Get runtime details                          |
 | PATCH  | `/v1/runtimes/:id`                              | Update runtime                               |
@@ -24891,6 +25064,7 @@ The ledger stores **micro-USD** (`balance_micro_usd`); `balance_cents` is derive
 
 | Method | Path                       | Description            |
 | ------ | -------------------------- | ---------------------- |
+| GET    | `/v1/org/overview`         | Whole-system snapshot: inventory, activity (`?hours=`), spend, health, 7-day trend |
 | GET    | `/v1/org/members`          | List org members       |
 | POST   | `/v1/org/invite`           | Invite member by email |
 | PATCH  | `/v1/org/members/:user_id` | Update member role     |
@@ -25172,6 +25346,40 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### Dashboard 2026-09-21 {#dashboard-2026-09-21}
+
+**Beginner and advanced, everywhere.** Every wizard (runtime, agent, sub-agent, vault, platform, register-agent form) and the agent detail page share one **Advanced** switch, remembered per browser and also in the command palette. Simple mode asks only for what cannot be guessed; every optional block becomes a one-line summary of the defaults with **Customise**. The **runtime wizard** is now five steps with agent frameworks first (Hermes, OpenClaw, OpenCode, OpenClaude, then Python/Node/binary/Docker), two-column template cards, three-column presets and a pre-filled name; Simple mode skips Runtime Options and each step fits on one screen. A greyed **Next** always says what is missing. The automations chooser leads with *Assist* (the easy way) over the step-by-step wizard.
+
+**Navigation.** `⌘K`/`Ctrl+K` command palette (pages, create flows, agents/vaults/runtimes/automations, pending approvals, theme, wizard mode; `?` lists shortcuts); `g`+letter and `n`+letter two-key shortcuts. Phones get a hamburger, a bottom tab bar (with the pending-approval count) and a slide-in sidebar; tab strips scroll instead of overflowing. The *Activity* sidebar link is gone — it is the **Overview** tab on the dashboard.
+
+**Polish.** Skeletons in place of spinners on detail pages and the consensus/proposals/sharing/cards lists; teaching empty states (what the thing is for, and the first action) on vaults, agents, consensus and proposals; one **Danger Zone** at the foot of every detail page (typed-name confirmation) — vaults, agents, runtimes, and automations, which gained a delete; an *approval needs you* toast when the pending count rises while you are elsewhere (badges refresh every 30 s). Discovery artifacts (`.well-known/mcp/server-card.json`, `ai-catalog.json`, the MCP `serverInfo`) now report spec 0.61.39 and 160 tools.
+
+**NemoClaw / NanoClaw.** Documented why neither can be a hosted template (each needs a container runtime on the host) and how to use 1Claw inside them; an OpenShell-backed provider stays on the roadmap.
+
+### v0.61.48 (2026-09-20) {#v06148-2026-09-20}
+
+**Clients for the uplift.** `@1claw/sdk` 0.61.32 (`runtimes.provision/resolvedEnv/rollback`, `schedule` on update, `org.overview`), CLI 0.61.18 (`runtime provision|env|rollback`, `runtime update --schedule-cron/--stop-after/--clear-schedule`), MCP 0.63.6 (`manage_runtime` gains `restart`/`rollback`; new `runtime_env` — 160 tools). Example `examples/automations/engine-v2-automation.ts` walks retry/continue, callback park, `for_each`, versions, rollback and re-run end to end. Dry run no longer flags `{{resume.*}}`, `{{item}}`, `{{index}}` or nested-body templates as unresolved.
+
+**Runtime console (uplift batch D).** The runtime page opens on an **Overview** tab: status, last heartbeat, idle auto-stop countdown, hours and egress this month, last image scan, the attested image and the previous one with **Roll back & restart** (`POST /v1/runtimes/{id}/rollback`; `previous_image_digest` recorded at each start whose resolved image changed), a **schedule** editor, and the **resolved environment** (`GET /v1/runtimes/{id}/env/resolved` — every variable by source with vault-derived and minted values masked). **Provision in one call:** `POST /v1/runtimes/provision` creates or reuses the agent, its keys and default-vault grant, the runtime, and starts it, under every existing gate; the New runtime wizard's Agent step gains **New agent**. Spec 0.61.39.
+
+### v0.61.47 (2026-09-20) {#v06147-2026-09-20}
+
+**Runtimes (uplift batch C, part 1).** **Attested image:** runtimes record `image_digest` (Cloud Run's resolved image, digest form), runtime-minted agent tokens carry it as `runtime_image`, and access policies can require it with `conditions.runtime_image_in` (strict: no claim → refused) — mig 278. **Scheduled runtimes:** `schedule {start_cron, timezone, stop_after_secs}` on `PATCH /v1/runtimes/{id}`; a leader-elected scheduler starts on the cron through the same gates as a manual start and stops after the window (mig 279). **Reconciler:** every ten minutes the controller also probes non-running rows and stops any container still alive at the provider (orphaned compute after a half-failed stop/delete). Engine fixes from prod: parks were marked `failed` right after parking; `{{run.*}}`, `{{resume.*}}`, `{{item}}`/`{{index}}` template roots; nested step bodies keep their templates until they run; a parked run exposes its partial `step_results`; `webhook_signature: null` removes the scheme. Already present and now documented: custom images on the `docker` path are allow-listed by registry prefix; per-user log-stream cap + 15-minute idle timeout. Spec 0.61.38.
+
+### v0.61.46 (2026-09-20) {#v06146-2026-09-20}
+
+**Dashboard: one overview of the whole system.** New `GET /v1/org/overview?hours=` returns inventory, activity in the window, spend, health signals and a 7-day trend in one call (every subquery org-scoped; guard test). The dashboard control plane gains an **Overview** tab (needs-attention list, activity, inventory, spend, trend — each number links to where you act), and the former *Activity* pages are now tabs on the same screen (**Shroud**, **Risk**, **Audit**) with Topology still first; `/platform-activity/*` redirects, `?view=` deep-links, keys `1`–`8`. `@1claw/sdk` 0.61.31 (`org.overview()`), spec 0.61.37.
+
+**Automations UX (uplift batch B).** **Dry run:** `POST /v1/automations/{id}/dry-run` and `POST /v1/automations/dry-run` (unsaved spec) render every step after template substitution — resolved fields, side effect, `on_error` policy, templates that resolve to nothing, conditions, the budget crossing — with nothing done; **Preview run** in the editor and on the detail page. **Run timeline:** step results record `duration_ms`, `attempts`, `continued` and the resolved `input` (credentials removed); the dashboard run dialog is a timeline with expandable input/output, attempts and cost, a parked-run banner with inline Approve/Reject (or "skip the wait" / "continue without the callback" for owners), and **Re-run from here** on every step (`POST …/runs/{run_id}/rerun {from_step}` — a new run seeded with the finished run's results). **Versions panel** on the detail page with one-click rollback. The editor knows the v2 step types (`wait_until`, `awaiting_callback`, `for_each`, `call_automation`) and has **Step name** and **On error** (fail / continue / retry ×N with backoff) on every step. Fixed: the dashboard read run fields the API never returned (`trigger`, `completed_at`, `step_type`), so the Runs table showed blank triggers and a step card threw on open — runs are now normalised in one place. `@1claw/sdk` 0.61.30 (`dryRun`, `rerunFromStep`), spec 0.61.36.
+
+### v0.61.45 (2026-09-20) {#v06145-2026-09-20}
+
+**Automation engine v2 (runtime & automations uplift, batch A).** Every step may carry an `on_error` policy — `fail`, `continue`, or `retry` with bounded linear backoff (fund-moving and parking steps are never retried). Specs may carry a `budget` (`max_tokens`, `max_cost_cents`, `max_steps`, the last counting every loop iteration and sub-workflow step). Two new parks stop the 300-second clock like `approval_request` does: **`wait_until`** (the scheduler wakes it, up to 72 h) and **`awaiting_callback`** (the run gets a per-run token at start as `{{run.callback_url}}`; `POST /v1/automations/{id}/runs/{run_id}/callback/{token}` continues it with the body as `{{resume.*}}`). New control flow: **`for_each`** (bounded fan-out with `{{item}}`/`{{index}}`) and **`call_automation`** (inline sub-workflow, depth 1, recorded as its own run with `parent_run_id`). **Agent-created automations may now use `execute_intent`** — network access only through a binding a human created, with the binding's allowlists, conditions, secret scan and approval policy applied in the executor exactly as on the direct execute path; a policy that wants a human parks the run and re-runs the step once approved. **Versions:** every `workflow_spec` is kept (mig 277 `automation_versions`; `GET …/versions`, `POST …/versions/{n}/rollback`); runs record `spec_version`. **Widening edits** (adding fund-moving or network-reaching steps, raising a budget cap) go through control-plane consensus under the new `automation.widen` action; `PATCH` now validates step types like `POST` always did. **Idempotent triggers:** `{input, idempotency_key}` / `Idempotency-Key` on trigger and webhook (GitHub delivery ids and Stripe `evt_` ids are used automatically) — the same key returns the existing run with 200. **Signed inbound webhooks:** `webhook_signature` `{scheme: stripe|github|hmac_sha256, secret, header?, tolerance_secs?}` on a webhook automation; the secret lives encrypted in the agent-keys vault and an unsigned or mis-signed delivery starts nothing. Run responses carry `paused_reason`, `paused_until`, `paused_expires_at`, `spec_version`, `idempotency_key`, `parent_run_id`; new run statuses `waiting` and `awaiting_callback`. `@1claw/sdk` 0.61.29 (`trigger(id, input, {idempotencyKey})`, `listVersions`, `rollback`, `callback`, `StepOnError`, `RunBudget`), CLI 0.61.17 (`automation trigger --input --idempotency-key`, `versions`, `rollback`), MCP 0.63.5 (`trigger_automation` takes `idempotency_key`; the SDK/MCP trigger body previously sent a bare object the vault ignored). Spec 0.61.35.
+
+### v0.61.44 (2026-09-20) {#v06144-2026-09-20}
+
+**Security audit remediation (2026-09-20 cycle: 8 HIGH, 8 MEDIUM, 4 LOW).** Router-key tokens are routing-only: the vault refuses every route outside the gateway surface (inspection debit, vault list, provider/api-key reads, agent self, bankr leases, activity, health) and Shroud refuses execution/transaction paths for them. Passkey-Safe agent spends run the org's signing policies and the consensus gate like every other send, and both relayer-key fetches go through one wallet-access-gated, audited primitive. `POST /v1/automations/{id}/runs/{run_id}/resume` no longer decides the approval — a pending one is 409 with a pointer to `POST /v1/approvals/{id}/decide` — and a parked run pins its `workflow_spec` (hash + copy) and fails rather than run an edited workflow under an old approval. Tool bindings require the agent (or the creating user) to already read the secret. Deactivating a parent agent stops its children's inherited policies. Pairing approve/deny is compare-and-set (409 on replay). Included runtime slots are claimed under a per-org lock. K_enclave release fails closed if its audit row cannot be written, pins RS256, and refuses `secboot=false` / non-confidential `hwmodel`. Recovery codes are spent on redemption (a fresh one is shown). Shroud: the client IP is the TCP peer, with `X-Forwarded-For` believed only behind a trusted proxy (`SHROUD_TRUSTED_PROXY_CIDRS`), and a per-IP pre-auth rate limiter (`SHROUD_PREAUTH_RATE_LIMIT_PER_MIN`, default 600) sheds unauthenticated floods; `deploy-shroud.yml` attaches Cloud Armor network DDoS protection to the NLB and refuses to retire the L7 Ingress until it is verified. CI: `docker-build` and `deploy-vault.yml` both gate on the migrations applying to a fresh Postgres. Dashboard: Settings → Connected Apps gains **Connect Muse**.
+
 ### v0.61.43 (2026-09-20) {#v06143-2026-09-20}
 
 **Router-rail fixes found in production, and the site catches up.** The inspection-fee debit now reaches the vault: Shroud calls it over `SHROUD_VAULT_INTERNAL_URL` (the public API host proxies only `/v1/*`) and the route lives in the authenticated group rather than the Intents-gated one (a router-key agent need not have the Intents API on) — before this every router-key `POST` failed closed. The 1 MB router-rail cap runs right after authentication, ahead of provider-key resolution (413, never a 401 about a missing key). `POST /v1/x402/topup` claims the payment proof before looking the wallet up, so a replay never opens a shadow org. Shroud rollouts that stall on node-pool capacity with ≥ 2 new pods ready are treated as deployed; the HPA no longer scales on memory. Docs: API reference gains child agents, router keys, tool bindings, connectors/event subscriptions, charts and the x402 top-up; `/for-ai` gains four Shroud cards; `1claw.co/shroud` gains the drop-in section; the billing page explains what credits pay for. New example `examples/shroud-router-key`. `@1claw/sdk` 0.61.28, `oneclaw` 0.61.13 (READMEs). Ops runbook `internal-docs/runbooks/shroud-ai-router-rail.md`.
@@ -25206,7 +25414,7 @@ sidebar_label: "2026"
 
 ### v0.61.35 (2026-09-19) {#v06135-2026-09-19}
 
-**Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 160 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
+**Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 159 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
 
 ### v0.61.34 (2026-09-19) {#v06134-2026-09-19}
 
@@ -28544,15 +28752,40 @@ you expected and nothing reports a problem. Check the value against
 `GET /v1/runtimes/templates` before provisioning.
 :::
 
+### NemoClaw and NanoClaw
+
+[NVIDIA NemoClaw](https://www.nvidia.com/en-us/ai/nemoclaw) (OpenClaw inside an
+OpenShell sandbox) and [NanoClaw](https://nanoclaw.dev/) are themselves sandbox
+runtimes: each needs a container runtime on the host (OpenShell runs a K3s
+cluster in Docker with Landlock/seccomp; NanoClaw starts one container per
+chat), so neither can be nested inside a hosted 1Claw runtime. Run them on your
+own machine and give the agent 1Claw from inside the sandbox instead: the
+[1claw-nemoclaw](https://github.com/1clawAI/1claw-nemoclaw) policy, plugin and
+blueprint for NemoClaw, or the [1Claw CLI/MCP](/docs/guides/setup-by-client)
+inside a NanoClaw agent container. An OpenShell-backed *provider* (1Claw
+starting sandboxes on your OpenShell host) is on the roadmap.
+
 ## Create via dashboard
 
-1. Go to **Runtimes** in the sidebar
-2. Click **Create Runtime**
-3. Choose a template (or upload Dockerfile)
-4. Select a preset (small / medium / large)
-5. Configure environment variables
-6. Optionally enable hosting (public URL)
-7. Click **Deploy**
+The wizard is built to fit on one screen per step. **Simple** mode (the
+default) is three steps plus a review; the **Advanced** switch in the header
+adds a Runtime Options step and the model/tool tuning.
+
+1. **Choose a template** — agent frameworks first (Hermes, OpenClaw, OpenCode,
+   OpenClaude), then bring-your-own-code (Python, Node, compiled binary,
+   custom Docker).
+2. **Choose a size** — small / medium / large, with confidential (TEE)
+   variants; an included slot shows as *Included with your plan*.
+3. **Agent & behaviour** — name (pre-filled), the agent it runs as (an
+   existing one, or **New agent** to create one with keys and a default-vault
+   grant in the same call), the chat channel for framework templates, and a
+   system prompt.
+4. *(Advanced only)* **Runtime options** — source repo and startup command,
+   public HTTP endpoint and auth mode, env vars, shell access, idle timeout.
+5. **Review & create** — the review lists the defaults in use with a
+   **Customise** button that jumps to the options step.
+
+A greyed **Next** always says what is missing ("To continue: pick an agent").
 
 ## Create via CLI
 
@@ -28702,6 +28935,60 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 - Dashboard **Unlock logs** requires step-up: account password or passkey reauth (`POST /v1/auth/reauth/begin` then `/complete` with `purpose=runtime_logs`, then `POST /v1/runtimes/{id}/logs/unlock` with `X-Auth-Confirm`). Unlock lasts **15 minutes** per runtime.
 
 API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
+
+## One call from "what does the agent do" to running
+
+`POST /v1/runtimes/provision` creates (or reuses) the agent, its keys and default-vault
+grant, the runtime, and starts it:
+
+```json
+{ "name": "nightly-reporter", "template": "python", "agent": { "name": "nightly-reporter" }, "start": true }
+```
+
+Every step is the same code the individual endpoints run — the `agent.create` consensus
+gate, plan caps, image allowlist and included-slot logic apply unchanged. The new agent's
+API key comes back once. The dashboard's **New runtime → Agent → New agent** does this.
+
+## The console
+
+The runtime page opens on **Overview**: status and last heartbeat, the idle auto-stop
+countdown, hours and egress this month, the last image scan, the image it is running (the
+attested digest, and the previous one with **Roll back & restart** —
+`POST /v1/runtimes/{id}/rollback`), the schedule, and the **resolved environment**
+(`GET /v1/runtimes/{id}/env/resolved`): every variable the container is started with,
+by source — `platform`, `env_public`, `vault_env`, `agent`, `secret` — and which wins on
+a collision. Vault-derived values and the minted token are named, never shown. Then
+Chat, Channels, Logs & Shell, Agent and Configuration.
+
+## Scheduled start and stop
+
+A runtime can run on a clock without a workflow around it:
+
+```
+PATCH /v1/runtimes/{id}
+{ "schedule": { "start_cron": "0 2 * * *", "timezone": "America/Chicago", "stop_after_secs": 3600 } }
+```
+
+The scheduler starts the container when `start_cron` fires (5-field cron, minimum
+one minute, IANA `timezone`) and stops it `stop_after_secs` later (60 s – 24 h);
+leave `stop_after_secs` null to let the idle reconciler stop it. A scheduled start
+goes through exactly the gates a manual start does (plan, included slot, provider),
+and `next_scheduled_start_at` / `scheduled_stop_at` on the runtime say what is
+coming. `"schedule": null` clears it.
+
+## Attested image
+
+Every runtime records the image it is actually running (`image_digest`, digest form
+when the provider reports one, else the reference it started from), and agent
+tokens minted for that runtime carry it as the `runtime_image` claim. An access
+policy can require it:
+
+```json
+{ "conditions": { "runtime_image_in": ["us-west1-docker.pkg.dev/…/runtime-base@sha256:…"] } }
+```
+
+Only tokens from a runtime running one of the listed images pass; a bare API key
+or a token with no runtime image is refused. Exact match — pin the digest.
 
 ## Idle auto-stop
 

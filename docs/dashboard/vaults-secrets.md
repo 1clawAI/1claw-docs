@@ -46,7 +46,7 @@ Edit and delete policies inline. Policy changes **revoke active agent JWTs** so 
 
 ## Onboarding wizards
 
-- **Vault wizard** (`/vaults/wizard`) — Create vault → store secret → next steps
+- **Vault wizard** (`/vaults/wizard`) — Create vault → store secret → next steps. Key protection (Standard HSM vs the MPC split-key modes) is under the **Advanced** switch; Simple mode uses Standard.
 - **Onboarding hub** (`/onboarding`) — Progress checks for vault and agent setup
 
 See also: [Vaults overview](/docs/vaults/overview), [Golden path](/docs/vaults/golden-path), [CMEK](/docs/vaults/cmek).

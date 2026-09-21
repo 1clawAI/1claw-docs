@@ -8,6 +8,16 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### Dashboard 2026-09-21 {#dashboard-2026-09-21}
+
+**Beginner and advanced, everywhere.** Every wizard (runtime, agent, sub-agent, vault, platform, register-agent form) and the agent detail page share one **Advanced** switch, remembered per browser and also in the command palette. Simple mode asks only for what cannot be guessed; every optional block becomes a one-line summary of the defaults with **Customise**. The **runtime wizard** is now five steps with agent frameworks first (Hermes, OpenClaw, OpenCode, OpenClaude, then Python/Node/binary/Docker), two-column template cards, three-column presets and a pre-filled name; Simple mode skips Runtime Options and each step fits on one screen. A greyed **Next** always says what is missing. The automations chooser leads with *Assist* (the easy way) over the step-by-step wizard.
+
+**Navigation.** `⌘K`/`Ctrl+K` command palette (pages, create flows, agents/vaults/runtimes/automations, pending approvals, theme, wizard mode; `?` lists shortcuts); `g`+letter and `n`+letter two-key shortcuts. Phones get a hamburger, a bottom tab bar (with the pending-approval count) and a slide-in sidebar; tab strips scroll instead of overflowing. The *Activity* sidebar link is gone — it is the **Overview** tab on the dashboard.
+
+**Polish.** Skeletons in place of spinners on detail pages and the consensus/proposals/sharing/cards lists; teaching empty states (what the thing is for, and the first action) on vaults, agents, consensus and proposals; one **Danger Zone** at the foot of every detail page (typed-name confirmation) — vaults, agents, runtimes, and automations, which gained a delete; an *approval needs you* toast when the pending count rises while you are elsewhere (badges refresh every 30 s). Discovery artifacts (`.well-known/mcp/server-card.json`, `ai-catalog.json`, the MCP `serverInfo`) now report spec 0.61.39 and 160 tools.
+
+**NemoClaw / NanoClaw.** Documented why neither can be a hosted template (each needs a container runtime on the host) and how to use 1Claw inside them; an OpenShell-backed provider stays on the roadmap.
+
 ### v0.61.48 (2026-09-20) {#v06148-2026-09-20}
 
 **Clients for the uplift.** `@1claw/sdk` 0.61.32 (`runtimes.provision/resolvedEnv/rollback`, `schedule` on update, `org.overview`), CLI 0.61.18 (`runtime provision|env|rollback`, `runtime update --schedule-cron/--stop-after/--clear-schedule`), MCP 0.63.6 (`manage_runtime` gains `restart`/`rollback`; new `runtime_env` — 160 tools). Example `examples/automations/engine-v2-automation.ts` walks retry/continue, callback park, `for_each`, versions, rollback and re-run end to end. Dry run no longer flags `{{resume.*}}`, `{{item}}`, `{{index}}` or nested-body templates as unresolved.
