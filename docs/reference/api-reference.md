@@ -344,6 +344,9 @@ Managed containers with lifecycle management, hosting, idle auto-stop, and inter
 | Method | Path                                            | Description                                  |
 | ------ | ----------------------------------------------- | -------------------------------------------- |
 | POST   | `/v1/runtimes`                                  | Create a runtime                             |
+| POST   | `/v1/runtimes/provision`                        | Agent (new or existing) + keys + grant + runtime + start in one call |
+| GET    | `/v1/runtimes/:id/env/resolved`                 | Every env var the container gets, by source (vault/minted values masked) |
+| POST   | `/v1/runtimes/:id/rollback`                     | Restart on the previous image                |
 | GET    | `/v1/runtimes`                                  | List runtimes                                |
 | GET    | `/v1/runtimes/:id`                              | Get runtime details                          |
 | PATCH  | `/v1/runtimes/:id`                              | Update runtime                               |

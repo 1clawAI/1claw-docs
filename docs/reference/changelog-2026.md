@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-09 (latest)
 
+### v0.61.48 (2026-09-20) {#v06148-2026-09-20}
+
+**Runtime console (uplift batch D).** The runtime page opens on an **Overview** tab: status, last heartbeat, idle auto-stop countdown, hours and egress this month, last image scan, the attested image and the previous one with **Roll back & restart** (`POST /v1/runtimes/{id}/rollback`; `previous_image_digest` recorded at each start whose resolved image changed), a **schedule** editor, and the **resolved environment** (`GET /v1/runtimes/{id}/env/resolved` — every variable by source with vault-derived and minted values masked). **Provision in one call:** `POST /v1/runtimes/provision` creates or reuses the agent, its keys and default-vault grant, the runtime, and starts it, under every existing gate; the New runtime wizard's Agent step gains **New agent**. Spec 0.61.39.
+
 ### v0.61.47 (2026-09-20) {#v06147-2026-09-20}
 
 **Runtimes (uplift batch C, part 1).** **Attested image:** runtimes record `image_digest` (Cloud Run's resolved image, digest form), runtime-minted agent tokens carry it as `runtime_image`, and access policies can require it with `conditions.runtime_image_in` (strict: no claim → refused) — mig 278. **Scheduled runtimes:** `schedule {start_cron, timezone, stop_after_secs}` on `PATCH /v1/runtimes/{id}`; a leader-elected scheduler starts on the cron through the same gates as a manual start and stops after the window (mig 279). **Reconciler:** every ten minutes the controller also probes non-running rows and stops any container still alive at the provider (orphaned compute after a half-failed stop/delete). Engine fixes from prod: parks were marked `failed` right after parking; `{{run.*}}`, `{{resume.*}}`, `{{item}}`/`{{index}}` template roots; nested step bodies keep their templates until they run; a parked run exposes its partial `step_results`; `webhook_signature: null` removes the scheme. Already present and now documented: custom images on the `docker` path are allow-listed by registry prefix; per-user log-stream cap + 15-minute idle timeout. Spec 0.61.38.

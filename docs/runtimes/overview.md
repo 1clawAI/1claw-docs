@@ -233,6 +233,30 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 
 API: `GET /v1/runtimes/{id}/logs?tail=N`, SSE `GET .../logs/stream` — both require a prior unlock grant for human callers.
 
+## One call from "what does the agent do" to running
+
+`POST /v1/runtimes/provision` creates (or reuses) the agent, its keys and default-vault
+grant, the runtime, and starts it:
+
+```json
+{ "name": "nightly-reporter", "template": "python", "agent": { "name": "nightly-reporter" }, "start": true }
+```
+
+Every step is the same code the individual endpoints run — the `agent.create` consensus
+gate, plan caps, image allowlist and included-slot logic apply unchanged. The new agent's
+API key comes back once. The dashboard's **New runtime → Agent → New agent** does this.
+
+## The console
+
+The runtime page opens on **Overview**: status and last heartbeat, the idle auto-stop
+countdown, hours and egress this month, the last image scan, the image it is running (the
+attested digest, and the previous one with **Roll back & restart** —
+`POST /v1/runtimes/{id}/rollback`), the schedule, and the **resolved environment**
+(`GET /v1/runtimes/{id}/env/resolved`): every variable the container is started with,
+by source — `platform`, `env_public`, `vault_env`, `agent`, `secret` — and which wins on
+a collision. Vault-derived values and the minted token are named, never shown. Then
+Chat, Channels, Logs & Shell, Agent and Configuration.
+
 ## Scheduled start and stop
 
 A runtime can run on a clock without a workflow around it:
