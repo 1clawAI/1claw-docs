@@ -8952,12 +8952,19 @@ CLI: `1claw spend ai [--days 30 | --from … --to …] [--by agent|model|provide
 [--provider anthropic] [--json]`, `1claw spend export`, `1claw spend prices list|set|remove|reprice`.
 SDK: `client.spend.ai()`, `client.spend.listPrices()`, `client.spend.setPrice()`.
 
-:::note Where the number comes from
+:::note Where the number comes from — and how the budget is enforced
 Shroud reports tokens per request; the vault prices each request as it arrives from the
 price card (`llm_model_prices`: longest matching `model_pattern` wins, an org row beats a
-global one) and stores the cost on the row. Shroud's own `daily_budget_usd` enforcement
-still estimates at a flat rate in memory, so the budget bars show the priced number next to
-the budget — the two can differ until Shroud reads the same card.
+global one) and stores the cost on the row. **Shroud enforces `daily_budget_usd` from the
+same card**: it fetches the card over its service key (`GET /v1/admin/llm-prices`, every
+5 minutes), prices every request it proxies the same way, and keeps a per-agent counter for
+the current UTC day that it re-syncs from the vault's priced rows (`GET
+/v1/shroud/activity/today`) every minute — so the budget holds across Shroud instances and
+restarts, and what blocks matches what the tab shows. A request past the budget is refused
+with **429** and `daily budget exceeded: $x of $y used today (UTC); resets at 00:00 UTC`.
+Every allowed response carries `x-shroud-budget-limit-usd`, `x-shroud-budget-spent-usd`
+and `x-shroud-budget-remaining-usd` so an agent can pace itself. A provider the card does
+not know is counted at a flat $10 per million tokens each way rather than as free.
 :::
 
 ## Threats
@@ -25402,7 +25409,7 @@ sidebar_label: "2026"
 
 ### v0.61.49 (2026-09-21) {#v06149-2026-09-21}
 
-**AI spend.** Every LLM request through Shroud is now **priced at ingest** from a per-model price card (mig 281: `shroud_activity.cost_micro_usd` + `priced`; `llm_model_prices` seeded with September 2026 list prices for Anthropic, OpenAI, Google/Gemini, Mistral, DeepSeek, xAI, Groq, Together, OpenRouter, Venice, Ollama; existing rows backfilled — 8,013 of 8,016 in prod). New `GET /v1/spend/ai?from&to&interval&agent_id&provider`: totals with the previous window, a series by provider, breakdowns by provider / model / agent (each agent with its `daily_budget_usd`, today's spend, utilisation and requests blocked for budget), router-key spend caps, credit balance and 1Claw inspection fees; `GET /v1/spend/ai/export.csv`; the price card at `GET/PUT /v1/spend/ai/prices`, `DELETE /v1/spend/ai/prices/{id}`, `POST /v1/spend/ai/reprice` (owner/admin). The dashboard control plane gains a **Spend** tab (`9`) — Ramp-style: period/provider/breakdown/compare filters, KPI cards with deltas, stacked spend-over-time, provider donut, top models, agent table with budget bars, limits panel, price editor, CSV export. **OTEL:** each request also emits `ai.cost_usd`, `ai.tokens.input`, `ai.tokens.output` (attributes `agent.id`, `ai.provider`, `ai.model`, `ai.action`) so an org's own collector gets the same numbers. The system overview's inference spend now reads the priced rows (the ledger it read before was never written). `@1claw/sdk` 0.61.33 (`spend.ai/listPrices/setPrice/deletePrice/reprice`), CLI 0.61.19 (`1claw spend ai|export|prices`). Spec 0.61.40.
+**AI spend.** Every LLM request through Shroud is now **priced at ingest** from a per-model price card (mig 281: `shroud_activity.cost_micro_usd` + `priced`; `llm_model_prices` seeded with September 2026 list prices for Anthropic, OpenAI, Google/Gemini, Mistral, DeepSeek, xAI, Groq, Together, OpenRouter, Venice, Ollama; existing rows backfilled — 8,013 of 8,016 in prod). New `GET /v1/spend/ai?from&to&interval&agent_id&provider`: totals with the previous window, a series by provider, breakdowns by provider / model / agent (each agent with its `daily_budget_usd`, today's spend, utilisation and requests blocked for budget), router-key spend caps, credit balance and 1Claw inspection fees; `GET /v1/spend/ai/export.csv`; the price card at `GET/PUT /v1/spend/ai/prices`, `DELETE /v1/spend/ai/prices/{id}`, `POST /v1/spend/ai/reprice` (owner/admin). The dashboard control plane gains a **Spend** tab (`9`) — Ramp-style: period/provider/breakdown/compare filters, KPI cards with deltas, stacked spend-over-time, provider donut, top models, agent table with budget bars, limits panel, price editor, CSV export. **OTEL:** each request also emits `ai.cost_usd`, `ai.tokens.input`, `ai.tokens.output` (attributes `agent.id`, `ai.provider`, `ai.model`, `ai.action`) so an org's own collector gets the same numbers. The system overview's inference spend now reads the priced rows (the ledger it read before was never written). **Shroud enforces daily budgets from the same card** (Shroud fetches `GET /v1/admin/llm-prices` every 5 min, prices each request identically, and re-syncs each agent's UTC-day counter from `GET /v1/shroud/activity/today` every minute — the old flat $0.01/1K in-memory counter that reset 24 h after first use and was lost on restart is gone); budget blocks are 429 with the spend named; allowed responses carry `x-shroud-budget-limit-usd` / `-spent-usd` / `-remaining-usd`. `@1claw/sdk` 0.61.33 (`spend.ai/listPrices/setPrice/deletePrice/reprice`), CLI 0.61.19 (`1claw spend ai|export|prices`). Spec 0.61.40.
 
 ### Dashboard 2026-09-21 {#dashboard-2026-09-21}
 

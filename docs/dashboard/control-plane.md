@@ -95,12 +95,19 @@ CLI: `1claw spend ai [--days 30 | --from … --to …] [--by agent|model|provide
 [--provider anthropic] [--json]`, `1claw spend export`, `1claw spend prices list|set|remove|reprice`.
 SDK: `client.spend.ai()`, `client.spend.listPrices()`, `client.spend.setPrice()`.
 
-:::note Where the number comes from
+:::note Where the number comes from — and how the budget is enforced
 Shroud reports tokens per request; the vault prices each request as it arrives from the
 price card (`llm_model_prices`: longest matching `model_pattern` wins, an org row beats a
-global one) and stores the cost on the row. Shroud's own `daily_budget_usd` enforcement
-still estimates at a flat rate in memory, so the budget bars show the priced number next to
-the budget — the two can differ until Shroud reads the same card.
+global one) and stores the cost on the row. **Shroud enforces `daily_budget_usd` from the
+same card**: it fetches the card over its service key (`GET /v1/admin/llm-prices`, every
+5 minutes), prices every request it proxies the same way, and keeps a per-agent counter for
+the current UTC day that it re-syncs from the vault's priced rows (`GET
+/v1/shroud/activity/today`) every minute — so the budget holds across Shroud instances and
+restarts, and what blocks matches what the tab shows. A request past the budget is refused
+with **429** and `daily budget exceeded: $x of $y used today (UTC); resets at 00:00 UTC`.
+Every allowed response carries `x-shroud-budget-limit-usd`, `x-shroud-budget-spent-usd`
+and `x-shroud-budget-remaining-usd` so an agent can pace itself. A provider the card does
+not know is counted at a flat $10 per million tokens each way rather than as free.
 :::
 
 ## Threats
