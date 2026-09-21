@@ -39,7 +39,7 @@ Edges are styled by relation: `holds` / `grants` are dashed brand-red (the reach
 
 ## Overview
 
-The **Overview** tab (`5`, or the sidebar's *Activity* entry) is the whole system on one
+The **Overview** tab (`5`) is the whole system on one
 screen, from a single call to `GET /v1/org/overview?hours=…` (1 h to 7 d):
 
 - **Needs attention** — open threats, approvals waiting (and older than 24 h), consensus
@@ -62,6 +62,46 @@ The former *Activity* pages are tabs here too: **Shroud** (per-request Shroud ac
 filters and CSV export, `6`), **Risk** (risk-engine events, `7`) and **Audit** (the audit log,
 `8`). `/platform-activity/*` redirects to the matching tab; `?view=` on `/dashboard` deep-links
 to any tab.
+
+## Spend
+
+The **Spend** tab (`9`) is the finance view of your agents' AI usage, built the way an
+admin wants to read it: every LLM request through Shroud, priced per model, against the
+budgets and caps that bound it. One call, `GET /v1/spend/ai?from&to&interval`:
+
+- **Filters** — time period (7 d, 30 d, 90 d, 12 months), one provider (the tabs across the
+  top: Overview · Anthropic · OpenAI · …), breakdown by agent or model, compare by cost or
+  tokens, a search box for agents and models.
+- **KPIs** — total spend, total token usage (in / out), average cost per day, cost per
+  request — each with the change against the previous equal-length window.
+- **Spend over time** stacked by provider; **cost by provider** as a donut with share and
+  trend; **top models by cost**.
+- **Spend breakdown** — every agent (avatar, top model, spend, share, requests, trend, and
+  its daily budget with today's utilisation) or every model (provider, in/out tokens,
+  requests, trend). Requests whose provider has no price row show as *unpriced*, never as
+  free.
+- **Daily budgets** — bars for every agent with `daily_budget_usd` in its Shroud config,
+  today's spend against it, and how many requests Shroud blocked for budget; **limits &
+  balance** — credit balance, 1Claw's inspection fees for the window (a separate number
+  from provider cost), requests blocked, router-key spend caps.
+- **Prices** — the price card behind every number: public list prices per million tokens
+  (seeded September 2026) plus your org's overrides. Owners and admins can add a row for a
+  negotiated rate or a provider the seed does not know, then *price unpriced requests*.
+  Editing a price affects future requests only; history is never rewritten.
+- **Export CSV** (one row per agent × provider × model) and **Send to your platform** —
+  the same numbers leave as OTEL metrics (see [Export](#export-team-tier)).
+
+CLI: `1claw spend ai [--days 30 | --from … --to …] [--by agent|model|provider]
+[--provider anthropic] [--json]`, `1claw spend export`, `1claw spend prices list|set|remove|reprice`.
+SDK: `client.spend.ai()`, `client.spend.listPrices()`, `client.spend.setPrice()`.
+
+:::note Where the number comes from
+Shroud reports tokens per request; the vault prices each request as it arrives from the
+price card (`llm_model_prices`: longest matching `model_pattern` wins, an org row beats a
+global one) and stores the cost on the row. Shroud's own `daily_budget_usd` enforcement
+still estimates at a flat rate in memory, so the budget bars show the priced number next to
+the budget — the two can differ until Shroud reads the same card.
+:::
 
 ## Threats
 
@@ -106,6 +146,20 @@ Unmeasured components drop out of the weighted average rather than scoring zero 
 ## Export (Team tier)
 
 Settings → Telemetry lets a Team org fan the same signals out to its own collector over **OTLP/HTTP JSON** (`PATCH /v1/org/settings/otel-export`, with a `/test` endpoint rate-limited to 5/min). The collector URL is validated against private ranges *after* DNS resolution and pinned, and custom headers are stored envelope-encrypted.
+
+**AI spend metrics.** Every LLM request Shroud records emits three gauge data points under
+the `metrics` signal kind, so Datadog, Grafana, Honeycomb or any OTLP collector can chart
+spend without polling the API:
+
+| Metric | Value | Attributes |
+|---|---|---|
+| `ai.cost_usd` | estimated provider cost of the request (USD, from the price card) | `agent.id`, `ai.provider`, `ai.model`, `ai.action` (`allowed` / `blocked` / `redacted`) |
+| `ai.tokens.input` | prompt tokens | same |
+| `ai.tokens.output` | completion tokens | same |
+
+Resource attributes carry `oneclaw.org.id`, `oneclaw.agent.id` and `oneclaw.agent.name`.
+Sum `ai.cost_usd` by `ai.provider` for the provider donut, by `agent.id` for the agent
+table; the dashboard's Spend tab is the same aggregation over the stored rows.
 
 ## API
 
