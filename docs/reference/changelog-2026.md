@@ -10,6 +10,8 @@ sidebar_label: "2026"
 
 ### v0.61.48 (2026-09-20) {#v06148-2026-09-20}
 
+**Clients for the uplift.** `@1claw/sdk` 0.61.32 (`runtimes.provision/resolvedEnv/rollback`, `schedule` on update, `org.overview`), CLI 0.61.18 (`runtime provision|env|rollback`, `runtime update --schedule-cron/--stop-after/--clear-schedule`), MCP 0.63.6 (`manage_runtime` gains `restart`/`rollback`; new `runtime_env` — 160 tools). Example `examples/automations/engine-v2-automation.ts` walks retry/continue, callback park, `for_each`, versions, rollback and re-run end to end. Dry run no longer flags `{{resume.*}}`, `{{item}}`, `{{index}}` or nested-body templates as unresolved.
+
 **Runtime console (uplift batch D).** The runtime page opens on an **Overview** tab: status, last heartbeat, idle auto-stop countdown, hours and egress this month, last image scan, the attested image and the previous one with **Roll back & restart** (`POST /v1/runtimes/{id}/rollback`; `previous_image_digest` recorded at each start whose resolved image changed), a **schedule** editor, and the **resolved environment** (`GET /v1/runtimes/{id}/env/resolved` — every variable by source with vault-derived and minted values masked). **Provision in one call:** `POST /v1/runtimes/provision` creates or reuses the agent, its keys and default-vault grant, the runtime, and starts it, under every existing gate; the New runtime wizard's Agent step gains **New agent**. Spec 0.61.39.
 
 ### v0.61.47 (2026-09-20) {#v06147-2026-09-20}

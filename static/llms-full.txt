@@ -18039,7 +18039,7 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 
 ## Toolsets — what a session actually sees
 
-The server ships 159 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 160 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -18800,7 +18800,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 159 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 160 tools |
 
 ### 5. API Mapping
 
@@ -25206,7 +25206,7 @@ sidebar_label: "2026"
 
 ### v0.61.35 (2026-09-19) {#v06135-2026-09-19}
 
-**Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 159 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
+**Packages catch up with the API.** CLI 0.61.13: `1claw connector install --host/--token` (api-token), `connector subscribe | subscriptions | poll | unsubscribe`, `agent children`, `agent create-child`. `@1claw/sdk` 0.61.24: `org.diffChart` / `org.applyChart` (+ `ChartDiffResponse`/`ChartApplyResponse` types). `oneclaw` 0.61.10: `org.diff_chart` / `org.apply_chart`. `@1claw/mcp` 0.63.3: `list_event_subscriptions` (execute toolset) and `list_child_agents` (vault toolset) — 160 tools; `cancel_approval` documented in the skill and tool tables. `/for-ai` cards for connectors (catalogue + event sources), automations (resume), charts (bindings), runtimes (templates, included slot), approvals (list/cancel), memory (value search) and child agents. New sweep suite `scripts/test-muse-connector-prod.sh` runs the connector's production E2E.
 
 ### v0.61.34 (2026-09-19) {#v06134-2026-09-19}
 
@@ -36515,7 +36515,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 159 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 160 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees ~24 tools; an agent with intents and execution enabled sees ~50. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
