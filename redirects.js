@@ -95,4 +95,7 @@ module.exports = [
     { from: "/docs/guides/sub-organizations", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
     { from: "/docs/guides/portfolio", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
     { from: "/docs/guides/key-import", to: "/docs/reference/changelog-2026#v0470--key-import-policy-engine-v2-sub-orgs--portfolio-2026-08-13" },
+    // Wrong slug (missing "-api") linked from dashboard's /for-ai page and possibly
+    // bookmarked/backlinked externally before that link was fixed.
+    { from: "/docs/platform/overview", to: "/docs/platform-api/overview" },
 ];
