@@ -39,6 +39,11 @@ rather than discovering it at provision time.
 | `binary` | A compiled program you ship (Go, Rust, …) — a release asset from `env_public.BINARY_URL` (`https://`, pinned by `BINARY_SHA256`; `.tar.gz`/`.zip` are unpacked to `bin/unpacked/`) or a `startup_command` after a `source_repo` clone; 1Claw CLI, curl, git and the sidecar are in the image | — | Apache-2.0 | no |
 | *(omitted)* + `image` | Any Dockerfile | — | — | — |
 
+The base image and every template's Dockerfile are public — audit exactly what's
+installed and what the entrypoint does before your agent's first line of code runs.
+Source: [github.com/1clawAI/runtime-base](https://github.com/1clawAI/runtime-base)
+(Apache-2.0).
+
 ```bash
 # A Go program published as a GitHub release asset
 1claw runtime create my-bot --template binary --agent-id <id> \
