@@ -29,14 +29,20 @@ If you add or rename models in production, update those TOML files first, then r
 
 | Model ID |
 |----------|
+| `gpt-5` |
+| `gpt-5-mini` |
+| `gpt-5-nano` |
 | `gpt-4o` |
 | `gpt-4o-mini` |
 | `gpt-4.1` |
 | `gpt-4.1-mini` |
 | `gpt-4.1-nano` |
 | `o1` |
+| `o1-mini` |
+| `o1-pro` |
 | `o3` |
 | `o3-mini` |
+| `o3-pro` |
 | `o4-mini` |
 
 ---
@@ -48,10 +54,15 @@ If you add or rename models in production, update those TOML files first, then r
 | `claude-fable-5` |
 | `claude-opus-4-8` |
 | `claude-opus-4-6` |
+| `claude-opus-4-1` |
+| `claude-opus-4` |
 | `claude-sonnet-5` |
 | `claude-sonnet-4-6` |
+| `claude-sonnet-4` |
+| `claude-3-7-sonnet` |
 | `claude-sonnet-4-5-20250929` |
 | `claude-haiku-4-5-20251001` |
+| `claude-3-5-haiku-20241022` |
 
 ---
 
@@ -61,7 +72,9 @@ If you add or rename models in production, update those TOML files first, then r
 |----------|--------|
 | `gemini-2.5-pro` | |
 | `gemini-2.5-flash` | Default called out in Shroud provider config comments |
+| `gemini-2.5-flash-lite` | |
 | `gemini-2.0-flash` | Still on the allowlist; Google may deprecate or return errors for some accounts |
+| `gemini-2.0-flash-lite` | Still on the allowlist; Google may deprecate or return errors for some accounts |
 
 ---
 

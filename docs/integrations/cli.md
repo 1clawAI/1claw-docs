@@ -118,6 +118,12 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Local vault** | `local init`, `local add`, `local list`, `local get`, `local rm`, `local import`, `local export`, `local sync`, `local status`, `local destroy` |
 | **Local daemon** | `daemon start`, `daemon stop`, `daemon status`, `daemon policy add/list/remove` |
 | **OIDC** | `auth federated-token` — mint short-lived RS256 JWT for external relying parties |
+| **Runtimes** | `runtime list`, `runtime get`, `runtime create`, `runtime provision`, `runtime update`, `runtime env`, `runtime rollback`, `runtime start`, `runtime stop`, `runtime logs`, `runtime delete` |
+| **Automations** | `automation list`, `automation get`, `automation create`, `automation update`, `automation delete`, `automation trigger`, `automation versions`, `automation rollback`, `automation runs`, `automation get-run`, `automation cancel-run`, `automation presets` |
+| **AI spend** | `spend ai`, `spend export`, `spend prices list/set/remove/reprice` |
+| **Connectors** | `connector presets`, `connector list`, `connector install`, `connector subscribe`, `connector subscriptions`, `connector poll`, `connector unsubscribe` |
+| **Channels** | `channel create`, `channel list`, `channel update`, `channel delete`, `channel send`, `channel messages` |
+| **Charts** | `apply` — create/update vaults, agents, policies, connectors and bindings from a declarative chart file |
 
 ## Setup (AI client auto-configuration)
 
@@ -536,6 +542,7 @@ The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints
 | `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
 | `--shroud-url <url>` | `https://shroud.1claw.co` | Override Shroud endpoint |
 | `--verbose` | off | Log each request with timestamp, method, provider, and status |
+| `--capture-dir <path>` | off (or `ONECLAW_PROXY_CAPTURE_DIR`) | Write every outgoing request (secrets redacted) to this directory as JSON — useful for debugging a client-compatibility issue or building a regression fixture |
 
 ### Auto-detection
 
@@ -578,6 +585,10 @@ Add to `~/.continue/config.json`:
   }]
 }
 ```
+
+#### Codex and OpenCode
+
+The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`) and OpenCode's OpenAI-compatible chat/completions traffic, normalizing either one to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping). See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for the exact `~/.codex/config.toml` snippet and OpenCode's base-URL setting.
 
 #### Any OpenAI-compatible client
 

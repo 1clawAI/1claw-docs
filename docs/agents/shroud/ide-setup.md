@@ -1,6 +1,6 @@
 ---
 title: IDE & tool setup (Shroud proxy)
-description: Point Cursor, Claude Code, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+description: Point Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
 sidebar_label: IDEs & Shroud (1claw proxy)
 sidebar_position: 1
 tags: [shroud, cli, cursor, ide]
@@ -33,6 +33,25 @@ The CLI prints a **local base URL** (default port **11434**, or another free por
 - **API key field:** many UIs want *some* key; the proxy **does not** use your provider key for Shroud auth—it injects **`X-Shroud-Agent-Key`**. You can often put a placeholder in the UI if required; the proxy strips or ignores editor `Authorization` / `x-api-key` for upstream Shroud auth as described in [Shroud](/docs/agents/shroud/overview#what-the-proxy-does).
 
 Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
+
+### Codex
+
+Codex's CLI always sends OpenAI's **Responses API** shape (no chat/completions fallback), which Shroud reshapes to Anthropic's Messages API when the target model is a Claude model. In `~/.codex/config.toml` — note `model_provider` must come **before** the `[model_providers.oneclaw]` table, since TOML would otherwise parse it as a key on that table instead of the top-level key Codex reads:
+
+```toml
+model_provider = "oneclaw"
+
+[model_providers.oneclaw]
+name = "1claw"
+base_url = "http://127.0.0.1:11434/v1"
+env_key = "ONECLAW_PROXY_KEY"
+```
+
+Any value works for `ONECLAW_PROXY_KEY` — the proxy handles real auth via `--agent-key` / `ONECLAW_AGENT_API_KEY`.
+
+### OpenCode
+
+OpenCode sends genuine OpenAI-shaped requests (chat/completions body, OpenAI function-calling tool schema) regardless of the target model — Shroud converts these automatically when the model is a Claude model, so no special OpenCode-side handling is needed beyond pointing it at the proxy. Look for a custom OpenAI-compatible provider / base URL setting (e.g. `opencode.json`'s `provider` config or an `OPENAI_BASE_URL`-style override) and set it to the proxy's base URL (`http://127.0.0.1:11434/v1`) with any placeholder API key.
 
 ## 3. Provider and billing
 

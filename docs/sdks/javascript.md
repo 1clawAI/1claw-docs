@@ -222,7 +222,7 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 runnable demos). Highlights:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (41 runnable demos). Highlights:
 
 | Example | What it demonstrates |
 | ------- | -------------------- |
@@ -230,8 +230,9 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [langchain-agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent) | LangChain agent fetches secrets just-in-time |
 | [nextjs-agent-secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret) | Next.js chat app with server-side vault access |
 | [fastmcp-tool-server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server) | Custom MCP server with domain tools |
-| [shroud-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
-| [shroud-llm](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm) | LLM Token Billing via Stripe AI Gateway |
+| [shroud/01-basic-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
+| [shroud/02-llm-billing](https://github.com/1clawAI/1claw-examples/tree/main/shroud/02-llm-billing) | LLM Token Billing via Stripe AI Gateway |
+| [shroud/03-router-key](https://github.com/1clawAI/1claw-examples/tree/main/shroud/03-router-key) | Static router-key auth, unmodified OpenAI SDK |
 | [tx-simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation) | On-chain signing with guardrails + Tenderly simulation |
 | [multi-chain-keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys) | HSM signing keys for 6 blockchains |
 | [evm-signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing) | EIP-191, EIP-712, and EIP-2718 transaction types |
@@ -256,7 +257,7 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [agent-discovery](https://github.com/1clawAI/1claw-examples/tree/main/agent-discovery) | Publish agents to the public directory |
 | [google-a2a](https://github.com/1clawAI/1claw-examples/tree/main/google-a2a) | Multi-agent communication with vault credentials |
 | [jwt-ttl-defense](https://github.com/1clawAI/1claw-examples/tree/main/jwt-ttl-defense) | Prompt-injection JWT theft contained by 3-second TTL |
-| [shroud-security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security) | Shroud threat detection filters |
+| [shroud/04-security-offline](https://github.com/1clawAI/1claw-examples/tree/main/shroud/04-security-offline) | Shroud threat detection filters |
 | [logos-chat](https://github.com/1clawAI/1claw-examples/tree/main/logos-chat) | E2E encrypted agent-to-agent chat over Logos/Waku |
 | [local-inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect) | Detect threats in LLM output locally — no account needed |
 | [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |

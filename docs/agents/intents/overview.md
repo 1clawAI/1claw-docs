@@ -28,7 +28,7 @@ The Intents API lets an agent submit on-chain transactions — transfers, swaps,
 - [Next steps](#next-steps)
 
 :::tip Try it out
-Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
+Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
 :::
 
 ## Quickstart: Your first transaction (~5 min)
