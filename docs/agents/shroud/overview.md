@@ -22,7 +22,7 @@ Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead o
 - [Next steps](#next-steps)
 
 :::tip Try it out
-Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
+Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (health, Intents API, LLM proxy), **[Shroud LLM Billing](https://github.com/1clawAI/1claw-examples/tree/main/shroud/02-llm-billing)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Router Key](https://github.com/1clawAI/1claw-examples/tree/main/shroud/03-router-key)** (static router-key auth, unmodified OpenAI SDK), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud/04-security-offline)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
 :::
 
 ---

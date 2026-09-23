@@ -10,7 +10,7 @@ sidebar_position: 0
 1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
 
 :::tip Try it out
-Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
 :::
 
 ## Products
