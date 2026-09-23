@@ -2,7 +2,7 @@
 name: 1claw
 version: 1.24.0
 description: HSM-backed secret management for AI agents — store, retrieve, rotate, and share secrets via the 1Claw vault without exposing them in context. 1Claw is also a JWKS-published OIDC issuer for Workload Identity Federation (Anthropic WIF, GCP STS, AWS STS).
-homepage: https://1claw.xyz
+homepage: https://1claw.co
 repository: https://github.com/1clawAI/1claw
 metadata:
     {
@@ -51,11 +51,11 @@ metadata:
 
 1Claw is a cloud HSM-backed secrets manager. Agents access API keys, passwords, and credentials at runtime without them ever entering the conversation context. Secrets are encrypted with keys that never leave the HSM.
 
-**API base URL:** `https://api.1claw.xyz`
-**Shroud (TEE proxy):** `https://shroud.1claw.xyz`
-**MCP endpoint:** `https://mcp.1claw.xyz/mcp`
-**Dashboard:** `https://1claw.xyz`
-**Docs:** `https://docs.1claw.xyz`
+**API base URL:** `https://api.1claw.co`
+**Shroud (TEE proxy):** `https://shroud.1claw.co`
+**MCP endpoint:** `https://mcp.1claw.co/mcp`
+**Dashboard:** `https://1claw.co`
+**Docs:** `https://docs.1claw.co`
 
 ## Pinata / OpenClaw
 
@@ -72,7 +72,7 @@ metadata:
 - You need to sign an EIP-191 personal message or EIP-712 typed data
 - You want to provision multi-chain signing keys (Ethereum, Bitcoin, Solana, XRP, Cardano, Tron)
 - You want to sign any of 1Claw's 31 supported XRPL types via `xrpl_tx_json` (SetRegularKey, SignerListSet, AccountSet, AccountDelete need explicit `xrpl_allowed_tx_types`)
-- You want TEE-grade key isolation for transaction signing (use Shroud at `shroud.1claw.xyz`)
+- You want TEE-grade key isolation for transaction signing (use Shroud at `shroud.1claw.co`)
 - Your vault uses **MPC secret storage** — DEKs split across GCP/AWS/Azure HSMs (Shamir 2-of-3) or XOR 2-of-2 client custody; provide `X-Client-Share` header when reading from client-custody vaults
 - Your org uses **LLM token billing** (Stripe AI Gateway): enable in the dashboard; agent JWTs include `llm_token_billing` / `stripe_customer_id` for Shroud routing
 - You need to request access to a Safe multisig treasury (agent access requests)
@@ -177,13 +177,13 @@ If you don't have credentials yet, self-enroll. The API creates a **pending** en
 
 ```bash
 # curl
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","human_email":"human@example.com"}'
 
 # TypeScript SDK (static method, no auth needed)
 import { AgentsResource } from "@1claw/sdk";
-await AgentsResource.enroll("https://api.1claw.xyz", {
+await AgentsResource.enroll("https://api.1claw.co", {
   name: "my-agent",
   human_email: "human@example.com",
 });
@@ -195,7 +195,7 @@ npx @1claw/cli agent enroll my-agent --email human@example.com
 **Name only** (omit `human_email`) — response includes **`approval_url`**; the human opens it while signed in to approve into their org (no email required to start):
 
 ```bash
-curl -s -X POST https://api.1claw.xyz/v1/agents/enroll \
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent"}'
 
@@ -229,7 +229,7 @@ Optional overrides: `ONECLAW_AGENT_ID` (explicit agent), `ONECLAW_VAULT_ID` (exp
 **Hosted HTTP streaming (advanced only):** Use only when the client cannot run the stdio server above. Pass your `ocv_` API key as a Bearer token — the server exchanges it for a JWT and auto-discovers the vault. For Cursor, Claude Code, Codex, and Claude Desktop, always use stdio + `ONECLAW_AGENT_API_KEY` so `@1claw/mcp` handles token refresh automatically.
 
 ```
-URL: https://mcp.1claw.xyz/mcp
+URL: https://mcp.1claw.co/mcp
 Headers:
   Authorization: Bearer ocv_your_agent_api_key
 ```
@@ -244,7 +244,7 @@ npm install @1claw/sdk
 import { createClient } from "@1claw/sdk";
 
 const client = createClient({
-    baseUrl: "https://api.1claw.xyz",
+    baseUrl: "https://api.1claw.co",
     apiKey: process.env.ONECLAW_AGENT_API_KEY,
 });
 ```
@@ -255,14 +255,14 @@ Authenticate, then pass the Bearer token on every request.
 
 ```bash
 # Exchange agent API key for a JWT (key-only — agent_id is auto-resolved)
-RESP=$(curl -s -X POST https://api.1claw.xyz/v1/auth/agent-token \
+RESP=$(curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
   -d '{"api_key":"<key>"}')
 TOKEN=$(echo "$RESP" | jq -r .access_token)
 AGENT_ID=$(echo "$RESP" | jq -r .agent_id)
 
 # Use the JWT
-curl -H "Authorization: Bearer $TOKEN" https://api.1claw.xyz/v1/vaults
+curl -H "Authorization: Bearer $TOKEN" https://api.1claw.co/v1/vaults
 ```
 
 **Alternative:** `1ck_` API keys (personal or agent) can be used directly as Bearer tokens — no JWT exchange needed.
@@ -298,9 +298,9 @@ All three key types support optional expiration via `api_key_expires_at`. Expire
 
 ### Shroud & Intents hosts
 
-- **Shroud** (`shroud.1claw.xyz`): TEE LLM proxy + transaction signing; full Intents API surface. Supported providers: OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, OpenRouter, Darkbloom (E2E encrypted Apple Silicon TEE), Venice AI (zero-retention + TEE/E2EE), Bankr LLM Gateway (`X-Shroud-Provider: bankr`), Stripe AI Gateway.
-- **TEE attestation:** `GET https://shroud.1claw.xyz/v1/shroud/attestation` (public) returns `attestation_level` (`none` | `identity` | `confidential` | `sev_snp`), `confidential_claims`, GCE identity JWT, and image hash for SEV-SNP verification before contract signing.
-- **Intents** (`intents.1claw.xyz`): Additional ingress for signing/health checks; production smoke tests hit `/healthz`.
+- **Shroud** (`shroud.1claw.co`): TEE LLM proxy + transaction signing; full Intents API surface. Supported providers: OpenAI, Anthropic, Google (Gemini), Mistral, Cohere, OpenRouter, Darkbloom (E2E encrypted Apple Silicon TEE), Venice AI (zero-retention + TEE/E2EE), Bankr LLM Gateway (`X-Shroud-Provider: bankr`), Stripe AI Gateway.
+- **TEE attestation:** `GET https://shroud.1claw.co/v1/shroud/attestation` (public) returns `attestation_level` (`none` | `identity` | `confidential` | `sev_snp`), `confidential_claims`, GCE identity JWT, and image hash for SEV-SNP verification before contract signing.
+- **Intents** (`intents.1claw.co`): Additional ingress for signing/health checks; production smoke tests hit `/healthz`.
 
 ---
 
@@ -328,7 +328,7 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 **Shroud fallback order** (`X-Shroud-Provider: bankr`): (1) active lease, (2) `providers/bankr/api-key`, (3) `X-Shroud-Api-Key` header.
 
-**Docs:** https://docs.1claw.xyz/docs/guides/bankr-key-vending
+**Docs:** https://docs.1claw.co/docs/guides/bankr-key-vending
 
 ---
 
@@ -1167,7 +1167,7 @@ List OAuth connected accounts for an agent.
 
 ## REST API Quick Reference
 
-Base URL: `https://api.1claw.xyz`. All authenticated endpoints require `Authorization: Bearer <token>`.
+Base URL: `https://api.1claw.co`. All authenticated endpoints require `Authorization: Bearer <token>`.
 
 ### Auth (public — no token required)
 
@@ -1882,10 +1882,10 @@ Agents **cannot** modify their own guardrails. Violations return 403 with a desc
 
 ### OIDC Federation (1Claw as Identity Provider)
 
-1claw publishes a standard OpenID Connect issuer at `https://api.1claw.xyz`, so external relying parties (Anthropic Workload Identity Federation, GCP STS, AWS STS, Stytch, etc.) can validate 1claw-issued JWTs without static API keys.
+1claw publishes a standard OpenID Connect issuer at `https://api.1claw.co`, so external relying parties (Anthropic Workload Identity Federation, GCP STS, AWS STS, Stytch, etc.) can validate 1claw-issued JWTs without static API keys.
 
-- **Discovery:** `GET https://api.1claw.xyz/.well-known/openid-configuration` advertises `issuer`, `jwks_uri`, `id_token_signing_alg_values_supported: ["EdDSA","RS256"]`, and grant types incl. `urn:ietf:params:oauth:grant-type:token-exchange`.
-- **JWKS:** `GET https://api.1claw.xyz/.well-known/jwks.json` lists every active EdDSA + RS256 KMS key version, each keyed by a deterministic `kid` (`eddsa-vN`, `rs256-vN`). Cached for 5 minutes; CORS `*`.
+- **Discovery:** `GET https://api.1claw.co/.well-known/openid-configuration` advertises `issuer`, `jwks_uri`, `id_token_signing_alg_values_supported: ["EdDSA","RS256"]`, and grant types incl. `urn:ietf:params:oauth:grant-type:token-exchange`.
+- **JWKS:** `GET https://api.1claw.co/.well-known/jwks.json` lists every active EdDSA + RS256 KMS key version, each keyed by a deterministic `kid` (`eddsa-vN`, `rs256-vN`). Cached for 5 minutes; CORS `*`.
 - **Token exchange:** `POST /v1/auth/federated-token` (RFC 8693). Subject token can be a regular agent JWT or an `ocv_` API key. Returns an **RS256-signed** JWT (HSM-backed RSA 2048) with the requested `aud`. Default TTL 15 min, hard cap 60 min.
 
 **Per-agent guardrails (zero-trust by default):**
@@ -1924,7 +1924,7 @@ End-to-end demo: [`examples/anthropic-wif`](https://github.com/1clawAI/1claw-exa
 
 ### Shroud per-agent LLM proxy
 
-When `shroud_enabled = true` (set by a human), the agent's LLM traffic is routed through Shroud (`shroud.1claw.xyz`) for secret redaction, PII scrubbing, prompt injection defense, threat detection, and policy enforcement inside a TEE.
+When `shroud_enabled = true` (set by a human), the agent's LLM traffic is routed through Shroud (`shroud.1claw.co`) for secret redaction, PII scrubbing, prompt injection defense, threat detection, and policy enforcement inside a TEE.
 
 `shroud_config` is an optional JSON object that lets humans fine-tune the proxy behavior per agent:
 
@@ -2052,7 +2052,7 @@ await client.agents.update(agentId, {
 1claw agent update <agent-id> --shroud false
 ```
 
-**MCP:** When `shroud_enabled` is true, the agent can send LLM requests through `shroud.1claw.xyz`. Vault puts `shroud_config` on the **agent JWT**; Shroud applies it in **PolicyEngine** after the inspection pipeline (re-exchange credentials after changing Shroud settings). MCP vault tools are unchanged; LLM traffic does not go through MCP.
+**MCP:** When `shroud_enabled` is true, the agent can send LLM requests through `shroud.1claw.co`. Vault puts `shroud_config` on the **agent JWT**; Shroud applies it in **PolicyEngine** after the inspection pipeline (re-exchange credentials after changing Shroud settings). MCP vault tools are unchanged; LLM traffic does not go through MCP.
 
 ---
 
@@ -2156,9 +2156,9 @@ When many agents operate in the same organization:
 | ---- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 400  | Bad request                                                | Check request body format                                                                                                                                                                         |
 | 401  | Not authenticated                                          | Token expired — re-authenticate                                                                                                                                                                   |
-| 402  | Quota exhausted / payment required                         | Body may include `required_usd`, `message`. Signature overage is a flat per-signature rate; top up credits or send X-PAYMENT. Otherwise upgrade at `1claw.xyz/settings/billing` |
+| 402  | Quota exhausted / payment required                         | Body may include `required_usd`, `message`. Signature overage is a flat per-signature rate; top up credits or send X-PAYMENT. Otherwise upgrade at `1claw.co/settings/billing` |
 | 403  | No permission                                              | Ask user to grant access via a policy. Or: guardrail violation (check error detail)                                                                                                               |
-| 403  | Resource limit reached (`type: "resource_limit_exceeded"`) | Tier limit on vaults/secrets/agents hit — ask user to upgrade at `1claw.xyz/settings/billing`                                                                                                     |
+| 403  | Resource limit reached (`type: "resource_limit_exceeded"`) | Tier limit on vaults/secrets/agents hit — ask user to upgrade at `1claw.co/settings/billing`                                                                                                     |
 | 404  | Not found                                                  | Check path with `list_secrets`                                                                                                                                                                    |
 | 405  | Method not allowed                                         | Wrong HTTP verb for this endpoint                                                                                                                                                                 |
 | 409  | Conflict                                                   | Resource already exists (e.g. duplicate vault name)                                                                                                                                               |
@@ -2234,7 +2234,7 @@ Audit, org, security, chain, billing, and auth endpoints are **free and never co
       "args": ["-y", "@1claw/mcp"],
       "env": {
         "ONECLAW_AGENT_API_KEY": "ocv_...",
-        "ONECLAW_BASE_URL": "https://api.1claw.xyz"
+        "ONECLAW_BASE_URL": "https://api.1claw.co"
       }
     }
   }
@@ -2253,13 +2253,13 @@ Audit, org, security, chain, billing, and auth endpoints are **free and never co
 
 ## Links
 
-- Dashboard: [1claw.xyz](https://1claw.xyz)
-- Docs: [docs.1claw.xyz](https://docs.1claw.xyz)
-- Status: [1claw.xyz/status](https://1claw.xyz/status)
-- API: `https://api.1claw.xyz`
+- Dashboard: [1claw.co](https://1claw.co)
+- Docs: [docs.1claw.co](https://docs.1claw.co)
+- Status: [1claw.co/status](https://1claw.co/status)
+- API: `https://api.1claw.co`
 - SDK: [@1claw/sdk on npm](https://www.npmjs.com/package/@1claw/sdk)
 - OpenAPI Spec: [@1claw/openapi-spec on npm](https://www.npmjs.com/package/@1claw/openapi-spec)
 - MCP Server: [@1claw/mcp on npm](https://www.npmjs.com/package/@1claw/mcp)
 - CLI: [@1claw/cli on npm](https://www.npmjs.com/package/@1claw/cli)
 - GitHub: [github.com/1clawAI](https://github.com/1clawAI)
-- Support: [ops@1claw.xyz](mailto:ops@1claw.xyz)
+- Support: [ops@1claw.co](mailto:ops@1claw.co)
