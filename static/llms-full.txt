@@ -3213,7 +3213,7 @@ The Intents API lets an agent submit on-chain transactions — transfers, swaps,
 - [Next steps](#next-steps)
 
 :::tip Try it out
-Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
+Try out the examples: **[Transaction Simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation)** (guardrails + Tenderly simulation), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (Intents API via Shroud TEE), **[Multi-Chain Keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys)** (provision keys for 6 blockchains), **[EVM Signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing)** (EIP-191, EIP-712, tx types 0–2), and **[Agentic TX](https://github.com/1clawAI/1claw-examples/tree/main/agentic-tx)** (real mainnet transactions with guardrails).
 :::
 
 ## Quickstart: Your first transaction (~5 min)
@@ -5965,7 +5965,7 @@ Set up alerts for:
 
 ---
 title: IDE & tool setup (Shroud proxy)
-description: Point Cursor, Claude Code, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+description: Point Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
 sidebar_label: IDEs & Shroud (1claw proxy)
 sidebar_position: 1
 tags: [shroud, cli, cursor, ide]
@@ -5998,6 +5998,25 @@ The CLI prints a **local base URL** (default port **11434**, or another free por
 - **API key field:** many UIs want *some* key; the proxy **does not** use your provider key for Shroud auth—it injects **`X-Shroud-Agent-Key`**. You can often put a placeholder in the UI if required; the proxy strips or ignores editor `Authorization` / `x-api-key` for upstream Shroud auth as described in [Shroud](/docs/agents/shroud/overview#what-the-proxy-does).
 
 Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
+
+### Codex
+
+Codex's CLI always sends OpenAI's **Responses API** shape (no chat/completions fallback), which Shroud reshapes to Anthropic's Messages API when the target model is a Claude model. In `~/.codex/config.toml` — note `model_provider` must come **before** the `[model_providers.oneclaw]` table, since TOML would otherwise parse it as a key on that table instead of the top-level key Codex reads:
+
+```toml
+model_provider = "oneclaw"
+
+[model_providers.oneclaw]
+name = "1claw"
+base_url = "http://127.0.0.1:11434/v1"
+env_key = "ONECLAW_PROXY_KEY"
+```
+
+Any value works for `ONECLAW_PROXY_KEY` — the proxy handles real auth via `--agent-key` / `ONECLAW_AGENT_API_KEY`.
+
+### OpenCode
+
+OpenCode sends genuine OpenAI-shaped requests (chat/completions body, OpenAI function-calling tool schema) regardless of the target model — Shroud converts these automatically when the model is a Claude model, so no special OpenCode-side handling is needed beyond pointing it at the proxy. Look for a custom OpenAI-compatible provider / base URL setting (e.g. `opencode.json`'s `provider` config or an `OPENAI_BASE_URL`-style override) and set it to the proxy's base URL (`http://127.0.0.1:11434/v1`) with any placeholder API key.
 
 ## 3. Provider and billing
 
@@ -6088,7 +6107,7 @@ Shroud is 1claw’s **LLM proxy**: your agent sends requests to Shroud instead o
 - [Next steps](#next-steps)
 
 :::tip Try it out
-Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (health, Intents API, LLM proxy), **[Shroud LLM](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
+Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (health, Intents API, LLM proxy), **[Shroud LLM Billing](https://github.com/1clawAI/1claw-examples/tree/main/shroud/02-llm-billing)** (LLM Token Billing + Stripe AI Gateway), **[Shroud Router Key](https://github.com/1clawAI/1claw-examples/tree/main/shroud/03-router-key)** (static router-key auth, unmodified OpenAI SDK), **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud/04-security-offline)** (threat detection with MCP), and **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (same detections offline, no account).
 :::
 
 ---
@@ -6429,9 +6448,11 @@ const data = await res.json();
 
 ## IDE Integration (`1claw proxy`)
 
-Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`), OpenAI's **Responses API** (`/v1/responses`, used by Codex), and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
 
-**→ Step-by-step for Cursor, Claude Code, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
+An OpenAI-compatible client pointed at a Claude model (OpenCode, Codex) sends genuine OpenAI-shaped requests regardless of the target model name — Shroud normalizes these automatically before they reach Anthropic: `max_tokens` is defaulted when missing, OpenAI's function-calling tool schema is converted to Anthropic's, OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, …) are stripped, and Codex's Responses API body/stream shape is reshaped to and from Anthropic's Messages API. Claude Code, which already sends native Anthropic-shaped requests, passes through unchanged. See the [2026-09-23 changelog entry](/docs/reference/changelog-2026#2026-09-23) for the specifics.
+
+**→ Step-by-step for Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
 
 ### Quick start
 
@@ -6445,10 +6466,10 @@ The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and O
 
 ### What the proxy does
 
-1. Accepts `POST /v1/chat/completions` and **`/v1/messages`** (Claude Code)
+1. Accepts `POST /v1/chat/completions` (OpenCode and most OpenAI-compatible clients), **`/v1/messages`** (Claude Code), and **`/v1/responses`** (Codex's OpenAI Responses API format)
 2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
 3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
-4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies (so an OpenAI-compatible client targeting a Claude model is still routed to Anthropic)
 5. Forwards to `https://shroud.1claw.co` with inspection, redaction, and policy enforcement
 6. Streams the response back
 
@@ -15849,6 +15870,12 @@ export ONECLAW_VAULT_ID="your-vault-uuid"   # optional; required for vault-scope
 | **Local vault** | `local init`, `local add`, `local list`, `local get`, `local rm`, `local import`, `local export`, `local sync`, `local status`, `local destroy` |
 | **Local daemon** | `daemon start`, `daemon stop`, `daemon status`, `daemon policy add/list/remove` |
 | **OIDC** | `auth federated-token` — mint short-lived RS256 JWT for external relying parties |
+| **Runtimes** | `runtime list`, `runtime get`, `runtime create`, `runtime provision`, `runtime update`, `runtime env`, `runtime rollback`, `runtime start`, `runtime stop`, `runtime logs`, `runtime delete` |
+| **Automations** | `automation list`, `automation get`, `automation create`, `automation update`, `automation delete`, `automation trigger`, `automation versions`, `automation rollback`, `automation runs`, `automation get-run`, `automation cancel-run`, `automation presets` |
+| **AI spend** | `spend ai`, `spend export`, `spend prices list/set/remove/reprice` |
+| **Connectors** | `connector presets`, `connector list`, `connector install`, `connector subscribe`, `connector subscriptions`, `connector poll`, `connector unsubscribe` |
+| **Channels** | `channel create`, `channel list`, `channel update`, `channel delete`, `channel send`, `channel messages` |
+| **Charts** | `apply` — create/update vaults, agents, policies, connectors and bindings from a declarative chart file |
 
 ## Setup (AI client auto-configuration)
 
@@ -16267,6 +16294,7 @@ The proxy listens on `http://127.0.0.1:11434` (or the next free port) and prints
 | `--provider <name>` | auto-detect | Force a provider instead of detecting from model name |
 | `--shroud-url <url>` | `https://shroud.1claw.co` | Override Shroud endpoint |
 | `--verbose` | off | Log each request with timestamp, method, provider, and status |
+| `--capture-dir <path>` | off (or `ONECLAW_PROXY_CAPTURE_DIR`) | Write every outgoing request (secrets redacted) to this directory as JSON — useful for debugging a client-compatibility issue or building a regression fixture |
 
 ### Auto-detection
 
@@ -16309,6 +16337,10 @@ Add to `~/.continue/config.json`:
   }]
 }
 ```
+
+#### Codex and OpenCode
+
+The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`) and OpenCode's OpenAI-compatible chat/completions traffic, normalizing either one to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping). See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for the exact `~/.codex/config.toml` snippet and OpenCode's base-URL setting.
 
 #### Any OpenAI-compatible client
 
@@ -20244,7 +20276,7 @@ sidebar_position: 0
 1claw is a **cloud-hosted Hardware Security Module (HSM) secrets manager** for humans and AI agents. It lets you store API keys, tokens, and other credentials in a vault encrypted by keys that never leave the HSM. You control which agents can access which secrets, with what permissions, and for how long — and agents fetch secrets at runtime instead of holding them in context or environment.
 
 :::tip Try it out
-Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
+Try out the examples in this repo: **[Basic](https://github.com/1clawAI/1claw-examples/tree/main/basic)** (vault, secrets, billing, sharing), **[LangChain Agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent)** (agent + vault), **[Shroud Demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo)** (LLM proxy + Intents). See the [examples README](https://github.com/1clawAI/1claw-examples) for the full list.
 :::
 
 ## Products
@@ -25414,6 +25446,12 @@ sidebar_label: "2026"
 
 **Client-compatibility fixture harness.** All three bugs above shipped because the existing tests used hand-written example strings, never a real client's actual request shape. `shroud/tests/client_compatibility.rs` runs every fixture in `shroud/tests/fixtures/clients/` through the real inspection pipeline — fixtures are sourced from each client's actual public code where possible (OpenCode's real system prompt + tool descriptions from `sst/opencode`, Codex's real system prompt from `openai/codex`), clearly labeled REAL/RECONSTRUCTED/APPROXIMATED where exact source wasn't recoverable. New `shroud-check` CI job runs it (and the rest of Shroud's suite) on every PR touching `shroud/**` — nothing did before. `1claw proxy --capture-dir <path>` (CLI 0.61.20) writes every outgoing request (secrets redacted) to disk, so a future real failure can become a permanent fixture in one step instead of hand-reconstructing what the client sent.
 
+**Two more bugs from the same investigation.** A tool-use request from the same OpenCode-targeting-Claude traffic was hard-rejected with `tools.0: Input tag 'function' found using 'type' does not match any of the expected tags`: OpenAI's function-calling tool schema (`{"type":"function","function":{name,description,parameters}}`) has no Anthropic equivalent, and OpenCode sends its bash/edit/grep/write/glob tools in that shape regardless of the target model. `convert_openai_tools_to_anthropic` now converts only genuinely OpenAI-shaped entries (`type: "function"` with a nested `function` object) to Anthropic's `custom` tool shape; an already-Anthropic-shaped tool (Claude Code, on the native SDK) passes through untouched. Separately, `reasoning_effort: Extra inputs are not permitted` — Anthropic's Messages API rejects any top-level field it doesn't recognize outright, unlike OpenAI's silent-ignore behavior; `strip_openai_only_fields_for_anthropic` now removes a denylist of 19 known-OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, `presence_penalty`, `logit_bias`, `response_format`, `parallel_tool_calls`, …) before forwarding an OpenAI-shaped body to Anthropic — a denylist rather than an allowlist, so a real Anthropic field this list doesn't know about is never silently dropped. Both are covered by the client-compatibility fixture suite alongside the existing max_tokens/tools checks.
+
+**Codex (OpenAI Responses API) targeting Claude models.** Codex's CLI always sends OpenAI's Responses API shape (`instructions`/`input[]`, no `messages` at all — current versions have no chat/completions fallback), which shares no top-level keys with chat/completions, so none of the normalization fixes above ever fired for it: a Codex request targeting a Claude model was forwarded essentially unconverted and hard-rejected. `convert_openai_responses_to_anthropic_messages` reshapes the whole body (`instructions`/developer-role items → `system`, `input[]` → `messages[]`, `function_call`/`function_call_output` → `tool_use`/`tool_result` content blocks, flat `type: "function"` tools → Anthropic's `custom` shape); a new `AnthropicToOpenAiResponsesStreamConverter` converts Anthropic SSE into real Responses API events (`response.output_text.delta`, `response.function_call_arguments.*`, `response.completed`, …) for Codex's `stream: true` traffic. A same-day follow-up fixed `determine_upstream_path`, which still forwarded a Responses-shaped, Anthropic-targeted request straight to `/v1/responses` on Anthropic's real API (which doesn't serve it) instead of translating to `/v1/messages` — the same bug shape as the chat/completions path fix above, just not extended to cover this path; caught because the original change's verification ran `cargo test --lib`, which never executes `router.rs` (a bin-only module, not included in `lib.rs`) — CI now also runs `cargo test --bin shroud`. Codex's own built-in tool types (`namespace`, `web_search`, …) and Responses-only input item types (`reasoning`, `local_shell_call`, …) have no Anthropic equivalent and are dropped rather than forwarded unconverted, flagged as a follow-up. New real fixture `codex_responses_real.json`, captured via `1claw proxy --capture-dir` from an actual `codex exec` run.
+
+**Examples reorganized.** The four separate `shroud-demo`/`shroud-llm`/`shroud-router-key`/`shroud-security` example projects are now one `examples/shroud/` with four numbered sub-examples (`01-basic-demo`, `02-llm-billing`, `03-router-key`, `04-security-offline`) and a README explaining which to pick; doc links updated to match. Three new examples: **Browser Bridge** (`@1claw/browser-bridge` — the agent drives the page with real `puppeteer-core`, a separate process types the password, the agent never receives or reads the value), **Telegram Channel** (register a bot, send/list messages through the Channels API), and **Passkey Safe** (a Gnosis Safe whose only owner is a WebAuthn passkey via Safe's `SafeWebAuthnSharedSigner` — no private key exists anywhere for the Safe).
+
 **Guided onboarding: coding agents get the whole flow, not just MCP.** The coding-agent path now also walks through connecting Codex, OpenCode, OpenClaude, or Claude Code to Shroud/LLM Token Billing via the local `1claw proxy` — one command, both MCP and LLM routing configured. `1claw setup` gained real Codex/OpenCode MCP auto-configuration (`~/.codex/config.toml` `[mcp_servers.1claw]`, `~/.config/opencode/opencode.json` `mcp.1claw`) instead of only listing traditional GUI clients, plus install hints (e.g. `npm install -g @openai/codex`) next to any client it didn't detect. Fixed a same-tab Stripe-checkout redirect that lost in-progress wizard/chat state on several pages (checkout now opens in a new tab); fixed a race that sent onboarding-eligible users to the wrong (developer) onboarding path instead of the guided one; reworked the OIDC Federation (Anthropic WIF) setup UX to auto-fill the audience and walk through registration step by step.
 
 **Platform-default web search.** Agents with no `BRAVE_API_KEY`/`TAVILY_API_KEY`/`SERP_API_KEY`/binding of their own now get a working `web_search` tool by default: `POST /v1/tools/web-search`, proxied server-side through a shared 1claw-provided Brave Search key (never reaches a tenant runtime), hard-capped at 900 requests/month platform-wide (`platform_web_search_usage`, comfortably under Brave's free-credit volume).
@@ -28219,14 +28257,20 @@ If you add or rename models in production, update those TOML files first, then r
 
 | Model ID |
 |----------|
+| `gpt-5` |
+| `gpt-5-mini` |
+| `gpt-5-nano` |
 | `gpt-4o` |
 | `gpt-4o-mini` |
 | `gpt-4.1` |
 | `gpt-4.1-mini` |
 | `gpt-4.1-nano` |
 | `o1` |
+| `o1-mini` |
+| `o1-pro` |
 | `o3` |
 | `o3-mini` |
+| `o3-pro` |
 | `o4-mini` |
 
 ---
@@ -28238,10 +28282,15 @@ If you add or rename models in production, update those TOML files first, then r
 | `claude-fable-5` |
 | `claude-opus-4-8` |
 | `claude-opus-4-6` |
+| `claude-opus-4-1` |
+| `claude-opus-4` |
 | `claude-sonnet-5` |
 | `claude-sonnet-4-6` |
+| `claude-sonnet-4` |
+| `claude-3-7-sonnet` |
 | `claude-sonnet-4-5-20250929` |
 | `claude-haiku-4-5-20251001` |
+| `claude-3-5-haiku-20241022` |
 
 ---
 
@@ -28251,7 +28300,9 @@ If you add or rename models in production, update those TOML files first, then r
 |----------|--------|
 | `gemini-2.5-pro` | |
 | `gemini-2.5-flash` | Default called out in Shroud provider config comments |
+| `gemini-2.5-flash-lite` | |
 | `gemini-2.0-flash` | Still on the allowlist; Google may deprecate or return errors for some accounts |
+| `gemini-2.0-flash-lite` | Still on the allowlist; Google may deprecate or return errors for some accounts |
 
 ---
 
@@ -29584,7 +29635,7 @@ Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_
 
 ## Examples
 
-See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 runnable demos). Highlights:
+See the [examples repository](https://github.com/1clawAI/1claw-examples) (41 runnable demos). Highlights:
 
 | Example | What it demonstrates |
 | ------- | -------------------- |
@@ -29592,8 +29643,9 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [langchain-agent](https://github.com/1clawAI/1claw-examples/tree/main/langchain-agent) | LangChain agent fetches secrets just-in-time |
 | [nextjs-agent-secret](https://github.com/1clawAI/1claw-examples/tree/main/nextjs-agent-secret) | Next.js chat app with server-side vault access |
 | [fastmcp-tool-server](https://github.com/1clawAI/1claw-examples/tree/main/fastmcp-tool-server) | Custom MCP server with domain tools |
-| [shroud-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
-| [shroud-llm](https://github.com/1clawAI/1claw-examples/tree/main/shroud-llm) | LLM Token Billing via Stripe AI Gateway |
+| [shroud/01-basic-demo](https://github.com/1clawAI/1claw-examples/tree/main/shroud/01-basic-demo) | Shroud TEE proxy: health, Intents API, LLM routing |
+| [shroud/02-llm-billing](https://github.com/1clawAI/1claw-examples/tree/main/shroud/02-llm-billing) | LLM Token Billing via Stripe AI Gateway |
+| [shroud/03-router-key](https://github.com/1clawAI/1claw-examples/tree/main/shroud/03-router-key) | Static router-key auth, unmodified OpenAI SDK |
 | [tx-simulation](https://github.com/1clawAI/1claw-examples/tree/main/tx-simulation) | On-chain signing with guardrails + Tenderly simulation |
 | [multi-chain-keys](https://github.com/1clawAI/1claw-examples/tree/main/multi-chain-keys) | HSM signing keys for 6 blockchains |
 | [evm-signing](https://github.com/1clawAI/1claw-examples/tree/main/evm-signing) | EIP-191, EIP-712, and EIP-2718 transaction types |
@@ -29618,7 +29670,7 @@ See the [examples repository](https://github.com/1clawAI/1claw-examples) (34 run
 | [agent-discovery](https://github.com/1clawAI/1claw-examples/tree/main/agent-discovery) | Publish agents to the public directory |
 | [google-a2a](https://github.com/1clawAI/1claw-examples/tree/main/google-a2a) | Multi-agent communication with vault credentials |
 | [jwt-ttl-defense](https://github.com/1clawAI/1claw-examples/tree/main/jwt-ttl-defense) | Prompt-injection JWT theft contained by 3-second TTL |
-| [shroud-security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security) | Shroud threat detection filters |
+| [shroud/04-security-offline](https://github.com/1clawAI/1claw-examples/tree/main/shroud/04-security-offline) | Shroud threat detection filters |
 | [logos-chat](https://github.com/1clawAI/1claw-examples/tree/main/logos-chat) | E2E encrypted agent-to-agent chat over Logos/Waku |
 | [local-inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect) | Detect threats in LLM output locally — no account needed |
 | [python-sdk](https://github.com/1clawAI/1claw-examples/tree/main/python-sdk) | Python client: vault, secrets, billing, agent auth |
@@ -36996,7 +37048,7 @@ sidebar_position: 3
 The 1claw MCP server is designed around the principle that **secrets should exist in an agent's context for the shortest possible time**.
 
 :::tip Try it out
-Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud-security)** (MCP threat detection in local-only mode).
+Try out the examples in this repo: **[Local Inspect](https://github.com/1clawAI/1claw-examples/tree/main/local-inspect)** (inspection offline, no account) and **[Shroud Security](https://github.com/1clawAI/1claw-examples/tree/main/shroud/04-security-offline)** (MCP threat detection in local-only mode).
 :::
 
 ### Secret value handling
