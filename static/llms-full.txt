@@ -5965,7 +5965,7 @@ Set up alerts for:
 
 ---
 title: IDE & tool setup (Shroud proxy)
-description: Point Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+description: Point Cursor, Claude Code, Codex, OpenCode, OpenClaude, Goose, Gemini CLI, VS Code Copilot, and other OpenAI-, Anthropic-, or Google-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
 sidebar_label: IDEs & Shroud (1claw proxy)
 sidebar_position: 1
 tags: [shroud, cli, cursor, ide]
@@ -6017,6 +6017,36 @@ Any value works for `ONECLAW_PROXY_KEY` — the proxy handles real auth via `--a
 ### OpenCode
 
 OpenCode sends genuine OpenAI-shaped requests (chat/completions body, OpenAI function-calling tool schema) regardless of the target model — Shroud converts these automatically when the model is a Claude model, so no special OpenCode-side handling is needed beyond pointing it at the proxy. Look for a custom OpenAI-compatible provider / base URL setting (e.g. `opencode.json`'s `provider` config or an `OPENAI_BASE_URL`-style override) and set it to the proxy's base URL (`http://127.0.0.1:11434/v1`) with any placeholder API key.
+
+### OpenClaude
+
+[OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude) (`npm install -g @gitlawb/openclaude`) sends the same chat/completions-shaped requests as OpenCode — no special handling needed. Point it at the proxy the same way you would OpenCode or any other OpenAI-compatible client (`OPENAI_BASE_URL=http://127.0.0.1:11434/v1`, any placeholder `OPENAI_API_KEY`, `--provider openai`).
+
+### Goose
+
+[Goose](https://block.github.io/goose/) (Block's AI agent — install via the [official release script](https://github.com/block/goose/releases/download/stable/download_cli.sh), not the unrelated Homebrew `goose` database-migration formula of the same name) also sends chat/completions-shaped requests. Point its OpenAI provider at the proxy:
+
+```bash
+export GOOSE_PROVIDER=openai
+export GOOSE_MODEL=claude-sonnet-5   # or any model the proxy should route
+export OPENAI_HOST="http://127.0.0.1:11434"
+export OPENAI_API_KEY="1claw"        # placeholder — the proxy handles real auth
+goose run -t "your prompt"
+```
+
+### Gemini CLI
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) (`npm install -g @google/gemini-cli`) is the one client here that does **not** speak OpenAI's format — it sends Google's own native `contents`/`systemInstruction` body to `/v1beta/models/{model}:generateContent`. The proxy (`@1claw/cli` **0.61.21+**) recognizes this path shape and forwards it correctly as `provider: google`:
+
+```bash
+export GOOGLE_GEMINI_BASE_URL="http://127.0.0.1:11434"
+export GEMINI_API_KEY="1claw"        # placeholder — the proxy handles real auth
+gemini --skip-trust -p "your prompt" # headless runs also need
+                                      # security.auth.selectedType: "gemini-api-key"
+                                      # in ~/.gemini/settings.json
+```
+
+On an older proxy version, this path was misdetected as `openai` and could false-positive-block on ordinary shell syntax in Gemini CLI's own system instructions — update `@1claw/cli` if you see that.
 
 ## 3. Provider and billing
 
@@ -6448,11 +6478,11 @@ const data = await res.json();
 
 ## IDE Integration (`1claw proxy`)
 
-Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`), OpenAI's **Responses API** (`/v1/responses`, used by Codex), and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`), OpenAI's **Responses API** (`/v1/responses`, used by Codex), **Anthropic** (`/v1/messages`), and Google's native **Gemini** (`/v1beta/models/{model}:generateContent`, used by Gemini CLI) traffic and injects Shroud headers before forwarding.
 
-An OpenAI-compatible client pointed at a Claude model (OpenCode, Codex) sends genuine OpenAI-shaped requests regardless of the target model name — Shroud normalizes these automatically before they reach Anthropic: `max_tokens` is defaulted when missing, OpenAI's function-calling tool schema is converted to Anthropic's, OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, …) are stripped, and Codex's Responses API body/stream shape is reshaped to and from Anthropic's Messages API. Claude Code, which already sends native Anthropic-shaped requests, passes through unchanged. See the [2026-09-23 changelog entry](/docs/reference/changelog-2026#2026-09-23) for the specifics.
+An OpenAI-compatible client pointed at a Claude model (OpenCode, Codex, OpenClaude, Goose) sends genuine OpenAI-shaped requests regardless of the target model name — Shroud normalizes these automatically before they reach Anthropic: `max_tokens` is defaulted when missing, OpenAI's function-calling tool schema is converted to Anthropic's, OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, …) are stripped, and Codex's Responses API body/stream shape is reshaped to and from Anthropic's Messages API. Claude Code, which already sends native Anthropic-shaped requests, passes through unchanged. Gemini CLI, live-tested in **`@1claw/cli` 0.61.21**, sends native Google-shaped requests to a native Google-shaped path — the proxy detects that path and routes it as `provider: google` without any body reshaping. See the [2026-09-23 changelog entry](/docs/reference/changelog-2026#2026-09-23) for the specifics.
 
-**→ Step-by-step for Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
+**→ Step-by-step for Cursor, Claude Code, Codex, OpenCode, OpenClaude, Goose, Gemini CLI, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
 
 ### Quick start
 
@@ -6466,10 +6496,10 @@ The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and O
 
 ### What the proxy does
 
-1. Accepts `POST /v1/chat/completions` (OpenCode and most OpenAI-compatible clients), **`/v1/messages`** (Claude Code), and **`/v1/responses`** (Codex's OpenAI Responses API format)
+1. Accepts `POST /v1/chat/completions` (OpenCode, OpenClaude, Goose, and most OpenAI-compatible clients), **`/v1/messages`** (Claude Code), **`/v1/responses`** (Codex's OpenAI Responses API format), and **`/v1beta/models/{model}:generateContent`** (Gemini CLI's native Google format)
 2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
 3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
-4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies (so an OpenAI-compatible client targeting a Claude model is still routed to Anthropic)
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`, `/v1beta/models/...:generateContent` → `google`) or from the `model` field for OpenAI-style bodies (so an OpenAI-compatible client targeting a Claude model is still routed to Anthropic)
 5. Forwards to `https://shroud.1claw.co` with inspection, redaction, and policy enforcement
 6. Streams the response back
 
@@ -16338,9 +16368,9 @@ Add to `~/.continue/config.json`:
 }
 ```
 
-#### Codex and OpenCode
+#### Codex, OpenCode, OpenClaude, Goose, and Gemini CLI
 
-The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`) and OpenCode's OpenAI-compatible chat/completions traffic, normalizing either one to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping). See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for the exact `~/.codex/config.toml` snippet and OpenCode's base-URL setting.
+The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`), OpenCode/OpenClaude/Goose's OpenAI-compatible chat/completions traffic, and (as of **0.61.21**) Gemini CLI's native Google format (`/v1beta/models/{model}:generateContent`) — normalizing the OpenAI-shaped ones to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping) and routing the Gemini-shaped one straight through as `provider: google`. See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for exact per-client snippets, including the `~/.codex/config.toml` field ordering and Gemini CLI's headless-auth settings.
 
 #### Any OpenAI-compatible client
 
@@ -25457,6 +25487,8 @@ sidebar_label: "2026"
 **Platform-default web search.** Agents with no `BRAVE_API_KEY`/`TAVILY_API_KEY`/`SERP_API_KEY`/binding of their own now get a working `web_search` tool by default: `POST /v1/tools/web-search`, proxied server-side through a shared 1claw-provided Brave Search key (never reaches a tenant runtime), hard-capped at 900 requests/month platform-wide (`platform_web_search_usage`, comfortably under Brave's free-credit volume).
 
 **Adoption/usage metrics, one source for the dashboard and the investor report.** New `GET /v1/admin/stats/growth-timeseries?vertical=&period=` (15 verticals — signups, subscriptions, Shroud usage/security, execution/transaction intents, vault/runtime/memory usage, automations, embedded wallets, platform API — gap-filled 24h-hourly/7d-daily/30d-daily, with a period-over-period delta) and `GET /v1/admin/stats/retention?window_days=` (% of orgs older than the window still active). Wired into the live admin analytics dashboard (`/settings/admin/analytics`, a new Adoption & Usage section plus a retention tile) and a rewritten weekly investor report: the email body is now a curated summary (a 24h/7d/30d table across all verticals, real charts for the four highest-signal ones, a retention card, a cumulative-growth curve), full per-vertical/per-window detail moves to the PDF attachment. Charts are rendered locally as SVG (`scripts/lib/svg-charts.mjs`) instead of through a third-party charting service, which previously carried real MRR/revenue figures in a public URL. `weekly-investor-report.yml` gained a `dry_run` input that renders against real data without emailing or writing the trend-snapshot row. Also fixed a long-silent bug: `/v1/admin/stats`'s Memory stats queried a table (`agent_memory`) that never existed — the real table is `agent_memory_entries` — so those four fields always silently read zero.
+
+**Live-tested every genuine coding-agent CLI against `1claw proxy`.** Claude Code, Codex, OpenCode, OpenClaude (`@gitlawb/openclaude`), and Goose (Block's agent) all confirmed clean — Claude Code/OpenClaude/Goose needed no fixes, sending either native Anthropic or the same OpenAI-shaped traffic the fixes above already cover. Gemini CLI (`@google/gemini-cli`) is different: it speaks Google's own native `contents`/`systemInstruction` format to `/v1beta/models/{model}:generateContent`, not OpenAI's. The proxy's provider auto-detection had no case for that path and defaulted to `openai`, so Shroud couldn't parse `req.messages` from the mismatched body and fell back to a raw-full-body scan — false-positive-blocking on ordinary shell syntax in Gemini CLI's own system instructions, the same false-positive class as bug (1) above, here caused by a provider mislabel rather than a scan-scope bug. **`@1claw/cli` 0.61.21** now recognizes `/v1beta/models/{model}:(generateContent|streamGenerateContent|countTokens)` and routes it as `provider: google`, mirroring the existing `/v1/messages` → `anthropic` special case. New real fixtures `openclaude_anthropic_real.json` and `goose_anthropic_real.json` in the client-compatibility suite; see [IDE & tool setup](/docs/agents/shroud/ide-setup) for per-client instructions.
 
 **Audit remediation.** STRIPEPATH-C1 (a client-supplied `setup_intent_id` was path-injected into a Stripe API call made with the platform's live secret key), SETUPINTENT-H1 (the trial gate never checked the SetupIntent belonged to the caller's org), AIBUDGET-H1 (daily AI spend was a non-atomic check-then-record; now an atomic reserve/settle against `agent_daily_ai_spend`/`agent_daily_ai_spend_holds`), AIMODEL-H1 (the client-supplied `X-Shroud-Model`/`-Provider` headers could diverge from the body actually billed; the body now wins), TXBUDGET-RACE (the same class of race in value-based daily transaction budgets, closed by widening the existing daily-tx-cap advisory lock), AUTOPARK-M1 (a nested `execute_intent` step inside a parked automation was allowed through), AUTORATE-M1 (automation-triggered binding executions skipped the rate/concurrency guardrails the direct execute path enforces), RUNTIMEROLLBACK-M1 (a runtime restart proceeded even when stopping the old container failed), CHANAUTORESPOND-M1, PAYPAUSE-M1.
 

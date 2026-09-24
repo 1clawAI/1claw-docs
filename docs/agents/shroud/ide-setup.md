@@ -1,6 +1,6 @@
 ---
 title: IDE & tool setup (Shroud proxy)
-description: Point Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and other OpenAI- or Anthropic-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
+description: Point Cursor, Claude Code, Codex, OpenCode, OpenClaude, Goose, Gemini CLI, VS Code Copilot, and other OpenAI-, Anthropic-, or Google-compatible tools at a local 1Claw CLI proxy so traffic goes through Shroud with the right headers.
 sidebar_label: IDEs & Shroud (1claw proxy)
 sidebar_position: 1
 tags: [shroud, cli, cursor, ide]
@@ -52,6 +52,36 @@ Any value works for `ONECLAW_PROXY_KEY` — the proxy handles real auth via `--a
 ### OpenCode
 
 OpenCode sends genuine OpenAI-shaped requests (chat/completions body, OpenAI function-calling tool schema) regardless of the target model — Shroud converts these automatically when the model is a Claude model, so no special OpenCode-side handling is needed beyond pointing it at the proxy. Look for a custom OpenAI-compatible provider / base URL setting (e.g. `opencode.json`'s `provider` config or an `OPENAI_BASE_URL`-style override) and set it to the proxy's base URL (`http://127.0.0.1:11434/v1`) with any placeholder API key.
+
+### OpenClaude
+
+[OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude) (`npm install -g @gitlawb/openclaude`) sends the same chat/completions-shaped requests as OpenCode — no special handling needed. Point it at the proxy the same way you would OpenCode or any other OpenAI-compatible client (`OPENAI_BASE_URL=http://127.0.0.1:11434/v1`, any placeholder `OPENAI_API_KEY`, `--provider openai`).
+
+### Goose
+
+[Goose](https://block.github.io/goose/) (Block's AI agent — install via the [official release script](https://github.com/block/goose/releases/download/stable/download_cli.sh), not the unrelated Homebrew `goose` database-migration formula of the same name) also sends chat/completions-shaped requests. Point its OpenAI provider at the proxy:
+
+```bash
+export GOOSE_PROVIDER=openai
+export GOOSE_MODEL=claude-sonnet-5   # or any model the proxy should route
+export OPENAI_HOST="http://127.0.0.1:11434"
+export OPENAI_API_KEY="1claw"        # placeholder — the proxy handles real auth
+goose run -t "your prompt"
+```
+
+### Gemini CLI
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) (`npm install -g @google/gemini-cli`) is the one client here that does **not** speak OpenAI's format — it sends Google's own native `contents`/`systemInstruction` body to `/v1beta/models/{model}:generateContent`. The proxy (`@1claw/cli` **0.61.21+**) recognizes this path shape and forwards it correctly as `provider: google`:
+
+```bash
+export GOOGLE_GEMINI_BASE_URL="http://127.0.0.1:11434"
+export GEMINI_API_KEY="1claw"        # placeholder — the proxy handles real auth
+gemini --skip-trust -p "your prompt" # headless runs also need
+                                      # security.auth.selectedType: "gemini-api-key"
+                                      # in ~/.gemini/settings.json
+```
+
+On an older proxy version, this path was misdetected as `openai` and could false-positive-block on ordinary shell syntax in Gemini CLI's own system instructions — update `@1claw/cli` if you see that.
 
 ## 3. Provider and billing
 

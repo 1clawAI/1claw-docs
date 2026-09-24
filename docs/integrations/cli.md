@@ -586,9 +586,9 @@ Add to `~/.continue/config.json`:
 }
 ```
 
-#### Codex and OpenCode
+#### Codex, OpenCode, OpenClaude, Goose, and Gemini CLI
 
-The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`) and OpenCode's OpenAI-compatible chat/completions traffic, normalizing either one to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping). See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for the exact `~/.codex/config.toml` snippet and OpenCode's base-URL setting.
+The proxy also accepts Codex's OpenAI **Responses API** format (`/v1/responses`), OpenCode/OpenClaude/Goose's OpenAI-compatible chat/completions traffic, and (as of **0.61.21**) Gemini CLI's native Google format (`/v1beta/models/{model}:generateContent`) — normalizing the OpenAI-shaped ones to Anthropic's Messages API when the target model is a Claude model (tool schema conversion, `max_tokens` defaulting, OpenAI-only field stripping) and routing the Gemini-shaped one straight through as `provider: google`. See [IDE & tool setup](/docs/agents/shroud/ide-setup#codex) for exact per-client snippets, including the `~/.codex/config.toml` field ordering and Gemini CLI's headless-auth settings.
 
 #### Any OpenAI-compatible client
 

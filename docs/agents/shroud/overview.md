@@ -363,11 +363,11 @@ const data = await res.json();
 
 ## IDE Integration (`1claw proxy`)
 
-Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`), OpenAI's **Responses API** (`/v1/responses`, used by Codex), and **Anthropic** (`/v1/messages`) traffic and injects Shroud headers before forwarding.
+Shroud uses custom headers (`X-Shroud-Agent-Key`, `X-Shroud-Provider`) that most editors don't support natively. The **1Claw CLI** includes a built-in local proxy that bridges this gap — it accepts **OpenAI** (`/v1/chat/completions`), OpenAI's **Responses API** (`/v1/responses`, used by Codex), **Anthropic** (`/v1/messages`), and Google's native **Gemini** (`/v1beta/models/{model}:generateContent`, used by Gemini CLI) traffic and injects Shroud headers before forwarding.
 
-An OpenAI-compatible client pointed at a Claude model (OpenCode, Codex) sends genuine OpenAI-shaped requests regardless of the target model name — Shroud normalizes these automatically before they reach Anthropic: `max_tokens` is defaulted when missing, OpenAI's function-calling tool schema is converted to Anthropic's, OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, …) are stripped, and Codex's Responses API body/stream shape is reshaped to and from Anthropic's Messages API. Claude Code, which already sends native Anthropic-shaped requests, passes through unchanged. See the [2026-09-23 changelog entry](/docs/reference/changelog-2026#2026-09-23) for the specifics.
+An OpenAI-compatible client pointed at a Claude model (OpenCode, Codex, OpenClaude, Goose) sends genuine OpenAI-shaped requests regardless of the target model name — Shroud normalizes these automatically before they reach Anthropic: `max_tokens` is defaulted when missing, OpenAI's function-calling tool schema is converted to Anthropic's, OpenAI-only fields (`reasoning_effort`, `frequency_penalty`, …) are stripped, and Codex's Responses API body/stream shape is reshaped to and from Anthropic's Messages API. Claude Code, which already sends native Anthropic-shaped requests, passes through unchanged. Gemini CLI, live-tested in **`@1claw/cli` 0.61.21**, sends native Google-shaped requests to a native Google-shaped path — the proxy detects that path and routes it as `provider: google` without any body reshaping. See the [2026-09-23 changelog entry](/docs/reference/changelog-2026#2026-09-23) for the specifics.
 
-**→ Step-by-step for Cursor, Claude Code, Codex, OpenCode, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
+**→ Step-by-step for Cursor, Claude Code, Codex, OpenCode, OpenClaude, Goose, Gemini CLI, VS Code Copilot, and more:** [IDE & tool setup (Shroud proxy)](/docs/agents/shroud/ide-setup).
 
 ### Quick start
 
@@ -381,10 +381,10 @@ The proxy prints **copy-paste** snippets for Cursor, Claude Code, Copilot, and O
 
 ### What the proxy does
 
-1. Accepts `POST /v1/chat/completions` (OpenCode and most OpenAI-compatible clients), **`/v1/messages`** (Claude Code), and **`/v1/responses`** (Codex's OpenAI Responses API format)
+1. Accepts `POST /v1/chat/completions` (OpenCode, OpenClaude, Goose, and most OpenAI-compatible clients), **`/v1/messages`** (Claude Code), **`/v1/responses`** (Codex's OpenAI Responses API format), and **`/v1beta/models/{model}:generateContent`** (Gemini CLI's native Google format)
 2. Ignores editor `Authorization` / `x-api-key` for upstream auth — uses your agent key on the Shroud side
 3. Injects `X-Shroud-Agent-Key` from `--agent-key` or **`ONECLAW_AGENT_API_KEY`**
-4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`) or from the `model` field for OpenAI-style bodies (so an OpenAI-compatible client targeting a Claude model is still routed to Anthropic)
+4. Sets `X-Shroud-Provider` from the request path (`/v1/messages` → `anthropic`, `/v1beta/models/...:generateContent` → `google`) or from the `model` field for OpenAI-style bodies (so an OpenAI-compatible client targeting a Claude model is still routed to Anthropic)
 5. Forwards to `https://shroud.1claw.co` with inspection, redaction, and policy enforcement
 6. Streams the response back
 
