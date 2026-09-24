@@ -158,3 +158,34 @@ Closing the Shroud Bridge window **does not stop the proxy**. The app minimizes 
 
 - [CLI → LLM proxy (`1claw proxy`)](/docs/integrations/cli#llm-proxy-1claw-proxy) for all flags  
 - [Shroud](/docs/agents/shroud/overview) for headers, providers, and troubleshooting  
+
+## Shortcut: `1claw run <agent>`
+
+For the CLI agents, skip the proxy-then-configure dance entirely:
+
+```bash
+1claw run claude
+1claw run opencode
+1claw run openclaude
+1claw run goose
+1claw run gemini
+```
+
+`1claw run` starts its own proxy on an OS-assigned port (so it cannot collide
+with Ollama or a `1claw proxy` you already have running), sets exactly the
+environment that agent reads, launches it, and shuts the proxy down when the
+agent exits.
+
+**Flag order matters.** Options for 1claw go *before* the agent name; anything
+after it is passed straight through to the agent:
+
+```bash
+1claw run --model claude-sonnet-5 goose    # --model is 1claw's
+1claw run claude --resume                  # --resume is forwarded to claude
+```
+
+Credentials come from `ONECLAW_AGENT_API_KEY` unless you pass `--agent-key`.
+
+**Codex is not supported by `1claw run`** — it reads `~/.codex/config.toml`
+rather than environment variables, so launching it this way would mean editing
+your config file behind your back. Use the [Codex](#codex) section above.
