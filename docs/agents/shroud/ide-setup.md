@@ -92,10 +92,19 @@ goose run -t "your prompt"
 ```bash
 export GOOGLE_GEMINI_BASE_URL="http://127.0.0.1:11434"
 export GEMINI_API_KEY="1claw"        # placeholder — the proxy handles real auth
-gemini --skip-trust -p "your prompt" # headless runs also need
-                                      # security.auth.selectedType: "gemini-api-key"
-                                      # in ~/.gemini/settings.json
+
+# Required. Without it Gemini CLI exits with "Invalid auth method selected."
+# before sending a single request — setting GEMINI_API_KEY is not enough.
+mkdir -p ~/.gemini
+echo '{"security":{"auth":{"selectedType":"gemini-api-key"}}}' > ~/.gemini/settings.json
+
+gemini --skip-trust -p "your prompt"
 ```
+
+:::caution
+If you already have a `~/.gemini/settings.json`, merge the `security.auth`
+key into it rather than overwriting the file.
+:::
 
 On an older proxy version, this path was misdetected as `openai` and could false-positive-block on ordinary shell syntax in Gemini CLI's own system instructions — update `@1claw/cli` if you see that.
 
