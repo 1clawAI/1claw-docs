@@ -34,6 +34,22 @@ The CLI prints a **local base URL** (default port **11434**, or another free por
 
 Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
 
+### Which clients we actually test
+
+Seven clients are covered by an automated compatibility suite — we keep a real wire fixture for each (`shroud/tests/fixtures/clients/`) and/or a routing assertion in Shroud's own client-and-model matrix. For three of them the fixture is a **live capture** taken off a real run through the proxy, not an approximation:
+
+| Client | Coverage |
+| --- | --- |
+| Claude Code | fixture + routing matrix |
+| Codex | **live capture** (Responses API) + fixture + routing matrix |
+| OpenCode | 5 fixtures (incl. regression repros) + routing matrix |
+| OpenClaude | **live capture** + routing matrix |
+| Goose | **live capture** + routing matrix |
+| Cursor | fixture (approximated — Cursor is closed source) + routing matrix |
+| Gemini CLI | routing matrix (native Google shape, so no OpenAI-style fixture) |
+
+Everything else on this page — VS Code + Copilot, Continue, Windsurf, Cline, Kilo Code, Zed — is expected to work because it speaks a standard OpenAI-compatible base URL, but **is not exercised by that suite**. `1claw proxy` prints the same split at startup.
+
 ### Codex
 
 Codex's CLI always sends OpenAI's **Responses API** shape (no chat/completions fallback), which Shroud reshapes to Anthropic's Messages API when the target model is a Claude model. In `~/.codex/config.toml` — note `model_provider` must come **before** the `[model_providers.oneclaw]` table, since TOML would otherwise parse it as a key on that table instead of the top-level key Codex reads:
