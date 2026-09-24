@@ -189,3 +189,28 @@ Credentials come from `ONECLAW_AGENT_API_KEY` unless you pass `--agent-key`.
 **Codex is not supported by `1claw run`** — it reads `~/.codex/config.toml`
 rather than environment variables, so launching it this way would mean editing
 your config file behind your back. Use the [Codex](#codex) section above.
+
+## Model names: `provider/model`
+
+Alongside the bare model ids Shroud's catalog lists, the proxy accepts an
+OpenRouter-style `provider/model` prefix, so one namespace works in every
+client and you can force a provider instead of relying on the name:
+
+```
+anthropic/claude-opus-5
+openai/gpt-5
+google/gemini-2.5-pro
+```
+
+The prefix selects the provider and is then stripped before the request
+reaches Shroud, whose catalog lists bare ids. Recognised prefixes are
+`openai`, `anthropic`, `google`, `mistral` and `cohere`.
+
+Anything else is left alone: bare names (`claude-sonnet-5`, `gpt-4o`) infer
+their provider from the name as before, `openrouter/...` keeps its prefix
+because there the rest of the id *is* the upstream model name, and an
+unrecognised vendor prefix such as `meta-llama/Llama-3-70B` is treated as part
+of the model name rather than a provider.
+
+`GET /v1/models` continues to list bare ids only — the namespace is accepted
+on input, not advertised as a second set of entries.
