@@ -184,7 +184,17 @@ after it is passed straight through to the agent:
 1claw run claude --resume                  # --resume is forwarded to claude
 ```
 
-Credentials come from `ONECLAW_AGENT_API_KEY` unless you pass `--agent-key`.
+Credentials are resolved in this order: `--agent-key`, then
+`ONECLAW_AGENT_API_KEY`, then a key saved with `--save-agent-key`. Save one
+once and nothing else needs it again:
+
+```bash
+1claw run --agent-key "ocv_..." --save-agent-key opencode
+1claw run opencode      # from then on
+```
+
+The key goes in the CLI config file at `0600` — the same file that already
+holds your cloud session token, which is strictly more powerful.
 
 **Codex is not supported by `1claw run`** — it reads `~/.codex/config.toml`
 rather than environment variables, so launching it this way would mean editing
