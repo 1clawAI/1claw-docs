@@ -5999,6 +5999,22 @@ The CLI prints a **local base URL** (default port **11434**, or another free por
 
 Configure **OpenAI-compatible** tools with the proxy **`/v1`** endpoint; **Anthropic**-style tools (e.g. Claude Code) should target the proxy’s **`/v1/messages`** path as in the printed snippet.
 
+### Which clients we actually test
+
+Seven clients are covered by an automated compatibility suite — we keep a real wire fixture for each (`shroud/tests/fixtures/clients/`) and/or a routing assertion in Shroud's own client-and-model matrix. For three of them the fixture is a **live capture** taken off a real run through the proxy, not an approximation:
+
+| Client | Coverage |
+| --- | --- |
+| Claude Code | fixture + routing matrix |
+| Codex | **live capture** (Responses API) + fixture + routing matrix |
+| OpenCode | 5 fixtures (incl. regression repros) + routing matrix |
+| OpenClaude | **live capture** + routing matrix |
+| Goose | **live capture** + routing matrix |
+| Cursor | fixture (approximated — Cursor is closed source) + routing matrix |
+| Gemini CLI | routing matrix (native Google shape, so no OpenAI-style fixture) |
+
+Everything else on this page — VS Code + Copilot, Continue, Windsurf, Cline, Kilo Code, Zed — is expected to work because it speaks a standard OpenAI-compatible base URL, but **is not exercised by that suite**. `1claw proxy` prints the same split at startup.
+
 ### Codex
 
 Codex's CLI always sends OpenAI's **Responses API** shape (no chat/completions fallback), which Shroud reshapes to Anthropic's Messages API when the target model is a Claude model. In `~/.codex/config.toml` — note `model_provider` must come **before** the `[model_providers.oneclaw]` table, since TOML would otherwise parse it as a key on that table instead of the top-level key Codex reads:
@@ -6041,10 +6057,19 @@ goose run -t "your prompt"
 ```bash
 export GOOGLE_GEMINI_BASE_URL="http://127.0.0.1:11434"
 export GEMINI_API_KEY="1claw"        # placeholder — the proxy handles real auth
-gemini --skip-trust -p "your prompt" # headless runs also need
-                                      # security.auth.selectedType: "gemini-api-key"
-                                      # in ~/.gemini/settings.json
+
+# Required. Without it Gemini CLI exits with "Invalid auth method selected."
+# before sending a single request — setting GEMINI_API_KEY is not enough.
+mkdir -p ~/.gemini
+echo '{"security":{"auth":{"selectedType":"gemini-api-key"}}}' > ~/.gemini/settings.json
+
+gemini --skip-trust -p "your prompt"
 ```
+
+:::caution
+If you already have a `~/.gemini/settings.json`, merge the `security.auth`
+key into it rather than overwriting the file.
+:::
 
 On an older proxy version, this path was misdetected as `openai` and could false-positive-block on ordinary shell syntax in Gemini CLI's own system instructions — update `@1claw/cli` if you see that.
 
@@ -6107,6 +6132,72 @@ Closing the Shroud Bridge window **does not stop the proxy**. The app minimizes 
 
 - [CLI → LLM proxy (`1claw proxy`)](/docs/integrations/cli#llm-proxy-1claw-proxy) for all flags  
 - [Shroud](/docs/agents/shroud/overview) for headers, providers, and troubleshooting  
+
+## Shortcut: `1claw run <agent>`
+
+For the CLI agents, skip the proxy-then-configure dance entirely:
+
+```bash
+1claw run claude
+1claw run opencode
+1claw run openclaude
+1claw run goose
+1claw run gemini
+```
+
+`1claw run` starts its own proxy on an OS-assigned port (so it cannot collide
+with Ollama or a `1claw proxy` you already have running), sets exactly the
+environment that agent reads, launches it, and shuts the proxy down when the
+agent exits.
+
+**Flag order matters.** Options for 1claw go *before* the agent name; anything
+after it is passed straight through to the agent:
+
+```bash
+1claw run --model claude-sonnet-5 goose    # --model is 1claw's
+1claw run claude --resume                  # --resume is forwarded to claude
+```
+
+Credentials are resolved in this order: `--agent-key`, then
+`ONECLAW_AGENT_API_KEY`, then a key saved with `--save-agent-key`. Save one
+once and nothing else needs it again:
+
+```bash
+1claw run --agent-key "ocv_..." --save-agent-key opencode
+1claw run opencode      # from then on
+```
+
+The key goes in the CLI config file at `0600` — the same file that already
+holds your cloud session token, which is strictly more powerful.
+
+**Codex is not supported by `1claw run`** — it reads `~/.codex/config.toml`
+rather than environment variables, so launching it this way would mean editing
+your config file behind your back. Use the [Codex](#codex) section above.
+
+## Model names: `provider/model`
+
+Alongside the bare model ids Shroud's catalog lists, the proxy accepts an
+OpenRouter-style `provider/model` prefix, so one namespace works in every
+client and you can force a provider instead of relying on the name:
+
+```
+anthropic/claude-opus-5
+openai/gpt-5
+google/gemini-2.5-pro
+```
+
+The prefix selects the provider and is then stripped before the request
+reaches Shroud, whose catalog lists bare ids. Recognised prefixes are
+`openai`, `anthropic`, `google`, `mistral` and `cohere`.
+
+Anything else is left alone: bare names (`claude-sonnet-5`, `gpt-4o`) infer
+their provider from the name as before, `openrouter/...` keeps its prefix
+because there the rest of the id *is* the upstream model name, and an
+unrecognised vendor prefix such as `meta-llama/Llama-3-70B` is treated as part
+of the model name rather than a provider.
+
+`GET /v1/models` continues to list bare ids only — the namespace is accepted
+on input, not advertised as a second set of entries.
 
 
 ---
@@ -29012,6 +29103,15 @@ The container runs `pip install -r requirements.txt` (Python) or `npm install` (
 
 When a runtime starts, Vault mints a short-lived agent JWT and mounts it into the container via **Secret Manager** (`secretKeyRef`) as `ONECLAW_AGENT_TOKEN` / `ONECLAW_TOKEN` — so CreateService audit logs never embed plaintext JWTs. Do not put long-lived API keys in `env_public`.
 
+The JWT lasts about two hours by default (`agents.token_ttl_seconds`, capped at 24 h). Cloud Run resolves `secretKeyRef` **when an instance starts**, not per request, so the value in the container's environment never changes on its own. Two things keep that from mattering:
+
+- **Cold starts** read a current token. Vault publishes a fresh secret version every 45 minutes, so a runtime that has been idle longer than the TTL still wakes up with a valid credential.
+- **Long-running containers renew in place.** The container calls `POST /v1/runtimes/{runtime_id}/agent-token/renew` at about 70% of the token's remaining life, authenticated by the token it is replacing (plus a matching `X-1Claw-Runtime-Id` header). It grants nothing new — the same claims with a later expiry — and stops working the moment the token lapses, the agent is suspended, or the runtime is no longer deployed. Renewals are exempt from your monthly request quota.
+
+Before this, a container that stayed up past the TTL kept the credential it booted with, and everything authenticated began to fail — including the agent's MCP tools, which meant an agent could lose its entire toolset and carry on answering as though nothing had happened. If you are running a container started before 2026-09-27, **Restart** it once to pick this up; the dashboard chat panel will tell you when that applies.
+
+You do not need to do anything to enable renewal, and nothing in your code needs to read the new token: it is handled inside the container.
+
 If the bound agent has **`shroud_enabled`**, Vault also enables the sidecar + sets `ONECLAW_SHROUD_*` and points common LLM base URLs at the in-container proxy (`127.0.0.1:8082`).
 
 Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a short-lived human token when authoring workflows from OpenClaude.
@@ -29075,7 +29175,33 @@ On the runtime detail **Terminal** panel, **Chat** sits next to **Shell**. Messa
 client.runtimes.chat(runtimeId, { message: "Reply with OK", stream: true })
 ```
 
-Stop → Start (or Rebuild) after image updates so the chat-bridge process is present. Prefer `shroud_enabled` on the bound agent for in-container LLM routing.
+In the panel: `/` opens the commands the agent can actually run on this runtime,
+Enter sends and Shift+Enter is a newline, Esc stops a turn in flight, and the up
+arrow recalls your last message. Hovering a message offers copy, and on your own
+turns edit — editing re-runs the conversation from that point, which discards the
+exchanges after it, and the editor says how many before you send. History keeps a
+session per runtime and can be filtered once there are more than a few.
+
+Chat needs a step-up unlock, which lasts 15 minutes. You are warned two minutes
+before it lapses so the re-verification lands where you choose rather than on the
+next message you send.
+
+**Restart** after image updates so the chat-bridge process is present — Cloud Run pins a revision to an image digest when the revision is created, so a running container keeps the image it started with and a cold start does not change that. Restart stops the container at the provider and starts it again, which is the same thing as Stop then Start and is one button. Prefer `shroud_enabled` on the bound agent for in-container LLM routing.
+
+### When Hermes or OpenClaw is not the one answering
+
+Templates with their own agent gateway (Hermes, OpenClaw) serve chat through it. If that gateway cannot take a turn, the 1Claw bridge answers instead — which is a *different agent*, with its own loop and model and none of the framework's memory, skills or MCP tools.
+
+That fallback is reported rather than silent. The chat panel says which agent answered and why the other one did not, and offers the remedy that matches:
+
+| Reason | What it means | Remedy |
+|---|---|---|
+| `unreachable` | The gateway has not finished starting | Retry; the runtime probes twice before conceding |
+| `auth` | The gateway refused the container's own loopback credential | Restart — the handoff is rebuilt from the current image |
+| `not_enabled` | The container predates the gateway's chat API | Restart to pull the current image |
+| `upstream_error` | The gateway is running but failed this turn | Its own logs say why |
+
+`backend: "bridge"` on the chat request pins a turn to the 1Claw bridge deliberately; that is not a fallback and is not reported as one.
 
 ## Interactive shell
 

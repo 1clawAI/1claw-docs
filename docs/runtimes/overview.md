@@ -163,6 +163,15 @@ The container runs `pip install -r requirements.txt` (Python) or `npm install` (
 
 When a runtime starts, Vault mints a short-lived agent JWT and mounts it into the container via **Secret Manager** (`secretKeyRef`) as `ONECLAW_AGENT_TOKEN` / `ONECLAW_TOKEN` — so CreateService audit logs never embed plaintext JWTs. Do not put long-lived API keys in `env_public`.
 
+The JWT lasts about two hours by default (`agents.token_ttl_seconds`, capped at 24 h). Cloud Run resolves `secretKeyRef` **when an instance starts**, not per request, so the value in the container's environment never changes on its own. Two things keep that from mattering:
+
+- **Cold starts** read a current token. Vault publishes a fresh secret version every 45 minutes, so a runtime that has been idle longer than the TTL still wakes up with a valid credential.
+- **Long-running containers renew in place.** The container calls `POST /v1/runtimes/{runtime_id}/agent-token/renew` at about 70% of the token's remaining life, authenticated by the token it is replacing (plus a matching `X-1Claw-Runtime-Id` header). It grants nothing new — the same claims with a later expiry — and stops working the moment the token lapses, the agent is suspended, or the runtime is no longer deployed. Renewals are exempt from your monthly request quota.
+
+Before this, a container that stayed up past the TTL kept the credential it booted with, and everything authenticated began to fail — including the agent's MCP tools, which meant an agent could lose its entire toolset and carry on answering as though nothing had happened. If you are running a container started before 2026-09-27, **Restart** it once to pick this up; the dashboard chat panel will tell you when that applies.
+
+You do not need to do anything to enable renewal, and nothing in your code needs to read the new token: it is handled inside the container.
+
 If the bound agent has **`shroud_enabled`**, Vault also enables the sidecar + sets `ONECLAW_SHROUD_*` and points common LLM base URLs at the in-container proxy (`127.0.0.1:8082`).
 
 Pair with **Automations Assist** (`POST /v1/automations/assist/session`) for a short-lived human token when authoring workflows from OpenClaude.
@@ -226,7 +235,33 @@ On the runtime detail **Terminal** panel, **Chat** sits next to **Shell**. Messa
 client.runtimes.chat(runtimeId, { message: "Reply with OK", stream: true })
 ```
 
-Stop → Start (or Rebuild) after image updates so the chat-bridge process is present. Prefer `shroud_enabled` on the bound agent for in-container LLM routing.
+In the panel: `/` opens the commands the agent can actually run on this runtime,
+Enter sends and Shift+Enter is a newline, Esc stops a turn in flight, and the up
+arrow recalls your last message. Hovering a message offers copy, and on your own
+turns edit — editing re-runs the conversation from that point, which discards the
+exchanges after it, and the editor says how many before you send. History keeps a
+session per runtime and can be filtered once there are more than a few.
+
+Chat needs a step-up unlock, which lasts 15 minutes. You are warned two minutes
+before it lapses so the re-verification lands where you choose rather than on the
+next message you send.
+
+**Restart** after image updates so the chat-bridge process is present — Cloud Run pins a revision to an image digest when the revision is created, so a running container keeps the image it started with and a cold start does not change that. Restart stops the container at the provider and starts it again, which is the same thing as Stop then Start and is one button. Prefer `shroud_enabled` on the bound agent for in-container LLM routing.
+
+### When Hermes or OpenClaw is not the one answering
+
+Templates with their own agent gateway (Hermes, OpenClaw) serve chat through it. If that gateway cannot take a turn, the 1Claw bridge answers instead — which is a *different agent*, with its own loop and model and none of the framework's memory, skills or MCP tools.
+
+That fallback is reported rather than silent. The chat panel says which agent answered and why the other one did not, and offers the remedy that matches:
+
+| Reason | What it means | Remedy |
+|---|---|---|
+| `unreachable` | The gateway has not finished starting | Retry; the runtime probes twice before conceding |
+| `auth` | The gateway refused the container's own loopback credential | Restart — the handoff is rebuilt from the current image |
+| `not_enabled` | The container predates the gateway's chat API | Restart to pull the current image |
+| `upstream_error` | The gateway is running but failed this turn | Its own logs say why |
+
+`backend: "bridge"` on the chat request pins a turn to the 1Claw bridge deliberately; that is not a fallback and is not reported as one.
 
 ## Interactive shell
 

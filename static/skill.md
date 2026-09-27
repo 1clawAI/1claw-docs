@@ -334,6 +334,20 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 ## MCP Tools Reference
 
+The server ships 160 tools grouped into **toolsets**, and a session is only offered the toolsets its agent is entitled to. If a tool below is missing from `tools/list`, the agent is not entitled to its toolset — do not retry it by name; the server refuses hidden tools.
+
+| Toolset | Offered when |
+| --- | --- |
+| `inspect`, `vault`, `approvals` | always, for any agent |
+| `intents` | agent has `intents_api_enabled` |
+| `execute` | agent has `execution_intents_enabled` |
+| `cards` / `memory` / `channels` / `directory` | `cards_enabled` / `memory_enabled` / `shroud_enabled` / `discoverable` |
+| `treasury` / `delegation` | the agent signs for a treasury / has an active delegation (from the token exchange), else opt-in |
+| `chat`, `automations`, `runtimes`, `notification` | opt-in via `ONECLAW_MCP_TOOLSETS` (stdio) or `X-1Claw-Toolsets` (hosted): comma list or `all` |
+| `admin`, `platform` | never on an agent session |
+
+With `execution_require_tee` set, `get_secret`, `get_env_bundle` and `resolve_env` are hidden (the vault will not hand this agent secret values outside a TEE); writes and metadata stay. Hosted sessions re-check entitlements every 15 minutes and after any 403, then send `notifications/tools/list_changed` — re-list when you receive it.
+
 ### list_secrets
 
 List all secrets in the vault. Returns paths, types, and versions — never values.
@@ -860,6 +874,22 @@ List recent execution-intent events for the current agent: status, intent_type, 
 | `limit`   | number | no       | 50      | Max events to return  |
 | `offset`  | number | no       | 0       | Pagination offset     |
 
+### list_event_subscriptions
+
+Polled connector event sources this agent is subscribed to (`gmail.message.received`, `stripe.invoice.created`, `drive.file.changed`, …). 1Claw polls each source through the installed binding and emits new items as automation events of that type — react with an automation whose `trigger_type` is `event` and whose `event_filter.event_type` matches. Subscriptions are created by a human; this only reads them.
+
+| Parameter  | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `agent_id` | string | yes      | Agent UUID (an agent may only read its own) |
+
+### list_child_agents
+
+Child agents under a parent (vault ≥ 0.61.30): cheap sub-agents with their own API key, memory namespaces and approval policy, a subset of the parent's vaults and scopes, the parent's policies inherited, and no charge against the plan's agent cap. Creation is human-only (`POST /v1/agents/{id}/children`).
+
+| Parameter  | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `agent_id` | string | yes      | Parent agent UUID (an agent may only list its own children) |
+
 ### platform_reissue_claim
 
 Reissue a claim URL for an already-bootstrapped connection. Use when the original 10-minute claim token has expired — no resources are re-provisioned.
@@ -895,6 +925,15 @@ Get details of a specific approval request.
 | ------------- | ------ | -------- | ------------------------------ |
 | `approval_id` | string | yes      | UUID of the approval request   |
 
+### cancel_approval
+
+Withdraw a pending approval this agent created (vault ≥ 0.61.29). First answer wins: a request the human already decided cannot be cancelled. Subscribers receive `approval.decided` with `decision: "cancelled"`.
+
+| Parameter     | Type   | Required | Description |
+| ------------- | ------ | -------- | ----------- |
+| `approval_id` | string | yes      | The approval to cancel |
+| `reason`      | string | no       | Why (recorded on the approval) |
+
 ### request_approval
 
 Request human approval for a policy change or sensitive action. Agent-only — creates a pending approval directed to the agent's creator.
@@ -908,43 +947,47 @@ Request human approval for a policy change or sensitive action. Agent-only — c
 | `reason`      | string | no       |         | Human-readable reason                                                         |
 | `risk_tier`   | number | no       | 1       | Risk level 1–5 (1=low, 5=critical)                                           |
 
-### memory_put
+### put_memory
 
-Store a memory entry for the agent (scratch, durable, or semantic tier).
+Store a memory entry for the agent (namespaced key/value; the vault indexes it for semantic search).
 
-| Parameter | Type   | Required | Default    | Description                                          |
-| --------- | ------ | -------- | ---------- | ---------------------------------------------------- |
-| `key`     | string | yes      |            | Memory key identifier                                |
-| `value`   | string | yes      |            | Memory value (text content)                          |
-| `tier`    | string | no       | `durable`  | Memory tier: `scratch`, `durable`, or `semantic`     |
-| `metadata`| object | no       |            | Optional JSON metadata                               |
+| Parameter     | Type   | Required | Description                                                      |
+| ------------- | ------ | -------- | ---------------------------------------------------------------- |
+| `agent_id`    | string | yes      | Agent ID, or `me` for the calling agent                          |
+| `namespace`   | string | yes      | Memory namespace (e.g. `context`, `preferences`, `state`)        |
+| `key`         | string | yes      | Key within the namespace                                         |
+| `value`       | string | yes      | JSON value to store                                              |
+| `ttl_seconds` | number | no       | Auto-expire after this many seconds                              |
 
-### memory_get
+### get_memory
 
-Retrieve a memory entry by key.
+Retrieve a memory entry by namespace + key.
 
-| Parameter | Type   | Required | Description      |
-| --------- | ------ | -------- | ---------------- |
-| `key`     | string | yes      | Memory key       |
+| Parameter   | Type   | Required | Description                             |
+| ----------- | ------ | -------- | --------------------------------------- |
+| `agent_id`  | string | yes      | Agent ID, or `me` for the calling agent |
+| `namespace` | string | yes      | Memory namespace                        |
+| `key`       | string | yes      | Key within the namespace                |
 
-### memory_list
+### list_memory
 
-List memory entries, optionally filtered by tier.
+List memory entries in a namespace (keys and metadata).
 
-| Parameter | Type   | Required | Description                                      |
-| --------- | ------ | -------- | ------------------------------------------------ |
-| `tier`    | string | no       | Filter by tier: `scratch`, `durable`, `semantic` |
-| `limit`   | number | no       | Max entries to return (default 50)               |
+| Parameter   | Type   | Required | Description                             |
+| ----------- | ------ | -------- | --------------------------------------- |
+| `agent_id`  | string | yes      | Agent ID, or `me` for the calling agent |
+| `namespace` | string | yes      | Memory namespace                        |
 
-### memory_search
+### search_memory
 
-Semantic vector search over agent memory entries (semantic tier only).
+Semantic similarity search over a namespace.
 
 | Parameter   | Type   | Required | Default | Description                             |
 | ----------- | ------ | -------- | ------- | --------------------------------------- |
+| `agent_id`  | string | yes      |         | Agent ID, or `me` for the calling agent |
+| `namespace` | string | yes      |         | Memory namespace to search within       |
 | `query`     | string | yes      |         | Natural language search query           |
-| `limit`     | number | no       | 10      | Max results                             |
-| `threshold` | number | no       | 0.7     | Minimum similarity score (0.0–1.0)      |
+| `top_k`     | number | no       | 5       | Number of results                       |
 
 ### delete_memory
 
@@ -998,6 +1041,22 @@ Start or stop a cloud runtime.
 | ------------ | ------ | -------- | ------------------------------ |
 | `runtime_id` | string | yes      | UUID of the runtime            |
 | `action`     | string | yes      | `start` or `stop`             |
+
+Two things about runtimes that are not obvious and that agents get wrong:
+
+**A running container never picks up a new image.** Cloud Run pins a revision to
+an image digest when the revision is created, so a cold start reuses the same
+one. Only a restart — stop at the provider, then start — creates a new revision.
+That is why "restart the runtime" is the remedy behind so many errors, and why
+`action: "stop"` followed by `action: "start"` is the right sequence when a fix
+has shipped in the image.
+
+**The runtime's own agent JWT renews itself.** `ONECLAW_AGENT_TOKEN` lasts about
+two hours and Cloud Run resolves it once, when the instance starts. The container
+renews it in place against `POST /v1/runtimes/{runtime_id}/agent-token/renew` at
+~70% of its remaining life, authenticated by the token being replaced. You do not
+need to call that endpoint, and nothing in a runtime's code should read or cache
+the token at startup — read it per use, or it will be the stale copy.
 
 ### runtime_status
 
@@ -1090,15 +1149,14 @@ Human-controlled authorization framework. Agents **cannot** delegate to other ag
 
 **Dashboard:** Sub-agent creation wizard at `/agents/sub-agent-wizard` (4-step flow, 6 role presets: Research, Image Gen, Treasury, Comms, Code, Custom). Delegations tab on agent detail page (outbound/inbound tables with create/edit/revoke dialogs). Sub-Agents card on runtime detail page with authorization badges.
 
-### search_directory
+### search_agent_directory
 
 Search the public agent discovery directory.
 
-| Parameter  | Type   | Required | Description                                |
-| ---------- | ------ | -------- | ------------------------------------------ |
-| `query`    | string | no       | Search term                                |
-| `category` | string | no       | Filter by category                         |
-| `limit`    | number | no       | Max results (default 20)                   |
+| Parameter | Type   | Required | Description                         |
+| --------- | ------ | -------- | ----------------------------------- |
+| `query`   | string | no       | Agent name or description search    |
+| `tags`    | string | no       | Comma-separated tags to filter by   |
 
 ### send_chat_message
 
@@ -1459,8 +1517,8 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 | `POST`   | `/v1/shroud/inspect-content`                     | Standalone content threat scan (plt_ / agent / user JWT) |
 | `POST`   | `/v1/platform/connections/{id}/runtimes`         | Create runtime for connection agent (plt_ auth)        |
 | `GET`    | `/v1/platform/connections/{id}/runtimes/{rid}`   | Get connection-scoped runtime (plt_ auth; not `/v1/runtimes/{id}`) |
-| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/begin`   | **Always 403** — platform apps cannot enrol login passkeys |
-| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/complete`  | **Always 403** — see above |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/begin`   | Start WebAuthn registration for connected end-user (plt_ auth) |
+| `POST`   | `/v1/platform/connections/{id}/passkeys/enroll/complete`  | Complete passkey registration for connected end-user |
 | `POST`   | `/v1/platform/connections/{id}/agents/{aid}/chat`  | Chat with connection agent (plt_ auth; `system`, `system_prompt`, `messages[]`; 402 on billing errors) |
 | `GET`    | `/v1/platform/connections/{id}/signing-keys`      | List agent signing keys — public metadata only (plt_; optional `?agent_id=`) |
 | `GET`    | `/v1/platform/connections/{id}/signing-keys/{chain}` | Single-chain agent signing key (plt_; optional `?agent_id=`) |
@@ -1828,8 +1886,8 @@ Two additional agent-level flags upgrade "TEE-available" to "TEE-required":
 
 | Flag | Behavior when true |
 | --- | --- |
-| `intents_require_tee` | Rejects transaction/sign requests not routed through Shroud TEE (403). Direct Vault calls fail. |
-| `execution_require_tee` | Rejects execute requests not routed through Shroud, AND blocks ALL direct secret reads by the agent (not just private_key/ssh_key). Forces use of Execution Intents bindings. |
+| `intents_require_tee` | Every transaction submit/sign is signed in Shroud's TEE. Calls to `api.1claw.co` are forwarded to Shroud by the vault (vault ≥ 0.61.19); only delegated/human credentials and DPoP-bound tokens are refused (403). |
+| `execution_require_tee` | Execute requests run on Shroud's TEE execution surface (forced by the vault, no routing needed), AND all direct secret reads by the agent are blocked (not just private_key/ssh_key). Forces use of Execution Intents bindings. |
 
 Both require the base flag to be on first (`intents_api_enabled` / `execution_intents_enabled`). Verification uses HMAC `X-1Claw-TEE-Origin` header (Shroud sets it; Vault validates via shared `ONECLAW_TEE_ORIGIN_SECRET`). Dashboard: Signing tab toggles with confirmation dialog.
 
@@ -2077,6 +2135,94 @@ await client.sharing.create(secretId, {
 ```
 
 The human sees the share in their Inbound shares and accepts it. This is the primary pattern for agents that discover or generate credentials and need to report them to their human.
+
+---
+
+## What shipped in v0.59–v0.60
+
+Six surfaces added recently that this skill did not previously mention.
+
+### Pre-built connectors (v0.59.15)
+
+`GET /v1/connectors/presets` lists them; `POST /v1/agents/{id}/connectors/{slug}/install`
+creates a binding scoped to that service's hosts and paths and starts OAuth.
+Gmail, Google Calendar, GitHub, Slack, X, Discord, Notion, Honcho.
+
+**Human users only.** Requested scopes may narrow a preset's list, never extend
+it. An HTTP binding with no `allowed_hosts` has no host restriction at all, so
+the scoping is the whole difference from a bare OAuth connection.
+
+### Action approvals + notification targets (v0.59.14–v0.59.16)
+
+`agents.action_approval_policy` turns "an agent wants to do X" into a decision a
+human can read. Targets fan the request out to SMS, webhook, email or push:
+`/v1/notification-targets` (**authenticated** — they were briefly public during
+development).
+
+**The risk tier is server-derived** from the policy and the payload, so an agent
+cannot declare its way into the weakest channel. SMS can only decide tier 1. A
+valid Twilio signature proves the message came from Twilio, not from the right
+person, so the sending number must also match a verified target.
+
+### Policy presets (v0.60.0)
+
+`GET /v1/policy-presets`, `POST /v1/agents/{id}/policy-preset/preview`, and
+`POST /v1/agents/{id}/policy-preset`. Four presets: `read-only-assistant`,
+`small-business-spender`, `inbox-agent`, `treasury-operator`.
+
+**A preset is a friendlier interface to the agent PATCH handler, not a way
+around it.** Applying one that loosens a guardrail returns 202 (queued) or 403
+(step-up), never a silent 200 — the same widening approval flow a hand edit
+gets. Preview changes nothing and names what would loosen, so a UI can say
+"this raises your daily limit from $10 to $100" instead of "this widens
+guardrails". Human users only.
+
+### Declarative charts (v0.59.17)
+
+`POST /v1/org/apply/diff` and `POST /v1/org/apply` — one `chart.yaml`
+provisions vaults, agents, policies and connectors. `1claw diff` / `1claw apply`
+are thin clients; the reconciler is server-side.
+
+**Human-only**, because a chart provisions access policies and an agent that
+could apply one could grant itself a vault it cannot currently read. It never
+deletes, has no prune, refuses guardrail fields, skips resources edited outside
+the chart rather than overwriting them, and treats unknown fields as errors.
+
+### Peer memory (v0.59.18)
+
+`POST /v1/peers`, `GET /v1/peers/{id}/context`, `/events`, `/predict-approval`.
+A shared model of one person across the agents serving them.
+
+**Access is by observer list and nothing else** — same org, same connection,
+broad scopes: none of it grants access, and a peer with no observers is readable
+by no agent. **Prediction is not permission:** `likelihood` (about a person) and
+`suggest_auto` (about your own policy) are separate fields, and `suggest_auto`
+is true only where a rule you already wrote permits that exact case.
+
+### Fleet management (v0.60.0)
+
+`GET /v1/platform/apps/{id}/fleets/{template_id}` and `/agents`;
+`POST .../bulk-patch`, `.../rollout`, `.../pause`. Every agent one bootstrap
+template provisioned, as one cohort. (Distinct from the informal "fleet
+patterns" below, which is about running many agents in one org.)
+
+**Every route here does what it does a thousand times with no per-agent
+review**, so the surface is narrower than the per-agent API rather than wider:
+
+- Guardrails and capability flags (`intents_api_enabled`,
+  `execution_intents_enabled`) are **not** bulk-patchable. Read
+  `bulk_patchable_fields` off the fleet summary rather than hard-coding it.
+- One bad field refuses the **whole** patch. A partially-applied bulk patch
+  across a thousand agents is worse than a rejected one.
+- An agent changed outside fleet control is **skipped, not corrected**, and the
+  field is recorded on it. `force` overrides the skip but still cannot carry a
+  guardrail.
+- A dry run **claims no job** (`job_id` is null), so it never blocks the real
+  rollout behind the one-rollout-per-template rule.
+
+MCP exposes fleets read-only: `platform_get_fleet`,
+`platform_list_fleet_agents`, and `platform_plan_fleet_rollout`, which always
+dry-runs. There is deliberately no bulk-patch or pause tool.
 
 ---
 
