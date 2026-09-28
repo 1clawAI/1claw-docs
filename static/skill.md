@@ -334,7 +334,7 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 ## MCP Tools Reference
 
-The server ships 160 tools grouped into **toolsets**, and a session is only offered the toolsets its agent is entitled to. If a tool below is missing from `tools/list`, the agent is not entitled to its toolset — do not retry it by name; the server refuses hidden tools.
+The server ships 161 tools grouped into **toolsets**, and a session is only offered the toolsets its agent is entitled to. If a tool below is missing from `tools/list`, the agent is not entitled to its toolset — do not retry it by name; the server refuses hidden tools.
 
 | Toolset | Offered when |
 | --- | --- |
