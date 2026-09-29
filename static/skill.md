@@ -334,7 +334,7 @@ Partner-key secret engine for short-lived Bankr wallet API keys. Store the long-
 
 ## MCP Tools Reference
 
-The server ships 160 tools grouped into **toolsets**, and a session is only offered the toolsets its agent is entitled to. If a tool below is missing from `tools/list`, the agent is not entitled to its toolset — do not retry it by name; the server refuses hidden tools.
+The server ships 162 tools grouped into **toolsets**, and a session is only offered the toolsets its agent is entitled to. If a tool below is missing from `tools/list`, the agent is not entitled to its toolset — do not retry it by name; the server refuses hidden tools.
 
 | Toolset | Offered when |
 | --- | --- |
@@ -376,6 +376,34 @@ Store a new secret or update an existing one. Each call creates a new version.
 | `metadata`         | object | no       |           | Arbitrary JSON metadata                                                                              |
 | `expires_at`       | string | no       |           | ISO 8601 expiry datetime                                                                             |
 | `max_access_count` | number | no       |           | Max reads before auto-expiry (0 = unlimited)                                                         |
+
+### request_secret
+
+Ask your human for a credential the vault does not have. They get a secure field
+in the dashboard; the value goes straight to the vault and you are told the path.
+Never ask them to paste one into the conversation — anything typed there is kept
+in the transcript, written into your memory, and re-sent to the model on every
+later turn.
+
+Returns `{ id, status, expires_at, next }`. Poll with `check_secret_request`.
+Asking again with the same `label` refreshes your open request rather than
+sending a second one; unanswered requests expire after 24 hours.
+
+| Parameter        | Type   | Required | Description                                                                 |
+| ---------------- | ------ | -------- | --------------------------------------------------------------------------- |
+| `label`          | string | yes      | What you need, named the way its owner would (`X API access token`)         |
+| `purpose`        | string | yes      | Why, for someone with no context on the task. They are handing over a secret |
+| `suggested_path` | string | no       | Vault path you suggest; they pick the vault and may change it               |
+
+### check_secret_request
+
+Has it been answered? Returns `pending`, `fulfilled`, `declined` or `expired`.
+Once fulfilled you get the vault and path — read the value with `get_secret`; you
+already have read access to that one path. You can only check your own requests.
+
+| Parameter    | Type   | Required | Description                     |
+| ------------ | ------ | -------- | ------------------------------- |
+| `request_id` | string | yes      | The id `request_secret` returned |
 
 ### delete_secret
 
