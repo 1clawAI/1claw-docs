@@ -33,9 +33,15 @@ Two separate products with different meters:
 | Product | What it does | Tier availability | Quota type |
 | ------- | ------------ | ----------------- | ---------- |
 | **Execution Intents** | HTTP/GraphQL binding calls with server-side credentials | Pro+ (Free: not included) | Hard monthly cap (403 when exceeded) |
-| **Intents API** | On-chain transaction signing (TEE-backed) | Business+ | Signatures/mo with per-signature overage |
+| **Intents API** | On-chain transaction signing (TEE-backed) | All tiers, including Free | Included signatures/mo, then per-signature overage from credits |
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
+
+**Included signatures/mo:** Free 100 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
+
+:::note
+The Intents API is **not** gated by tier. Nothing in the enforcement path checks your plan — the only switch is the per-agent `intents_api_enabled` toggle. An earlier version of this table said "Business+", which sent at least one Team customer towards a plan upgrade they did not need.
+:::
 
 **Binding types:** Pro+ — all binding types (http, graphql, postgres, mysql, redis, grpc, smtp, cloud_sdk, s3, custom). Business+ — TEE execution mode (`execution_mode: "tee"`) for HTTP/GraphQL when Shroud execution URL is configured.
 

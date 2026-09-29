@@ -665,8 +665,10 @@ For operating dozens or hundreds of agents:
 - Free: 1,000 API calls/mo, 10 wallets, 100 signatures
 - Pro ($29/mo): 20,000 API calls, 10,000 wallets, 20,000 signatures, Platform API
 - Team ($299/mo): 200,000 API calls, 250,000 wallets, 200,000 signatures, SSO, Platform API
-- Business ($999/mo): 1,000,000 API calls, wallets, and signatures, CMEK, Intents API, Shroud Enterprise, Treasury Wallets (Shamir MPC)
+- Business ($999/mo): 1,000,000 API calls, wallets, and signatures, CMEK, Shroud Enterprise, Treasury Wallets (Shamir MPC)
 - Enterprise: Custom, unlimited, KMS delegation, BAA
+
+The Intents API (on-chain signing) is available on every tier including Free — it is not gated by plan. Each tier's signature count above is the included allowance; past it, signatures are debited per signature from prepaid credits or paid with X-PAYMENT.
 
 Overage: prepaid credits or x402 on-chain micropayments on Base. x402 and credit prices are tier-based (see overage_cost_cents). Signature overage after the included monthly quota is a flat per-signature rate (not a % of tx value). 402 response (spec-compliant for x402scan): x402Version, accepts[] with maxAmountRequired (atomic), resource (full URL), payTo, asset, maxTimeoutSeconds, mimeType; unauthenticated paid routes return 402 so scanners can discover. Client pays and retries with X-PAYMENT.
 
