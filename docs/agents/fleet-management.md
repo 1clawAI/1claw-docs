@@ -48,7 +48,6 @@ for (const name of agents) {
   const { data } = await client.agents.create({
     name,
     description: `Fleet agent: ${name}`,
-    scopes: ["vaults:read"],
   });
   console.log(`${name}: ID=${data.agent.id} KEY=${data.api_key}`);
   // Store each key securely in your deployment system
@@ -59,7 +58,7 @@ for (const name of agents) {
 
 ```bash
 for name in worker-1 worker-2 worker-3; do
-  1claw agent create "$name" --scopes "vaults:read"
+  1claw agent create "$name"
 done
 ```
 

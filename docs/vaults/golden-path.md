@@ -84,7 +84,7 @@ vault_id = resp.data["id"]
 AGENT_RESP=$(curl -s -X POST https://api.1claw.co/v1/agents \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"My Bot","description":"CI agent","scopes":["vaults:read"]}')
+  -d '{"name":"My Bot","description":"CI agent"}')
 AGENT_ID=$(echo "$AGENT_RESP" | jq -r '.agent.id')
 API_KEY=$(echo "$AGENT_RESP" | jq -r '.api_key')
 # Store API_KEY securely; it is shown only once.
@@ -97,7 +97,6 @@ API_KEY=$(echo "$AGENT_RESP" | jq -r '.api_key')
 const { data } = await client.agents.create({
   name: "My Bot",
   description: "CI agent",
-  scopes: ["vaults:read"],
 });
 const agentId = data.agent.id;
 const apiKey = data.api_key; // Store securely — shown only once

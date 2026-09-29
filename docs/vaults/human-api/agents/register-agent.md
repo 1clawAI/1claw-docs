@@ -28,10 +28,25 @@ See [Agent keys](/docs/security/agent-keys) for details on key formats and how t
 | name                 | string  | ✅       | Display name for the agent                                                                                                                                                                                                                                      |
 | description          | string  | ❌       | Optional description                                                                                                                                                                                                                                            |
 | auth_method          | string  | ❌       | Default `api_key`                                                                                                                                                                                                                                               |
-| scopes               | array   | ❌       | Optional scope strings                                                                                                                                                                                                                                          |
+| vault_ids            | array   | ❌       | Vault UUIDs this agent's tokens may touch. **Omit it** and the token's vaults are derived from the agent's access policies, which is what you want. Set it and it wins: policies granted later on *other* vaults are silently ignored, and reads there fail with `Agent token is not bound to this vault`. |
+| scopes               | array   | ❌       | **Omit it** unless you mean to bypass policies. Scopes are *secret-path globs* (`billing/**`), not permission names — a value like `vaults:read` matches no path and every read fails with `Agent token scopes do not cover this secret path`. Left empty, scopes are derived from the agent's access policies. |
 | expires_at           | string  | ❌       | ISO 8601; agent token exchange fails after this                                                                                                                                                                                                                 |
 | api_key_expires_at   | string  | ❌       | ISO 8601; the agent's `ocv_` API key is rejected after this date. Use for time-limited credentials.                                                                                                                                                             |
 | intents_api_enabled | boolean | ❌       | Default `false`. When `true`, the agent **must** use the Intents API to broadcast crypto transactions and is **blocked** from reading `private_key` and `ssh_key` type secrets directly. See [Intents API](#intents-api) below. |
+
+:::caution Agent scopes are not Platform API scopes
+
+`vaults:read` and `vaults:write` are real scopes — for [Platform
+API](/docs/platform-api/overview) connections, a different namespace. An
+**agent's** `scopes` are globs matched against the secret path
+(`billing/**`, `deploy/*/token`), so a permission-shaped value there matches
+nothing and every read is refused.
+
+Leave `scopes` and `vault_ids` out. Grant the agent an access policy on the
+vault instead, and its token derives both from that policy — which is what
+the [golden path](/docs/vaults/golden-path) does.
+
+:::
 
 ## Example request
 
@@ -46,7 +61,7 @@ curl -X POST "https://api.1claw.co/v1/agents" \
     "name": "DeFi Bot",
     "description": "Automated trading agent",
     "intents_api_enabled": true,
-    "scopes": ["vaults:read"]
+    "vault_ids": ["<vault_id>"]
   }'
 ```
 
@@ -58,7 +73,7 @@ const { data } = await client.agents.create({
   name: "DeFi Bot",
   description: "Automated trading agent",
   intents_api_enabled: true,
-  scopes: ["vaults:read"],
+  vault_ids: ["<vault_id>"],
 });
 console.log(data.agent.id, data.api_key); // Store api_key securely
 ```
@@ -91,7 +106,7 @@ api_key = resp.data.get("api_key")  # shown once
         "name": "DeFi Bot",
         "description": "Automated trading agent",
         "auth_method": "api_key",
-        "scopes": ["vaults:read"],
+        "vault_ids": ["<vault_id>"],
         "is_active": true,
         "intents_api_enabled": true,
         "ssh_public_key": "m+Z6jV5W86WMTV27cpk9QGXIo+fP1OX88dHxdj6DHUI=",

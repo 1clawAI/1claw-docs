@@ -59,7 +59,7 @@ for a in agents.data["agents"]:
       "name": "CI Agent",
       "description": "GitHub Actions deploy",
       "auth_method": "api_key",
-      "scopes": ["vaults:read"],
+      "scopes": ["billing/**"],
       "is_active": true,
       "created_at": "2026-02-18T12:00:00Z",
       "expires_at": null,
