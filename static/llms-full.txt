@@ -1921,7 +1921,6 @@ for (const name of agents) {
   const { data } = await client.agents.create({
     name,
     description: `Fleet agent: ${name}`,
-    scopes: ["vaults:read"],
   });
   console.log(`${name}: ID=${data.agent.id} KEY=${data.api_key}`);
   // Store each key securely in your deployment system
@@ -1932,7 +1931,7 @@ for (const name of agents) {
 
 ```bash
 for name in worker-1 worker-2 worker-3; do
-  1claw agent create "$name" --scopes "vaults:read"
+  1claw agent create "$name"
 done
 ```
 
@@ -3747,12 +3746,20 @@ print(resp.data.get("tx_hash"))
 - **[Signing & chains](/docs/agents/intents/signing)** — multi-chain keys, non-EVM, unified sign, MCP tools, supported chains
 - **[Guardrails & security](/docs/agents/intents/guardrails)** — transaction guardrails, TEE signing, Execution Intents, best practices
 
+## Something not working?
+
+Four causes account for nearly every support thread on this API — a 403 after
+the toggle was already switched on, two EIP-712 shape mistakes, and BigInt
+from JavaScript. See **[Troubleshooting the Intents
+API](/docs/agents/intents/troubleshooting)**.
+
 ## Next steps
 
 - [Multi-chain signing keys](/docs/agents/intents/multi-chain-signing) — provision per-chain keypairs for agents
 - [Shroud TEE signing](/docs/agents/shroud/overview) — route signing through the confidential enclave
 - [Treasury](/docs/treasury/overview) — Safe multisigs and delegated agent signing
 - [Transaction guardrails](/docs/agents/intents/guardrails#transaction-guardrails) — per-agent spend caps and allowlists
+- [Troubleshooting](/docs/agents/intents/troubleshooting) — the 403 that is not a tier problem, EIP-712 shapes, BigInt
 - [Error codes](/docs/reference/error-codes) — Intents API error reference
 
 
@@ -4400,6 +4407,86 @@ See the [Admin API reference](/docs/reference/api-reference#admin) for update an
 
 ---
 
+
+
+---
+
+## Troubleshooting the Intents API
+
+---
+title: Troubleshooting the Intents API
+description: The 403 that is not a tier problem, the two EIP-712 shape mistakes, and why JSON.stringify throws on your amount. Every cause here has been hit by a real integration.
+keywords: [Intents API, 403, intents_api_enabled, EIP-712, EIP712Domain, eip712_domain_allowlist, BigInt, troubleshooting]
+sidebar_position: 6
+---
+
+# Troubleshooting the Intents API
+
+Four things account for nearly every support thread on this API. All four now
+say so in the error itself; they are collected here because the first one is
+invisible from the dashboard, and because two separate engineers reached two
+different wrong conclusions about it before asking.
+
+## "Intents API is not enabled on this token"
+
+`intents_api_enabled` is stamped into the agent's **JWT when the token is
+minted**, not read from the database per request. Switching the toggle on does
+not change a token that already exists, so an agent holding one keeps getting
+403 until it re-authenticates.
+
+**Fix:** exchange the agent's API key for a fresh token (`POST
+/v1/auth/agent-token`) and retry. Restarting a runtime does the same thing.
+
+Two things this is *not*, both of which have been guessed:
+
+- It is **not** a billing tier. The Intents API is available on every plan
+  including Free; nothing in the enforcement path reads your tier.
+- It is **not** dashboard-only. The toggle is a normal agent field and the
+  API honours it as soon as a token carries it.
+
+## "Type 'EIP712Domain' not found in types"
+
+viem and ethers build the `EIP712Domain` entry themselves and leave it out of
+`types`. This API hashes exactly what you send, so include it explicitly,
+listing only the fields your `domain` actually sets, in the same order:
+
+```json
+"EIP712Domain": [
+  { "name": "name", "type": "string" },
+  { "name": "version", "type": "string" },
+  { "name": "chainId", "type": "uint256" },
+  { "name": "verifyingContract", "type": "address" }
+]
+```
+
+## "Verifying contract ... is not in the agent's eip712_domain_allowlist"
+
+`eip712_domain_allowlist` is an array of **objects**, keyed by
+`verifying_contract`:
+
+```json
+[{ "verifying_contract": "0xabc..." }]
+```
+
+An array of bare address strings parses without complaint and then matches
+nothing, which looks identical to the contract genuinely not being allowed.
+
+## "Unknown type '...' in typed data"
+
+A type that is neither a Solidity primitive nor defined in `types`. Usually a
+struct the caller forgot to define, or a misspelled primitive (`unit256`).
+
+Signing is refused rather than encoding the field as zero bytes. Before
+September 2026 it was not: an undefined type fell through to a bytes32
+fallback, so you got a real signature over a digest viem and ethers compute
+differently, and found out only when verification failed somewhere else.
+
+## Sending integers from JavaScript
+
+`JSON.stringify` throws on `BigInt`. Send `uint256`/`int256` values as decimal
+**strings** — `"1000000"` — which this API parses exactly, at any width.
+Numbers are accepted too, but JavaScript numbers lose precision above 2^53 and
+will sign a different amount than you meant.
 
 
 ---
@@ -9752,9 +9839,15 @@ Two separate products with different meters:
 | Product | What it does | Tier availability | Quota type |
 | ------- | ------------ | ----------------- | ---------- |
 | **Execution Intents** | HTTP/GraphQL binding calls with server-side credentials | Pro+ (Free: not included) | Hard monthly cap (403 when exceeded) |
-| **Intents API** | On-chain transaction signing (TEE-backed) | Business+ | Signatures/mo with per-signature overage |
+| **Intents API** | On-chain transaction signing (TEE-backed) | All tiers, including Free | Included signatures/mo, then per-signature overage from credits |
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
+
+**Included signatures/mo:** Free 100 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
+
+:::note
+The Intents API is **not** gated by tier. Nothing in the enforcement path checks your plan — the only switch is the per-agent `intents_api_enabled` toggle. An earlier version of this table said "Business+", which sent at least one Team customer towards a plan upgrade they did not need.
+:::
 
 **Binding types:** Pro+ — all binding types (http, graphql, postgres, mysql, redis, grpc, smtp, cloud_sdk, s3, custom). Business+ — TEE execution mode (`execution_mode: "tee"`) for HTTP/GraphQL when Shroud execution URL is configured.
 
@@ -18414,7 +18507,7 @@ Or auto-configure: `1claw setup --local --client cursor`. The model gets `list_s
 
 ## Toolsets — what a session actually sees
 
-The server ships 160 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees 26 tools; an agent with intents and execution enabled sees 53. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 162 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees 28 tools; an agent with intents and execution enabled sees 55. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |
@@ -19175,7 +19268,7 @@ when {
 | Execution intents (HTTP/GraphQL/DB bindings) | — | Built-in with SSRF protection |
 | Hash-chained audit with verify API | — | `GET /v1/audit/verify` |
 | Mobile companion (approval inbox, step-up) | — | Built-in (Expo, passkey + biometric) |
-| MCP server for AI tools | — | `@1claw/mcp` with 160 tools |
+| MCP server for AI tools | — | `@1claw/mcp` with 162 tools |
 
 ### 5. API Mapping
 
@@ -35303,7 +35396,7 @@ vault_id = resp.data["id"]
 AGENT_RESP=$(curl -s -X POST https://api.1claw.co/v1/agents \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"My Bot","description":"CI agent","scopes":["vaults:read"]}')
+  -d '{"name":"My Bot","description":"CI agent"}')
 AGENT_ID=$(echo "$AGENT_RESP" | jq -r '.agent.id')
 API_KEY=$(echo "$AGENT_RESP" | jq -r '.api_key')
 # Store API_KEY securely; it is shown only once.
@@ -35316,7 +35409,6 @@ API_KEY=$(echo "$AGENT_RESP" | jq -r '.api_key')
 const { data } = await client.agents.create({
   name: "My Bot",
   description: "CI agent",
-  scopes: ["vaults:read"],
 });
 const agentId = data.agent.id;
 const apiKey = data.api_key; // Store securely — shown only once
@@ -35659,7 +35751,7 @@ for a in agents.data["agents"]:
       "name": "CI Agent",
       "description": "GitHub Actions deploy",
       "auth_method": "api_key",
-      "scopes": ["vaults:read"],
+      "scopes": ["billing/**"],
       "is_active": true,
       "created_at": "2026-02-18T12:00:00Z",
       "expires_at": null,
@@ -35704,10 +35796,25 @@ See [Agent keys](/docs/security/agent-keys) for details on key formats and how t
 | name                 | string  | ✅       | Display name for the agent                                                                                                                                                                                                                                      |
 | description          | string  | ❌       | Optional description                                                                                                                                                                                                                                            |
 | auth_method          | string  | ❌       | Default `api_key`                                                                                                                                                                                                                                               |
-| scopes               | array   | ❌       | Optional scope strings                                                                                                                                                                                                                                          |
+| vault_ids            | array   | ❌       | Vault UUIDs this agent's tokens may touch. **Omit it** and the token's vaults are derived from the agent's access policies, which is what you want. Set it and it wins: policies granted later on *other* vaults are silently ignored, and reads there fail with `Agent token is not bound to this vault`. |
+| scopes               | array   | ❌       | **Omit it** unless you mean to bypass policies. Scopes are *secret-path globs* (`billing/**`), not permission names — a value like `vaults:read` matches no path and every read fails with `Agent token scopes do not cover this secret path`. Left empty, scopes are derived from the agent's access policies. |
 | expires_at           | string  | ❌       | ISO 8601; agent token exchange fails after this                                                                                                                                                                                                                 |
 | api_key_expires_at   | string  | ❌       | ISO 8601; the agent's `ocv_` API key is rejected after this date. Use for time-limited credentials.                                                                                                                                                             |
 | intents_api_enabled | boolean | ❌       | Default `false`. When `true`, the agent **must** use the Intents API to broadcast crypto transactions and is **blocked** from reading `private_key` and `ssh_key` type secrets directly. See [Intents API](#intents-api) below. |
+
+:::caution Agent scopes are not Platform API scopes
+
+`vaults:read` and `vaults:write` are real scopes — for [Platform
+API](/docs/platform-api/overview) connections, a different namespace. An
+**agent's** `scopes` are globs matched against the secret path
+(`billing/**`, `deploy/*/token`), so a permission-shaped value there matches
+nothing and every read is refused.
+
+Leave `scopes` and `vault_ids` out. Grant the agent an access policy on the
+vault instead, and its token derives both from that policy — which is what
+the [golden path](/docs/vaults/golden-path) does.
+
+:::
 
 ## Example request
 
@@ -35722,7 +35829,7 @@ curl -X POST "https://api.1claw.co/v1/agents" \
     "name": "DeFi Bot",
     "description": "Automated trading agent",
     "intents_api_enabled": true,
-    "scopes": ["vaults:read"]
+    "vault_ids": ["<vault_id>"]
   }'
 ```
 
@@ -35734,7 +35841,7 @@ const { data } = await client.agents.create({
   name: "DeFi Bot",
   description: "Automated trading agent",
   intents_api_enabled: true,
-  scopes: ["vaults:read"],
+  vault_ids: ["<vault_id>"],
 });
 console.log(data.agent.id, data.api_key); // Store api_key securely
 ```
@@ -35767,7 +35874,7 @@ api_key = resp.data.get("api_key")  # shown once
         "name": "DeFi Bot",
         "description": "Automated trading agent",
         "auth_method": "api_key",
-        "scopes": ["vaults:read"],
+        "vault_ids": ["<vault_id>"],
         "is_active": true,
         "intents_api_enabled": true,
         "ssh_public_key": "m+Z6jV5W86WMTV27cpk9QGXIo+fP1OX88dHxdj6DHUI=",
@@ -37159,7 +37266,7 @@ Set `ONECLAW_LOCAL_ONLY=true` to start the server with only the `inspect_content
 
 ## Toolsets — what a session actually sees
 
-The server ships 160 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees 26 tools; an agent with intents and execution enabled sees 53. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
+The server ships 162 tools, but a session is only offered the **toolsets its agent is entitled to**. A vault-only agent sees 28 tools; an agent with intents and execution enabled sees 55. The MCP configuration is unchanged — the shaping comes from the agent's own flags in the dashboard.
 
 | Toolset | Offered when | What's in it |
 | --- | --- | --- |

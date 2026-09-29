@@ -747,7 +747,7 @@ Model selection: `--llm-provider` (default `openai`), `--llm-model` (default per
 <!-- AUTO-GENERATED-DOC-INDEX:START -->
 ## Documentation index
 
-Complete index of 186 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
+Complete index of 187 doc pages on docs.1claw.co. Full content: https://docs.1claw.co/llms-full.txt
 
 ### Introduction (1)
 
@@ -881,7 +881,7 @@ Complete index of 186 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Wallet Access Policies](https://docs.1claw.co/docs/treasury/wallet-access-policies)
 - [@1claw/wallet-react](https://docs.1claw.co/docs/treasury/wallet-react)
 
-### Other (81)
+### Other (82)
 
 - [Audit log (agents)](https://docs.1claw.co/docs/agents/api/audit-log)
 - [Agent authentication](https://docs.1claw.co/docs/agents/api/authentication)
@@ -904,6 +904,7 @@ Complete index of 186 doc pages on docs.1claw.co. Full content: https://docs.1cl
 - [Multi-Chain Signing](https://docs.1claw.co/docs/agents/intents/multi-chain-signing)
 - [Intents API](https://docs.1claw.co/docs/agents/intents/overview)
 - [Intents API — Signing](https://docs.1claw.co/docs/agents/intents/signing)
+- [Troubleshooting the Intents API](https://docs.1claw.co/docs/agents/intents/troubleshooting)
 - [Agent Memory](https://docs.1claw.co/docs/agents/memory)
 - [OIDC federation — use 1claw as an IdP for Anthropic WIF](https://docs.1claw.co/docs/agents/oidc-federation)
 - [Agents overview](https://docs.1claw.co/docs/agents/overview)

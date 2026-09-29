@@ -174,6 +174,7 @@ const sidebars: SidebarsConfig = {
                         "agents/intents/signing",
                         "agents/intents/guardrails",
                         "agents/intents/multi-chain-signing",
+                        "agents/intents/troubleshooting",
                         "agents/intents/crypto-proxy-legacy",
                     ],
                 },

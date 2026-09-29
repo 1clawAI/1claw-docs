@@ -562,10 +562,18 @@ print(resp.data.get("tx_hash"))
 - **[Signing & chains](/docs/agents/intents/signing)** — multi-chain keys, non-EVM, unified sign, MCP tools, supported chains
 - **[Guardrails & security](/docs/agents/intents/guardrails)** — transaction guardrails, TEE signing, Execution Intents, best practices
 
+## Something not working?
+
+Four causes account for nearly every support thread on this API — a 403 after
+the toggle was already switched on, two EIP-712 shape mistakes, and BigInt
+from JavaScript. See **[Troubleshooting the Intents
+API](/docs/agents/intents/troubleshooting)**.
+
 ## Next steps
 
 - [Multi-chain signing keys](/docs/agents/intents/multi-chain-signing) — provision per-chain keypairs for agents
 - [Shroud TEE signing](/docs/agents/shroud/overview) — route signing through the confidential enclave
 - [Treasury](/docs/treasury/overview) — Safe multisigs and delegated agent signing
 - [Transaction guardrails](/docs/agents/intents/guardrails#transaction-guardrails) — per-agent spend caps and allowlists
+- [Troubleshooting](/docs/agents/intents/troubleshooting) — the 403 that is not a tier problem, EIP-712 shapes, BigInt
 - [Error codes](/docs/reference/error-codes) — Intents API error reference
