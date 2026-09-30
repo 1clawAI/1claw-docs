@@ -44,9 +44,36 @@ That division is the whole design:
 
 Pay is off until a human turns it on, and an agent cannot turn it on for itself.
 
+Because turning it on widens what the agent may spend, it needs a **step-up
+re-authentication token** in `X-Auth-Confirm`. Get one first — the purpose
+string matters, and this endpoint accepts exactly one:
+
 ```bash
+# 1. Re-authenticate. The purpose must be security.agent_pay_guardrails.widen
+curl -X POST https://api.1claw.co/v1/auth/reauth/complete \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "purpose": "security.agent_pay_guardrails.widen",
+    "method": "totp",
+    "password": "123456"
+  }'
+# -> { "reauth_token": "rat_...", "expires_in": 300 }   single use
+```
+
+:::note
+For `method: "totp"` the six-digit code goes in the **`password`** field —
+the field is reused across factors. For `method: "passkey"`, call
+`POST /v1/auth/reauth/begin` first to get the challenge, then send the
+assertion to `/complete`. `password` re-auth is refused here whenever TOTP or
+a passkey is enrolled; see below.
+:::
+
+```bash
+# 2. Turn it on, passing that token
 curl -X PATCH https://api.1claw.co/v1/agents/$AGENT_ID/pay/settings \
   -H "Authorization: Bearer $USER_TOKEN" \
+  -H "X-Auth-Confirm: $RAT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "pay_enabled": true,
@@ -54,6 +81,44 @@ curl -X PATCH https://api.1claw.co/v1/agents/$AGENT_ID/pay/settings \
     "pay_daily_limit_usd": "10.00"
   }'
 ```
+
+Worth knowing:
+
+- **The token is single use**, and expires in five minutes. A second PATCH
+  needs a second `rat_`.
+- **A passkey or authenticator app is required, not your password.** This is
+  a `StrongFactor` step-up: once you have TOTP or a passkey enrolled, a
+  password in `X-Auth-Confirm` is refused by design. With neither enrolled,
+  a password is accepted.
+- **Only widening needs it.** Lowering a cap, or turning pay off, goes
+  through without a step-up — you can always make an agent less powerful.
+- There is no dashboard UI for pay settings yet; the API is the only route.
+
+### Step-up purposes
+
+The purpose is per action, and a token minted for one is rejected by the
+others — that rejection is what "Re-authentication token is not valid for
+this action" means. The ones you are likely to need:
+
+| Action | Purpose |
+| --- | --- |
+| Widen an agent's pay guardrails | `security.agent_pay_guardrails.widen` |
+| Edit agent guardrails | `security.guardrail.edit` |
+| Unlock an agent environment | `security.agent_environment.unlock` |
+| Change control-plane consensus | `security.control_plane_consensus.change` |
+| Register / delete a passkey | `security.passkey.register` · `security.passkey.delete` |
+| Disable 2FA / passkey MFA | `security.mfa.disable` · `security.mfa_passkey.disable` |
+| Disable vault passkey unlock | `security.vault_passkey.disable` |
+| Weaken DPoP binding | `security.dpop.weaken` |
+| Unfreeze an org | `security.org.unfreeze` |
+| Delete or export an account | `account.delete` · `account.export` |
+| Change account email | `account.email.change` |
+| Transfer a platform app | `platform.app.transfer` |
+| Create a browser credential / pair a device | `browser.credential.create` · `browser.device.pair` |
+| Disconnect a social login | `social.disconnect` |
+
+`general` is the default when you omit `purpose`, and it satisfies none of
+the above — every endpoint here asks for its own.
 
 The agent also needs an Ethereum signing key funded with USDC on Base:
 
