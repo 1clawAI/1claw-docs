@@ -16,6 +16,32 @@ This guide walks through the minimum path from zero to a working embedded wallet
 - Dashboard access at [1claw.co/platform](https://1claw.co/platform)
 :::
 
+
+## Register your origin first
+
+The API answers cross-origin browser calls only from origins you have
+registered against your platform app. Embedded wallets run on your domain,
+so until you do this every call from the browser is blocked by CORS — the
+preflight returns 200 with no `access-control-allow-origin` and the request
+never leaves.
+
+```bash
+curl -X PATCH https://api.1claw.co/v1/platform/apps/$APP_ID \
+  -H "Authorization: Bearer $PLATFORM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"allowed_origins": ["https://app.yourdomain.com", "http://localhost:3000"]}'
+```
+
+- Each entry is `scheme://host[:port]` with no path. `https` is required
+  except on `localhost` / `127.0.0.1`.
+- A change takes effect within about a minute, not instantly — the
+  allowlist is cached in each API process.
+- Up to 20 per app; a wildcard is refused.
+
+Your platform key can set this on its own app, so it does not need a human
+in the loop.
+
+
 ## Step 1: Create a platform app
 
 Register your app from the dashboard (**Platform → New app**) or via API with your human JWT (`1ck_...` or session token):
