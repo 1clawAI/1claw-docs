@@ -1254,7 +1254,7 @@ function App() {
       theme="dark"
       chains={["ethereum", "solana"]}
       socialProviders={["google", "discord"]}
-      features={["send", "swap", "receive", "buy"]}
+      features={{ send: true, swap: true, receive: true, buy: true }}
     />
   );
 }

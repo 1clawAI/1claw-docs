@@ -77,7 +77,7 @@ curl -X POST "https://api.1claw.co/v1/fiat/offramp/initiate" \
 Enable the **Buy** feature — no extra partner config in your frontend:
 
 ```tsx
-<OneclawEmbeddedWallet features={["send", "receive", "buy"]} />
+<OneclawEmbeddedWallet features={{ send: true, receive: true, buy: true }} />
 ```
 
 Programmatic:

@@ -81,9 +81,8 @@ Configure a tight allowlist, attempt send to a non-listed address, confirm **403
 <OneclawWalletProvider apiKey={process.env.NEXT_PUBLIC_PLT_KEY!} baseUrl="https://api.1claw.co">
   <OneclawEmbeddedWallet
     chains={["ethereum"]}
-    features={["send", "receive"]}
-    socialProviders={["email"]}
-  />
+    features={{ send: true, receive: true }}
+      />
 </OneclawWalletProvider>
 ```
 

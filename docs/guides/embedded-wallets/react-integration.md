@@ -42,8 +42,8 @@ export default function WalletPage() {
     >
       <OneclawEmbeddedWallet
         chains={["ethereum", "base", "solana"]}
-        features={["send", "swap", "receive", "buy"]}
-        socialProviders={["email", "google", "apple", "discord"]}
+        features={{ send: true, swap: true, receive: true, buy: true }}
+        socialProviders={["google", "apple", "discord"]}
         theme="system"
         onLogin={(user) => console.log("Logged in", user.user_id)}
         onError={(err) => console.error(err)}
@@ -68,7 +68,7 @@ export default function WalletPage() {
 | Prop | Default | Description |
 | ---- | ------- | ----------- |
 | `features` | `["send","swap","receive","buy"]` | Visible views |
-| `socialProviders` | `["email"]` | `"email"`, `"google"`, `"apple"`, `"discord"` |
+| `socialProviders` | `["google", "apple", "discord"]` | `"google"`, `"apple"`, `"discord"`. Email OTP is always available and is **not** a member of this union — listing `"email"` is a type error. |
 | `chains` | `["ethereum"]` | Chains to auto-provision on first login |
 | `theme` | `"system"` | `"light"`, `"dark"`, `"system"`, or CSS custom properties object |
 | `onLinkRequired` | Auto-redirect | Custom handler when existing 1Claw user must link orgs (409) |
@@ -89,7 +89,7 @@ Compact balance + quick actions UI. Accepts the same props as `OneclawEmbeddedWa
 | `buy` | Fiat on-ramp partner widgets |
 
 ```tsx
-<OneclawEmbeddedWallet features={["send", "receive"]} />
+<OneclawEmbeddedWallet features={{ send: true, receive: true }} />
 ```
 
 Omit `swap` and `buy` for send-only apps.
@@ -102,16 +102,19 @@ Built-in modes:
 <OneclawEmbeddedWallet theme="dark" />
 ```
 
-Custom CSS properties (v0.5.0+):
+Or a `ThemeConfig` object for brand colour, radius, font and raw CSS variables. Note the prefix is `--ocw-`, and raw variables go inside `cssVars`:
 
 ```tsx
 <OneclawEmbeddedWallet
   theme={{
-    "--wallet-bg": "#0f0f12",
-    "--wallet-text": "#fafafa",
-    "--wallet-primary": "#6366f1",
-    "--wallet-border-radius": "12px",
-    "--wallet-font-family": "'Inter', sans-serif",
+    mode: "dark",
+    brandColor: "#6366f1",
+    borderRadius: "12px",
+    fontFamily: "'Inter', sans-serif",
+    cssVars: {
+      "--ocw-bg": "#0f0f12",
+      "--ocw-text": "#fafafa",
+    },
   }}
 />
 ```
@@ -153,6 +156,57 @@ function CustomWallet() {
 ```
 
 Must render inside `OneclawWalletProvider`.
+
+### Who is signed in
+
+`currentUser` is populated on login and rehydrated from the server when the
+provider mounts, so it survives a reload and a change of page. You do not
+need to cache the `onLogin` payload yourself.
+
+```tsx
+const { currentUser, getCurrentUser } = useOneclawWallet();
+
+// currentUser: { userId, email, walletAddress?, isNewUser, isPasswordless } | null
+if (!currentUser) return <SignIn />;
+return <p>Signed in as {currentUser.email}</p>;
+```
+
+`getCurrentUser()` re-asks the server and returns `null` once the session is
+no longer valid — useful before a sensitive action, where a cached copy
+would happily report someone who has since been signed out.
+
+### Showing spend limits before a send
+
+```tsx
+const { getEffectiveSpendPolicy } = useOneclawWallet();
+const policy = await getEffectiveSpendPolicy();
+// { max_value_per_tx_eth?, daily_limit_eth?, allowed_chains?, source, ... }
+```
+
+This is the same data as `client.treasuryWallets.getEffectiveSpendPolicy()`
+in `@1claw/sdk`; it is on the hook too, because the widget flow does not
+otherwise hold a raw SDK client.
+
+### Calling a contract
+
+`send` takes an optional `data` field — hex calldata, sent as the
+transaction's input. That covers arbitrary contract calls without needing a
+Safe:
+
+```tsx
+await send({
+  chain: "ethereum",
+  to: "0xContractAddress",
+  valueWei: "0",
+  data: "0xa9059cbb...", // e.g. an ERC-20 transfer, ABI-encoded by you
+});
+```
+
+Encode the calldata yourself (viem's `encodeFunctionData`, ethers'
+`Interface`). The same guardrails apply as to a plain send: recipient
+allowlists, per-transaction and daily caps, and sanctions screening, which
+decodes ERC-20 transfer recipients out of `data` rather than only reading
+`to`.
 
 ## Sign in with 1Claw button
 

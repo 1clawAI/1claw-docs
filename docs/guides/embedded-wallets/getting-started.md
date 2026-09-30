@@ -157,8 +157,8 @@ import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-reac
 <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
   <OneclawEmbeddedWallet
     chains={["ethereum", "base", "solana"]}
-    socialProviders={["email", "google", "apple"]}
-    features={["send", "swap", "receive", "buy"]}
+    socialProviders={["google", "apple"]}
+    features={{ send: true, swap: true, receive: true, buy: true }}
   />
 </OneclawWalletProvider>
 ```

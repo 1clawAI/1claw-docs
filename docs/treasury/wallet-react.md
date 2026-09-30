@@ -35,8 +35,8 @@ function App() {
   return (
     <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
       <OneclawEmbeddedWallet
-        features={["send", "swap", "receive", "buy"]}
-        socialProviders={["google", "apple", "email"]}
+        features={{ send: true, swap: true, receive: true, buy: true }}
+        socialProviders={["google", "apple"]}
         chains={["ethereum", "base", "solana"]}
       />
     </OneclawWalletProvider>
@@ -67,7 +67,7 @@ Full wallet UI with login, dashboard, and transaction views.
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `features` | `string[]` | `["send", "swap", "receive", "buy"]` | Which views to show |
-| `socialProviders` | `string[]` | `["email"]` | Login methods: `"email"`, `"google"`, `"apple"`, `"discord"` |
+| `socialProviders` | `("google" \| "apple" \| "discord")[]` | `["google", "apple", "discord"]` | Social logins to offer. Email OTP is always available and is **not** a member of this union. |
 | `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
 | `theme` | `"light" \| "dark" \| "system" \| object` | `"system"` | Color scheme, or a CSS custom properties object for full theming (see [CSS theming](#css-theming)) |
 | `onLinkRequired` | `(url, slug) => void` | Auto-redirect | Custom handler for cross-org users (v0.4.1+) |
@@ -260,7 +260,7 @@ The user pays no gas; the paymaster covers it.
 The `"buy"` feature integrates partner widgets (Coinbase Onramp, MoonPay) so users can purchase crypto directly into their wallet:
 
 ```tsx
-<OneclawEmbeddedWallet features={["send", "receive", "buy"]} />
+<OneclawEmbeddedWallet features={{ send: true, receive: true, buy: true }} />
 ```
 
 No additional configuration needed — the widget handles widget URLs and callbacks.
@@ -316,21 +316,27 @@ See the [sign-in-with-1claw example](https://github.com/1clawAI/1claw/tree/main/
 
 ## CSS Theming
 
-As of v0.5.0, the `theme` prop accepts a full CSS custom properties object for fine-grained control over widget appearance:
+The `theme` prop accepts either the string union or a `ThemeConfig` object.
+Raw CSS variables go inside `cssVars`, and the prefix is `--ocw-`:
 
 ```tsx
 <OneclawEmbeddedWallet
   theme={{
-    "--wallet-bg": "#1a1a2e",
-    "--wallet-text": "#eaeaea",
-    "--wallet-primary": "#e94560",
-    "--wallet-border-radius": "12px",
-    "--wallet-font-family": "'Inter', sans-serif",
+    mode: "dark",
+    brandColor: "#e94560",
+    borderRadius: "12px",
+    fontFamily: "'Inter', sans-serif",
+    cssVars: {
+      "--ocw-bg": "#1a1a2e",
+      "--ocw-text": "#eaeaea",
+    },
   }}
 />
 ```
 
-String values (`"light"`, `"dark"`, `"system"`) still work as before. When an object is passed, the custom properties are applied to the widget root element, overriding the built-in theme.
+String values `"light"`, `"dark"` and `"auto"` still work. (`"system"` is not
+a member of the union — use `"auto"`.) When an object is passed, its values
+are applied to the widget root element, overriding the built-in theme.
 
 ---
 

@@ -64,8 +64,8 @@ function App() {
     <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
       <OneclawEmbeddedWallet
         chains={["ethereum", "base"]}
-        features={["send", "swap", "receive", "buy"]}
-        socialProviders={["google", "apple", "email"]}
+        features={{ send: true, swap: true, receive: true, buy: true }}
+        socialProviders={["google", "apple"]}
       />
     </OneclawWalletProvider>
   );
