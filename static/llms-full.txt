@@ -28572,6 +28572,56 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **EIP-2718 (typed transactions)** — The Ethereum envelope standard that defines transaction types: legacy (type 0), EIP-2930 access list (type 1), EIP-1559 (type 2), EIP-4844 blob (type 3), and EIP-7702 (type 4). All types are supported by the unified sign endpoint. See [Intents API — Transaction types](/docs/agents/intents/signing#tx-types).
 
+## Agents at scale
+
+**Sub-agent (child agent)** — An agent created by another agent rather than by a human. It inherits a subset of its parent's access and counts against the same limits, so a parent can fan work out without a human registering each worker.
+
+**Delegation** — An authorization for one agent to assign work to another. An agent **cannot** delegate on its own: a human has to create the delegation record first, which is what keeps inter-agent coordination under human control. Delegations carry tool restrictions, rate limits and a depth limit. See [Agent-to-agent delegation](/docs/agents/delegation).
+
+**Fleet** — A group of agents that all came from one **platform template**. The template stays the description of record: patch it and the change rolls out to the fleet, and an agent that has drifted from it is reported rather than silently overwritten. See [Fleet management](/docs/platform-api/fleets).
+
+**Runtime** — A managed container that runs your agent's code, with logs, a chat panel and a shell, and no Kubernetes or Compose of your own. A running runtime does not pick up a new image or new credentials until it is recreated. See [Cloud Runtimes](/docs/runtimes/overview).
+
+**Automation** — A workflow that runs on a schedule, on a webhook, or when a vault or agent lifecycle event fires, without you writing orchestration code. See [Automations](/docs/automations/overview).
+
+**Channel** — A connection between an agent and an external messaging platform, so the agent can receive and answer messages. Replies are routed through Shroud. See [Messaging channels](/docs/agents/channels).
+
+**Execution intent (binding)** — A named, pre-approved way for an agent to call something outside 1Claw — an HTTP API, a database, an S3 bucket, SMTP. The credential lives in a vault and is resolved at execution time, and the binding's allowed hosts and paths are what stop that credential being pointed somewhere else. The host list matches the exact host, so a subdomain is not covered unless you list it.
+
+## Approvals and authentication
+
+**Consensus** — An M-of-N approval requirement on a privileged control-plane action, such as changing an agent or exporting a signing key. The request is held until enough distinct approvers have signed off, and a policy can demand specific roles, per-role minimums, or a particular credential type from each approver.
+
+**Step-up authentication** — Re-proving who you are for one sensitive action, even though you are already signed in. The API answers such a request with a challenge, and the client retries it with an `X-Auth-Confirm` header carrying fresh proof — usually a passkey assertion.
+
+**Passkey** — A WebAuthn credential held by your device or authenticator, used for sign-in, for step-up authentication, and (on authenticators supporting the PRF extension) for holding your share of a wallet key. A passkey is bound to the domain it was created on, so one registered on a 1Claw `.xyz` domain cannot answer a challenge on the `.co` domain, and vice versa.
+
+## Wallets and signing
+
+**Treasury wallet** — One of your **own organization's** HSM-backed wallets. Distinct from an embedded wallet, which you provision for the people who use your product. See [Treasury](/docs/treasury/policy-language).
+
+**Embedded wallet** — A wallet your product provisions for one of its end users, created on email or social login so that user never handles a key. Belongs to them, lives under your platform app.
+
+**Platform app** — The object that makes you a platform rather than a tenant: it holds the `plt_` API key your product authenticates with, and the template that bootstraps a vault, agent and wallet for each of your users.
+
+**Spend policy** — The limits attached to a wallet: maximum value per transaction, spend per day, which chains and tokens are allowed, and which destination addresses. For a token transfer the destination is judged on the decoded recipient, not the token contract.
+
+**Safe** — A smart-contract account (Safe, formerly Gnosis Safe) rather than a plain keypair, so the rules about who may spend live on-chain. 1Claw can provision Safes whose signer is a passkey on EVM chains.
+
+**Shamir secret sharing** — Splitting a key into N shares such that any M of them reconstruct it and fewer reveal nothing. Used for key custody across multiple HSM providers, so no single provider holds a usable key.
+
+**FROST** — A threshold signature scheme in which several parties each hold a share and produce one ordinary signature together, without ever assembling the private key. Used for Ed25519 chains such as Solana.
+
+## Shroud and the enclave
+
+**Shroud** — 1Claw's LLM proxy. Your agent sends requests to Shroud instead of straight to the provider; Shroud authenticates the agent, resolves the provider key from the vault, redacts secrets, runs threat detection, and only then forwards upstream. It also signs transactions inside the enclave. See [Shroud](/docs/agents/shroud/overview).
+
+**TEE (Trusted Execution Environment)** — Hardware-isolated compute whose memory the host cannot read, so a secret decrypted inside it is not visible to the machine running it. Shroud's signing and inspection run in one.
+
+**Attestation** — Cryptographic evidence of what a TEE is actually running, so a client can refuse to send secrets to an enclave that is not the expected build.
+
+**Risk engine** — The scoring applied to a request before it is allowed: how unusual it looks, what it is trying to do, and what the caller has done recently. A policy can require that a request's risk verdict be no worse than a given level.
+
 
 ---
 
