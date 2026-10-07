@@ -43,7 +43,8 @@ Per-agent fields (human-set in the dashboard or API):
 |-------|-------------|
 | `cards_enabled` | Master toggle for card ordering (Pro+ tier) |
 | `card_max_order_usd` | Max USD per order |
-| `card_daily_limit_usd` | Rolling 24h spend cap (atomic) |
+| `card_daily_limit_usd` | Rolling 24h spend cap (atomic). Bounds **card orders only**. |
+| `usdc_daily_limit_usd` | Daily cap across **all** x402 stablecoin spend — card orders *and* `POST /v1/pay`. Calendar day UTC. Applied in addition to `card_daily_limit_usd`. See [which limit bounds what](/docs/agents/intents/guardrails#spend-limit-scope). |
 | `card_payto_allowlist` | Allowed x402 `payTo` addresses (empty = server default Laso recipients) |
 | `card_reveal_enabled` | Whether agents may reveal (subject to per-card policy) |
 | `card_require_approval` | Human approval before payment (default **true**) |

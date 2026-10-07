@@ -10,6 +10,58 @@ import TabItem from '@theme/TabItem';
 
 Part of the [Intents API](/docs/agents/intents/overview) guide.
 
+## Which limit bounds what {#spend-limit-scope}
+
+An agent has four daily spend caps and they bound **different operations**. They
+do not substitute for one another — this is the thing most often assumed wrongly,
+and assuming it wrongly means believing spending is capped when it is not.
+
+| Cap | Bounds | Does **not** bound |
+| --- | ------ | ------------------ |
+| `tx_max_value_usd`, `tx_daily_limit_usd` | Signing and submitting transactions from the agent's keys | x402 payments, card orders |
+| `pay_max_usd`, `pay_daily_limit_usd` | Paying an x402 challenge via `POST /v1/pay` | Card orders, transactions |
+| `card_max_order_usd`, `card_daily_limit_usd` | [Card orders](/docs/cards/overview) (x402 to the card issuer) | `POST /v1/pay`, transactions |
+| **`usdc_daily_limit_usd`** | **All x402 stablecoin spend — payments *and* card orders** | Transactions |
+
+Setting a transaction guardrail does **not** limit what an agent spends ordering
+a card: those are different handlers and the card path does not consult the
+transaction guardrails at all.
+
+### `usdc_daily_limit_usd`
+
+The one cap that spans routes. Without it, "limit this agent to $50 a day" is not
+expressible — cap each route at $50 and the agent can still spend $150.
+
+- **USD**, because both routes record USD. The payments are USDC at 1:1, so the
+  USD figure is the USDC figure.
+- **Calendar day, UTC.** Resets at 00:00 UTC. (`card_daily_limit_usd` is a
+  rolling 24 hours instead — a pre-existing difference, left alone rather than
+  silently redefining an existing limit.)
+- **Added to, never instead of** the per-route caps. Both are checked; whichever
+  is tighter binds.
+- **`null` clears it**, as with the other limits.
+- Enforced on every route that spends, including an approved card order at the
+  moment it executes — approval is permission to buy, not an exemption from the
+  budget.
+
+```bash
+curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"usdc_daily_limit_usd": "50"}'
+```
+
+Over the cap, the refusal names it and says when the budget returns:
+
+```
+403  Card order would exceed the agent's daily USDC limit
+     (45.00 + 8.93 > 50 today, across x402 payments and card orders; resets 00:00 UTC)
+```
+
+Dashboard: the agent's **Signing** tab shows all four caps and what each bounds;
+**Settings → Spend controls** lists every agent that can move money, uncapped
+ones first.
+
 ## Transaction guardrails
 
 Per-agent controls can be set when registering or updating an agent to limit what transactions the proxy will sign:

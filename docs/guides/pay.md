@@ -178,6 +178,11 @@ curl -X DELETE https://api.1claw.co/v1/pay-grants/$GRANT_ID \
 
 ## Limits are charged at signing
 
+`pay_daily_limit_usd` bounds **this endpoint only**. To cap what an agent spends
+across x402 payments *and* card orders together, set `usdc_daily_limit_usd` —
+see [which limit bounds what](/docs/agents/intents/guardrails#spend-limit-scope).
+Both are checked; whichever is tighter binds.
+
 A payment counts against `pay_daily_limit_usd` the moment it is **signed**, not
 when it settles. A signature that was produced and then lost still consumed
 authority — the paywall may yet present it.
