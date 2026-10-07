@@ -16,12 +16,16 @@ An agent has four daily spend caps and they bound **different operations**. They
 do not substitute for one another — this is the thing most often assumed wrongly,
 and assuming it wrongly means believing spending is capped when it is not.
 
-| Cap | Bounds | Does **not** bound |
-| --- | ------ | ------------------ |
-| `tx_max_value_usd`, `tx_daily_limit_usd` | Signing and submitting transactions from the agent's keys | x402 payments, card orders |
-| `pay_max_usd`, `pay_daily_limit_usd` | Paying an x402 challenge via `POST /v1/pay` | Card orders, transactions |
-| `card_max_order_usd`, `card_daily_limit_usd` | [Card orders](/docs/cards/overview) (x402 to the card issuer) | `POST /v1/pay`, transactions |
-| **`usdc_daily_limit_usd`** | **All x402 stablecoin spend — payments *and* card orders** | Transactions |
+| Cap | Bounds | Does **not** bound | Daily window |
+| --- | ------ | ------------------ | ------------ |
+| `tx_max_value_usd`, `tx_daily_limit_usd` | Signing and submitting transactions from the agent's keys | x402 payments, card orders | Calendar day |
+| `pay_max_usd`, `pay_daily_limit_usd` | Paying an x402 challenge via `POST /v1/pay` | Card orders, transactions | Calendar day, UTC |
+| `card_max_order_usd`, `card_daily_limit_usd` | [Card orders](/docs/cards/overview) (x402 to the card issuer) | `POST /v1/pay`, transactions | Rolling 24h |
+| **`usdc_daily_limit_usd`** | **All x402 stablecoin spend — payments *and* card orders** | Transactions | Calendar day, UTC |
+
+Three of the four reset at midnight; the card cap alone decays over a rolling 24
+hours. That difference is historical, and `usdc_daily_limit_usd` was given the
+predictable window rather than inheriting it.
 
 Setting a transaction guardrail does **not** limit what an agent spends ordering
 a card: those are different handlers and the card path does not consult the
@@ -71,7 +75,7 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | `tx_allowed_chains` | `string[]` | Restrict to specific chain names (e.g. `["ethereum", "base"]`). Empty = all chains allowed. |
 | `tx_to_allowlist` | `string[]` | Restrict recipient addresses. Empty = any address allowed. |
 | `tx_max_value` | `string` | Maximum value per transaction in **native major units** for the chain family (e.g. `"0.01"` = 0.01 BTC on Bitcoin, 0.5 ETH on EVM, 2 SOL on Solana). Null = no per-tx limit. |
-| `tx_daily_limit` | `string` | Rolling 24-hour spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
+| `tx_daily_limit` | `string` | Daily spend cap in native major units, enforced **per chain family** (Bitcoin spend does not count against EVM limit). A **calendar day**, not a rolling 24-hour window — the counter resets at midnight, it does not decay. Null = no daily limit. See [Per-chain spend tracking](#per-chain-spend). |
 | `tx_max_value_eth` | `string` | **Deprecated.** Alias for `tx_max_value` (same unit semantics). |
 | `tx_daily_limit_eth` | `string` | **Deprecated.** Alias for `tx_daily_limit`. |
 | `tx_token_allowlist` | `string[]` | Restrict token contracts/mints the agent can interact with (e.g. `["0xA0b8..."]`). Empty = all tokens. |

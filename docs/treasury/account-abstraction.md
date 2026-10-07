@@ -264,7 +264,7 @@ const hash = await smartAccountClient.sendTransaction({
 
 - `tx_to_allowlist` restricts which contracts the smart account can call
 - `tx_max_value_eth` limits per-transaction value
-- `tx_daily_limit_eth` caps rolling 24-hour spend
+- `tx_daily_limit_eth` caps spend per calendar day (it resets at midnight; it is not a rolling window)
 - `tx_allowed_chains` restricts which chains the smart account operates on
 
 These are enforced server-side in the Intents API. The AA SDK never sees a signature if the guardrails reject the request.
