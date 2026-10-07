@@ -28,7 +28,7 @@ Per-treasury: signers, threshold, access requests, proposals tab, danger zone (d
 
 **Cards** (`/cards`) lists masked card refs (last4, status, balance). **Reveal** requires password re-auth and shows a post-reveal disclaimer.
 
-Agent card ordering guardrails are configured on the agent **Signing** tab.
+Agent card ordering guardrails are configured on the agent **Wallets** tab.
 
 ## Embedded wallets (platform)
 

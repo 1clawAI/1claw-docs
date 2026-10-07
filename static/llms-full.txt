@@ -2304,7 +2304,7 @@ Over the cap, the refusal names it and says when the budget returns:
      (45.00 + 8.93 > 50 today, across x402 payments and card orders; resets 00:00 UTC)
 ```
 
-Dashboard: the agent's **Signing** tab shows all four caps and what each bounds;
+Dashboard: the agent's **Wallets** tab shows all four caps and what each bounds;
 **Settings → Spend controls** lists every agent that can move money, uncapped
 ones first.
 
@@ -9514,7 +9514,7 @@ Per-treasury: signers, threshold, access requests, proposals tab, danger zone (d
 
 **Cards** (`/cards`) lists masked card refs (last4, status, balance). **Reveal** requires password re-auth and shows a post-reveal disclaimer.
 
-Agent card ordering guardrails are configured on the agent **Signing** tab.
+Agent card ordering guardrails are configured on the agent **Wallets** tab.
 
 ## Embedded wallets (platform)
 

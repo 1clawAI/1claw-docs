@@ -62,7 +62,7 @@ Over the cap, the refusal names it and says when the budget returns:
      (45.00 + 8.93 > 50 today, across x402 payments and card orders; resets 00:00 UTC)
 ```
 
-Dashboard: the agent's **Signing** tab shows all four caps and what each bounds;
+Dashboard: the agent's **Wallets** tab shows all four caps and what each bounds;
 **Settings → Spend controls** lists every agent that can move money, uncapped
 ones first.
 
