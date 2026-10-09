@@ -21258,6 +21258,41 @@ The template spec supports:
 | `agents[].provision_eoa` | Set `true` to generate a standalone EOA for client-side smart account deployment |
 | `policies[]` | Access policies linking vaults, agents, and paths |
 
+Per-agent capability flags that a template can set:
+
+| Field | Description |
+|-------|-------------|
+| `intents_api_enabled` / `intents` | Intents API. Accepts `true`, `"true"`, or `{ "enabled": true }` |
+| `execution_intents_enabled` / `execution` | Execution Intents |
+| `shroud_enabled`, `shroud_config` | Shroud LLM proxy |
+| `memory_enabled` / `memory` | Agent memory |
+| `raw_signing_enabled` | Raw/blind digest signing (`sign_digest`, `eip712_digest`) |
+| `message_signing_enabled` | `personal_sign` message signing |
+| `environment`, `environment_locked` | Environment pinning |
+| `default_llm_model`, `system_prompt` | LLM defaults |
+
+### What a template cannot set
+
+Spend caps, signing policies and the other guardrails (`tx_max_value`,
+`tx_daily_limit`, `raw_signing_policy`, `pay_*`, `card_*`, `usdc_daily_limit_usd`,
+`delegation_enabled`, …) **cannot** be set from a template spec. Including one
+returns `400` naming the field.
+
+That refusal is deliberate. A template spec is stored as-is, so a guardrail it
+named used to be accepted and then silently absent on the provisioned agent —
+handing back an agent with *no* cap to a caller who believed it was capped.
+Failing loudly at template-write time is the safe direction.
+
+Set them per agent after bootstrap, using the `agent_ids` in the bootstrap
+summary:
+
+```ts
+await platform.agents.update(bootstrap.data.summary.agent_ids[0], {
+  tx_max_value: "0.1",
+  raw_signing_policy: "approve",
+});
+```
+
 ## Step 3: Provision users
 
 When a user signs up for your product:
