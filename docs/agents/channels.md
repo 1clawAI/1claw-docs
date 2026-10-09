@@ -41,7 +41,7 @@ When `auto_respond_enabled` is `true` (default), inbound messages are automatica
 
 ### Sender allowlist
 
-Restrict which sender IDs can trigger auto-respond:
+Restrict who can message the agent at all:
 
 ```json
 {
@@ -50,7 +50,73 @@ Restrict which sender IDs can trigger auto-respond:
 }
 ```
 
-When `sender_allowlist` is empty (default), all senders can trigger auto-respond.
+When `sender_allowlist` is empty (the default), anyone who finds the bot gets a
+reply. **As soon as it has one entry, every other sender stops getting replies** —
+it is a restriction, not an addition. Senders on the list may also run admin
+slash commands.
+
+Send `[]` to clear it; omitting the field leaves it unchanged.
+
+## Admin slash commands
+
+`/model`, `/personality`, `/stop`, `/compress` and the other state-changing
+commands are refused unless the sender is authorized. Two things authorize them,
+and they are not the same:
+
+| Field | Who may run admin commands | Who may message the agent |
+|-------|---------------------------|---------------------------|
+| `owner_sender_id` | just that sender | unchanged — anyone |
+| `sender_allowlist` (non-empty) | anyone on the list | **only** people on the list |
+
+So `owner_sender_id` is the narrow one: it grants admin without closing the
+channel to everyone else. Use the allowlist when you actually want a private
+bot.
+
+### The first person to message a new channel becomes its admin
+
+On a channel with no allowlist, no `owner_sender_id`, and **no prior inbound
+message**, the first sender is recorded as the admin automatically. For a
+private bot whose operator messages it to check it works, that is the right
+person and no configuration is needed.
+
+The trade-off, stated plainly: for a bot you publish before configuring, whoever
+messages it first during setup becomes the admin. Setting `sender_allowlist` at
+create time, or `owner_sender_id` on update, pre-empts the claim — it only fires
+when neither is set. The claim is recorded in the audit log as
+`channel.owner.claimed`.
+
+### Naming or revoking an admin
+
+```bash
+# Name an admin — does not restrict who can message the agent
+1claw channel update <agent-id> <channel-id> --admin 123456789
+
+# Revoke; "" sends an explicit null
+1claw channel update <agent-id> <channel-id> --admin ""
+```
+
+```ts
+await client.channels.update(agentId, channelId, { owner_sender_id: "123456789" });
+await client.channels.update(agentId, channelId, { owner_sender_id: null }); // revoke
+```
+
+Or use **Agent → Channels → Admins** in the dashboard, which lists the senders
+the channel has already received messages from so you can grant by name instead
+of hunting for a numeric ID.
+
+`null` revokes; omitting the field leaves the current admin alone. The two are
+deliberately distinct, so an unrelated `PATCH` (pausing the channel, say) never
+clears the admin as a side effect.
+
+Revoking is durable on a channel that has already received a message. On a
+channel with no inbound messages yet, the first-contact claim above still
+applies, so the next person to message it becomes the admin.
+
+:::note Finding your sender ID
+For a one-to-one Telegram chat, the chat ID **is** the sender's user ID, so the
+dashboard can offer senders it has seen. In a group, the ID identifies the group
+rather than a person — everyone in it counts as that sender.
+:::
 
 ## Image generation
 
