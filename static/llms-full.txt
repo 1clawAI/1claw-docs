@@ -21273,6 +21273,9 @@ Per-agent capability flags that a template can set:
 
 ### What a template cannot set
 
+More than one agent in `agents[]`: a template declaring two or more is refused
+with `400`. See *One agent per call* below for why.
+
 Spend caps, signing policies and the other guardrails (`tx_max_value`,
 `tx_daily_limit`, `raw_signing_policy`, `pay_*`, `card_*`, `usdc_daily_limit_usd`,
 `delegation_enabled`, …) **cannot** be set from a template spec. Including one
@@ -21299,15 +21302,28 @@ Bootstrap runs once per connection. A second call returns `409 Connection has
 already been bootstrapped`, because bootstrap also creates the vault, the
 policies and the plan tier, and none of those should happen twice.
 
-To add agents to a tenant later, post a template to the connection:
+To add an agent to a tenant later, post a template to the connection:
 
 ```ts
 const { data } = await platform.platform.addConnectionAgents(connectionId, {
   template_id: templateId,
   params: { account: "0xabc..." },
 });
-// data.agent_ids, data.signing_keys, data.agent_api_key (once only)
+// data.agent_ids, data.signing_keys
+// data.agent_api_keys[0].api_key — returned once, never retrievable again
 ```
+
+**One agent per call.** A template declaring more than one agent is refused with
+`400`, both when the template is written and when it is used. The reason is the
+API key: it is returned once and cannot be re-issued to a platform app, because
+`rotate_agent_key` only works for a caller in the agent's own org and your
+`plt_` key is not. A response carrying several keys would put several
+unrecoverable credentials in one payload, so one leaked log line would take out
+every agent in the batch with no way to rotate any of them.
+
+For N agents, use N single-agent templates and call once per agent. Each call
+then gets its own `params`, its own `Idempotency-Key`, and its own key handed
+back cleanly.
 
 Only the agent part of the template is applied: its `agents` and their
 per-agent `signing_keys`, `eoa` and `runtime`. A `vault`, `policies`,
@@ -21320,9 +21336,12 @@ capability cannot work in one and not the other.
 The number of agents on a connection is capped by
 `max_agents_per_connection` on the platform app. Unset means a built-in
 default rather than unlimited, because an agent provisioned with signing keys
-costs a KMS key per chain. The whole batch is checked before anything is
-created, so a template that would take you past the ceiling is refused rather
-than partly applied, and the refusal names the current count and the limit.
+costs a KMS key per chain. The ceiling is checked before anything is created,
+and the refusal names the current count and the limit.
+
+The call is idempotent on `Idempotency-Key`: a retry replays the original
+response rather than provisioning a second agent, and a key reused with
+different parameters is refused with `409`.
 
 ## Step 3: Provision users
 
@@ -25990,7 +26009,27 @@ sidebar_label: "2026"
 
 ## 2026 {#2026}
 
-### 2026-09 (latest)
+### 2026-10 (latest)
+
+### 2026-10-10 {#2026-10-10}
+
+**A platform app can add an agent to a tenant it already provisioned.** Bootstrap runs once per connection — it also creates the vault, the policies and the plan tier, and none of those should happen twice — so a second call answers 409. That left no way to add an agent later at all: `PATCH /v1/agents/{id}` is a 403 because every bootstrapped user gets its own org, the fleet bulk-patch refuses capability flags by design, and the user-facing create needs delegation, which only the connected end user can switch on in person. The one thing that worked was that user's own dashboard, which a platform cannot automate. `POST /v1/platform/connections/{id}/agents` takes a template id and applies only its agent portion, leaving the vault, policies, automations and plan tier alone; new agents attach to the vault the connection already has. Configuration comes from a template rather than from fields on the request so the agent portion of a spec keeps exactly one reader, shared with bootstrap, and a capability cannot work in one and not the other.
+
+**One agent per provisioning call.** An agent's API key is returned once and cannot be re-issued to a platform app — `rotate_agent_key` requires a caller in the agent's own org — so a response carrying several would put several unrecoverable credentials in one payload, where one logged response body takes out every agent in the batch with no way to rotate any of them. A template declaring more than one agent is now refused when it is written and again when it is used, the second check covering templates that predate the first. Nothing in use was affected: 1047 live templates declared exactly one agent, the three that declared three were 1Claw's own, and no connection had ever been bootstrapped from a multi-agent one.
+
+**The cached bootstrap response is encrypted at rest.** `platform_bootstrap_idempotency` stores the whole response body so a retried request replays it instead of provisioning twice, and that body contains the one-time `ocv_` agent key in plaintext for 24 hours. One such row was live in production. Envelope encrypted like secrets and OAuth tokens — per-row DEK, KEK in KMS, AAD bound to the connection so a ciphertext cannot be replayed against a different one. Rows already in flight are still read from the plaintext column rather than deleted: the row is the only thing stopping a retry from provisioning a second set of billable agents, so dropping it would have traded a bounded disclosure for duplicate resources.
+
+**A template asking for raw signing now gets it.** Reported from production: a template created with `raw_signing_enabled: true` returned 201, echoed the field back on read, and provisioned an agent with it false, so `sign_digest` refused. Bootstrap read a fixed set of keys out of each `agents[]` entry and that was not one of them. Both signing flags are honoured now, and a template naming a field provisioning cannot honour returns 400 identifying it rather than accepting it and dropping it — which matters most for the spend caps, where the silent drop handed back an agent with *no* cap to a caller who believed it was capped. A ratchet derives the field list from the agent API, so a new field has to be classified as honoured or refused instead of quietly joining the dropped set.
+
+**A channel's admin can be named and revoked from the dashboard.** `owner_sender_id` is what authorises admin slash commands when no sender allowlist is set, and nothing in the product could write it, while the refusal text told operators to set it. `PATCH` also accepted `sender_allowlist` and silently dropped it. Both doors were shut, so a non-developer had no route to admin commands at all. Agent → Channels now lists the senders a channel has already heard from, by name, so nobody has to hunt for a numeric ID; the first person to message a new channel becomes its admin automatically; and an explicit `null` revokes. The allowlist is kept as a separate control because it does more than grant admin — its first entry stops every other sender getting replies.
+
+**Runtime URLs work again.** `{slug}.run.1claw.co` was dead from 2026-08-03 to 2026-10-08, 895 Cloud Run domain mappings in `Ready: False` against 2 working. The vault's service account was listed under Search Console users on the `1claw.co` property but was not a verified *owner*, and Cloud Run's domain-mapping API checks ownership. Two things hid it for two months: a mapping failure was non-fatal, so the API returned a `public_url` that could never resolve, and the production smoke test checked DNS rather than TLS and reported healthy throughout.
+
+**Treasury `chain` and `chain_id` must agree.** They defaulted independently, so `{"chain": "ethereum"}` with no `chain_id` recorded a treasury as Ethereum carrying Base's 8453. Signing uses the id, so the Safe rejected the signature — safe, but surfacing as an unexplained rejection rather than the configuration error it was. Now derived from the name, or refused when both are given and disagree.
+
+**Security.** The login redirect check was a denylist that missed a backslash or tab in second position, both of which the URL parser resolves off-origin; it now resolves the candidate against our own origin and accepts only what stays there. The card orphan monitor windowed on request time, so an approval-gated order was flagged as an orphaned payment while it was still being filled, with a customer webhook to match; it now windows on payment time and only announces a transition it actually made. Spend-cap widenings reach the approval queue in orgs that require one, and an approved widening now applies the cap instead of completing with nothing changed. `proxy-addr` 2.0.8 and `@modelcontextprotocol/sdk` 1.32.1 close a critical IP-spoofing issue and a high in the MCP image. Referral card fingerprints can be backfilled for existing customers rather than waiting a year for each renewal.
+
+**Published.** `@1claw/mcp` 0.63.11, `@1claw/openapi-spec` 0.61.60, `@1claw/sdk` 0.61.41, `@1claw/cli` 0.61.30.
 
 ### 2026-09-27 {#2026-09-27}
 
@@ -34753,6 +34792,20 @@ const treasury = await client.treasury.create({
 
 </TabItem>
 </Tabs>
+
+:::note chain and chain_id must agree
+Send `chain`, `chain_id`, or both — but if you send both they have to match.
+`{"chain": "ethereum", "chain_id": 8453}` is refused, naming both numbers.
+
+Sending only `chain` derives the id from the name. They used to default
+independently, so `{"chain": "ethereum"}` with no `chain_id` recorded a treasury
+as Ethereum carrying Base's chain id 8453. Signing uses the id, so the Safe on
+Ethereum rejected the signature: it failed safely, but it surfaced as an
+unexplained signature rejection rather than the configuration mistake it was.
+
+An unrecognised chain name is accepted with an explicit `chain_id`, so you can
+register a Safe on a network this build does not know by name.
+:::
 
 ## Step 2: Delegate signing authority to an agent
 

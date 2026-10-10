@@ -90,6 +90,20 @@ const treasury = await client.treasury.create({
 </TabItem>
 </Tabs>
 
+:::note chain and chain_id must agree
+Send `chain`, `chain_id`, or both — but if you send both they have to match.
+`{"chain": "ethereum", "chain_id": 8453}` is refused, naming both numbers.
+
+Sending only `chain` derives the id from the name. They used to default
+independently, so `{"chain": "ethereum"}` with no `chain_id` recorded a treasury
+as Ethereum carrying Base's chain id 8453. Signing uses the id, so the Safe on
+Ethereum rejected the signature: it failed safely, but it surfaced as an
+unexplained signature rejection rather than the configuration mistake it was.
+
+An unrecognised chain name is accepted with an explicit `chain_id`, so you can
+register a Safe on a network this build does not know by name.
+:::
+
 ## Step 2: Delegate signing authority to an agent
 
 Create a delegation that lets the agent propose and sign transactions using the treasury:

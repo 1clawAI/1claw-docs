@@ -207,6 +207,9 @@ Per-agent capability flags that a template can set:
 
 ### What a template cannot set
 
+More than one agent in `agents[]`: a template declaring two or more is refused
+with `400`. See *One agent per call* below for why.
+
 Spend caps, signing policies and the other guardrails (`tx_max_value`,
 `tx_daily_limit`, `raw_signing_policy`, `pay_*`, `card_*`, `usdc_daily_limit_usd`,
 `delegation_enabled`, …) **cannot** be set from a template spec. Including one
@@ -233,15 +236,28 @@ Bootstrap runs once per connection. A second call returns `409 Connection has
 already been bootstrapped`, because bootstrap also creates the vault, the
 policies and the plan tier, and none of those should happen twice.
 
-To add agents to a tenant later, post a template to the connection:
+To add an agent to a tenant later, post a template to the connection:
 
 ```ts
 const { data } = await platform.platform.addConnectionAgents(connectionId, {
   template_id: templateId,
   params: { account: "0xabc..." },
 });
-// data.agent_ids, data.signing_keys, data.agent_api_key (once only)
+// data.agent_ids, data.signing_keys
+// data.agent_api_keys[0].api_key — returned once, never retrievable again
 ```
+
+**One agent per call.** A template declaring more than one agent is refused with
+`400`, both when the template is written and when it is used. The reason is the
+API key: it is returned once and cannot be re-issued to a platform app, because
+`rotate_agent_key` only works for a caller in the agent's own org and your
+`plt_` key is not. A response carrying several keys would put several
+unrecoverable credentials in one payload, so one leaked log line would take out
+every agent in the batch with no way to rotate any of them.
+
+For N agents, use N single-agent templates and call once per agent. Each call
+then gets its own `params`, its own `Idempotency-Key`, and its own key handed
+back cleanly.
 
 Only the agent part of the template is applied: its `agents` and their
 per-agent `signing_keys`, `eoa` and `runtime`. A `vault`, `policies`,
@@ -254,9 +270,12 @@ capability cannot work in one and not the other.
 The number of agents on a connection is capped by
 `max_agents_per_connection` on the platform app. Unset means a built-in
 default rather than unlimited, because an agent provisioned with signing keys
-costs a KMS key per chain. The whole batch is checked before anything is
-created, so a template that would take you past the ceiling is refused rather
-than partly applied, and the refusal names the current count and the limit.
+costs a KMS key per chain. The ceiling is checked before anything is created,
+and the refusal names the current count and the limit.
+
+The call is idempotent on `Idempotency-Key`: a retry replays the original
+response rather than provisioning a second agent, and a key reused with
+different parameters is refused with `409`.
 
 ## Step 3: Provision users
 
