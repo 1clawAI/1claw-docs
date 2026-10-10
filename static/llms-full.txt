@@ -21293,6 +21293,37 @@ await platform.agents.update(bootstrap.data.summary.agent_ids[0], {
 });
 ```
 
+## Adding agents after bootstrap
+
+Bootstrap runs once per connection. A second call returns `409 Connection has
+already been bootstrapped`, because bootstrap also creates the vault, the
+policies and the plan tier, and none of those should happen twice.
+
+To add agents to a tenant later, post a template to the connection:
+
+```ts
+const { data } = await platform.platform.addConnectionAgents(connectionId, {
+  template_id: templateId,
+  params: { account: "0xabc..." },
+});
+// data.agent_ids, data.signing_keys, data.agent_api_key (once only)
+```
+
+Only the agent part of the template is applied: its `agents` and their
+per-agent `signing_keys`, `eoa` and `runtime`. A `vault`, `policies`,
+`automations` or `entitlements` block in the same spec is ignored, and the new
+agents attach to the vault the connection already has. That is why the
+configuration comes from a template rather than from fields on the request:
+the agent portion of a spec has one reader, shared with bootstrap, so a
+capability cannot work in one and not the other.
+
+The number of agents on a connection is capped by
+`max_agents_per_connection` on the platform app. Unset means a built-in
+default rather than unlimited, because an agent provisioned with signing keys
+costs a KMS key per chain. The whole batch is checked before anything is
+created, so a template that would take you past the ceiling is refused rather
+than partly applied, and the refusal names the current count and the limit.
+
 ## Step 3: Provision users
 
 When a user signs up for your product:
