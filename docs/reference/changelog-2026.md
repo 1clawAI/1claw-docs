@@ -8,6 +8,20 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-11 {#2026-10-11}
+
+**Three ways past a human approval gate are closed.** Each is a behaviour change: requests that used to succeed now return `403`.
+
+**A resume id is now checked against an approval.** `resume_after_approval_id` on intent execution was read only to see whether it was set. Any UUID was enough to skip the approval requirement, and nothing ever loaded an approval, so the id did not have to exist, belong to your organisation, or have been approved by anyone. It is now verified against an approval that a human set to `approved`, raised for the same agent, and unused.
+
+**And a transaction resume now needs the approval, not just the waiting row.** `resume_tx_id` required the transaction to be in your organisation and still `awaiting_approval`. That is a state you reach by submitting the transaction in the first place: submit once to get the `202` and a pending approval, resubmit immediately with that id, and it signed and broadcast while the human decision was still outstanding. The resume now has to name an approved, unspent approval for that transaction. The field was also absent from the OpenAPI spec despite being accepted; it is documented now.
+
+**Both are single-use.** An approval authorises one execution. A second resume of the same approval is refused, enforced in the database rather than in application code, so two simultaneous resumes cannot both win. If you built against the old behaviour, the approval now has to actually happen first, and once per execution.
+
+**Executing an approved consensus item requires the role that could have approved it.** `POST /v1/pending-approvals/{id}/execute` checked that you were a human in the right organisation. But executing mints the single-use token that satisfies the signing gate, as that endpoint's own response says, so where a consensus policy sets `approval.required_roles`, a member whose role is not listed could still turn an approved decision into signing authority. Execution is now gated on the same roles as approving. Policies that do not set `required_roles` are unchanged.
+
+**Published.** `@1claw/openapi-spec` 0.61.61.
+
 ### 2026-10-10 {#2026-10-10}
 
 **A platform app can add an agent to a tenant it already provisioned.** Bootstrap runs once per connection — it also creates the vault, the policies and the plan tier, and none of those should happen twice — so a second call answers 409. That left no way to add an agent later at all: `PATCH /v1/agents/{id}` is a 403 because every bootstrapped user gets its own org, the fleet bulk-patch refuses capability flags by design, and the user-facing create needs delegation, which only the connected end user can switch on in person. The one thing that worked was that user's own dashboard, which a platform cannot automate. `POST /v1/platform/connections/{id}/agents` takes a template id and applies only its agent portion, leaving the vault, policies, automations and plan tier alone; new agents attach to the vault the connection already has. Configuration comes from a template rather than from fields on the request so the agent portion of a spec keeps exactly one reader, shared with bootstrap, and a capability cannot work in one and not the other.

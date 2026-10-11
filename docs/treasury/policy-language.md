@@ -257,7 +257,7 @@ Fine-grained control over who can approve and with what authentication method:
 
 | Field | Effect |
 | ----- | ------ |
-| `required_roles` | Only signatures from users with a listed org role (`owner`, `admin`, `member`) count toward `min_approvals` |
+| `required_roles` | Only signatures from users with a listed org role (`owner`, `admin`, `member`) count toward `min_approvals`. Since 2026-10-11 the same roles are required to **execute** an approved item via `POST /v1/pending-approvals/{id}/execute`, because executing mints the single-use token that satisfies the signing gate. A member whose role is not listed gets `403`. Policies that omit `required_roles` are unchanged: any human in the org may execute. |
 | `per_role_minimums` | Enforce minimum counts per role — e.g. at least 1 owner must approve |
 | `require_credential_types` | At least one approval must use a listed credential type (`passkey`, `totp`, `biometric`, `password`, `api_key`) |
 

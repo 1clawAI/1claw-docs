@@ -139,6 +139,18 @@ client.agents.update(
 
 When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
 
+### Resuming after an approval {#resuming-after-approval}
+
+A `202` carries the `transaction_id` (transactions) or `approval_id` (intent execution). Once a human approves, resubmit the original request with that id in `resume_tx_id` or `resume_after_approval_id` respectively.
+
+Both are verified from 2026-10-11, and both are **single-use**:
+
+- The id must name an approval a human set to `approved`, raised for the same agent, and for the same transaction where applicable.
+- An approval that is still `pending` is refused. Receiving a `202` does not entitle you to resume; the human decision does.
+- A second resume of the same approval is refused. One approval authorises one execution.
+
+Anything else is **403**. Previously these ids were not checked against an approval, so a resume submitted immediately after the `202` would execute while the decision was still outstanding — if you built against that behaviour, the approval now has to actually happen first.
+
 See [Guardrail governance](/docs/agents/guardrail-governance) for Convention 6 execution shadow mode, widening approvals, revision history, and replay.
 
 ### Token guardrails {#token-guardrails}
