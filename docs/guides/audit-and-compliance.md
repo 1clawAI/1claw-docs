@@ -63,19 +63,40 @@ Each event includes `id`, `org_id`, `actor_type`, `actor_id`, `action`, `resourc
 Every audit event includes a cryptographic hash chain that links it to the previous event:
 
 - `prev_event_id` — UUID of the immediately preceding event in the org's audit log.
-- `integrity_hash` — SHA-256 of `prev_hash|event_id|actor_id|action|resource_type|resource_id|timestamp`.
+- `integrity_hash` — **HMAC-SHA256**, keyed, over `prev_hash`, `org_id`, `actor_type`, `actor_id`, `action`, `metadata` and `timestamp`.
+
+Two things follow from `metadata` being inside the hash. A verifier must read the event's metadata exactly as stored, and a field cannot be edited after the fact without breaking the chain from that event onward. The hash is keyed rather than a plain digest, so the chain cannot be recomputed by someone who has the rows but not the key.
+
+Not covered by the hash: `resource_type`, `resource_id` and `request_id`. They are recorded and returned, but altering them would not break the chain.
 
 This makes the audit log **append-only and tamper-evident**: modifying or deleting any event breaks the hash chain for all subsequent entries. You can verify integrity by walking the chain from the latest event back to the first (`prev_event_id = NULL`).
 
+## Retention
+
+Audit events are **never deleted**. There is no retention window and no expiry job. `DELETE` and `UPDATE` on `audit_events` are rewritten to no-ops by the `no_delete_audit` and `no_update_audit` rules and further blocked by the `audit_events_immutable` trigger, so immutability does not depend on the application behaving correctly, or on which database role it connects as.
+
+The consequence worth planning for: anything written into an event's `metadata` is there permanently, because the hash covers `metadata` and editing it would invalidate every event after it. Personal identifiers are therefore stored as keyed one-way digests (`email_digest` rather than `email`) rather than in clear, and identifiers in events written before 2026-10-11 are masked on the way out by the query and export endpoints.
+
+The `from` parameter on export defaults to 90 days ago. That is a default, not a limit: pass an earlier `from` to reach older events, up to 100,000 events per request.
+
 ## Audit insert hardening
 
-The audit log is protected at the database level against fabrication or bypass:
+The audit log is protected at the database level, and it is worth being precise about which protections apply to every connection and which depend on configuration.
 
-- The application connects as a restricted **`vault_app`** database role that does not have `BYPASSRLS` or `SUPERUSER` privileges.
-- Direct `INSERT` on the `audit_events` table is **revoked** from `vault_app`. All audit writes go through a **`SECURITY DEFINER`** function (`insert_audit_event`) owned by a privileged role.
-- This means even if the application connection is compromised, the attacker cannot insert arbitrary audit events or bypass the hash chain — all writes are funneled through the trusted function that enforces the integrity chain.
+**Applies to every connection, including the application's own:**
 
-Combined with the hash chain above, this provides defense in depth: the chain detects tampering after the fact, and the restricted insert path prevents fabrication at write time.
+- `DELETE` and `UPDATE` are rewritten to no-ops by the `no_delete_audit` and `no_update_audit` rules, and blocked again by the `audit_events_immutable` trigger.
+- `TRUNCATE` is refused by the `audit_events_no_truncate` trigger. This needed its own mechanism: rules only rewrite `DELETE` and `UPDATE`, the row trigger does not fire on `TRUNCATE`, and row-level security does not apply to `TRUNCATE` at all, so for a time a single statement would have emptied the table with nothing in the way.
+- Row-level security is enabled with no permissive policy, which denies the PostgREST `anon` and `authenticated` roles everything regardless of the grants they hold. Their write grants have also been revoked, because `TRUNCATE` is the case row-level security would not have covered.
+
+These are statement-level rules and triggers, so they apply to every connection including a superuser's. What they do not survive is a connection that deliberately removes them: the role the service connects as owns the table and could drop a trigger first. Running the service as a non-owning role is what would close that, and is the same change described below.
+
+**Depends on which role the application connects as:**
+
+- A restricted **`vault_app`** role exists with `INSERT` revoked, alongside a `SECURITY DEFINER` function (`insert_audit_event`) intended to be the only write path. Connecting as `vault_app` is what would prevent a compromised application connection from *fabricating* events.
+- As configured today the service connects as a role with `BYPASSRLS`, so that particular protection is not currently in the path. Immutability of existing events (above) is unaffected: a compromised connection could append a false event but could not alter or delete a true one, and an appended event joins the keyed chain, so it cannot be back-dated into the middle of the history.
+
+Combined with the hash chain above: the chain and the immutability rules detect and prevent tampering with recorded history, and moving the service onto `vault_app` is what closes the remaining gap at write time.
 
 ## Best practices
 
