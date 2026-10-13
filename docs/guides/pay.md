@@ -44,6 +44,25 @@ That division is the whole design:
 
 Pay is off until a human turns it on, and an agent cannot turn it on for itself.
 
+### In the dashboard
+
+Agent → **1Claw Pay (x402)** → Edit. Enable it, set the per-payment and daily
+caps, and add the recipients the agent may pay. Saving a change that widens
+anything prompts for your passkey; a change that only tightens saves straight
+away.
+
+Two things on that form are worth reading twice:
+
+- **An empty cap field means no limit, not "unchanged".** Clearing a cap
+  removes the ceiling, which is the same act as setting it to infinity, so it
+  asks for your passkey exactly like raising one would.
+- **An empty recipient list means *any* recipient.** This default fails open.
+  An allowlist is the only thing that narrows who an agent can pay.
+
+The rest of this section is the API equivalent, for scripting it.
+
+### Over the API
+
 Because turning it on widens what the agent may spend, it needs a **step-up
 re-authentication token** in `X-Auth-Confirm`. Get one first — the purpose
 string matters, and this endpoint accepts exactly one:
@@ -81,6 +100,29 @@ curl -X PATCH https://api.1claw.co/v1/agents/$AGENT_ID/pay/settings \
     "pay_daily_limit_usd": "10.00"
   }'
 ```
+
+#### Clearing a value
+
+Three JSON shapes, three meanings:
+
+| You send | Effect |
+|---|---|
+| field omitted | leave it as it is |
+| `"pay_max_usd": null` | **remove the cap** — no ceiling |
+| `"pay_max_usd": "1.00"` | set it to $1.00 |
+
+`null` clears `pay_max_usd`, `pay_daily_limit_usd`, `pay_payto_allowlist`,
+`pay_grant_max_usd` and `pay_grant_max_ttl_secs`.
+
+Clearing is a **widening** change and needs the same `rat_` token as raising a
+cap. Removing a ceiling and setting it to infinity are the same act.
+
+:::caution
+Clearing `pay_payto_allowlist` lets the agent pay **anyone**. An absent
+allowlist is permissive, not restrictive — there is no "allow nobody" value,
+and sending `[]` is treated the same as `null`. To stop an agent paying, set
+`pay_enabled: false`.
+:::
 
 Worth knowing:
 
