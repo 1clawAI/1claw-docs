@@ -8,9 +8,41 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-12 {#2026-10-12}
+
+**The two resume fields are no longer accepted, and you no longer resubmit.** `resume_after_approval_id` (intent execution) and `resume_tx_id` (transaction submit) are rejected at the deserialiser. Sending one is not an error — it is ignored — but it no longer does anything.
+
+Yesterday's change verified a resume id against a real approved, agent-bound, unspent approval. That is correct as far as it goes, and it binds the *approval* rather than the *request body the approval was granted for*, so one legitimately earned approval could be replayed alongside a different body. 1Claw now executes the original request server-side from the payload stored when the `202` was issued, which closes that by construction: the body that runs is the body a human saw.
+
+If you built against resubmission, the shape of your integration changes. After a `202`, poll `GET /v1/approvals/{approval_id}` (or `/status`), or `GET /v1/transactions/{transaction_id}`, rather than waiting for a second call of your own to return the result.
+
+**A disabled or destroy-scheduled encryption key now answers `503`, not `410`.** Reading a secret whose key is unusable previously returned `410 Gone` with "the key that protected it no longer exists, so the stored value is unrecoverable. Delete the entry and add the value again." That is true only when the key version is `DESTROYED`. For a key that is merely `DISABLED`, or scheduled for destruction and still inside its restore window, it was false — and the advice was actively harmful, because deleting the entry is the one action that makes the loss permanent.
+
+Those two states now return `503` with the KMS state named and explicit instruction not to delete anything. Only a genuinely destroyed key returns `410`. If you have error handling keyed on `410` for this case, it will now see `503` for the recoverable half, which is retryable.
+
+**Email approval links take one more click.** Approve and Deny in an approval email now land on a confirmation page showing what is about to happen, with a button. The decision is recorded by that button, not by the click in the email.
+
+The reason is that a `GET` for the old link was issued by things that are not the recipient: Outlook Safe Links and Gmail's proxy fetch URLs out of mail to scan them, corporate gateways sandbox links by following them, and browsers prefetch on hover. Any of those recorded an approval in the recipient's name. Link URLs in existing emails are unchanged and keep working.
+
+**An expired approval can no longer be decided from an email link.** The quick-decide path checked only that the approval was still `pending`, and an expired approval is still `pending` — expiry is a timestamp, not a status. So the email link could decide approvals the dashboard refuses. It now enforces the same expiry, and quick tokens are capped to the approval's own expiry when they are issued.
+
+**Automation `http` and `notify` steps refuse some headers, and resolve addresses before connecting.** A step that sets `Host`, `Metadata-Flavor`, any `x-goog-*` / `x-google-*` / `x-amz-*`, a hop-by-hop header, `Content-Length`, `Transfer-Encoding`, `proxy-*` or `x-forwarded-*` is now refused with an explanatory error rather than having the header silently dropped.
+
+Both steps also now resolve the target hostname, reject every private or reserved address it resolves to, pin the approved address for that request, and refuse to follow redirects. A URL whose host resolves into private space, or that answers with a redirect, now fails instead of connecting. If an automation of yours legitimately targets something on a private network, it will stop working and should go through an explicitly configured binding instead.
+
+**A transaction is no longer broadcast when the chain-id check cannot complete.** Before broadcasting, 1Claw asks the RPC endpoint which chain it is, to avoid submitting a transaction signed for one chain onto another. When that question failed — an unreachable endpoint, a malformed answer — it logged a warning and broadcast anyway, so the protection was absent exactly when it was needed. It now refuses and tells you to retry. Not broadcasting is recoverable; a wrong-chain broadcast consumes the nonce and cannot be undone.
+
+**Creating a signing key or treasury wallet can now fail with `503` if its backup cannot be written.** Keys in the reserved `__agent-keys` and `__treasury-keys` vaults are copied to the key escrow before their address is returned to you. If that copy fails, key creation is refused and no address is handed back. Previously the escrow ran on a five-minute sweep, which left a window in which you held a fundable address whose key existed in exactly one place. Retry is safe.
+
+**IP addresses and user agents in audit metadata are stored as keyed digests.** Two events from the same address still correlate; the address itself is no longer retained. Plural policy fields such as `allowed_source_ips` are configuration rather than a record of who connected, and stay readable.
+
 ### 2026-10-11 {#2026-10-11}
 
 **Three ways past a human approval gate are closed.** Each is a behaviour change: requests that used to succeed now return `403`.
+
+:::note Superseded in part by 2026-10-12
+The two resume fields described below were removed from the API the following day. They are no longer accepted, and you no longer resubmit after an approval — see [2026-10-12](#2026-10-12). The rest of this entry still stands.
+:::
 
 **A resume id is now checked against an approval.** `resume_after_approval_id` on intent execution was read only to see whether it was set. Any UUID was enough to skip the approval requirement, and nothing ever loaded an approval, so the id did not have to exist, belong to your organisation, or have been approved by anyone. It is now verified against an approval that a human set to `approved`, raised for the same agent, and unused.
 

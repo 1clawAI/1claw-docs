@@ -141,15 +141,31 @@ When a transaction violates any guardrail, the proxy returns **403 Forbidden** w
 
 ### Resuming after an approval {#resuming-after-approval}
 
-A `202` carries the `transaction_id` (transactions) or `approval_id` (intent execution). Once a human approves, resubmit the original request with that id in `resume_tx_id` or `resume_after_approval_id` respectively.
+A `202` carries the `transaction_id` (transactions) or `approval_id` (intent execution).
 
-Both are verified from 2026-10-11, and both are **single-use**:
+**You do not resubmit.** When a human approves, 1Claw executes the original
+request server-side, from the payload that was stored when the `202` was
+issued. Poll for the outcome instead:
 
-- The id must name an approval a human set to `approved`, raised for the same agent, and for the same transaction where applicable.
-- An approval that is still `pending` is refused. Receiving a `202` does not entitle you to resume; the human decision does.
-- A second resume of the same approval is refused. One approval authorises one execution.
+- `GET /v1/approvals/{approval_id}` — or `/status` for just the state
+- `GET /v1/transactions/{transaction_id}` for a transaction
 
-Anything else is **403**. Previously these ids were not checked against an approval, so a resume submitted immediately after the `202` would execute while the decision was still outstanding — if you built against that behaviour, the approval now has to actually happen first.
+**Changed 2026-10-12.** There used to be `resume_tx_id` and
+`resume_after_approval_id` request fields, and you were told to resubmit with
+one. They are no longer accepted: the API now rejects them at the
+deserialiser, and sending one has no effect.
+
+The reason is worth knowing if you built against them. A resume id was verified
+against a real approved, agent-bound, unspent approval — which is correct as far
+as it goes, but it binds the *approval*, not the *request body the approval was
+granted for*. One legitimately earned approval could therefore be replayed
+alongside a different body. Resuming from the stored payload removes the gap by
+construction: the body that executes is the body a human saw.
+
+If your integration still sends either field, it will keep working — the field
+is ignored, not an error — but the execution now happens when the approval is
+granted rather than when you resubmit, so poll rather than waiting for your own
+second call to return the result.
 
 See [Guardrail governance](/docs/agents/guardrail-governance) for Convention 6 execution shadow mode, widening approvals, revision history, and replay.
 
