@@ -251,6 +251,58 @@ The response shape matches EVM: `{ tx_hash, signed_tx, from, to, value_wei, stat
 
 The unified `POST /v1/agents/{id}/sign` endpoint supports four intent types: EIP-191 message signing (`personal_sign`), EIP-712 typed data signing (`typed_data`), raw digest signing (`eip712_digest` / `digest`), and transaction signing across all EIP-2718 types.
 
+### Choosing which key signs {#choosing-a-key}
+
+Every intent type takes an optional `signing_key_path`. When you omit it, the
+key is chosen for you, and on EVM the choice is probably not the one you
+expect.
+
+**Every EVM network resolves to your `ethereum` key.** `chain: "base"`,
+`"arbitrum"`, `"optimism"`, `"polygon"` and `"sepolia"` all map to the single
+`ethereum` signing key, deliberately, so one provisioned key works across
+every EVM network without provisioning one per chain.
+
+The consequence is worth stating plainly: **if you hold a key that was
+provisioned under `chain: "base"`, no value of `chain` will select it.** Asking
+to sign for `"base"` gets your `ethereum` key. This is the behaviour, not a
+bug, and `signing_key_path` is the way out:
+
+```json
+{
+  "intent_type": "typed_data",
+  "chain": "base",
+  "signing_key_path": "agents/{agent_id}/chains/base/private_key",
+  "typed_data": { }
+}
+```
+
+The per-chain path format is:
+
+```
+agents/{agent_id}/chains/{chain}/private_key
+```
+
+`{chain}` is the chain the key was **provisioned under**, which you can read
+from `GET /v1/agents/{id}/signing-keys` — not the network you are signing for.
+Midnight uses `seed` rather than `private_key` as the leaf.
+
+`signing_key_path` bypasses the EVM mapping entirely and is honoured on all
+four intent types. Accepted shapes:
+
+| Pattern | Use |
+|---|---|
+| `agents/{id}/chains/{chain}/private_key` | a per-chain agent key |
+| `agents/{id}/keys/{name}` | a named agent key |
+| `keys/{name}` | a vault-level key |
+| `wallets/{name}` | a wallet key |
+
+:::tip Check the signer before you send
+`POST /v1/agents/{id}/sign` returns the address that signed. Compare it with
+the address you meant to spend from **before** broadcasting or handing the
+signature to an x402 facilitator. Signing with the wrong key of a multi-key
+agent produces a perfectly valid signature from an account holding nothing.
+:::
+
 ### EIP-191 personal_sign {#eip191}
 
 Sign an arbitrary human-readable message. Requires `message_signing_enabled: true` on the agent.
