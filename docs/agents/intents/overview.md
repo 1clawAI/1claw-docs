@@ -209,9 +209,11 @@ transaction mined. A background reconciler asks the chain and resolves it:
 means the transaction never left. A `dropped` transaction stops counting against
 the agent's daily spend cap, because it never spent anything.
 
-Non-EVM chains (Solana, XRP) reach `confirmed` and `reverted` but never
-`dropped`: there, a transaction the network has no record of cannot be told
-apart from one whose history the queried node has pruned.
+Non-EVM chains (Solana, XRP, Tron, Bitcoin, Cardano) reach `confirmed` and
+`reverted` but never `dropped`: there, a transaction the network has no record
+of cannot be told apart from one whose history the queried node has pruned.
+Bitcoin transactions cannot revert; on Cardano, `reverted` means a Plutus
+script failed and the collateral was taken.
 
 ## Querying transactions
 
