@@ -191,6 +191,28 @@ print(resp.data.get("tx_hash"), resp.data.get("status"))
 }
 ```
 
+### Transaction status
+
+`broadcast` means the RPC accepted the raw transaction. It does **not** mean the
+transaction mined. A background reconciler asks the chain and resolves it:
+
+| status | meaning |
+| --- | --- |
+| `broadcast` | Sent and accepted by the RPC. Still in flight. |
+| `confirmed` | Mined and succeeded. `block_number` and `confirmed_at` are set. |
+| `reverted` | Mined and failed on-chain. The nonce was consumed and gas was paid. |
+| `dropped` | Never mined and never will — the sender's nonce has moved past it. No value moved and no gas was paid. |
+| `signed` | Signing succeeded but the broadcast did not. The nonce is released and `error_message` says why. |
+| `sign_only` | You asked for the signed bytes and are broadcasting them yourself. |
+
+`reverted` is not the same as `failed`: a revert settled on-chain, while `failed`
+means the transaction never left. A `dropped` transaction stops counting against
+the agent's daily spend cap, because it never spent anything.
+
+Non-EVM chains (Solana, XRP) reach `confirmed` and `reverted` but never
+`dropped`: there, a transaction the network has no record of cannot be told
+apart from one whose history the queried node has pruned.
+
 ## Querying transactions
 
 <Tabs groupId="code-examples">
