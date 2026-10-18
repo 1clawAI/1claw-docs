@@ -14177,8 +14177,10 @@ Two things on that form are worth reading twice:
 - **An empty cap field means no limit, not "unchanged".** Clearing a cap
   removes the ceiling, which is the same act as setting it to infinity, so it
   asks for your passkey exactly like raising one would.
-- **An empty recipient list means *any* recipient.** This default fails open.
-  An allowlist is the only thing that narrows who an agent can pay.
+- **An empty recipient list means *no one*, for an agent that pays
+  unattended.** An agent that requires a passkey or an approval can pay any
+  recipient a person approves, payment by payment. Adding a first recipient
+  lets an unattended agent pay it, so it asks for your passkey.
 
 The rest of this section is the API equivalent, for scripting it.
 
