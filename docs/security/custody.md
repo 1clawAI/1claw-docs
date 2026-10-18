@@ -61,7 +61,7 @@ Treasury → **Self-custody Solana / XRP / Cardano wallet**. What happens:
 |---|---|---|
 | Nothing | Vault share + your passkey sign | Yes |
 | One passkey | Another passkey that holds the share signs (**Backups → Add a passkey** beforehand) | Yes |
-| Every passkey | **Backups → Restore from kit**: the kit and code are opened in your browser, share 2 goes under a new passkey, only that wrap is uploaded (re-authentication required, audited `tss_key.recovered_via_code`, you are emailed) | Yes |
+| Every passkey | **Backups → Restore from kit**: the kit and code are opened in your browser, share 2 goes under a new passkey, only that wrap is uploaded (re-authentication required, audited `tss_key.recovered_via_code` and sent as a webhook of that name, you are emailed) | Yes |
 | 1Claw | Kit + code in the offline tool: shares 2 and 3 sign | **No** |
 | 1Claw and every passkey | Kit + code in the offline tool | **No** |
 
@@ -91,14 +91,25 @@ An agent cannot touch a passkey. For unattended, below-cap operation the second 
 
 1. The sidecar generates a P-256 key at boot and registers it (`POST /v1/runtimes/{id}/tss/holder`).
 2. From the wallet card, **Runtime signing** → pick the runtime: one passkey touch unlocks your share, which is re-wrapped to the sidecar's key (ECIES) and stored with the vault as ciphertext only that sidecar can open (`PUT /v1/keys/{id}/client-share/holder`). The wallet must already be delegated to that runtime's agent.
-3. Agent signing through a runtime is Solana-only for now. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
+3. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
 4. Revoke by deleting the runtime, deleting the wrap, or removing the delegation. The vault still holds one share only; the sidecar's private key never leaves the container, and your own passkey wraps are untouched.
 
-The sidecar runs the same FROST crate as your browser (compiled to WebAssembly, executed with wazero), so there are not two implementations of the protocol to keep in step.
+The sidecar derives the bytes it signs itself (XRPL signing data, the Cardano body hash) with the same encoder as your browser, and refuses if the vault would aggregate over anything else. It runs the same FROST crate as your browser (compiled to WebAssembly, executed with wazero), so there are not two implementations of the protocol to keep in step.
+
+## Self-custody agent signing keys
+
+On an agent's page, **Self-custody {chain} key** creates a 2-of-3 signing key for that agent with the same ceremony as a wallet (`key_kind: agent_signing_key` on `POST /v1/keys/tss/keygen/begin`). You are its owner: your passkey holds share 2 and your recovery kit shares 2 and 3. The agent can sign only through a runtime you give its share to (**Runtime signing** on the key's row), within its guardrails; nobody else in your organization, and never the agent or its sidecar, can add a wrap, confirm a kit, restore the key, or provision a runtime for it. Restoring an agent key from its kit is your out-of-band recovery and leaves the agent's guardrails, so it is audited as `signing_key.recovered` and sent as a webhook of the same name for integrators to alarm on.
 
 ## Moving an existing wallet to self-custody (re-key)
 
-A server-custody Solana wallet shows **Move to self-custody** on its card (XRP and Cardano re-keying comes later). The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time — a sweep of its balance to the new address — the old wallet is deactivated, and the whole move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep signature). If the old wallet was empty its key is destroyed outright; otherwise it is kept until the sweep confirms.
+A server-custody Solana, XRP or Cardano wallet shows **Move to self-custody** on its card (XRP and Cardano where your organization has them enabled). The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time to sweep its balance to the new address, the old wallet is deactivated, and the move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep transactions).
+
+- **Native coin only, so nothing is stranded.** The re-key is refused, before the ceremony and again before the sweep, while the old wallet holds anything a native sweep would leave behind: SPL token accounts on Solana, trust lines, offers, escrows or NFTs on XRPL, token-carrying UTXOs on Cardano. Move those first.
+- **XRP reserve.** A Payment moves everything above the old account's 1 XRP reserve and funds the new account; then, if the old account is old enough (its sequence 256 ledgers back), an `AccountDelete` releases the reserve to the new address (minus the 0.2 XRP deletion fee). If it is too new, the reserve stays and the old key is kept so it can still be recovered.
+- **Cardano** sweeps every lovelace UTXO into one output at the new address, fee taken from the total.
+- **The old key is destroyed only when the old balance was exactly zero.** Otherwise it is kept (the wallet is deactivated) until the sweep is confirmed, so nothing is ever left at an address no one can sign for. Finality per chain: Solana finalized commitment; XRPL a validated ledger; Cardano block inclusion, about 15 blocks to settle.
+
+**Export.** A self-custody wallet or signing key has no private key anywhere, so the export endpoints refuse it (409) and the dashboard hides the button. Your route out is the recovery kit and code with `oneclaw-recover`.
 
 Two deployment switches exist for the transition, both off until an operator turns them on: `ONECLAW_SERVER_CUSTODY_GENERATION=deny` stops minting new server-custody keys for every org except a named exception list, and `ONECLAW_LAZY_WALLET_PROVISIONING=true` stops signup from creating a treasury wallet on your behalf (wallets are created when you ask for one).
 
