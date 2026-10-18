@@ -8,9 +8,27 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-18 {#2026-10-18}
+
+**Agent self-custody sends are gated at `prepare`, and `prepare` can answer `202`.** `POST /v1/agents/{agent_id}/tss/prepare` now runs the approval policy, Cedar/OPA policy and M-of-N consensus as well as the guardrails and sanctions screen, and writes a `prepared` ledger row before returning, so daily limits count the transfer from that moment. A human-approval hold answers `202` with `status: awaiting_approval`, `transaction_id` and `approval_id` (action `agent_tss_transaction`); call `prepare` again with `resume_tx_id` once approved. A consensus hold answers `202` with `pending_approval_id`; call again with `approval_id`. The response gains `transaction_id`. `sign/complete` and `broadcast` refuse a prepare that recorded no ledger row, and `broadcast` no longer re-runs the guardrails.
+
+**Kit proofs.** Keygen complete, `POST /v1/keys/{key_id}/kit`, restore from kit and refresh commit require `kit_proof`, a proof made in the browser that the kit holds share 3 of the key's current generation. A kit of retired shares is refused with `400`.
+
+**A re-key is gated as an export.** `POST /v1/keys/tss/keygen/begin` with `replace_existing: true` checks wallet access, the `treasury_wallet.export` consensus policy (new `approval_id` field) and the export activity policy, before the device makes a kit.
+
+**Client-share wraps are never overwritten.** `PUT /v1/keys/{key_id}/client-share` and `…/rewrap` answer `409` if a wrap for that passkey and generation exists. `DELETE /v1/keys/{key_id}/client-share/{share_id}` needs `X-Auth-Confirm` (purpose `tss.key.wrap_delete`, passkey or TOTP once enrolled).
+
+**Raw signing is a guardrail change.** Changing `raw_signing_enabled` or `raw_signing_policy` on `PATCH /v1/agents/{id}` needs the guardrail step-up, and turning it on queues when your org requires approval for widening. A platform app may only turn it off on a connection agent; turning it on needs the end user's re-auth token in `X-Auth-Confirm` and goes through their approval path (new `approval_id` field).
+
+**Rotation.** Treasury wallet rotation refuses self-custody wallets (`409`), follows the custody policy and is consensus-gated as `treasury_wallet.rotate` (`?approval_id=`). Agent signing-key rotation refuses self-custody keys (`409` for the owner, `403` for anyone else), and only the owner may deactivate one.
+
+**CMEK** cannot be enabled or rotated on `__agent-keys` or `__treasury-keys` (`400`).
+
+**Pay.** Only owners and admins may change Pay settings or create spending grants. No allowlist is not a wildcard: an unattended agent with no allowlist can pay no one, and naming any recipient not already listed is a widening that needs the step-up.
+
 ### 2026-10-12 {#2026-10-12}
 
-**The two resume fields are no longer accepted, and you no longer resubmit.** `resume_after_approval_id` (intent execution) and `resume_tx_id` (transaction submit) are rejected at the deserialiser. Sending one is not an error — it is ignored — but it no longer does anything.
+**The two resume fields are no longer accepted, and you no longer resubmit.** `resume_after_approval_id` (intent execution) and `resume_tx_id` (transaction submit) are skipped by the deserialiser. Sending one is not an error — it is ignored — but it no longer does anything.
 
 Yesterday's change verified a resume id against a real approved, agent-bound, unspent approval. That is correct as far as it goes, and it binds the *approval* rather than the *request body the approval was granted for*, so one legitimately earned approval could be replayed alongside a different body. 1Claw now executes the original request server-side from the payload stored when the `202` was issued, which closes that by construction: the body that runs is the body a human saw.
 

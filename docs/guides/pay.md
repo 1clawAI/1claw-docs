@@ -120,10 +120,12 @@ Clearing is a **widening** change and needs the same `rat_` token as raising a
 cap. Removing a ceiling and setting it to infinity are the same act.
 
 :::caution
-Clearing `pay_payto_allowlist` lets the agent pay **anyone**. An absent
-allowlist is permissive, not restrictive — there is no "allow nobody" value,
-and sending `[]` is treated the same as `null`. To stop an agent paying, set
-`pay_enabled: false`.
+Clearing `pay_payto_allowlist` does **not** let the agent pay anyone. `null`
+and `[]` are enforced the same way: an agent that pays unattended can then pay
+no one, and an agent that requires a passkey or an approval can still pay any
+recipient a person approves, payment by payment. The server still asks for the
+step-up token when you clear a list that had entries. To stop an agent paying
+altogether, set `pay_enabled: false`.
 :::
 
 Worth knowing:
@@ -136,7 +138,10 @@ Worth knowing:
   a password is accepted.
 - **Only widening needs it.** Lowering a cap, or turning pay off, goes
   through without a step-up — you can always make an agent less powerful.
-- There is no dashboard UI for pay settings yet; the API is the only route.
+  Naming a recipient that is not already on the allowlist is widening, even
+  when the list was empty or absent before.
+- **Only owners and admins** may change Pay settings or create spending
+  grants. Other members get 403, the same rule as the card guardrails.
 
 ### Step-up purposes
 

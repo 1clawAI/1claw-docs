@@ -471,7 +471,7 @@ const { data } = await client.agents.sign(agentId, {
 | `message_signing_enabled` | `boolean` | Must be `true` for EIP-191 personal_sign (default: `false`). |
 | `eip712_default_policy` | `"deny"` \| `"allow"` | Default policy for EIP-712 domains not in the allowlist (default: `"deny"`). |
 | `eip712_domain_allowlist` | `JSON[]` | List of allowed domains, e.g. `[{"verifying_contract": "0xA0b..."}]`. Known dangerous types (Permit, Permit2) always require explicit allowlisting. |
-| `raw_signing_enabled` | `boolean` | Must be `true` for the `eip712_digest` (raw/blind digest) intent (default: `false`). Human-set only; agents cannot enable it. |
+| `raw_signing_enabled` | `boolean` | Must be `true` for the `eip712_digest` (raw/blind digest) intent (default: `false`). Human-set only; agents cannot enable it. Changing it (or `raw_signing_policy`) on `PATCH /v1/agents/{id}` needs the guardrail step-up (`X-Auth-Confirm`, purpose `security.guardrail.edit`), and turning it on queues for approval when your org requires approval for guardrail widening. |
 
 ---
 

@@ -260,6 +260,12 @@ curl -X POST "https://api.1claw.co/v1/treasury/wallets/bitcoin/send" \
 
 Deactivates the current wallet and generates a new keypair for the same chain. The old wallet is retained for audit but its key is no longer usable.
 
+Rotation generates a key 1Claw holds, so:
+
+- a **self-custody** (`client_tss`) wallet is refused with `409`; change its shares with a share refresh instead (see [Custody](/docs/security/custody));
+- your organization's custody policy applies as it does on create (`403` where new 1Claw-held keys are no longer issued);
+- it is gated by control-plane consensus as `treasury_wallet.rotate`. When your org requires approval the call answers `202` with `pending_approval_id`; once approved, call again with `?approval_id=<id>`. The approval is spent only after the new key is stored and escrowed.
+
 ```bash
 curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/rotate" \
   -H "Authorization: Bearer $TOKEN"

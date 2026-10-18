@@ -152,8 +152,8 @@ issued. Poll for the outcome instead:
 
 **Changed 2026-10-12.** There used to be `resume_tx_id` and
 `resume_after_approval_id` request fields, and you were told to resubmit with
-one. They are no longer accepted: the API now rejects them at the
-deserialiser, and sending one has no effect.
+one. They are no longer read: the deserialiser skips them, so sending one
+is not an error and has no effect.
 
 The reason is worth knowing if you built against them. A resume id was verified
 against a real approved, agent-bound, unspent approval — which is correct as far
@@ -166,6 +166,14 @@ If your integration still sends either field, it will keep working — the field
 is ignored, not an error — but the execution now happens when the approval is
 granted rather than when you resubmit, so poll rather than waiting for your own
 second call to return the result.
+
+**The exception: agent self-custody sends.** `POST /v1/agents/{agent_id}/tss/prepare`
+does take `resume_tx_id`. A self-custody transfer needs the agent's share to
+co-sign, so the server cannot finish it alone after the approval. A `202` from
+`prepare` carries `transaction_id`; once a person approves, call `prepare` again
+with the same transfer and `resume_tx_id` set to it. The resume must match the
+parked transfer's chain, key, destination and value, and it spends the approval. A consensus `202` (`pending_approval_id`) is retried with
+`approval_id`, as on every consensus-gated call.
 
 See [Guardrail governance](/docs/agents/guardrail-governance) for Convention 6 execution shadow mode, widening approvals, revision history, and replay.
 

@@ -549,7 +549,7 @@ want — see:
 | GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (public metadata only — never private keys) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
-| PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents or update `system_prompt` |
+| PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents, memory, update `system_prompt`, turn raw signing off (on needs the end user's re-auth token) |
 | GET | `/v1/platform/connections/{id}/portfolio` | Agent portfolio/balances (`?chains=`, `?include_tokens=`) |
 | GET | `/v1/platform/connections/{id}/balances` | Alias for portfolio |
 | GET/POST | `/v1/platform/connections/{id}/automations` | List/create automations for connection agents |
@@ -571,7 +571,24 @@ curl -X PATCH "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents
   }'
 ```
 
-Allowed fields: `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` only. Agents cannot self-enable these flags via agent JWT.
+Allowed fields: `intents_api_enabled`, `execution_intents_enabled`, `memory_enabled`, `raw_signing_enabled`, `system_prompt`, and `approval_id`. Agents cannot self-enable these flags via agent JWT.
+
+#### Raw (blind) signing on a connection agent
+
+A platform app can turn `raw_signing_enabled` **off** directly. It cannot turn it **on** by itself: blind signing bypasses every transaction guardrail, and the end user may have switched it off on purpose. Turning it on needs the end user's consent:
+
+1. The end user re-authenticates in your app for purpose `security.guardrail.edit` and you receive their `rat_...` token. A password in `X-Auth-Confirm` is refused on platform routes.
+2. Send the PATCH with that token in `X-Auth-Confirm`. Without it the call returns `403`.
+
+The enable then runs through the end user's own agent update path in their org, so their control-plane consensus (a `202` with `pending_approval_id`; retry with `approval_id`) and guardrail widening queue (a `202` with `status: awaiting_approval`, applied when approved) apply. On either `202` nothing else in the request was applied. The enable also sets `raw_signing_policy` to `approve`, so each blind signature needs a human, unless the end user already chose `approve` or `deny`. It is audited as `platform.connection.raw_signing_enable` with outcome `applied` or `queued`.
+
+```bash
+curl -X PATCH "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents/AGENT_UUID" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "X-Auth-Confirm: rat_END_USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "raw_signing_enabled": true }'
+```
 
 ```typescript
 await client.platform.patchConnectionAgent(connectionId, agentId, {
@@ -1445,7 +1462,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
-| PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` |
+| PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `memory_enabled`, `system_prompt`; `raw_signing_enabled` off directly, on only with the end user's `X-Auth-Confirm` token |
 | GET | `/v1/platform/connections/{id}/portfolio` | `plt_` key | Agent portfolio/balances for connection |
 | GET | `/v1/platform/connections/{id}/balances` | `plt_` key | Alias for portfolio |
 | GET/POST | `/v1/platform/connections/{id}/automations` | `plt_` key | List/create connection-scoped automations |

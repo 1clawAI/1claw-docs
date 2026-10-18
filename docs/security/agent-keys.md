@@ -186,7 +186,7 @@ Beyond the identity keys above, agents can be provisioned with per-chain signing
 Multi-chain signing keys are:
 
 - **Provisioned by humans only** — `POST /v1/agents/{id}/signing-keys` requires a human user token. Agents get 403.
-- **Rotatable** — `POST /v1/agents/{id}/signing-keys/{chain}/rotate` creates a new key version and deactivates the old one.
+- **Rotatable** — `POST /v1/agents/{id}/signing-keys/{chain}/rotate` creates a new key version and deactivates the old one. A self-custody (`client_tss`) agent key cannot be rotated into a server key: its owner gets `409` (deactivate it and create the replacement), anyone else `403`. Only its owner may deactivate it. Both calls are consensus-gated (`signing_key.rotate`, `signing_key.deactivate`; retry with `?approval_id=`).
 - **Displayed in the dashboard** — The agent detail page shows a "Signing Keys" card with public keys, addresses, and key version.
 - **Used by the unified sign endpoint** — `POST /v1/agents/{id}/sign` signs EIP-191 messages, EIP-712 typed data, and EIP-2718 transactions using the agent's provisioned key for the specified chain.
 

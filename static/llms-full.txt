@@ -2460,8 +2460,8 @@ issued. Poll for the outcome instead:
 
 **Changed 2026-10-12.** There used to be `resume_tx_id` and
 `resume_after_approval_id` request fields, and you were told to resubmit with
-one. They are no longer accepted: the API now rejects them at the
-deserialiser, and sending one has no effect.
+one. They are no longer read: the deserialiser skips them, so sending one
+is not an error and has no effect.
 
 The reason is worth knowing if you built against them. A resume id was verified
 against a real approved, agent-bound, unspent approval — which is correct as far
@@ -2474,6 +2474,14 @@ If your integration still sends either field, it will keep working — the field
 is ignored, not an error — but the execution now happens when the approval is
 granted rather than when you resubmit, so poll rather than waiting for your own
 second call to return the result.
+
+**The exception: agent self-custody sends.** `POST /v1/agents/{agent_id}/tss/prepare`
+does take `resume_tx_id`. A self-custody transfer needs the agent's share to
+co-sign, so the server cannot finish it alone after the approval. A `202` from
+`prepare` carries `transaction_id`; once a person approves, call `prepare` again
+with the same transfer and `resume_tx_id` set to it. The resume must match the
+parked transfer's chain, key, destination and value, and it spends the approval. A consensus `202` (`pending_approval_id`) is retried with
+`approval_id`, as on every consensus-gated call.
 
 See [Guardrail governance](/docs/agents/guardrail-governance) for Convention 6 execution shadow mode, widening approvals, revision history, and replay.
 
@@ -4414,7 +4422,7 @@ const { data } = await client.agents.sign(agentId, {
 | `message_signing_enabled` | `boolean` | Must be `true` for EIP-191 personal_sign (default: `false`). |
 | `eip712_default_policy` | `"deny"` \| `"allow"` | Default policy for EIP-712 domains not in the allowlist (default: `"deny"`). |
 | `eip712_domain_allowlist` | `JSON[]` | List of allowed domains, e.g. `[{"verifying_contract": "0xA0b..."}]`. Known dangerous types (Permit, Permit2) always require explicit allowlisting. |
-| `raw_signing_enabled` | `boolean` | Must be `true` for the `eip712_digest` (raw/blind digest) intent (default: `false`). Human-set only; agents cannot enable it. |
+| `raw_signing_enabled` | `boolean` | Must be `true` for the `eip712_digest` (raw/blind digest) intent (default: `false`). Human-set only; agents cannot enable it. Changing it (or `raw_signing_policy`) on `PATCH /v1/agents/{id}` needs the guardrail step-up (`X-Auth-Confirm`, purpose `security.guardrail.edit`), and turning it on queues for approval when your org requires approval for guardrail widening. |
 
 ---
 
@@ -14241,10 +14249,12 @@ Clearing is a **widening** change and needs the same `rat_` token as raising a
 cap. Removing a ceiling and setting it to infinity are the same act.
 
 :::caution
-Clearing `pay_payto_allowlist` lets the agent pay **anyone**. An absent
-allowlist is permissive, not restrictive — there is no "allow nobody" value,
-and sending `[]` is treated the same as `null`. To stop an agent paying, set
-`pay_enabled: false`.
+Clearing `pay_payto_allowlist` does **not** let the agent pay anyone. `null`
+and `[]` are enforced the same way: an agent that pays unattended can then pay
+no one, and an agent that requires a passkey or an approval can still pay any
+recipient a person approves, payment by payment. The server still asks for the
+step-up token when you clear a list that had entries. To stop an agent paying
+altogether, set `pay_enabled: false`.
 :::
 
 Worth knowing:
@@ -14257,7 +14267,10 @@ Worth knowing:
   a password is accepted.
 - **Only widening needs it.** Lowering a cap, or turning pay off, goes
   through without a step-up — you can always make an agent less powerful.
-- There is no dashboard UI for pay settings yet; the API is the only route.
+  Naming a recipient that is not already on the allowlist is widening, even
+  when the list was empty or absent before.
+- **Only owners and admins** may change Pay settings or create spending
+  grants. Other members get 403, the same rule as the card guardrails.
 
 ### Step-up purposes
 
@@ -22430,7 +22443,7 @@ want — see:
 | GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (public metadata only — never private keys) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
-| PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents or update `system_prompt` |
+| PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents, memory, update `system_prompt`, turn raw signing off (on needs the end user's re-auth token) |
 | GET | `/v1/platform/connections/{id}/portfolio` | Agent portfolio/balances (`?chains=`, `?include_tokens=`) |
 | GET | `/v1/platform/connections/{id}/balances` | Alias for portfolio |
 | GET/POST | `/v1/platform/connections/{id}/automations` | List/create automations for connection agents |
@@ -22452,7 +22465,24 @@ curl -X PATCH "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents
   }'
 ```
 
-Allowed fields: `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` only. Agents cannot self-enable these flags via agent JWT.
+Allowed fields: `intents_api_enabled`, `execution_intents_enabled`, `memory_enabled`, `raw_signing_enabled`, `system_prompt`, and `approval_id`. Agents cannot self-enable these flags via agent JWT.
+
+#### Raw (blind) signing on a connection agent
+
+A platform app can turn `raw_signing_enabled` **off** directly. It cannot turn it **on** by itself: blind signing bypasses every transaction guardrail, and the end user may have switched it off on purpose. Turning it on needs the end user's consent:
+
+1. The end user re-authenticates in your app for purpose `security.guardrail.edit` and you receive their `rat_...` token. A password in `X-Auth-Confirm` is refused on platform routes.
+2. Send the PATCH with that token in `X-Auth-Confirm`. Without it the call returns `403`.
+
+The enable then runs through the end user's own agent update path in their org, so their control-plane consensus (a `202` with `pending_approval_id`; retry with `approval_id`) and guardrail widening queue (a `202` with `status: awaiting_approval`, applied when approved) apply. On either `202` nothing else in the request was applied. The enable also sets `raw_signing_policy` to `approve`, so each blind signature needs a human, unless the end user already chose `approve` or `deny`. It is audited as `platform.connection.raw_signing_enable` with outcome `applied` or `queued`.
+
+```bash
+curl -X PATCH "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents/AGENT_UUID" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "X-Auth-Confirm: rat_END_USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "raw_signing_enabled": true }'
+```
 
 ```typescript
 await client.platform.patchConnectionAgent(connectionId, agentId, {
@@ -23326,7 +23356,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
-| PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `system_prompt` |
+| PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `memory_enabled`, `system_prompt`; `raw_signing_enabled` off directly, on only with the end user's `X-Auth-Confirm` token |
 | GET | `/v1/platform/connections/{id}/portfolio` | `plt_` key | Agent portfolio/balances for connection |
 | GET | `/v1/platform/connections/{id}/balances` | `plt_` key | Alias for portfolio |
 | GET/POST | `/v1/platform/connections/{id}/automations` | `plt_` key | List/create connection-scoped automations |
@@ -26180,9 +26210,27 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-18 {#2026-10-18}
+
+**Agent self-custody sends are gated at `prepare`, and `prepare` can answer `202`.** `POST /v1/agents/{agent_id}/tss/prepare` now runs the approval policy, Cedar/OPA policy and M-of-N consensus as well as the guardrails and sanctions screen, and writes a `prepared` ledger row before returning, so daily limits count the transfer from that moment. A human-approval hold answers `202` with `status: awaiting_approval`, `transaction_id` and `approval_id` (action `agent_tss_transaction`); call `prepare` again with `resume_tx_id` once approved. A consensus hold answers `202` with `pending_approval_id`; call again with `approval_id`. The response gains `transaction_id`. `sign/complete` and `broadcast` refuse a prepare that recorded no ledger row, and `broadcast` no longer re-runs the guardrails.
+
+**Kit proofs.** Keygen complete, `POST /v1/keys/{key_id}/kit`, restore from kit and refresh commit require `kit_proof`, a proof made in the browser that the kit holds share 3 of the key's current generation. A kit of retired shares is refused with `400`.
+
+**A re-key is gated as an export.** `POST /v1/keys/tss/keygen/begin` with `replace_existing: true` checks wallet access, the `treasury_wallet.export` consensus policy (new `approval_id` field) and the export activity policy, before the device makes a kit.
+
+**Client-share wraps are never overwritten.** `PUT /v1/keys/{key_id}/client-share` and `…/rewrap` answer `409` if a wrap for that passkey and generation exists. `DELETE /v1/keys/{key_id}/client-share/{share_id}` needs `X-Auth-Confirm` (purpose `tss.key.wrap_delete`, passkey or TOTP once enrolled).
+
+**Raw signing is a guardrail change.** Changing `raw_signing_enabled` or `raw_signing_policy` on `PATCH /v1/agents/{id}` needs the guardrail step-up, and turning it on queues when your org requires approval for widening. A platform app may only turn it off on a connection agent; turning it on needs the end user's re-auth token in `X-Auth-Confirm` and goes through their approval path (new `approval_id` field).
+
+**Rotation.** Treasury wallet rotation refuses self-custody wallets (`409`), follows the custody policy and is consensus-gated as `treasury_wallet.rotate` (`?approval_id=`). Agent signing-key rotation refuses self-custody keys (`409` for the owner, `403` for anyone else), and only the owner may deactivate one.
+
+**CMEK** cannot be enabled or rotated on `__agent-keys` or `__treasury-keys` (`400`).
+
+**Pay.** Only owners and admins may change Pay settings or create spending grants. No allowlist is not a wildcard: an unattended agent with no allowlist can pay no one, and naming any recipient not already listed is a widening that needs the step-up.
+
 ### 2026-10-12 {#2026-10-12}
 
-**The two resume fields are no longer accepted, and you no longer resubmit.** `resume_after_approval_id` (intent execution) and `resume_tx_id` (transaction submit) are rejected at the deserialiser. Sending one is not an error — it is ignored — but it no longer does anything.
+**The two resume fields are no longer accepted, and you no longer resubmit.** `resume_after_approval_id` (intent execution) and `resume_tx_id` (transaction submit) are skipped by the deserialiser. Sending one is not an error — it is ignored — but it no longer does anything.
 
 Yesterday's change verified a resume id against a real approved, agent-bound, unspent approval. That is correct as far as it goes, and it binds the *approval* rather than the *request body the approval was granted for*, so one legitimately earned approval could be replayed alongside a different body. 1Claw now executes the original request server-side from the payload stored when the `202` was issued, which closes that by construction: the body that runs is the body a human saw.
 
@@ -31209,7 +31257,7 @@ Beyond the identity keys above, agents can be provisioned with per-chain signing
 Multi-chain signing keys are:
 
 - **Provisioned by humans only** — `POST /v1/agents/{id}/signing-keys` requires a human user token. Agents get 403.
-- **Rotatable** — `POST /v1/agents/{id}/signing-keys/{chain}/rotate` creates a new key version and deactivates the old one.
+- **Rotatable** — `POST /v1/agents/{id}/signing-keys/{chain}/rotate` creates a new key version and deactivates the old one. A self-custody (`client_tss`) agent key cannot be rotated into a server key: its owner gets `409` (deactivate it and create the replacement), anyone else `403`. Only its owner may deactivate it. Both calls are consensus-gated (`signing_key.rotate`, `signing_key.deactivate`; retry with `?approval_id=`).
 - **Displayed in the dashboard** — The agent detail page shows a "Signing Keys" card with public keys, addresses, and key version.
 - **Used by the unified sign endpoint** — `POST /v1/agents/{id}/sign` signs EIP-191 messages, EIP-712 typed data, and EIP-2718 transactions using the agent's provisioned key for the specified chain.
 
@@ -31439,7 +31487,9 @@ Treasury → **Self-custody Solana / XRP / Cardano wallet**. What happens:
 
 1. **Recovery code.** You create your account's recovery code (generated in your browser, never chosen; 150 random bits plus a typo check, shown once, typed back to confirm) or enter the one you already have. It never reaches 1Claw.
 2. **Key generation.** A three-party distributed key generation runs between the vault (participant 1) and your browser, which runs participants 2 and 3 (`POST /v1/keys/tss/keygen/begin` → `round2` → `complete`). No dealer: the full private key never exists anywhere, and the vault never learns share 2 or 3. The group public key is the wallet address.
-3. **Recovery kit, before the wallet exists.** Your browser seals shares 2 and 3 into a kit file under your recovery code (Argon2id, then a separate AES-256-GCM key per share) and you download it and confirm the address, which the page derives itself. Only then does the vault commit the key, and only if the kit was sealed for that key (`kit_group_public_key`). A wallet never exists without its kit.
+3. **Recovery kit, before the wallet exists.** Your browser seals shares 2 and 3 into a kit file under your recovery code (Argon2id, then a separate AES-256-GCM key per share) and you download it and confirm the address, which the page derives itself. Only then does the vault commit the key, and only if the kit was sealed for that key (`kit_group_public_key`) and the page proves it held the kit's share 3 (`kit_proof`, a Schnorr proof of possession made by `@1claw/tss-wasm`). A wallet never exists without its kit.
+
+**Kit proofs.** Every call that tells the vault "I have the kit" carries `kit_proof`, made in your browser from the opened kit: keygen complete, confirming a kit (`POST /v1/keys/{key_id}/kit`), restoring from a kit, and committing a refresh. A refresh keeps the same group key, so the key alone cannot tell a current kit from one made before the refresh; the proof is bound to the share generation, and a kit of retired shares is refused with `400`.
 4. **Passkey wrap.** One passkey touch completes the ceremony and wraps share 2 under your passkey (WebAuthn PRF over your account's salt, a separate key per wallet) for everyday signing.
 
 **Your recovery code is a full secret, like a seed phrase: kit + recovery code = anyone can spend, with no passkey and no 1Claw involvement.** We hold one share plus a ciphertext only your passkey can open; your recovery code and your kit never reach us. Keep the code on paper, apart from the kit.
@@ -31484,7 +31534,12 @@ An agent cannot touch a passkey. For unattended, below-cap operation the second 
 
 1. The sidecar generates a P-256 key at boot and registers it (`POST /v1/runtimes/{id}/tss/holder`).
 2. From the wallet card, **Runtime signing** → pick the runtime: one passkey touch unlocks your share, which is re-wrapped to the sidecar's key (ECIES) and stored with the vault as ciphertext only that sidecar can open (`PUT /v1/keys/{id}/client-share/holder`). The wallet must already be delegated to that runtime's agent.
-3. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
+3. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` is the only gate, because the agent holds the signature once `sign/complete` returns and could broadcast it without 1Claw. It runs everything an ordinary submit runs before signing: the agent's guardrails (chains, allowlists, caps, daily limits), the sanctions screen, the approval policy, Cedar/OPA policy and M-of-N consensus. Then it writes a `prepared` row to the transaction ledger, so daily limits count the transfer from that moment, and records the exact message. `sign/begin` refuses any message that was not prepared, and `sign/complete` and `broadcast` refuse (403) a prepare that recorded no ledger row. `broadcast` verifies the signature and submits; it does not re-run the guardrails, since the row has counted since `prepare`.
+
+Above-cap or policy-flagged sends stop at `prepare` with a `202`, and nothing is built:
+
+- **Human approval** (`status: awaiting_approval`, approval action `agent_tss_transaction`): once a person approves, call `prepare` again with the same transfer and `resume_tx_id` set to the returned `transaction_id`. Unlike an ordinary submit, the server cannot finish this one by itself, because the agent's share has to co-sign. The resume must match the parked transfer and spends the approval.
+- **M-of-N consensus** (`status: pending_approval`): call `prepare` again with `approval_id` set to the returned `pending_approval_id` once it is approved.
 4. Revoke by deleting the runtime, deleting the wrap, or removing the delegation. The vault still holds one share only; the sidecar's private key never leaves the container, and your own passkey wraps are untouched.
 
 The sidecar derives the bytes it signs itself (XRPL signing data, the Cardano body hash) with the same encoder as your browser, and refuses if the vault would aggregate over anything else. It runs the same FROST crate as your browser (compiled to WebAssembly, executed with wazero), so there are not two implementations of the protocol to keep in step.
@@ -31495,7 +31550,7 @@ On an agent's page, **Self-custody {chain} key** creates a 2-of-3 signing key fo
 
 ## Moving an existing wallet to self-custody (re-key)
 
-A server-custody Solana, XRP or Cardano wallet shows **Move to self-custody** on its card (XRP and Cardano where your organization has them enabled). The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time to sweep its balance to the new address, the old wallet is deactivated, and the move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep transactions).
+A server-custody Solana, XRP or Cardano wallet shows **Move to self-custody** on its card (XRP and Cardano where your organization has them enabled). The ceremony is the keygen above with `replace_existing: true`. A re-key moves the whole balance into a key whose shares 2 and 3 are on your kit, so it is treated as an export and checked at `keygen/begin`, before your device makes a kit: wallet access (`export` and `send`) on the old wallet, the `treasury_wallet.export` consensus policy (a `202` with `pending_approval_id`; call `begin` again with `approval_id` once approved) and the activity policy for exports. Then the new threshold key is generated, the old key signs one last time to sweep its balance to the new address, the old wallet is deactivated, and the move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep transactions).
 
 - **Native coin only, so nothing is stranded.** The re-key is refused, before the ceremony and again before the sweep, while the old wallet holds anything a native sweep would leave behind: SPL token accounts on Solana, trust lines, offers, escrows or NFTs on XRPL, token-carrying UTXOs on Cardano. Move those first.
 - **XRP reserve.** A Payment moves everything above the old account's 1 XRP reserve and funds the new account; then, if the old account is old enough (its sequence 256 ledgers back), an `AccountDelete` releases the reserve to the new address (minus the 0.2 XRP deletion fee). If it is too new, the reserve stays and the old key is kept so it can still be recovered.
@@ -31510,7 +31565,7 @@ Two deployment switches exist for the transition, both off until an operator tur
 
 1. **Register a passkey** under Settings → Security. The browser is asked whether the authenticator supports the PRF extension; the answer is stored as `prf_supported` and shown as **Can hold wallet keys** on the passkey. Most platform passkeys (iCloud Keychain, Google Password Manager, recent Windows Hello) and YubiKey 5 support it.
 2. **Master wrap.** Your account has one PRF salt (`GET /v1/keys/tss/prf-salt`), so one touch derives the wrap key for any of your wallets; each wallet's share is wrapped under a separate key bound to that wallet, so a wrap cannot be moved onto another. The PRF output is zeroed as soon as it is used.
-3. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores a passkey wrap of share 2 (`passkey_prf`, `wrap_version: 2`) for a key you own; every passkey wrap of one key uses the same salt and version. `POST …/rewrap` adds one for another passkey. 1Claw never stores anything your recovery code can open: `recovery_code` wraps are refused. The vault never reads a wrap for any other purpose; a build-time guard test holds that line.
+3. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores a passkey wrap of share 2 (`passkey_prf`, `wrap_version: 2`) for a key you own; every passkey wrap of one key uses the same salt and version. `POST …/rewrap` adds one for another passkey. A stored wrap is never overwritten: both answer `409` if a wrap for that passkey and share generation already exists. To replace one, delete it first with `DELETE /v1/keys/{key_id}/client-share/{share_id}`, which needs re-authentication in `X-Auth-Confirm` (purpose `tss.key.wrap_delete`; a passkey or authenticator app once either is enrolled, since a deleted wrap can strand a device). 1Claw never stores anything your recovery code can open: `recovery_code` wraps are refused. The vault never reads a wrap for any other purpose; a build-time guard test holds that line.
 
 ## What happens to existing users and agents
 
@@ -34058,6 +34113,12 @@ curl -X POST "https://api.1claw.co/v1/treasury/wallets/bitcoin/send" \
 
 Deactivates the current wallet and generates a new keypair for the same chain. The old wallet is retained for audit but its key is no longer usable.
 
+Rotation generates a key 1Claw holds, so:
+
+- a **self-custody** (`client_tss`) wallet is refused with `409`; change its shares with a share refresh instead (see [Custody](/docs/security/custody));
+- your organization's custody policy applies as it does on create (`403` where new 1Claw-held keys are no longer issued);
+- it is gated by control-plane consensus as `treasury_wallet.rotate`. When your org requires approval the call answers `202` with `pending_approval_id`; once approved, call again with `?approval_id=<id>`. The approval is spent only after the new key is stored and escrowed.
+
 ```bash
 curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/rotate" \
   -H "Authorization: Bearer $TOKEN"
@@ -35924,6 +35985,8 @@ CMEK adds a **client-side encryption layer** on top of 1claw's HSM-backed envelo
 CMEK is designed for organizations that require **cryptographic proof that 1claw cannot access their secrets unilaterally**. If you don't have this requirement, the default HSM encryption is already strong — every vault gets its own KEK in the HSM, every secret version gets a fresh DEK, and plaintext keys exist only in memory during crypto operations.
 
 CMEK is available on **Business** and **Enterprise** plans.
+
+CMEK cannot be enabled or rotated on the signing-key vaults (`__agent-keys`, `__treasury-keys`); both calls return `400`. 1Claw signs with the keys in them, so a key it cannot open without you would break every signature, and a rotation rewrites ciphertext in place, which the key escrow would not pick up.
 
 ## How it works
 

@@ -14,6 +14,8 @@ CMEK is designed for organizations that require **cryptographic proof that 1claw
 
 CMEK is available on **Business** and **Enterprise** plans.
 
+CMEK cannot be enabled or rotated on the signing-key vaults (`__agent-keys`, `__treasury-keys`); both calls return `400`. 1Claw signs with the keys in them, so a key it cannot open without you would break every signature, and a rotation rewrites ciphertext in place, which the key escrow would not pick up.
+
 ## How it works
 
 When CMEK is enabled on a vault, secrets are double-encrypted:
