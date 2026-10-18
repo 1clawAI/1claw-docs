@@ -1,6 +1,6 @@
 ---
 title: Key custody
-description: Who can sign with a 1Claw wallet key today, what "custodial" means here, the sanctions screen every custody model sits behind, and the passkey-held (threshold) keys that are on the way.
+description: Who can sign with a 1Claw wallet key, what "custodial" means here, the sanctions screen every custody model sits behind, and 2-of-3 self-custody wallets you can recover without 1Claw.
 sidebar_label: Key custody
 ---
 
@@ -13,9 +13,9 @@ This page answers one question plainly: **who can produce a signature with a key
 | `custody` | Where the private material is | Who can sign alone |
 |---|---|---|
 | `server` | 1Claw generates the key and stores it as an envelope-encrypted secret (AES-256-GCM per-key DEK, wrapped by your org's KEK in Cloud KMS, HSM on paid tiers). Signing unwraps it in vault memory — or in [Shroud's TEE](/docs/security/trust-model-comparison#tee-attestation-live) when `intents_require_tee` is set — signs, and drops it. | **1Claw.** After policy, guardrails, approvals and the sanctions screen, the vault can sign on your behalf without a second party. That is what makes it custodial. |
-| `client_tss` | A 2-party threshold key. 1Claw holds one share, KMS-wrapped. Your share is wrapped in your browser under a secret only your passkey can re-derive (WebAuthn PRF) or under a recovery code, and stored with us as ciphertext we cannot open (`client_key_shares`). | **Nobody.** The server signing path refuses a `client_tss` key outright; the only way to sign is the threshold protocol, which needs your passkey touch. |
+| `client_tss` | A 2-of-3 threshold key. 1Claw holds share 1, KMS-wrapped. Share 2 is wrapped in your browser under a secret only your passkey can re-derive (WebAuthn PRF) and stored with us as ciphertext we cannot open (`client_key_shares`). Share 3 exists only in your offline recovery kit. | **Not 1Claw.** The server signing path refuses a `client_tss` key outright; 1Claw holds one share of three. Any two shares sign: 1Claw + your passkey (everyday), or your kit + recovery code with no 1Claw involvement at all. |
 
-Every key that existed before 2026-09-18 is `server`. `client_tss` is live for **Solana** (Ed25519, 2-of-2 FROST — Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser). For **EVM** the non-custodial answer needs no MPC at all: a **passkey-owned Safe** (below), `custody: passkey_owner`. Bitcoin and Tron keys (secp256k1) stay `server`: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines. Nothing moves from `server` until you do it.
+Every key that existed before 2026-09-18 is `server`. `client_tss` keys are Ed25519 FROST (the Zcash Foundation's audited `frost-ed25519`, run between the vault and `@1claw/tss-wasm` in your browser): **Solana** for everyone, **XRP** and **Cardano** (enterprise addresses) in beta (`GET /v1/keys/tss/chains` lists what your organization can create). Self-custody wallets are available on every plan, Free included. For **EVM** the non-custodial answer needs no MPC at all: a **passkey-owned Safe** (below), `custody: passkey_owner`. Bitcoin and Tron keys (secp256k1) stay `server`: two-party ECDSA needs a protocol whose round state can be serialised between requests, and the audited implementations run as in-memory state machines. Nothing moves from `server` until you do it.
 
 | `custody` | Where the private material is | Who can sign alone |
 |---|---|---|
@@ -32,7 +32,7 @@ It means a sufficiently privileged 1Claw operator, with database access *and* KM
 - Export is human-only, behind password or passkey re-authentication, account lockout and an audit event (`signing_key.export`, `treasury_wallet.export`). A control-plane consensus policy on `signing_key.export` can require multiple approvers.
 - With `intents_require_tee`, the key is delivered to Shroud as a KMS transit blob the vault itself cannot decrypt (vault has encrypt-only on that key; Shroud decrypt-only) and is only ever plaintext inside the Confidential VM.
 
-Those are exfiltration controls. They constrain *who else* can use the key; they do not change *whether 1Claw can*. If your product claims to be non-custodial, `server` keys do not support that claim; `client_tss` keys will.
+Those are exfiltration controls. They constrain *who else* can use the key; they do not change *whether 1Claw can*. If your product claims to be non-custodial, `server` keys do not support that claim; `client_tss` keys do.
 
 ## Every custody model sits behind the same screens
 
@@ -40,16 +40,39 @@ Those are exfiltration controls. They constrain *who else* can use the key; they
 
 **Geofence.** Until threshold keys ship, creating a `server`-custody wallet (treasury generate/import, agent signing key create/import) is refused from New York (`403`, audit `custody.geofenced`). Signup from New York proceeds without the automatically provisioned treasury wallet. Existing wallets are untouched; the fence is on creating custody, not on using what you already have.
 
-## Self-custody Solana wallets (available now)
+## Self-custody wallets: 2-of-3, recoverable without 1Claw
 
-Treasury → **Self-custody Solana wallet**. What happens:
+Treasury → **Self-custody Solana / XRP / Cardano wallet**. What happens:
 
-1. A distributed key generation runs between the vault and your browser (`POST /v1/keys/tss/keygen/begin` → `round2` → `complete`). Neither side ever sees the other's share; the group public key is the wallet address.
-2. One passkey touch (a tx-assert bound to `tss_keygen` + the session id) completes the ceremony and, in the same WebAuthn assertion, evaluates the passkey's PRF over a random per-key salt. That output — which never leaves your browser — wraps your share (AES-GCM), and the wrapped blob is stored with the vault (`PUT /v1/keys/{id}/client-share`).
-3. **Sending**: `POST /v1/treasury/wallets/solana/tss/prepare` builds the unsigned message after wallet-access, sanctions and spend-policy checks. Your touch (bound to `tss_sign` + the SHA-256 of the message) unwraps your share; the vault decodes the message and screens every transfer destination again, then both halves sign (`/v1/keys/{id}/tss/sign/begin` → `complete`). The vault verifies the aggregate under the group key before returning it, and `…/tss/broadcast` submits only a message whose signature verifies and whose `to` is inside it. The vault's signing nonces are deleted before they are used, so a retried request can never reuse them.
-4. The server signing path refuses the key: there is no `private_key` secret for it to unwrap — only a `tss_share`, which is one Shamir share of a 2-of-2 key.
+1. **Recovery code.** You create your account's recovery code (generated in your browser, never chosen; 150 random bits plus a typo check, shown once, typed back to confirm) or enter the one you already have. It never reaches 1Claw.
+2. **Key generation.** A three-party distributed key generation runs between the vault (participant 1) and your browser, which runs participants 2 and 3 (`POST /v1/keys/tss/keygen/begin` → `round2` → `complete`). No dealer: the full private key never exists anywhere, and the vault never learns share 2 or 3. The group public key is the wallet address.
+3. **Recovery kit, before the wallet exists.** Your browser seals shares 2 and 3 into a kit file under your recovery code (Argon2id, then a separate AES-256-GCM key per share) and you download it and confirm the address, which the page derives itself. Only then does the vault commit the key, and only if the kit was sealed for that key (`kit_group_public_key`). A wallet never exists without its kit.
+4. **Passkey wrap.** One passkey touch completes the ceremony and wraps share 2 under your passkey (WebAuthn PRF over your account's salt, a separate key per wallet) for everyday signing.
 
-Fund it only after a second wrap exists: synced passkeys survive device loss, but 1Claw holds one share and can never hold two. The wallet card holds the address and **Receive** back until there are two owner wraps — open **Backups** and either **Add a passkey** (a touch from a passkey that already holds the share, then a touch from the new one) or **Create recovery code** (a touch from a holding passkey, then a 32-character code shown once, which 1Claw does not store). **Restore from code** puts the share back under a new passkey if every holding passkey is gone. The list response carries `owner_wraps` so this is a fact from the vault, not a browser guess; runtime holder wraps are not counted.
+**Your recovery code is a full secret, like a seed phrase: kit + recovery code = anyone can spend, with no passkey and no 1Claw involvement.** We hold one share plus a ciphertext only your passkey can open; your recovery code and your kit never reach us. Keep the code on paper, apart from the kit.
+
+**Sending**: `POST /v1/treasury/wallets/{chain}/tss/prepare` builds the unsigned transfer after wallet-access, sanctions and spend-policy checks and records it. Your browser checks the transaction itself (it must pay exactly the destination and amount you asked, and be a plain transfer) and derives the bytes to sign itself (the Solana message, XRPL signing data, or the Cardano body hash) before asking for your touch. The vault screens every destination again, refuses any transaction it did not prepare, and refuses shapes it does not sign: on Solana anything but System transfers and a memo; on XRPL anything but a native-XRP Payment (no `SetRegularKey`, no partial payments, no issued currencies, capped fee); on Cardano anything but lovelace transfers (no certificates, withdrawals or minting, capped fee, network pinned). Both halves sign, the vault verifies the signature under the wallet key, and `…/tss/broadcast` submits it. The vault's signing nonces are single use.
+
+**Backed up** means a passkey holds share 2 **and** you have confirmed a recovery kit for the wallet's current shares (`backup` on `GET /v1/treasury/wallets`). The wallet card holds the address back until then. Runtimes and agents refuse a wallet that is not backed up; you can always move funds out of your own wallet.
+
+### Recovery
+
+| What you lost | What you do | 1Claw needed? |
+|---|---|---|
+| Nothing | Vault share + your passkey sign | Yes |
+| One passkey | Another passkey that holds the share signs (**Backups → Add a passkey** beforehand) | Yes |
+| Every passkey | **Backups → Restore from kit**: the kit and code are opened in your browser, share 2 goes under a new passkey, only that wrap is uploaded (re-authentication required, audited `tss_key.recovered_via_code`, you are emailed) | Yes |
+| 1Claw | Kit + code in the offline tool: shares 2 and 3 sign | **No** |
+| 1Claw and every passkey | Kit + code in the offline tool | **No** |
+
+The only total loss is losing the kit **and** the code **and** every passkey **and** 1Claw.
+
+**Offline recovery tool.** [`oneclaw-recover`](https://github.com/1clawAI/1claw/tree/main/packages/tss-recovery) signs with shares 2 and 3 on your machine, for XRP, Cardano and Solana, using only public network endpoints. `addresses` (no code, no network) re-derives every wallet in your kit; `prepare` builds a transfer from public chain data; `sign` asks for your code, runs offline, shows what it will sign and verifies the signature; `broadcast` submits. It sees your recovery code, so **verify a release before you run it**: `gh attestation verify oneclaw-recover-<target> --repo 1clawAI/1claw`, and compare its SHA-256 with the release's `SHA256SUMS` (or build it from source). Transfers made with your kit outside 1Claw skip 1Claw's screens and guardrails: every 1Claw-mediated signing path is screened; a key you hold two shares of is yours to use.
+
+### If a share leaks
+
+- **A passkey or device was compromised** (one share): **Backups → Refresh shares**. The same three participants mint new shares of the same key (same address, same funds) and the old shares stop working with the new ones. It needs your kit and code (share 3 lives only there) and gives you a new kit. It is two-phase: nothing changes until the new passkey wrap and the new kit are in place, then one step switches over; an interrupted refresh can be finished or abandoned, never left half-applied (`/v1/keys/{id}/tss/refresh/*`, audited `tss_key.resharded`).
+- **Your kit or recovery code leaked**: that is two shares, a full key. Refresh cannot help. Move the funds to a new wallet immediately.
 
 ## Passkey-owned Safes on EVM (available now)
 
@@ -68,22 +91,22 @@ An agent cannot touch a passkey. For unattended, below-cap operation the second 
 
 1. The sidecar generates a P-256 key at boot and registers it (`POST /v1/runtimes/{id}/tss/holder`).
 2. From the wallet card, **Runtime signing** → pick the runtime: one passkey touch unlocks your share, which is re-wrapped to the sidecar's key (ECIES) and stored with the vault as ciphertext only that sidecar can open (`PUT /v1/keys/{id}/client-share/holder`). The wallet must already be delegated to that runtime's agent.
-3. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
+3. Agent signing through a runtime is Solana-only for now. The agent sends through the sidecar (`POST /tss/send` on the sidecar's loopback API, or the `/v1/agents/{id}/tss/{prepare,sign/begin,sign/complete,broadcast}` endpoints directly). `prepare` applies the agent's guardrails — chains, allowlists, caps, daily limits, approval policy — and the sanctions screen, and records the exact message; `sign/begin` refuses any message that was not prepared; `broadcast` verifies the signature, re-runs the guardrails and records the transaction so daily limits count it. Above-cap or policy-flagged sends stop at `prepare` with the same `awaiting_approval` / refusal an ordinary submit gets.
 4. Revoke by deleting the runtime, deleting the wrap, or removing the delegation. The vault still holds one share only; the sidecar's private key never leaves the container, and your own passkey wraps are untouched.
 
 The sidecar runs the same FROST crate as your browser (compiled to WebAssembly, executed with wazero), so there are not two implementations of the protocol to keep in step.
 
 ## Moving an existing wallet to self-custody (re-key)
 
-A server-custody Solana wallet shows **Move to self-custody** on its card. The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time — a sweep of its balance to the new address — the old wallet is deactivated, and the whole move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep signature). If the old wallet was empty its key is destroyed outright; otherwise it is kept until the sweep confirms.
+A server-custody Solana wallet shows **Move to self-custody** on its card (XRP and Cardano re-keying comes later). The ceremony is the keygen above with `replace_existing: true`: the new threshold key is generated, the old key signs one last time — a sweep of its balance to the new address — the old wallet is deactivated, and the whole move is audited as `treasury_wallet.rekeyed` (old address, new address, sweep signature). If the old wallet was empty its key is destroyed outright; otherwise it is kept until the sweep confirms.
 
 Two deployment switches exist for the transition, both off until an operator turns them on: `ONECLAW_SERVER_CUSTODY_GENERATION=deny` stops minting new server-custody keys for every org except a named exception list, and `ONECLAW_LAZY_WALLET_PROVISIONING=true` stops signup from creating a treasury wallet on your behalf (wallets are created when you ask for one).
 
 ## Passkeys and shares
 
 1. **Register a passkey** under Settings → Security. The browser is asked whether the authenticator supports the PRF extension; the answer is stored as `prf_supported` and shown as **Can hold wallet keys** on the passkey. Most platform passkeys (iCloud Keychain, Google Password Manager, recent Windows Hello) and YubiKey 5 support it.
-2. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores your wrapped share for a key you own — one wrap per passkey (`passkey_prf`) and one recovery-code wrap (`recovery_code`). `GET` returns your wraps, unopened. `POST …/rewrap` adds a wrap for a newly added passkey while the share is in memory. The vault never reads the blob for any other purpose; a build-time guard test holds that line.
-3. **Two wraps before funds.** The dashboard does not show a `client_tss` wallet's address until it has two owner wraps (two passkeys, or a passkey plus the recovery code; `GET /v1/treasury/wallets` reports `owner_wraps`). Synced passkeys survive device loss; a second credential survives the first one's loss; the recovery code is yours alone. 1Claw holds one share and can never hold two.
+2. **Master wrap.** Your account has one PRF salt (`GET /v1/keys/tss/prf-salt`), so one touch derives the wrap key for any of your wallets; each wallet's share is wrapped under a separate key bound to that wallet, so a wrap cannot be moved onto another. The PRF output is zeroed as soon as it is used.
+3. **Store a share.** `PUT /v1/keys/{key_id}/client-share` stores a passkey wrap of share 2 (`passkey_prf`, `wrap_version: 2`) for a key you own; every passkey wrap of one key uses the same salt and version. `POST …/rewrap` adds one for another passkey. 1Claw never stores anything your recovery code can open: `recovery_code` wraps are refused. The vault never reads a wrap for any other purpose; a build-time guard test holds that line.
 
 ## What happens to existing users and agents
 
@@ -91,7 +114,7 @@ Nothing, until the owner acts. Every existing key stays `server` and signs exact
 
 ## Proof, not promise
 
-`vault/tests/no_server_only_reconstruction.rs` enumerates every place the vault can read signing material and fails the build if any of them is not (a) a server-custody path gated on `custody`, (b) the threshold path, or (c) the passkey-owner path. `client_shares_are_opaque.rs` holds that the vault never reads a customer share except to return it to its owner or its holder. `sanctions_screen_on_every_signing_path.rs` holds that every one of those paths screens. A new signing path that is not listed does not compile past CI.
+`vault/tests/no_server_only_reconstruction.rs` enumerates every place the vault can read signing material and fails the build if any of them is not (a) a server-custody path gated on `custody`, (b) the threshold path, or (c) the passkey-owner path. `client_shares_are_opaque.rs` holds that the vault never reads a customer share except to return it to its owner or its holder. `sanctions_screen_on_every_signing_path.rs` holds that every one of those paths screens. The same proof test holds that a `client_tss` key is 2-of-3 with the vault as participant 1, that no request body carries the recovery code or a plaintext share, that vault signing nonces are single use, and that a key is one wallet on one chain. A new signing path that is not listed does not compile past CI.
 
 ## Inventory
 
