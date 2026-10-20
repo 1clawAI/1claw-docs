@@ -63,7 +63,7 @@ Consensus 202 on typed data:
 ```json
 {
   "consensus_trigger": {
-    "conditions": [{ "type": "intent_type_in", "values": ["typed_data"] }],
+    "conditions": [{ "type": "intent_type_in", "intent_types": ["typed_data"] }],
     "approval": { "min_approvals": 1 }
   }
 }

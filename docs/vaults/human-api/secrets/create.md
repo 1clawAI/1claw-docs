@@ -23,7 +23,7 @@ Store a secret in a vault at a given **path**. If the path already exists, this 
 
 | Field           | Type   | Required | Description |
 |----------------|--------|----------|-------------|
-| type           | string | ✅       | One of: `password`, `api_key`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle` |
+| type           | string | ✅       | One of: `password`, `api_key`, `private_key`, `certificate`, `file`, `note`, `ssh_key`, `env_bundle`, `generic`, `env`, `credential`, `payment_card`, `gift_card` |
 | value          | string | ✅       | The secret value (plaintext) to store |
 | metadata       | object | ❌       | Optional JSON (e.g. tags, description) |
 | expires_at     | string | ❌       | ISO 8601 datetime; secret unavailable after this time |

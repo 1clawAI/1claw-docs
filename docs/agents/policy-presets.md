@@ -28,6 +28,7 @@ curl https://api.1claw.co/v1/policy-presets
 ```bash
 curl -X POST https://api.1claw.co/v1/agents/$AGENT/policy-preset/preview \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"preset":"small-business-spender"}'
 ```
 
@@ -68,11 +69,13 @@ its own limits.
 ```bash
 curl -X POST https://api.1claw.co/v1/agents/$AGENT/policy-preset/cedar \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"preset":"treasury-operator"}'
 ```
 
 Returns the Cedar text the preset compiles to, already validated against the
-deployed schema. Read-only — it creates no policy.
+deployed schema. It is read-only and creates no policy. The export itself is not plan-gated; creating Cedar policies from it
+(`/v1/org/cedar-policies`) needs a Team or higher plan.
 
 ```json
 {

@@ -34,7 +34,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/magic/secret-key" 
   -d '{
     "value": "sk_live_...",
     "type": "api_key",
-    "description": "Magic secret key for server-side SDK"
+    "metadata": { "description": "Magic secret key for server-side SDK" }
   }'
 ```
 
@@ -42,7 +42,7 @@ Fetch at runtime:
 
 ```typescript
 const secret = await oneclaw.secrets.get(vaultId, "magic/secret-key");
-const magicSecretKey = secret.data.value;
+const magicSecretKey = secret.data?.value;
 ```
 
 ## Backend operations with 1claw

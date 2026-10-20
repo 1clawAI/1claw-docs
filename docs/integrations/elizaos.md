@@ -116,6 +116,8 @@ After bootstrap, load secrets from `.env.elizaos` or paste values into your char
 | `SIMULATE_TRANSACTION` | Tenderly dry-run |
 | `SUBMIT_TRANSACTION` | Sign and broadcast (simulates first) |
 | `LIST_SIGNING_KEYS` | Chains and public addresses |
+| `EXECUTE_HTTP` | HTTP request through an execution binding (credential injected server-side) |
+| `LIST_BINDINGS` | List active bindings |
 
 ## Security
 

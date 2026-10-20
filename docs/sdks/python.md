@@ -88,7 +88,7 @@ client = create_client(token="eyJ...")
 | Email/password | `client.auth.login(email, password)` |
 | Existing JWT | `create_client(token="eyJ...")` |
 
-Environment variables (optional): `ONECLAW_API_KEY`, `ONECLAW_BASE_URL`, `ONECLAW_AGENT_ID`.
+The client does not read credentials from environment variables; pass them to `create_client` (for example `create_client(api_key=os.environ["ONECLAW_API_KEY"])`).
 
 ## Resource modules
 
@@ -100,15 +100,15 @@ Environment variables (optional): `ONECLAW_API_KEY`, `ONECLAW_BASE_URL`, `ONECLA
 | `client.agents` | `create`, `list`, `get`, `update`, `delete`, `enroll`, `submit_transaction`, `sign_intent` |
 | `client.policies` | `create`, `list`, `delete` |
 | `client.signing_keys` | `create`, `list`, `rotate`, `deactivate`, `balance` |
-| `client.sharing` | `create`, `list`, `accept`, `decline` |
-| `client.audit` | `list_events` |
-| `client.billing` | `subscription`, `credits_balance` |
+| `client.sharing` | `create`, `list_outbound`, `list_inbound`, `get`, `accept`, `decline`, `delete`, `access` |
+| `client.audit` | `list`, `verify` |
+| `client.billing` | `subscription`, `subscribe`, `portal`, `credit_balance`, `credit_transactions`, `credit_topup` |
 | `client.bindings` | `create`, `list`, `execute`, `test` (Execution Intents) |
 | `client.cards` | `order`, `list`, `get`, `reveal` (Payment Card Vault) |
 
 ## Response envelope
 
-All methods return a `Response` object:
+All methods return a `OneclawResponse` object with `data`, `error`, and `meta`:
 
 ```python
 resp = client.vaults.create("my-vault")
@@ -147,22 +147,9 @@ client.policies.create(
 )
 ```
 
-## Async support
-
-```python
-from oneclaw import create_async_client
-
-async def main():
-    client = create_async_client(api_key="1ck_...")
-    resp = await client.vaults.list()
-    print(resp.data)
-
-# asyncio.run(main())
-```
-
 ## Raw HTTP
 
-For endpoints not yet wrapped, use `client.request()` or fall back to [curl examples](/docs/sdks/curl-examples) with `httpx`/`requests`.
+For endpoints not yet wrapped, call the REST API directly with `httpx` or `requests`; see [curl examples](/docs/sdks/curl-examples).
 
 ## Related
 

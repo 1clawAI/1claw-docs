@@ -34,11 +34,12 @@ curl -X POST "https://api.1claw.co/v1/auth/email-otp/verify" \
   -d '{
     "email":"test+wallet@yourdomain.com",
     "code":"123456",
+    "platform_app_id":"APP_UUID",
     "auto_provision_chains":["ethereum","base"]
   }'
 ```
 
-Expect `token`, `user_id`, `is_new_user`, and optional `wallet_address` in the response.
+Expect `token`, `user_id`, `is_new_user`, and optional `wallet_address` in the response. Without `platform_app_id` (or `allow_signup: true`), verify rejects an address that has no account yet.
 
 ### 2. Wallet provisioning
 
@@ -67,7 +68,7 @@ curl -X POST "https://api.1claw.co/v1/treasury/wallets/sepolia/send" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    "value_wei": "0.001"
+    "value_wei": "1000000000000000"
   }'
 ```
 
@@ -78,12 +79,12 @@ Configure a tight allowlist, attempt send to a non-listed address, confirm **403
 ### 6. Widget integration
 
 ```tsx
-<OneclawWalletProvider apiKey={process.env.NEXT_PUBLIC_PLT_KEY!} baseUrl="https://api.1claw.co">
-  <OneclawEmbeddedWallet
-    chains={["ethereum"]}
-    features={{ send: true, receive: true }}
-      />
-</OneclawWalletProvider>
+<OneclawEmbeddedWallet
+  appId={process.env.NEXT_PUBLIC_ONECLAW_APP_ID!}
+  baseUrl="https://api.1claw.co"
+  chains={["ethereum"]}
+  features={{ send: true, receive: true }}
+/>
 ```
 
 Verify: login → balance load → send → policy error toast on violation.
@@ -92,7 +93,7 @@ Verify: login → balance load → send → policy error toast on violation.
 
 ### Security
 
-- [ ] `plt_` key only in server env or `NEXT_PUBLIC_` for widget (never human `1ck_` keys in browser)
+- [ ] `plt_` key only in server env; the widget needs only the app ID (never `plt_`, `1ck_` or `ocv_` keys in the browser)
 - [ ] Spend policies defined (`max_value_per_tx_eth`, `daily_limit_eth`, `allowed_chains`)
 - [ ] OAuth PKCE (S256) enabled for Sign in with 1Claw
 - [ ] HTTPS on all redirect URIs
@@ -102,7 +103,7 @@ Verify: login → balance load → send → policy error toast on violation.
 
 - [ ] `max_connected_users` set appropriately
 - [ ] `billing_model` matches your commercial model (`platform_pays` vs `user_pays`)
-- [ ] Bootstrap templates use `platform_locked: true` for end-user secrets
+- [ ] End-user secrets live in bootstrap-created vaults (marked `platform_locked` automatically)
 - [ ] Claim flow tested (`claim_url` → user claims resources)
 
 ### Operations

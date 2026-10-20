@@ -21,12 +21,12 @@ If you just need the quick config, see [MCP integration](/docs/integrations/mcp-
 
 | Tool | Transport | Config location |
 |------|-----------|-----------------|
-| Claude Desktop | HTTP streaming | `~/.claude/claude_desktop_config.json` |
+| Claude Desktop | HTTP streaming | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `~/.config/claude/claude_desktop_config.json` |
 | Cursor | HTTP streaming | `.cursor/mcp.json` (project) or global settings |
 | VS Code (Copilot) | HTTP streaming | `.vscode/mcp.json` |
-| Claude Code | HTTP streaming | `~/.claude/claude_code_config.json` |
-| Windsurf | HTTP streaming | `.windsurf/mcp.json` |
-| Zed | HTTP streaming | `settings.json` |
+| Claude Code | HTTP streaming | `claude mcp add` (CLI) |
+| Windsurf | HTTP streaming | `~/.codeium/windsurf/mcp_config.json` |
+| Zed | HTTP streaming | `~/.config/zed/settings.json` |
 
 ## Automatic setup with the CLI
 
@@ -78,7 +78,7 @@ Create or edit `.cursor/mcp.json` in your project root:
 </TabItem>
 <TabItem value="claude-desktop" label="Claude Desktop">
 
-Edit `~/.claude/claude_desktop_config.json`:
+Edit `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on macOS):
 
 ```json
 {
@@ -115,9 +115,7 @@ Create or edit `.vscode/mcp.json`:
 <TabItem value="claude-code" label="Claude Code">
 
 ```bash
-claude mcp add 1claw \
-  --transport http \
-  --url https://mcp.1claw.co/mcp \
+claude mcp add --transport http 1claw https://mcp.1claw.co/mcp \
   --header "Authorization: Bearer ocv_your_agent_api_key"
 ```
 
@@ -219,7 +217,7 @@ ONECLAW_MCP_EXFIL_PROTECTION=warn
 
 ### Secret caching
 
-The MCP server caches secrets for 5 minutes with a 1000-entry LRU limit. This reduces API calls but means recently rotated secrets may be stale for up to 5 minutes.
+The MCP server does not cache secret values. Each `get_secret` call fetches from the vault, so a rotated secret is returned on the next call.
 
 ### Agent scope
 

@@ -82,6 +82,9 @@ Per-agent controls can be set when registering or updating an agent to limit wha
 | `tx_known_tokens_only` | `boolean` | Restrict to tokens in the [known tokens registry](#token-registry). Default: `false`. |
 | `xrpl_allowed_tx_types` | `string[]` | Restrict XRPL transaction types (e.g. `["Payment", "TrustSet"]`). Empty = all **supported** types **except** four dangerous ones (`SetRegularKey`, `SignerListSet`, `AccountSet`, `AccountDelete`), which are always blocked unless explicitly listed. |
 | `per_chain_guardrails` | `object` | Chain-specific overrides. See [Per-chain guardrails](#per-chain-guardrails) below. |
+| `address_screening_policy` | `object` | Recipient screening at signing: `{ "mode": "off" \| "deny" \| "approve" }`. Env deny list: `ONECLAW_SCREENING_DENY_LIST`. |
+| `tx_approval_policy` | `object` | Graduated tx HITL thresholds (v0.54+) — matching txs return **202** `awaiting_approval`. |
+| `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` | `string` | `"deny"` (default) or `"approve"` for EIP-712, simulation revert, or raw digest HITL. |
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -132,10 +135,6 @@ client.agents.update(
 
 </TabItem>
 </Tabs>
-
-| `address_screening_policy` | `object` | Recipient screening at signing: `{ "mode": "off" \| "deny" \| "approve" }`. Env deny list: `ONECLAW_SCREENING_DENY_LIST`. |
-| `tx_approval_policy` | `object` | Graduated tx HITL thresholds (v0.54+) — matching txs return **202** `awaiting_approval`. |
-| `typed_data_policy` / `simulation_failure_policy` / `raw_signing_policy` | `string` | `"deny"` (default) or `"approve"` for EIP-712, simulation revert, or raw digest HITL. |
 
 When a transaction violates any guardrail, the proxy returns **403 Forbidden** with a descriptive `detail` message.
 
@@ -328,8 +327,7 @@ The initial POST submission always returns `signed_tx` for the originating calle
 Execution Intents extend the Intents API beyond blockchain transactions. Agents can make **HTTP calls, database queries, and external service interactions** through pre-configured **bindings** — without ever seeing the underlying credentials.
 
 :::info Tier requirements
-- **Pro:** HTTP and GraphQL binding types
-- **Team+:** All binding types (Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom)
+- **Pro+:** All binding types (HTTP, GraphQL, Postgres, MySQL, Redis, gRPC, SMTP, Cloud SDK, S3, Custom). Free has none.
 - **Business+:** TEE execution mode (requests execute inside Shroud's confidential enclave)
 :::
 
@@ -389,13 +387,15 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
   -d '{
     "name": "stripe-api",
     "binding_type": "http",
-    "credential": "sk_live_...",
+    "credential": { "token": "sk_live_..." },
     "config": {
       "base_url": "https://api.stripe.com",
-      "auth_type": "bearer",
+      "auth_type": "bearer"
+    },
+    "guardrails": {
       "allowed_hosts": ["api.stripe.com"],
       "allowed_paths": ["/v1/*"],
-      "timeout_ms": 10000
+      "max_duration_ms": 10000
     }
   }'
 ```
@@ -407,13 +407,15 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
 const { data: binding } = await client.bindings.create(agentId, {
   name: "stripe-api",
   binding_type: "http",
-  credential: "sk_live_...",
+  credential: { token: "sk_live_..." },
   config: {
     base_url: "https://api.stripe.com",
     auth_type: "bearer",
+  },
+  guardrails: {
     allowed_hosts: ["api.stripe.com"],
     allowed_paths: ["/v1/*"],
-    timeout_ms: 10000,
+    max_duration_ms: 10000,
   },
 });
 // binding.credential_set === true; credential value is never returned
@@ -426,13 +428,19 @@ const { data: binding } = await client.bindings.create(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+resp = client.bindings.create(
+    agent_id,
+    name="stripe-api",
+    binding_type="http",
+    credential={"token": "sk_live_..."},
+    config={"base_url": "https://api.stripe.com", "auth_type": "bearer"},
+    guardrails={
+        "allowed_hosts": ["api.stripe.com"],
+        "allowed_paths": ["/v1/*"],
+        "max_duration_ms": 10000,
+    },
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+# resp.data["credential_set"] is True; the credential value is never returned
 ```
 
 </TabItem>
@@ -468,16 +476,17 @@ const { data: binding } = await client.bindings.create(agentId, {
 <TabItem value="python" label="Python">
 
 ```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+resp = client.bindings.create(
+    agent_id,
+    name="stripe-api",
+    binding_type="http",
+    config={"base_url": "https://api.stripe.com", "auth_type": "bearer"},
+    credential_source={
+        "type": "vault_ref",
+        "vault_id": "550e8400-e29b-41d4-a716-446655440000",
+        "path": "integrations/stripe-key",
+    },
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -543,16 +552,12 @@ const { data: result } = await client.bindings.execute(agentId, {
 <TabItem value="python" label="Python">
 
 ```python
-from oneclaw import create_client
-
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+resp = client.bindings.execute(
+    agent_id,
+    binding="stripe-api",
+    intent_type="http",
+    params={"method": "GET", "path": "/v1/customers?limit=10"},
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
 ```
 
 </TabItem>
@@ -562,16 +567,47 @@ api_key = resp.data.get("api_key")  # shown once
 
 | Type | Tier | Description |
 | --- | --- | --- |
-| `http` | Pro | REST API calls with credential injection |
-| `graphql` | Pro | GraphQL queries/mutations |
-| `postgres` | Team+ | PostgreSQL queries |
-| `mysql` | Team+ | MySQL queries |
-| `redis` | Team+ | Redis commands |
-| `grpc` | Team+ | gRPC calls |
-| `smtp` | Team+ | Email sending |
-| `cloud_sdk` | Team+ | Cloud provider SDK calls |
-| `s3` | Team+ | S3-compatible storage operations |
-| `custom` | Team+ | Custom integrations |
+| `http` | Pro+ | REST API calls with credential injection |
+| `graphql` | Pro+ | GraphQL queries/mutations |
+| `postgres` | Pro+ | PostgreSQL queries |
+| `mysql` | Pro+ | MySQL queries |
+| `redis` | Pro+ | Redis commands |
+| `grpc` | Pro+ | gRPC calls |
+| `smtp` | Pro+ | Email sending |
+| `cloud_sdk` | Pro+ | Cloud provider SDK calls |
+| `s3` | Pro+ | S3-compatible storage operations |
+| `custom` | Pro+ | Custom integrations |
+
+### Database bindings: TLS mode {#database-tls-mode}
+
+`postgres` and `mysql` bindings accept exactly two TLS modes. Any other mode, including a connection string that names none, is refused with `400` at execute and test time.
+
+| Binding | Accepted | Behaviour |
+| --- | --- | --- |
+| `postgres` | `sslmode=verify-full` | TLS with certificate and hostname verification. The connection keeps the hostname, so SNI-routed hosts such as Neon work. |
+| `postgres` | `sslmode=disable` | Plaintext, pinned to the address 1Claw resolved and checked. |
+| `mysql` | `ssl-mode=VERIFY_IDENTITY` | TLS with certificate and hostname verification. |
+| `mysql` | `ssl-mode=DISABLED` | Plaintext, pinned to the checked address. |
+
+`prefer`, `allow`, `require` and `verify-ca` (and MySQL `PREFERRED`, `REQUIRED`, `VERIFY_CA`) are refused: each either falls back to plaintext or accepts a certificate for any hostname, so the connection could land somewhere other than the host that was checked. The driver default when no mode is given is `prefer`, so add the mode explicitly. With a structured credential (`host`, `port`, `user`, `password`, `database`) set `"sslmode": "verify-full"` in the credential object; it defaults to `prefer` too.
+
+```json
+{ "connection_string": "postgres://app:secret@db.example.com:5432/app?sslmode=verify-full" }
+```
+
+Unix sockets are refused, and the host must pass the same private-address and `allowed_hosts` checks as an HTTP binding.
+
+### Agent-supplied request headers {#request-headers}
+
+On `http`, `graphql`, `grpc` and `custom` bindings, headers the agent sends in `params.headers` are filtered against the binding guardrail `allowed_request_headers`. When it is unset the default is `content-type`, `accept`, `user-agent` and `idempotency-key`. A header outside the list is a guardrail denial (`header_not_allowed`): refused with `403` under `enforcement: "enforce"`, dropped and audited under `"log"`.
+
+`Host`, `Authorization`, `Cookie`, `Proxy-Authorization`, `X-Forwarded-*` and metadata or hop-by-hop headers are always refused, even if listed in `allowed_request_headers`. The binding's own credential is the only authorization the request carries.
+
+`grpc` bindings also pass gRPC and Connect protocol headers (names starting `grpc-` or `connect-`, such as `grpc-timeout` or `connect-protocol-version`) without an allowlist entry, unless the name contains `auth` or `host`.
+
+```json
+{ "guardrails": { "allowed_request_headers": ["content-type", "accept", "x-request-id"] } }
+```
 
 ### Binding lifecycle
 
@@ -582,10 +618,12 @@ api_key = resp.data.get("api_key")  # shown once
 | Get | `GET /v1/agents/{id}/bindings/{bid}` | `client.bindings.get(agentId, bindingId)` |
 | Update | `PATCH /v1/agents/{id}/bindings/{bid}` | `client.bindings.update(agentId, bindingId, data)` |
 | Delete | `DELETE /v1/agents/{id}/bindings/{bid}` | `client.bindings.delete(agentId, bindingId)` |
-| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId)` |
+| Test | `POST /v1/agents/{id}/bindings/{bid}/test` | `client.bindings.test(agentId, bindingId, { timeout_ms })` |
 | Rotate credential | `POST /v1/agents/{id}/bindings/{bid}/rotate-credential` | `client.bindings.rotateCredential(agentId, bindingId, { credential })` |
 | Execute | `POST /v1/agents/{id}/execute` | `client.bindings.execute(agentId, data)` |
 | List executions | `GET /v1/agents/{id}/executions` | `client.bindings.listExecutions(agentId)` |
+
+`test` takes an optional `timeout_ms` (default 5000), clamped to 1000 through 30000. A failed test returns `success: false` with an `error` from which the binding's credential has been removed.
 
 Binding responses include **`credential_set`** (boolean) so you can confirm a credential is stored without ever exposing the value. Deleting a binding **purges** the stored credential.
 
@@ -636,11 +674,12 @@ At execute time the server enforces the **strictest** of binding-level and agent
 
 ```bash
 1claw agent binding create <agent-id> --name stripe-api --type http \
-  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"]}' \
-  --credential sk_live_...
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer"}' \
+  --guardrails '{"allowed_hosts":["api.stripe.com"]}' \
+  --credential '{"token":"sk_live_..."}'
 1claw agent binding list <agent-id>
 1claw agent binding test <agent-id> <binding-id>
-1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential '{"token":"sk_live_new_..."}'
 1claw agent binding execute <agent-id> --binding stripe-api --intent-type http \
   --params '{"method":"GET","path":"/v1/customers?limit=5"}'
 1claw agent binding executions <agent-id>
@@ -652,7 +691,7 @@ Enable on the agent: `1claw agent update <id> --execution-intents true --executi
 
 - **Credentials never exposed:** Binding credentials are stored in the `__agent-keys` vault at `agents/{id}/bindings/{name}`. Agents cannot read them directly. Responses use `credential_set`, not the secret value.
 - **SSRF protection:** `validate_audience_url` blocks requests to cloud metadata endpoints, private CIDRs, and internal hostnames. Connectivity tests use the same checks as execute.
-- **Host and path allowlists:** Each binding defines `allowed_hosts` and optional `allowed_paths` (trailing-`*` wildcard). Agent `execution_guardrails.allowed_hosts` can further restrict destinations.
+- **Host and path allowlists:** Each binding's `guardrails` define `allowed_hosts` and optional `allowed_paths` (trailing-`*` wildcard). They are read from `guardrails`, not `config`. Agent `execution_guardrails.allowed_hosts` can further restrict destinations.
 - **Binding type gating:** Agent `execution_guardrails.allowed_binding_types` is enforced at execute time, not only at create.
 - **Audit trail:** Every execution is recorded in `execution_events` with sanitized request/response metadata (`success` / `error` / `denied`). Only successful runs count toward the monthly quota.
 - **Execution surface:** Execute responses include `execution_surface`: `vault` (default) or `tee` when a Shroud execution endpoint is configured and `execution_mode: "tee"` is requested.

@@ -59,7 +59,7 @@ print(resp.data["path"], f"v{resp.data['version']}")
 
 **Response (201):** Same shape as create; `version` will be 2 (or next). The secret value is never returned.
 
-To read a **specific** version, use the versioned endpoint if your deployment supports it (e.g. `GET .../secrets/:path/versions/:v`). Otherwise only the latest is available via `GET .../secrets/:path`.
+To read a **specific** version, use `GET /v1/vaults/:vault_id/secret-version/:path/:version` (SDK: `client.secrets.getVersion(vaultId, path, version)`). List all versions with `GET /v1/vaults/:vault_id/secret-versions/:path`. `GET .../secrets/:path` always returns the latest version.
 
 ## Related
 

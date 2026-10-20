@@ -47,7 +47,7 @@ if (error) {
 Once you can see the error, the usual causes are:
 
 - **403 `Insufficient permissions`** — the agent's grant does not cover that
-  path. `GET /v1/vaults/{id}/access` shows the paths actually granted; a
+  path. `GET /v1/vaults/{id}/policies` lists the paths actually granted; a
   "default read access" grant is often scoped to a prefix that excludes yours.
 - **404** — wrong path or wrong vault. `client.secrets.list(vaultId)` returns
   the keys (no plaintext) and settles it.

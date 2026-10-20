@@ -60,7 +60,7 @@ curl -X POST "https://api.1claw.co/v1/agents/{agent_id}/oauth/connect" \
   -d '{
     "provider_slug": "github",
     "scopes": ["repo", "user"],
-    "redirect_uri": "https://1claw.co/oauth/callback"
+    "redirect_after": "https://1claw.co/agents"
   }'
 ```
 
@@ -68,8 +68,7 @@ Response:
 
 ```json
 {
-  "authorization_url": "https://github.com/login/oauth/authorize?client_id=...&scope=repo+user&state=...",
-  "state": "..."
+  "authorization_url": "https://github.com/login/oauth/authorize?client_id=...&scope=repo+user&state=..."
 }
 ```
 
@@ -90,7 +89,7 @@ curl -X POST "https://api.1claw.co/v1/agents/{agent_id}/execute" \
     "intent_type": "http",
     "params": {
       "method": "GET",
-      "url": "https://api.github.com/user/repos"
+      "path": "/user/repos"
     }
   }'
 ```
@@ -133,18 +132,18 @@ await client.oauthConnect.disconnect(agentId, bindingId);
 1claw oauth providers
 
 # List agent connections
-1claw oauth connections --agent-id <id>
+1claw oauth connections <agent-id>
 
-# Initiate a connection (opens browser)
-1claw oauth connect --agent-id <id> --provider github --scopes repo,user
+# Initiate a connection (opens browser; --no-open prints the URL)
+1claw oauth connect <agent-id> github
 
 # Disconnect
-1claw oauth disconnect --agent-id <id> --binding-id <binding-id>
+1claw oauth disconnect <agent-id> <binding-id>
 
 # Manage app credentials
-1claw oauth credentials set --agent-id <id> --provider slack
-1claw oauth credentials list --agent-id <id>
-1claw oauth credentials delete --agent-id <id> --provider slack
+1claw oauth credentials save <agent-id> --provider slack --client-id <id> --client-secret <secret>
+1claw oauth credentials list <agent-id>
+1claw oauth credentials delete <agent-id> slack
 ```
 
 ## Dashboard
@@ -172,7 +171,7 @@ Returns the full provider registry (public, no auth required).
 POST /v1/agents/{id}/oauth/connect
 ```
 
-Human-only. Body: `{ provider_slug, scopes?, redirect_uri? }`. Returns `{ authorization_url, state }`.
+Human-only. Body: `{ provider_slug, scopes?, redirect_after? }`. Returns `{ authorization_url }`.
 
 ### List Connections
 
@@ -196,7 +195,7 @@ Human-only. Revokes tokens and deletes the underlying binding.
 POST /v1/agents/{id}/oauth/app-credentials
 ```
 
-Human-only. Body: `{ provider_slug, client_id, client_secret }`. Credentials are envelope-encrypted.
+Human-only. Body: `{ provider_slug, client_id, client_secret, redirect_uri? }`. Credentials are envelope-encrypted.
 
 ### List App Credentials
 

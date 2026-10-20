@@ -134,7 +134,7 @@ POST /v1/webhooks/{platform}/{webhook_path}
 ```
 
 ### Telegram
-1. Create a channel with `channel_type: "telegram"` and your bot token in metadata
+1. Create a channel with `channel_type: "telegram"` and your bot token in `config`
 2. The webhook is automatically registered with the Telegram Bot API
 3. Use `POST .../refresh-webhook` to repair if needed
 

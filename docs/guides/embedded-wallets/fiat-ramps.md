@@ -77,14 +77,15 @@ curl -X POST "https://api.1claw.co/v1/fiat/offramp/initiate" \
 Enable the **Buy** feature — no extra partner config in your frontend:
 
 ```tsx
-<OneclawEmbeddedWallet features={{ send: true, receive: true, buy: true }} />
+<OneclawEmbeddedWallet appId={APP_ID} features={{ send: true, receive: true, buy: true }} />
 ```
 
 Programmatic:
 
 ```typescript
-const { createOnrampSession } = useOneclawWallet();
-const session = await createOnrampSession({ chain: "ethereum", amount_usd: "100" });
+const { client } = useOneclawWallet();
+const session = await client.createOnrampSession("ethereum", "USDC", "100"); // chain, asset?, amountUsd?
+window.open(session.session_url, "_blank");
 ```
 
 ## Webhooks

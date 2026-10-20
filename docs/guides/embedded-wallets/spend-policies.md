@@ -233,8 +233,10 @@ const userClient = createClient({
 });
 
 const { data } = await userClient.treasuryWallets.getEffectiveSpendPolicy();
-// API returns { policy: {...} | null }; SDK exposes the inner policy on data
-console.log(data?.max_value_per_tx_eth, data?.allowed_chains);
+// The SDK passes the API body through unchanged: { policy: {...} | null }
+// (its SpendPolicyResponse type describes the inner policy, so read it untyped)
+const policy = (data as any)?.policy;
+console.log(policy?.max_value_per_tx_eth, policy?.allowed_chains);
 ```
 
 </TabItem>
@@ -394,16 +396,14 @@ Native ETH sends are still allowed when `allowed_tokens` is set but no token is 
 The embedded wallet widget calls treasury wallet send/swap APIs with the user's session JWT. Spend policies apply automatically — no widget configuration is required.
 
 ```tsx
-import { OneclawWalletProvider, OneclawTreasuryWidget } from "@1claw/wallet-react";
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
-<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
-  <OneclawTreasuryWidget theme="dark" chains={["ethereum", "base"]} />
-</OneclawWalletProvider>
+<OneclawEmbeddedWallet appId={APP_ID} theme="dark" chains={["ethereum", "base"]} />
 ```
 
 **Recommended integration patterns:**
 
-1. **Pre-flight limits** — Call `getEffectiveSpendPolicy()` when the user opens the wallet and show caps near Send/Swap buttons.
+1. **Pre-flight limits** — Call `getEffectiveSpendPolicy()` (on the `useOneclawWallet()` hook, or the SDK) when the user opens the wallet and show caps near Send/Swap buttons.
 2. **Error handling** — Catch **403** responses and map `detail` to user-friendly copy (e.g. "Daily limit reached — try again tomorrow").
 3. **Per-user tiers** — After KYC or subscription upgrade, call `setUserSpendPolicy()` to raise caps without redeploying your app.
 

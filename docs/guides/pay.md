@@ -11,7 +11,7 @@ The [x402 guide](./x402.md) covers being on the receiving end of a 402 — payin
 paywall and needs to pay it.
 
 ```bash
-1claw pay --agent research-bot https://api.example.com/premium
+1claw pay --agent $AGENT_ID https://api.example.com/premium
 ```
 
 ```
@@ -214,7 +214,7 @@ exceed the agent's own `pay_grant_max_usd` or `pay_grant_max_ttl_secs` — a gra
 is a delegation inside limits already set, never a way around them.
 
 ```bash
-1claw pay --mode session --agent research-bot https://api.example.com/premium
+1claw pay --mode session --agent $AGENT_ID https://api.example.com/premium
 ```
 
 The cap is decremented as payments are signed, in a single guarded statement, so
@@ -304,6 +304,15 @@ all three resolve. Assets may be named by contract address, SPL mint, or symbol
 — but a symbol only resolves within the stated network, because the same symbol
 is a different token on every chain.
 
+**The payment header answers in the challenge's own x402 version.** A v2
+challenge (`x402Version: 2`) gets a v2 payload: `x402Version`, `resource`,
+`accepted` (the seller's chosen `accepts` entry echoed back unchanged) and
+`payload`, with no top-level `scheme` or `network`. A v1 challenge, or one that
+states no version, gets `x402Version: 1` with `scheme`, `network` and
+`payload`. Before 2026-10-15 every header was a v1/v2 hybrid, which strict v2
+facilitators (Coinbase CDP with `@x402/express` 2.x) refused with a second 402.
+The signature itself is unchanged.
+
 **Ethereum, Arbitrum and Polygon are absent on purpose.** Their addresses could
 not be verified on-chain when the table was written, and a plausible-looking
 guess is worse than a refusal: a wrong address signs a transfer of the wrong
@@ -333,6 +342,7 @@ you are not sent looking for a price oracle you do not need.
 | `POST /v1/agents/{id}/pay/{payment_id}/result` | Agent or human |
 | `GET /v1/agents/{id}/pay/{payment_id}` | Agent or human |
 | `PATCH /v1/agents/{id}/pay/settings` | **Human only** |
+| `POST /v1/agents/{id}/pay/grants/prepare` | **Human only** |
 | `POST /v1/agents/{id}/pay/grants` | **Human only**, plus a passkey assertion |
 | `GET /v1/pay-sessions/{id}` | **The human it was raised for** |
 | `POST /v1/pay-sessions/{id}/authorize` | **The human it was raised for** |

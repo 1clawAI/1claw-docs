@@ -148,10 +148,8 @@ Per router key you can set `spend_cap_usd` (the key stops at the cap; other keys
 
 If you do **not** send `X-Shroud-Api-Key`, Shroud looks up the provider key in the vault:
 
-- **Default path:** `providers/{provider}/api-key` in a vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
-- **Override via header:** You can pass a vault reference so Shroud fetches the key from a specific path:
-  - `X-Shroud-Api-Key: vault://{vault_id}/{secret_path}`
-  - Example: `X-Shroud-Api-Key: vault://a1b2c3d4-e5f6-7890-abcd-ef1234567890/gemini/api-key`
+- **Paths tried, in order:** `providers/{provider}/api-key`, then `api-keys/{provider}`, in each vault the agent can read (e.g. grant the agent read access to `providers/openai/*` or `providers/google/*`).
+- There is no vault-reference syntax for the header: any non-empty `X-Shroud-Api-Key` is sent upstream as the provider key itself (BYOK), and the vault lookup is skipped.
 
 The agent must have read access to that vault path.
 
@@ -315,11 +313,11 @@ curl -X POST "https://shroud.1claw.co/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}'
 
-# With explicit vault key path
+# With your own provider key (BYOK)
 curl -X POST "https://shroud.1claw.co/v1/chat/completions" \
   -H "X-Shroud-Agent-Key: YOUR_AGENT_ID:YOUR_AGENT_API_KEY" \
   -H "X-Shroud-Provider: anthropic" \
-  -H "X-Shroud-Api-Key: vault://VAULT_ID/api-keys/anthropic" \
+  -H "X-Shroud-Api-Key: $ANTHROPIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet-5","messages":[{"role":"user","content":"Hello"}]}'
 ```
@@ -354,9 +352,9 @@ const data = await res.json();
 | HTTP | Message | Meaning |
 |------|---------|--------|
 | 400 | `missing X-Shroud-Provider header` | Send `X-Shroud-Provider` with a supported provider name. |
-| 401 | `missing X-Shroud-Agent-Key header` | Send `X-Shroud-Agent-Key` with `agent_id:api_key`. |
-| 401 | `invalid agent key format: expected 'agent_id:api_key'` | Use exactly one colon; left side = agent UUID, right side = API key. |
-| 401 | `no API key: vault lookup failed and no X-Shroud-Api-Key header` | Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` and grant the agent read access. |
+| 401 | `missing X-Shroud-Agent-Key or Authorization Bearer` | Send a credential in `X-Shroud-Agent-Key` or `Authorization: Bearer` (see [Auth](#auth)). |
+| 401 | `invalid agent key` | The credential is not one of the accepted forms: an `sk-shroud-v1` router key, an `ocv_` key, or `agent_id:api_key` with the agent UUID on the left. |
+| 401 | `Store your {provider} API key in the vault at providers/{provider}/api-key ...` | No provider key was found. Provide `X-Shroud-Api-Key` or store the key in the vault at `providers/{provider}/api-key` (or `api-keys/{provider}`) and grant the agent read access. |
 | 502 | `provider X has no client pool` | Provider name is not supported or is misspelled. Use a value from the [supported providers](#supported-providers) table (e.g. `google` or `gemini` for Gemini). |
 
 ---

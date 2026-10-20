@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 **Endpoint:** `GET /v1/audit/events`  
 **Authentication:** Bearer JWT (agent or human)
 
-Returns audit events for the caller's organization. Agents can use this to see their own access history (and other events they are allowed to see). Query parameters may include `resource_id`, `actor_id`, `action`, `from`, `to`, `limit`, `offset` (exact names depend on implementation).
+Returns audit events for the caller's organization. Agents can use this to see their own access history (and other events they are allowed to see). Optional query parameters: `resource_id` and `actor_id` (UUIDs), `action`, `from` and `to` (RFC 3339 timestamps), `limit` (default 50, max 1000) and `offset`.
 
 ## Example request
 
@@ -41,7 +41,7 @@ for (const event of data.events) {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-events = client.audit.list_events(limit=10)
+events = client.audit.list(limit=10)
 for e in events.data.get("events", []):
     print(e["action"], e["resource_type"])
 ```
@@ -61,9 +61,12 @@ for e in events.data.get("events", []):
       "actor_id": "00000000-0000-4000-8000-000000000000",
       "action": "secret.read",
       "resource_type": "secret",
-      "resource_id": "api-keys/openai",
+      "resource_id": "599dd304-920c-4459-ae07-d62a3515381b",
       "metadata": {},
-      "timestamp": "2026-02-18T14:00:00Z"
+      "timestamp": "2026-02-18T14:00:00Z",
+      "request_id": null,
+      "prev_event_id": "...",
+      "integrity_hash": "..."
     }
   ],
   "count": 1

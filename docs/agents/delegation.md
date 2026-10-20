@@ -78,9 +78,10 @@ const delegation = await client.agents.createDelegation(delegatorId, {
 1claw agent delegation create $DELEGATOR_ID \
   --delegate $DELEGATE_ID \
   --mode caller \
-  --allowed-tools "web_search,memory_get,memory_put" \
-  --max-daily 50 \
-  --max-depth 2
+  --tools web_search memory_get memory_put \
+  --daily-limit 50 \
+  --depth 2 \
+  --expires 2026-12-31T00:00:00Z
 ```
 
 </TabItem>
@@ -91,9 +92,9 @@ const delegation = await client.agents.createDelegation(delegatorId, {
 Agents can check their own effective delegations (which agents they're authorized to delegate to):
 
 ```typescript
-const delegations = await client.agents.getEffectiveDelegations(agentId);
-for (const d of delegations.delegations) {
-  console.log(`Can delegate to ${d.delegate_id}: mode=${d.delegation_mode}, remaining=${d.max_daily_delegations - (d.delegations_today || 0)}`);
+const { data } = await client.agents.getEffectiveDelegations(agentId);
+for (const d of data?.delegations ?? []) {
+  console.log(`Can delegate to ${d.delegate_id}: mode=${d.delegation_mode}, daily cap=${d.max_daily_delegations ?? "none"}, max depth=${d.max_depth}`);
 }
 ```
 

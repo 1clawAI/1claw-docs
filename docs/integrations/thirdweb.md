@@ -93,7 +93,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/thirdweb/secret-ke
   -d '{
     "value": "'"$THIRDWEB_SECRET_KEY"'",
     "type": "api_key",
-    "description": "Thirdweb secret key for server-side SDK"
+    "metadata": { "description": "Thirdweb secret key for server-side SDK" }
   }'
 
 # Store the client ID (not sensitive but good practice)
@@ -103,7 +103,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/thirdweb/client-id
   -d '{
     "value": "'"$THIRDWEB_CLIENT_ID"'",
     "type": "api_key",
-    "description": "Thirdweb client ID"
+    "metadata": { "description": "Thirdweb client ID" }
   }'
 ```
 
@@ -111,7 +111,7 @@ Fetch at runtime:
 
 ```typescript
 const secret = await agent.secrets.get(vaultId, "thirdweb/secret-key");
-const thirdwebSecretKey = secret.data.value;
+const thirdwebSecretKey = secret.data?.value;
 ```
 
 ## Using 1claw with Thirdweb smart accounts

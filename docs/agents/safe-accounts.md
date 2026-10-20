@@ -50,7 +50,7 @@ await client.agents.syncOrgSafeAllowances(); // owner/admin
 ```bash
 1claw agent accounts list <agent-id>
 1claw agent accounts migrate <agent-id> --chain ethereum [--deprecate-eoa]
-1claw agent accounts deprecate-eoa <agent-id> --chain ethereum
+1claw agent accounts deprecate-eoa <agent-id> ethereum
 1claw safe module-registry ethereum
 1claw safe sync-allowances
 ```

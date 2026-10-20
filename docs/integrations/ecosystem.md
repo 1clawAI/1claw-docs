@@ -14,7 +14,7 @@ Everything that connects to 1Claw in one place. Each entry links to a demo repo,
 
 ### LangChain
 
-Eleven LangChain tools for vault secrets, encrypted memory, signing, and automations. Install `langchain-1claw` on PyPI, pass an `ocv_` agent key, and call `get_all_tools()` in LangGraph or a tool-calling agent.
+Thirteen LangChain tools for vault secrets, encrypted memory, signing, and automations. Install `langchain-1claw` on PyPI, pass an `ocv_` agent key, and call `get_all_tools()` in LangGraph or a tool-calling agent.
 
 | | |
 |---|---|
@@ -28,7 +28,7 @@ Eleven LangChain tools for vault secrets, encrypted memory, signing, and automat
 
 ### CrewAI
 
-Eleven CrewAI tools backed by the same agent API: vault CRUD, memory, signing, and automation triggers. One client, one `get_all_tools()` call.
+Thirteen CrewAI tools backed by the same agent API: vault CRUD, memory, signing, and automation triggers. One client, one `get_all_tools()` call.
 
 | | |
 |---|---|
@@ -52,7 +52,7 @@ TypeScript integration for Hermes Agent — MCP-based secret fetching, Shroud LL
 
 ### ElizaOS (ai16z)
 
-elizaOS plugin giving any character runtime access to a 1Claw vault and multi-chain signing keys. Includes 8 actions (GET_SECRET, LIST_SECRETS, PUT_SECRET, SIGN_MESSAGE, SIGN_TYPED_DATA, SIMULATE_TRANSACTION, SUBMIT_TRANSACTION, LIST_SIGNING_KEYS), a context provider that injects vault paths and daily spend, and optional Shroud routing — all from one `ocv_` key.
+elizaOS plugin giving any character runtime access to a 1Claw vault and multi-chain signing keys. Includes 10 actions (GET_SECRET, LIST_SECRETS, PUT_SECRET, SIGN_MESSAGE, SIGN_TYPED_DATA, SIMULATE_TRANSACTION, SUBMIT_TRANSACTION, LIST_SIGNING_KEYS, EXECUTE_HTTP, LIST_BINDINGS), a context provider that injects vault paths and daily spend, and optional Shroud routing — all from one `ocv_` key.
 
 | | |
 |---|---|
@@ -60,7 +60,7 @@ elizaOS plugin giving any character runtime access to a 1Claw vault and multi-ch
 | **npm** | [@1claw/plugin-elizaos](https://www.npmjs.com/package/@1claw/plugin-elizaos) |
 | **GitHub** | [1clawAI/1claw-elizaos-plugin](https://github.com/1clawAI/1claw-elizaos-plugin) |
 | **Guide** | [elizaOS plugin](/docs/integrations/elizaos) |
-| **What it shows** | Bootstrap script (human `1ck_` → agent `ocv_`), 8 actions, vault context provider, Intents API signing with guardrails |
+| **What it shows** | Bootstrap script (human `1ck_` → agent `ocv_`), 10 actions, vault context provider, Intents API signing with guardrails |
 
 ---
 

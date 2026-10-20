@@ -52,7 +52,12 @@ Failed or satisfied step-up emits audit events `human_factor_auth.denied` and `h
 
 ```typescript
 await client.auth.getHumanFactorAuth();
-await client.auth.setHumanFactorAuth({ require_passkey: true, require_totp: false });
+await client.auth.setHumanFactorAuth({
+  send: "passkey_only",
+  swap: "password_or_passkey",
+  export: "passkey_required",
+  conditional: { require_passkey_above_usd: "500", require_passkey_for_new_recipient: true },
+});
 const policy = await client.treasuryWallets.getAuthPolicy();
 ```
 

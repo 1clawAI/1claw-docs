@@ -98,7 +98,7 @@ const tx = await client.agents.submitTransaction(agentId, {
   value: "0.001", // ETH, not wei
 });
 
-console.log("tx_hash:", tx.data.tx_hash);
+console.log("tx_hash:", tx.data?.tx_hash);
 ```
 
 Differences worth noting:
@@ -137,7 +137,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/privy/app-secret" 
   -d '{
     "value": "'"$PRIVY_APP_SECRET"'",
     "type": "api_key",
-    "description": "Privy server auth secret"
+    "metadata": { "description": "Privy server auth secret" }
   }'
 ```
 
@@ -145,7 +145,7 @@ Then fetch it at runtime from your agent or backend:
 
 ```typescript
 const secret = await client.secrets.get(vaultId, "privy/app-secret");
-const privySecret = secret.data.value;
+const privySecret = secret.data?.value;
 ```
 
 This way your Privy credentials are HSM-encrypted, access-policy-gated, and audit-logged instead of sitting in an `.env` file or a CI/CD dashboard.
@@ -176,8 +176,8 @@ const tx = await agent.agents.submitTransaction(agentId, {
   simulate_first: true, // Tenderly simulation before signing
 });
 
-if (tx.data.status === "broadcast") {
-  console.log("Rebalance executed:", tx.data.tx_hash);
+if (tx.data?.status === "broadcast") {
+  console.log("Rebalance executed:", tx.data?.tx_hash);
 }
 ```
 
@@ -195,13 +195,15 @@ If your project manages a multisig treasury, 1claw provides Safe-based proposals
 ```typescript
 // Agent proposes a treasury transaction
 const proposal = await agent.treasury.propose(treasuryId, {
-  chain: "ethereum",
-  to_address: "0xRecipient...",
+  to: "0xRecipient...",
   value_wei: "500000000000000000", // 0.5 ETH
+  safe_tx_hash: safeTxHash, // computed with your Safe SDK
+  nonce: safeNonce,
 });
 
 // Human signers approve in the dashboard or via API
-// When threshold is met, auto-execute kicks in
+// When threshold is met the proposal is marked approved; execute it:
+await agent.treasury.executeProposal(treasuryId, proposal.data!.id);
 ```
 
 See the [Treasury guide](/docs/treasury/overview) for the full flow.

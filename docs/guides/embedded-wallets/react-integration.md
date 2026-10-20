@@ -6,7 +6,7 @@ sidebar_position: 7
 
 # React Integration
 
-[`@1claw/wallet-react`](https://www.npmjs.com/package/@1claw/wallet-react) provides drop-in React components for embedded wallets. Authenticate with your **`plt_`** Platform API key; the widget handles Email OTP, social login, wallet provisioning, Send/Swap/Receive/Buy, spend policy errors, and session refresh.
+[`@1claw/wallet-react`](https://www.npmjs.com/package/@1claw/wallet-react) provides drop-in React components for embedded wallets. Identify your app with its **platform app ID** (`appId`); end users sign in with Email OTP or social login and the widget holds their session. It handles Email OTP, social login, wallet provisioning, Send/Swap/Receive/Buy, spend policy errors, and session refresh.
 
 **Source:** [github.com/1clawAI/wallet-react](https://github.com/1clawAI/wallet-react) (MIT)
 
@@ -14,7 +14,7 @@ For the full prop reference, see also [`@1claw/wallet-react` docs](/docs/treasur
 
 :::info Requirements
 - React 18+
-- Pro+ plan and Platform App (`plt_` key)
+- Pro+ plan and a Platform App (its UUID is the widget's `appId`)
 - Bundler with ESM support (Next.js, Vite, etc.)
 :::
 
@@ -29,55 +29,61 @@ pnpm add @1claw/wallet-react
 ## Full widget
 
 ```tsx
-import {
-  OneclawWalletProvider,
-  OneclawEmbeddedWallet,
-} from "@1claw/wallet-react";
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
 export default function WalletPage() {
   return (
-    <OneclawWalletProvider
-      apiKey={process.env.NEXT_PUBLIC_ONECLAW_PLATFORM_KEY!}
+    <OneclawEmbeddedWallet
+      appId={process.env.NEXT_PUBLIC_ONECLAW_APP_ID!}
       baseUrl="https://api.1claw.co"
-    >
-      <OneclawEmbeddedWallet
-        chains={["ethereum", "base", "solana"]}
-        features={{ send: true, swap: true, receive: true, buy: true }}
-        socialProviders={["google", "apple", "discord"]}
-        theme="system"
-        onLogin={(user) => console.log("Logged in", user.user_id)}
-        onError={(err) => console.error(err)}
-      />
-    </OneclawWalletProvider>
+      chains={["ethereum", "base", "solana"]}
+      features={{ send: true, swap: true, receive: true, buy: true }}
+      socialProviders={["google", "apple"]}
+      socialProviderConfig={{ google: { clientId: GOOGLE_CLIENT_ID } }}
+      theme="auto"
+      onLogin={(user) => console.log("Logged in", user.userId)}
+      onError={(err) => console.error(err)}
+    />
   );
 }
 ```
+
+`OneclawEmbeddedWallet` renders its own `OneclawWalletProvider`, so it needs no wrapper. A social button only appears when `socialProviderConfig` carries that provider's client ID.
 
 ## Component props
 
 ### `OneclawWalletProvider`
 
+Only needed for the headless hook; `OneclawEmbeddedWallet` creates its own.
+
 | Prop | Required | Description |
 | ---- | -------- | ----------- |
-| `apiKey` | Yes | Platform API key (`plt_...`) |
+| `apiKey` | Yes | A user session token, or `""` to use the session the provider stores after `loginWithEmailOtp` / `loginWithSocial`. A `plt_` key is sent as the bearer token; never ship one in a browser bundle. |
+| `appId` | No | Platform app UUID, sent as `platform_app_id` on Email OTP |
 | `baseUrl` | No | API base (default `https://api.1claw.co`) |
+| `persistSession` | No | `"session"` (default), `"local"`, or `false` |
 | `children` | Yes | App tree |
 
 ### `OneclawEmbeddedWallet`
 
 | Prop | Default | Description |
 | ---- | ------- | ----------- |
-| `features` | `["send","swap","receive","buy"]` | Visible views |
-| `socialProviders` | `["google", "apple", "discord"]` | `"google"`, `"apple"`, `"discord"`. Email OTP is always available and is **not** a member of this union — listing `"email"` is a type error. |
+| `appId` | Required | Platform app UUID |
+| `baseUrl` | `https://api.1claw.co` | API base |
+| `features` | `{ send: true, swap: true, buy: true, receive: true }` | Visible views |
+| `socialProviders` | `["google", "apple"]` | `"google"`, `"apple"`, `"discord"`. Email OTP is always available and is **not** a member of this union; listing `"email"` is a type error. |
+| `socialProviderConfig` | — | Client IDs (and redirect URIs for Apple/Discord); a provider without one is not shown |
 | `chains` | `["ethereum"]` | Chains to auto-provision on first login |
-| `theme` | `"system"` | `"light"`, `"dark"`, `"system"`, or CSS custom properties object |
+| `theme` | `"auto"` | `"light"`, `"dark"`, `"auto"`, or a `ThemeConfig` object |
+| `persistSession` | `"session"` | `"session"`, `"local"`, or `false` |
 | `onLinkRequired` | Auto-redirect | Custom handler when existing 1Claw user must link orgs (409) |
-| `onLogin` | — | Callback after successful auth |
+| `onLogin` | — | Callback after successful auth, with `{ userId, email, walletAddress?, isNewUser, isPasswordless }` |
+| `onTransactionSent` / `onSwapCompleted` | — | Callbacks after a send or swap |
 | `onError` | — | Error callback |
 
 ### `OneclawTreasuryWidget`
 
-Compact balance + quick actions UI. Accepts the same props as `OneclawEmbeddedWallet`.
+Compact balance UI. Takes `apiKey`, `baseUrl`, `chains`, `theme`, `brandColor`, `className` and the `onError` / `onTransactionSent` / `onSwapCompleted` callbacks.
 
 ## Feature toggles
 
@@ -89,7 +95,7 @@ Compact balance + quick actions UI. Accepts the same props as `OneclawEmbeddedWa
 | `buy` | Fiat on-ramp partner widgets |
 
 ```tsx
-<OneclawEmbeddedWallet features={{ send: true, receive: true }} />
+<OneclawEmbeddedWallet appId={APP_ID} features={{ send: true, receive: true }} />
 ```
 
 Omit `swap` and `buy` for send-only apps.
@@ -99,13 +105,14 @@ Omit `swap` and `buy` for send-only apps.
 Built-in modes:
 
 ```tsx
-<OneclawEmbeddedWallet theme="dark" />
+<OneclawEmbeddedWallet appId={APP_ID} theme="dark" />
 ```
 
 Or a `ThemeConfig` object for brand colour, radius, font and raw CSS variables. Note the prefix is `--ocw-`, and raw variables go inside `cssVars`:
 
 ```tsx
 <OneclawEmbeddedWallet
+  appId={APP_ID}
   theme={{
     mode: "dark",
     brandColor: "#6366f1",
@@ -134,28 +141,27 @@ function CustomWallet() {
     balances,
     send,
     swap,
-    sendWithPasskey,
-    refresh,
-    sendEmailOtp,
-    verifyEmailOtp,
-    socialLogin,
-    createOnrampSession,
+    refreshWallets,
+    refreshBalance,
+    loginWithEmailOtp,
+    loginWithSocial,
+    client, // OneclawWalletClient: sendEmailOtp, sendWithPasskey, createOnrampSession, ...
   } = useOneclawWallet();
 
   return (
     <div>
       {wallets.map((w) => (
         <p key={w.chain}>
-          {w.chain}: {w.address} — {balances[w.chain]?.native ?? "…"}
+          {w.chain}: {w.address} — {balances[w.chain]?.native.balanceDisplay ?? "…"}
         </p>
       ))}
-      <button onClick={() => refresh()}>Refresh</button>
+      <button onClick={() => refreshWallets()}>Refresh</button>
     </div>
   );
 }
 ```
 
-Must render inside `OneclawWalletProvider`.
+Must render inside `OneclawWalletProvider` (for example `<OneclawWalletProvider apiKey="" appId={APP_ID}>`). Sign in with `client.sendEmailOtp(email)` then `loginWithEmailOtp(email, code, chains)`.
 
 ### Who is signed in
 
@@ -180,7 +186,7 @@ would happily report someone who has since been signed out.
 ```tsx
 const { getEffectiveSpendPolicy } = useOneclawWallet();
 const policy = await getEffectiveSpendPolicy();
-// { max_value_per_tx_eth?, daily_limit_eth?, allowed_chains?, source, ... }
+// Response body: { policy: { max_value_per_tx_eth, daily_limit_eth, allowed_chains, ... } | null }
 ```
 
 This is the same data as `client.treasuryWallets.getEffectiveSpendPolicy()`
@@ -235,10 +241,11 @@ Example app: [sign-in-with-1claw](https://github.com/1clawAI/1claw/tree/main/exa
 
 ## Cross-org linking
 
-When `verifyEmailOtp` or social login returns 409, pass `onLinkRequired`:
+When Email OTP verify or social login returns 409, pass `onLinkRequired`:
 
 ```tsx
 <OneclawEmbeddedWallet
+  appId={APP_ID}
   onLinkRequired={(authorizeUrl, appSlug) => {
     // Custom modal, or:
     window.location.href = authorizeUrl;
@@ -256,10 +263,10 @@ When `verifyEmailOtp` or social login returns 409, pass `onLinkRequired`:
 
 | Variable | Purpose |
 | -------- | ------- |
-| `NEXT_PUBLIC_ONECLAW_API_KEY` | `plt_` key (naming varies by app) |
+| `NEXT_PUBLIC_ONECLAW_APP_ID` | Platform app UUID (naming varies by app) |
 | `NEXT_PUBLIC_ONECLAW_BASE_URL` | API URL override |
 
-Never expose human `1ck_` keys in frontend bundles — use **`plt_`** only.
+Never expose human `1ck_`, agent `ocv_` or platform `plt_` keys in frontend bundles. The provider logs a security error for `1ck_` and `ocv_` keys.
 
 ## Next.js notes
 

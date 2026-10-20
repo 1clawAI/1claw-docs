@@ -38,15 +38,17 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
     "config": {
       "base_url": "https://api.bankr.bot",
       "auth_type": "header",
-      "auth_header": "X-API-Key",
+      "auth_header": "X-API-Key"
+    },
+    "guardrails": {
       "allowed_hosts": ["api.bankr.bot"],
       "allowed_paths": ["/agent/*"],
-      "timeout_ms": 30000
+      "max_duration_ms": 30000
     }
   }'
 ```
 
-and enable intents on the agent: `PATCH /v1/agents/$AGENT_ID` with `{"execution_intents_enabled": true}`. Narrow `allowed_paths` to the Bankr endpoints you use.
+and enable intents on the agent: `PATCH /v1/agents/$AGENT_ID` with `{"execution_intents_enabled": true}`. Narrow `guardrails.allowed_paths` to the Bankr endpoints you use.
 
 **2. Remove the key from the host:**
 
@@ -56,22 +58,23 @@ unset BANKR_API_KEY BANKR_LLM_KEY      # and remove them from shell rc files, .e
 bankr whoami                            # must now fail: "Not authenticated"
 ```
 
-**3. Route Bankr calls through 1claw.** Either call the binding directly —
+**3. Route Bankr calls through 1claw.** Either call the binding directly with an agent JWT from `POST /v1/auth/agent-token`:
 
 ```bash
 curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/execute" \
-  -H "Authorization: Bearer $AGENT_KEY" \
+  -H "Authorization: Bearer $AGENT_JWT" \
   -H "Content-Type: application/json" \
   -d '{"binding":"bankr","intent_type":"http","execution_mode":"vault",
        "params":{"method":"POST","path":"/agent/prompt","body":{"prompt":"..."}}}'
 ```
 
-(or the `execute_http` MCP tool with `binding: "bankr"`) — or keep using the Bankr CLI unchanged by pointing it at a local 1claw proxy:
+(or the `execute_http` MCP tool with `binding: "bankr"`), or keep using the Bankr CLI unchanged by pointing it at a local 1claw proxy:
 
 ```bash
+export ONECLAW_PROXY_TOKEN="$(openssl rand -hex 24)"   # proxy token; without it the proxy prints a fresh one per run
 1claw agent binding proxy bankr --agent-key "$AGENT_ID:$AGENT_KEY" --port 8787
 export BANKR_API_URL=http://127.0.0.1:8787
-export BANKR_API_KEY=managed-by-1claw     # any non-empty placeholder; the proxy never forwards it
+export BANKR_API_KEY="$ONECLAW_PROXY_TOKEN"   # the CLI presents the proxy token; the proxy never forwards it
 bankr agent prompt "..."
 ```
 
@@ -81,12 +84,13 @@ bankr agent prompt "..."
 1claw local add bankr-api-key            # the bk_usr_ key, stored in the encrypted local vault
 1claw daemon policy add bankr-api-key --hosts api.bankr.bot --inject-as header --header-name X-API-Key
 1claw daemon start
+export ONECLAW_PROXY_TOKEN="$(openssl rand -hex 24)"
 1claw daemon proxy bankr-api-key --base-url https://api.bankr.bot --port 8787
 export BANKR_API_URL=http://127.0.0.1:8787
-export BANKR_API_KEY=managed-by-1claw
+export BANKR_API_KEY="$ONECLAW_PROXY_TOKEN"
 ```
 
-The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the binding (or, with the daemon, into a policy-checked injection from the local vault). The vault checks the host and path allowlists and the agent's policies, injects the real key, and returns the upstream response. Whatever the CLI sends as its own credential is dropped locally. A 1claw refusal comes back as 403; if 1claw is unreachable the proxy answers 502 and the CLI stops. Every call is in the audit log.
+The proxy turns each CLI request into `POST /v1/agents/{id}/execute` for the binding (or, with the daemon, into a policy-checked injection from the local vault). The vault checks the host and path allowlists and the agent's policies, injects the real key, and returns the upstream response. The proxy checks the credential the CLI sends (as `Authorization: Bearer` or `X-API-Key`) against its proxy token, answers 401 on a mismatch, and drops it before forwarding. Pass `--no-auth` to skip that check (not recommended). A 1claw refusal comes back as 403; if 1claw is unreachable the proxy answers 502 and the CLI stops. Every call is in the audit log.
 
 **If the agent has a Bankr skill or system prompt**, strip every instruction that stores or reads a key (`bankr login`, "set BANKR_API_KEY to your key", reading `~/.bankr/config.json`). The `bankr ...` commands themselves stay as they are; the proxy env vars are the only setup the skill should mention, and the agent must be told that a 502 from Bankr means 1claw is unavailable and the task stops, not that it should look for another credential.
 
@@ -151,7 +155,7 @@ The `__agent-keys` vault ID can be found via `GET /v1/org/agent-keys-vault`.
 curl -X POST "https://api.1claw.co/v1/agents/AGENT_ID/bankr-keys/lease" \
   -H "Authorization: Bearer AGENT_JWT" \
   -H "Content-Type: application/json" \
-  -d '{ "ttl": 600 }'
+  -d '{ "ttl_seconds": 600 }'
 ```
 
 Response (agent callers do NOT receive `api_key`):
@@ -182,7 +186,7 @@ The `lease_bankr_key` tool is available in the MCP server. It is **privileged** 
 
 ```
 Agent: "I need a Bankr API key to check wallet balances"
-→ lease_bankr_key(ttl: 600)
+→ lease_bankr_key(ttl_seconds: 600)
 
 Bankr key leased:
   Lease ID: a1b2c3d4-...
@@ -195,7 +199,7 @@ Bankr key leased:
 **SDK:**
 
 ```typescript
-const lease = await client.agents.leaseBankrKey(agentId, { ttl: 600 });
+const lease = await client.agents.leaseBankrKey(agentId, { ttl_seconds: 600 });
 const leases = await client.agents.listBankrKeys(agentId);
 await client.agents.revokeBankrKey(agentId, leaseId);
 ```

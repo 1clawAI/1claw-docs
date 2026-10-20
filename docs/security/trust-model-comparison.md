@@ -42,13 +42,13 @@ curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 
 ## MPC vs Shamir key custody
 
-Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. Transaction signatures still come from a single HSM-protected signing key after policy evaluation. 1Claw offers threshold EdDSA on **Solana** today: `custody: client_tss`, 2-of-2 FROST between the vault and `@1claw/tss-wasm` in the browser, so no party ever holds the whole key. On **EVM** the non-custodial answer is a **passkey-owned Safe** (`custody: passkey_owner`), also available now. What 1Claw does *not* have is Turnkey-equivalent threshold **ECDSA**: secp256k1 keys — Bitcoin, Tron, and EVM keys not held in a Safe — are `custody: server`, and 1Claw can sign with them alone. Two-party ECDSA needs a protocol whose round state serialises between requests, and the audited implementations are in-memory state machines. See [Key custody](/docs/security/custody) for the honest version of this comparison.
+Turnkey's MPC-CMP splits **signing private keys** so multiple parties co-sign transactions (QuorumOS). 1Claw's Shamir modes split **encryption keys** (org KEK and optional vault DEK shares) across HSM providers so no single cloud KMS holds the full key wrapping material. A `server`-custody key still signs alone, from a single HSM-protected key, after policy evaluation. Self-custody is separate: `custody: client_tss` is 2-of-3 FROST between the vault (share 1) and `@1claw/tss-wasm` in the browser (shares 2 and 3, the third kept only in an offline recovery kit), so no party ever holds the whole key and 1Claw cannot sign alone. It covers **Solana** for every organization and **XRP**, **Cardano** and **Bitcoin** (FROST over secp256k1 with Taproot) per organization during rollout. On **EVM** the non-custodial answers are a **passkey-owned Safe** (`custody: passkey_owner`) and a 2-of-3 Safe (`client_multisig`, beta); **Tron** uses a native 2-of-3 multisig (`client_multisig`, beta). What 1Claw does *not* have is Turnkey-equivalent threshold **ECDSA**: two-party ECDSA needs a protocol whose round state serialises between requests, and the audited implementations are in-memory state machines. EVM and Tron keys outside those multisig wallets are `custody: server`. See [Key custody](/docs/security/custody) for the honest version of this comparison.
 
 | | Turnkey | 1Claw |
 |---|---------|-------|
 | **Primary Shamir/MPC use** | Threshold **transaction signing** | Threshold **envelope encryption** (KEK/DEK custody) |
-| **Where full key material exists** | Never assembled outside QuorumOS enclave | `server` keys: unwrapped briefly in Vault memory (or only inside Shroud's TEE with `intents_require_tee`); org KEK reconstruction targeted to Shroud TEE. `client_tss` (Solana) and `passkey_owner` (EVM Safes): never assembled anywhere |
-| **Sanctions screening** | Policy-configurable | Mandatory on every signing path, OFAC SDN, fail-closed after 7 days |
+| **Where full key material exists** | Never assembled outside QuorumOS enclave | `server` keys: unwrapped briefly in Vault memory (or only inside Shroud's TEE with `intents_require_tee`); org KEK reconstruction targeted to Shroud TEE. `client_tss` (Solana, XRP, Cardano, Bitcoin) and `passkey_owner` (EVM Safes): never assembled anywhere; `client_multisig` (Tron, EVM 2-of-3 Safes): three separate keys, 1Claw holds one |
+| **Sanctions screening** | Policy-configurable | Mandatory on every signing path, OFAC SDN (EVM addresses screened with or without `0x`), fail-closed after 7 days |
 | **Governance quorum** | On-chain signature quorum | Control-plane `consensus_trigger` (approvals before sign/export/policy change) |
 
 ---
@@ -132,8 +132,8 @@ Example policy fragment:
 
 ```cedar
 permit(
-  principal == Agent::"agent-uuid",
-  action == Action::"sign",
+  principal == OneClaw::Agent::"agent-uuid",
+  action == OneClaw::Action::"sign",
   resource
 )
 when {

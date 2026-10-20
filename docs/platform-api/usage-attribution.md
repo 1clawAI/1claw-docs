@@ -7,7 +7,7 @@ sidebar_position: 68
 # Per-end-user usage
 
 If you bill your own users for what they do through 1Claw, you need to know
-which of them did what.
+which of them did what. The report covers the current calendar month.
 
 ```bash
 curl "https://api.1claw.co/v1/platform/apps/$APP/usage" \
@@ -16,11 +16,21 @@ curl "https://api.1claw.co/v1/platform/apps/$APP/usage" \
 
 ```json
 {
-  "per_connection": [
-    { "connection_id": "…", "requests": 1840, "signatures": 12 }
+  "app_id": "…",
+  "period_start": "2026-10-01T00:00:00+00:00",
+  "period_end": "2026-11-01T00:00:00+00:00",
+  "connections": [
+    {
+      "connection_id": "…",
+      "usage": { "api_requests": 1840, "signatures": 12, "execution_intents": 0, "execution_intents_tee": 0, "inference_usd": "0.42", "credits_debited_cents": 0 }
+    }
   ],
-  "unattributed": { "ambiguous": 37, "none": 4 },
-  "totals": { "requests": 1881, "signatures": 12 }
+  "unattributed": {
+    "ambiguous": { "api_requests": 37, "signatures": 0, "…": "…" },
+    "none": { "api_requests": 4, "signatures": 0, "…": "…" }
+  },
+  "totals": { "api_requests": 1881, "signatures": 12, "…": "…" },
+  "has_ambiguous_usage": true
 }
 ```
 

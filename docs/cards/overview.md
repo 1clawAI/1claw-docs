@@ -67,20 +67,23 @@ Subscribe to: `approval.created`, `approval.decided`, `card.ordered`, `card.read
 ```typescript
 import { createClient } from "@1claw/sdk";
 
-const client = createClient({ apiKey: process.env.ONECLAW_API_KEY! });
+const client = createClient({
+  baseUrl: "https://api.1claw.co",
+  apiKey: process.env.ONECLAW_API_KEY!,
+});
 
 // Agent orders a card (returns 202 when approval required)
-const order = await client.cards.order(agentId, {
+const { data: order } = await client.cards.order(agentId, {
   kind: "prepaid",
   amount_usd: "25.00",
 }, { idempotencyKey: crypto.randomUUID() });
 
-if (order.status === "awaiting_approval") {
+if (order?.status === "awaiting_approval") {
   console.log("Waiting for human approval:", order.approval_id);
 }
 
 // Human approves in dashboard or via API
-await client.approvals.decide(approvalId, { decision: "approved" });
+await client.approvals.decide(approvalId, "approved");
 ```
 
 See also: [Intents API](/docs/agents/intents/overview) (agent signing keys for x402 payment), [Approvals](/docs/treasury/approvals) (human-in-the-loop queue).

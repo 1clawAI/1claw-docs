@@ -6,7 +6,7 @@ sidebar_position: 8
 
 # Platform API for Embedded Wallets
 
-The [Platform API](/docs/platform-api/overview) is how your **backend** provisions users, bootstraps infrastructure, and configures spend policies. End-users interact with **treasury wallet** and **auth** endpoints using their own JWTs (issued after OTP/social/OAuth login). Your **`plt_`** key must never ship to browsers — use it server-side or rely on the widget's built-in platform key wiring.
+The [Platform API](/docs/platform-api/overview) is how your **backend** provisions users, bootstraps infrastructure, and configures spend policies. End-users interact with **treasury wallet** and **auth** endpoints using their own JWTs (issued after OTP/social/OAuth login). Your **`plt_`** key must never ship to browsers; use it server-side. The widget needs only your platform app ID.
 
 ## Authentication model
 
@@ -33,7 +33,7 @@ See [Getting started](/docs/guides/embedded-wallets/getting-started#step-1-creat
 ```typescript
 const { data } = await platform.platform.upsertUser({
   email: "user@example.com",
-  external_subject: "shopify:customer-9912",
+  display_name: "Customer 9912",
   create_sub_org: false, // true → isolated sub-org per user
 });
 // data.connection_id, data.user_handle, data.is_new
@@ -43,12 +43,12 @@ OIDC variant:
 
 ```typescript
 await platform.platform.upsertUser({
-  subject_token: upstreamJwt,
-  external_subject: upstreamJwtSub,
+  subject_token: upstreamJwt, // verified against the app's oidc_jwks_url
 });
+// external_subject is the token's `sub` claim; the token must also carry `email`
 ```
 
-Cross-org safety: `user.org_id` must match `app.org_id` or upsert fails.
+Cross-org safety: if the email already belongs to a user in another org, upsert answers **409** with `link_required.authorize_url` instead of connecting them.
 
 ## Bootstrap templates
 
@@ -88,7 +88,7 @@ const { data } = await platform.platform.bootstrapUser(connectionId, {
 // data.claim_url, data.summary.agent_api_key (one-time), data.summary.signing_keys
 ```
 
-**Custody:** Resources created with `platform_locked: true` cannot be read by platform operators — only lifecycle management.
+**Custody:** Bootstrap marks the vaults and agents it creates `platform_locked`; their secrets cannot be read by platform operators, only managed through their lifecycle.
 
 ### Wallet-only apps
 

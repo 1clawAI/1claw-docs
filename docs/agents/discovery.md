@@ -37,9 +37,7 @@ curl -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID/discovery" \
   -d '{
     "discoverable": true,
     "public_description": "A DeFi research agent that analyzes token metrics and on-chain data.",
-    "public_tags": ["defi", "research", "analytics"],
-    "a2a_url": "https://my-agent.run.1claw.co/a2a",
-    "mcp_url": "https://my-agent.run.1claw.co/mcp"
+    "public_tags": ["defi", "research", "analytics"]
   }'
 ```
 
@@ -51,25 +49,13 @@ await client.discovery.updateDiscovery(agentId, {
   discoverable: true,
   public_description: "A DeFi research agent that analyzes token metrics.",
   public_tags: ["defi", "research", "analytics"],
-  a2a_url: "https://my-agent.run.1claw.co/a2a",
-  mcp_url: "https://my-agent.run.1claw.co/mcp",
 });
 ```
 
 </TabItem>
-<TabItem value="cli" label="CLI">
-
-```bash
-1claw directory update <agent-id> \
-  --discoverable \
-  --description "A DeFi research agent" \
-  --tags defi,research,analytics \
-  --a2a-url "https://my-agent.run.1claw.co/a2a" \
-  --mcp-url "https://my-agent.run.1claw.co/mcp"
-```
-
-</TabItem>
 </Tabs>
+
+This endpoint sets `discoverable`, `public_description` (up to 2000 characters) and `public_tags` (up to 10, each up to 50 characters). It does not set `a2a_url` or `mcp_url`; any value sent for them is ignored. The CLI has no command for it.
 
 Only human users can update discovery settings — agents cannot make themselves discoverable.
 
@@ -105,7 +91,7 @@ The directory is public and supports full-text search and tag filtering:
 curl "https://api.1claw.co/v1/agents/directory?q=defi&tags=research"
 
 # Paginated listing
-curl "https://api.1claw.co/v1/agents/directory?limit=20&offset=0"
+curl "https://api.1claw.co/v1/agents/directory?page=1&page_size=20"
 ```
 
 </TabItem>
@@ -114,8 +100,8 @@ curl "https://api.1claw.co/v1/agents/directory?limit=20&offset=0"
 ```typescript
 const { data } = await client.discovery.directory({
   q: "defi",
-  tags: ["research"],
-  limit: 20,
+  tags: "research", // comma-separated
+  page_size: 20,
 });
 data.agents.forEach((a) => console.log(a.name, a.tags));
 ```
@@ -124,7 +110,7 @@ data.agents.forEach((a) => console.log(a.name, a.tags));
 <TabItem value="cli" label="CLI">
 
 ```bash
-1claw directory search --query "defi" --tags research
+1claw directory search defi --tags research
 1claw directory card <agent-id>
 ```
 
@@ -171,7 +157,6 @@ Each listing includes `category`, `listing_tags`, `pricing_summary`, and optiona
 Navigate to the agent detail page and find the **Discovery** section to:
 - Toggle discoverability
 - Edit the public description and tags
-- Set A2A and MCP URLs
 - Preview the agent card
 
 The public directory is also browsable at `/directory` in the dashboard.

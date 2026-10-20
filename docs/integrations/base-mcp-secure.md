@@ -11,7 +11,7 @@ import TabItem from '@theme/TabItem';
 
 :::tip Which should I use?
 - **[mcp.base.org](https://docs.base.org/ai-agents/quickstart)** — Interactive use. A human approves each transaction via Base Account (OAuth). No keys needed. Best for Claude Desktop, ChatGPT, Cursor chat.
-- **@1claw/base-mcp-secure** — Autonomous agents. Programmatic guardrails replace human approval. Best for cron jobs, multi-agent systems, background workers, trading bots.
+- **@1claw/agentkit** — Autonomous agents. Programmatic guardrails replace human approval. Best for cron jobs, multi-agent systems, background workers, trading bots.
 :::
 
 ## The autonomous agent problem
@@ -20,7 +20,7 @@ The new hosted [Base MCP](https://docs.base.org/ai-agents/quickstart) at `mcp.ba
 
 Without guardrails, one prompt injection through a poisoned input can trigger unlimited transfers with no approval gate.
 
-**`@1claw/base-mcp-secure`** wraps AgentKit with:
+**`@1claw/agentkit`** wraps AgentKit with:
 
 - Secrets in a vault (never on disk)
 - Transaction signing in a TEE via the Intents API
@@ -56,10 +56,10 @@ npm run setup
 The wizard asks for your 1Claw API key and optional guardrails:
 - **Daily ETH limit** (e.g. `1.0`)
 - **Max ETH per transaction** (e.g. `0.1`)
-- **Network** (`base` for mainnet, `base-sepolia` for testnet)
+- **Network** (`mainnet` for Base, `sepolia` for Base Sepolia)
 
 It automatically creates:
-- A vault named `agentkit-keys`
+- A vault named `base-mcp-keys`
 - An agent with Intents API and Shroud enabled
 - A Base signing key for the agent
 - An access policy granting read on `agentkit/*` secrets
@@ -107,7 +107,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "base-mcp-secure": {
       "command": "npx",
-      "args": ["@1claw/base-mcp-secure"],
+      "args": ["@1claw/agentkit"],
       "env": {
         "ONECLAW_AGENT_API_KEY": "ocv_your_key_here"
       }
@@ -133,7 +133,7 @@ Add to `.cursor/mcp.json`:
   "mcpServers": {
     "base-mcp-secure": {
       "command": "npx",
-      "args": ["@1claw/base-mcp-secure"],
+      "args": ["@1claw/agentkit"],
       "env": {
         "ONECLAW_AGENT_API_KEY": "ocv_your_key_here"
       }
@@ -167,7 +167,7 @@ They compose naturally. For example: "Store this new Alchemy key in the vault th
 
 The Base team deprecated the old `base-mcp` npm package in May 2026 and replaced it with the hosted `mcp.base.org`. Here's how the landscape looks now:
 
-| | mcp.base.org | @1claw/base-mcp-secure |
+| | mcp.base.org | @1claw/agentkit |
 |---|---|---|
 | **Architecture** | Remote hosted MCP server | Local MCP server (self-hosted) |
 | **Wallet** | Base Account (OAuth, hosted) | AgentKit with Vault-stored keys |

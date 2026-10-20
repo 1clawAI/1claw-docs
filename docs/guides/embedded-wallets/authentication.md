@@ -119,20 +119,20 @@ See [Two-factor auth & passkeys](/docs/security/two-factor-auth) for human accou
 
 For high-value sends, require a WebAuthn assertion bound to the exact transaction instead of (or in addition to) password re-auth:
 
-1. `POST /v1/auth/passkeys/tx-assert/begin` with `{ tx_digest }` — SHA-256 hex of `chain|to|value_wei|data`
+1. `POST /v1/auth/passkeys/tx-assert/begin` with `{ tx_digest, action }`: `tx_digest` is the SHA-256 hex of `chain|to|value|data|token_mint|token_decimals|destination_tag|memo|xrpl_tx_json|fee_extra` (empty strings for absent fields); `action` is `send` (default) or `swap`
 2. `POST /v1/auth/passkeys/tx-assert/complete` — returns 5-minute `passkey_token`
 3. Send with header `X-Passkey-Token: <token>` on `POST /v1/treasury/wallets/{chain}/send`
 
 The server recomputes the digest from the send body and rejects mismatches.
 
 ```typescript
-// wallet-react handles this via sendWithPasskey()
-const { sendWithPasskey } = useOneclawWallet();
-await sendWithPasskey({
-  chain: "ethereum",
-  to: "0x...",
-  amount: "1.0",
-});
+// wallet-react: compute the digest, run the WebAuthn assertion, then send
+const { client } = useOneclawWallet();
+const digest = await client.treasurySendTxDigest("ethereum", to, valueWei);
+const { challenge, allow_credentials } = await client.beginPasskeyTxAuth(digest);
+// ... navigator.credentials.get() with that challenge ...
+const { passkey_token } = await client.completePasskeyTxAuth(assertion);
+await client.sendWithPasskey({ chain: "ethereum", to, valueWei, passkeyToken: passkey_token });
 ```
 
 :::tip TX digest binding
@@ -179,7 +179,7 @@ const { data } = await client.auth.exchangeOAuthCode({
 });
 
 // data.access_token, data.id_token, data.refresh_token (if offline_access)
-const userInfo = await client.auth.getUserInfo(data.access_token);
+const { data: userInfo } = await client.auth.getUserInfo(data.access_token);
 // userInfo.wallet_address when wallet scope granted
 ```
 

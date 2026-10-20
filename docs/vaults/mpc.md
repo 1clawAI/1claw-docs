@@ -34,13 +34,13 @@ Best for: high availability with multi-cloud resilience — no client share to m
 
 ### `2of3_client_custody` — Shamir 2-of-3 with client share
 
-The DEK is split into three Shamir shares: two stored on separate HSMs (GCP + AWS), one returned to **you** as a `client_share`. Any two of three are sufficient to reconstruct, but the server alone holds only two — it can reconstruct without you, yet you gain an additional recovery path.
+The DEK is first XOR-split into a server half and a `client_share` returned to **you**. The server half is then Shamir-split 2-of-3 across the configured HSM providers. Reconstructing the DEK needs any two provider shares **and** your client share, so the server cannot decrypt without you.
 
 - **Write:** `PUT` response includes `client_share` (base64).
 - **Read:** `GET` requires the `X-Client-Share` header.
-- **Trust model:** Hybrid — multi-HSM resilience plus client custody. If one HSM is compromised, the attacker still needs either the other HSM share or your client share.
+- **Trust model:** Hybrid: multi-HSM resilience for the server half plus client custody. An attacker needs two provider shares and your client share.
 
-Best for: defense-in-depth with a client-held recovery share.
+Best for: client sovereignty without relying on a single HSM provider for the server half.
 
 ## Enabling MPC on a vault
 
@@ -51,21 +51,11 @@ curl -X POST "https://api.1claw.co/v1/vaults/VAULT_ID/mpc" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "custody_mode": "2of3_multi_hsm"
+    "mpc_custody": "2of3_multi_hsm"
   }'
 ```
 
-For modes that use specific providers, you can optionally specify them:
-
-```bash
-curl -X POST "https://api.1claw.co/v1/vaults/VAULT_ID/mpc" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "custody_mode": "2of3_multi_hsm",
-    "providers": ["gcp", "aws", "azure"]
-  }'
-```
+`mpc_custody` is the only field. The 2-of-3 modes use every HSM provider configured on the server (at least three are required); you do not choose providers per vault. `2of2_client_custody` requires a Pro plan or above; `2of3_multi_hsm` and `2of3_client_custody` require Business or Enterprise.
 
 :::caution
 The custody mode cannot be changed after it is set on a vault. Choose carefully based on your security requirements and operational capabilities.
@@ -96,7 +86,7 @@ Response (for client-custody modes):
 ```
 
 :::danger
-Store the `client_share` securely — in a password manager, hardware security module, or offline backup. If you lose the client share for a `2of2_client_custody` vault, the secret **cannot be recovered**. For `2of3_client_custody`, the server can still reconstruct with its two HSM shares, but you lose the additional recovery path.
+Store the `client_share` securely, in a password manager, hardware security module, or offline backup. If you lose the client share for a `2of2_client_custody` or `2of3_client_custody` vault, the secret **cannot be recovered**.
 :::
 
 ## Reading secrets from an MPC vault
@@ -153,20 +143,15 @@ The Shamir implementation uses **GF(256)** arithmetic with a configurable thresh
 | Aspect                  | `2of2_client_custody`         | `2of3_multi_hsm`              | `2of3_client_custody`         |
 |-------------------------|-------------------------------|-------------------------------|-------------------------------|
 | Client share required   | Yes                           | No                            | Yes                           |
-| HSM providers           | GCP only                      | GCP + AWS + Azure             | GCP + AWS (+ client)          |
-| Can server decrypt alone| No                            | Yes (any 2 of 3)              | Yes (GCP + AWS shares)        |
-| Risk if share lost      | Secret unrecoverable          | N/A                           | Lose recovery path            |
+| HSM providers           | GCP only                      | GCP + AWS + Azure             | GCP + AWS + Azure (+ client)  |
+| Can server decrypt alone| No                            | Yes (any 2 of 3)              | No                            |
+| Risk if share lost      | Secret unrecoverable          | N/A                           | Secret unrecoverable          |
 | Operational overhead    | Must manage client share      | None                          | Must manage client share      |
 | Best for                | Maximum sovereignty           | Multi-cloud resilience        | Defense-in-depth              |
 
-## MPC in treasury wallets
+## MPC and treasury wallets
 
-[Treasury wallets](/docs/treasury/overview) automatically use MPC custody for their `__treasury-keys` vault. The custody mode is determined by your billing tier:
-
-- **Pro / Team** → `2of2_client_custody` (XOR split)
-- **Business / Enterprise** → `2of3_multi_hsm` (Shamir across GCP, AWS, Azure)
-
-You don't need to enable MPC manually for treasury wallets — it's configured automatically at vault creation time.
+[Treasury wallets](/docs/treasury/overview) do not use vault MPC custody. Their `__treasury-keys` vault uses standard HSM envelope encryption, and wallet generation clears any MPC custody setting left on that vault.
 
 ## Use cases
 
@@ -178,5 +163,5 @@ You don't need to enable MPC manually for treasury wallets — it's configured a
 ## See also
 
 - [Customer-Managed Keys (CMEK)](/docs/vaults/cmek) — client-side encryption layer
-- [Treasury Wallets](/docs/treasury/overview) — HSM-backed multi-chain wallets with auto-MPC
+- [Treasury Wallets](/docs/treasury/overview) — HSM-backed multi-chain wallets
 - [Audit and compliance](/docs/guides/audit-and-compliance) — tamper-evident audit log

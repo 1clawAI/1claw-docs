@@ -6,9 +6,9 @@ sidebar_position: 15
 
 # @1claw/wallet-react
 
-Drop-in React components that give your users a full crypto wallet experience — email login, social login, Send, Swap, Receive, and Buy — authenticated via your Platform API key. The widget handles authentication, key management, and transaction signing; you handle the UI placement.
+Drop-in React components that give your users a full crypto wallet experience — email login, social login, Send, Swap, Receive, and Buy — identified by your platform app ID. The widget handles authentication, key management, and transaction signing; you handle the UI placement.
 
-**Current version:** v0.5.0
+**Current version:** v0.7.1
 
 **Source:** [github.com/1clawAI/wallet-react](https://github.com/1clawAI/wallet-react) (MIT)
 
@@ -29,22 +29,23 @@ yarn add @1claw/wallet-react
 ## Quick start
 
 ```tsx
-import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-react";
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
-      <OneclawEmbeddedWallet
-        features={{ send: true, swap: true, receive: true, buy: true }}
-        socialProviders={["google", "apple"]}
-        chains={["ethereum", "base", "solana"]}
-      />
-    </OneclawWalletProvider>
+    <OneclawEmbeddedWallet
+      appId="your-platform-app-id"
+      baseUrl="https://api.1claw.co"
+      features={{ send: true, swap: true, receive: true, buy: true }}
+      socialProviders={["google", "apple"]}
+      socialProviderConfig={{ google: { clientId: "your-google-client-id" } }}
+      chains={["ethereum", "base", "solana"]}
+    />
   );
 }
 ```
 
-That's it. Users sign in via email OTP or social login, and get auto-provisioned multi-chain wallets.
+That's it. Users sign in via email OTP or social login, and get auto-provisioned multi-chain wallets. `OneclawEmbeddedWallet` renders its own `OneclawWalletProvider`, so it needs no wrapper. A social button only appears when `socialProviderConfig` carries that provider's client ID.
 
 ---
 
@@ -52,12 +53,14 @@ That's it. Users sign in via email OTP or social login, and get auto-provisioned
 
 ### `<OneclawWalletProvider>`
 
-Context provider that wraps your app. Must be an ancestor of any wallet component or hook.
+Context provider for the `useOneclawWallet()` hook. `OneclawEmbeddedWallet` and `OneclawTreasuryWidget` create their own.
 
 | Prop | Type | Required | Description |
 | --- | --- | --- | --- |
-| `apiKey` | `string` | Yes | Your Platform API key (`plt_...`) |
+| `apiKey` | `string` | Yes | A user session token, or `""` to use the session the provider stores after `loginWithEmailOtp` / `loginWithSocial`. A `plt_` key is sent as the bearer token; never ship one in a browser bundle. |
+| `appId` | `string` | No | Platform app UUID, sent as `platform_app_id` on Email OTP |
 | `baseUrl` | `string` | No | API base URL (defaults to `https://api.1claw.co`) |
+| `persistSession` | `"session" \| "local" \| false` | No | Where the session token is kept (default `"session"`) |
 | `children` | `ReactNode` | Yes | Your app content |
 
 ### `<OneclawEmbeddedWallet>`
@@ -66,35 +69,40 @@ Full wallet UI with login, dashboard, and transaction views.
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `features` | `string[]` | `["send", "swap", "receive", "buy"]` | Which views to show |
-| `socialProviders` | `("google" \| "apple" \| "discord")[]` | `["google", "apple", "discord"]` | Social logins to offer. Email OTP is always available and is **not** a member of this union. |
+| `appId` | `string` | Required | Platform app UUID |
+| `baseUrl` | `string` | `https://api.1claw.co` | API base URL |
+| `features` | `{ send?, swap?, buy?, receive? }` | all `true` | Which views to show |
+| `socialProviders` | `("google" \| "apple" \| "discord")[]` | `["google", "apple"]` | Social logins to offer. Email OTP is always available and is **not** a member of this union. |
+| `socialProviderConfig` | `{ google?, apple?, discord? }` | — | Client IDs (and redirect URIs for Apple and Discord); a provider without one is not shown |
 | `chains` | `string[]` | `["ethereum"]` | Chains to provision wallets for |
-| `theme` | `"light" \| "dark" \| "system" \| object` | `"system"` | Color scheme, or a CSS custom properties object for full theming (see [CSS theming](#css-theming)) |
+| `theme` | `"light" \| "dark" \| "auto" \| ThemeConfig` | `"auto"` | Color scheme, or a `ThemeConfig` object for full theming (see [CSS theming](#css-theming)) |
+| `persistSession` | `"session" \| "local" \| false` | `"session"` | Where the session token is kept |
 | `onLinkRequired` | `(url, slug) => void` | Auto-redirect | Custom handler for cross-org users (v0.4.1+) |
-| `onLogin` | `(user) => void` | — | Callback after successful login |
+| `onLogin` | `(user) => void` | — | Callback after successful login, with `{ userId, email, walletAddress?, isNewUser, isPasswordless }` |
+| `onTransactionSent` / `onSwapCompleted` | `(result) => void` | — | Callbacks after a send or swap |
 | `onError` | `(error) => void` | — | Callback on errors |
 
 ### `<OneclawTreasuryWidget>`
 
-Compact widget showing wallet balances and quick actions. Same props as `OneclawEmbeddedWallet`.
+Compact widget showing wallet balances and quick actions. Takes `apiKey`, `baseUrl`, `chains`, `theme`, `brandColor`, `className` and the `onError` / `onTransactionSent` / `onSwapCompleted` callbacks.
 
 ---
 
 ## Hook: `useOneclawWallet()`
 
-For programmatic access without the full widget UI.
+For programmatic access without the full widget UI. Render it inside `<OneclawWalletProvider apiKey="" appId={APP_ID}>`.
 
 ```tsx
 import { useOneclawWallet } from "@1claw/wallet-react";
 
 function MyComponent() {
-  const { wallets, balances, send, swap, refresh } = useOneclawWallet();
+  const { wallets, balances, send, refreshWallets } = useOneclawWallet();
 
   const handleSend = async () => {
     await send({
       chain: "ethereum",
       to: "0x...",
-      amount: "0.01",
+      valueWei: "10000000000000000", // 0.01 ETH
     });
   };
 
@@ -102,10 +110,11 @@ function MyComponent() {
     <div>
       {wallets.map((w) => (
         <div key={w.chain}>
-          {w.chain}: {w.address} — {balances[w.chain]?.native ?? "loading..."}
+          {w.chain}: {w.address} — {balances[w.chain]?.native.balanceDisplay ?? "loading..."}
         </div>
       ))}
       <button onClick={handleSend}>Send 0.01 ETH</button>
+      <button onClick={() => refreshWallets()}>Refresh</button>
     </div>
   );
 }
@@ -115,12 +124,16 @@ function MyComponent() {
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `wallets` | `Wallet[]` | Array of provisioned wallets with `chain`, `address`, `publicKey` |
-| `balances` | `Record<string, Balance>` | Per-chain native + token balances (auto-refreshes every 30s) |
-| `send(params)` | `(SendParams) => Promise<SendResult>` | Send native or token transfer |
+| `wallets` | `WalletInfo[]` | Provisioned wallets with `id`, `chain`, `address`, `publicKeyHex`, `isActive`, `createdAt`, `custody` |
+| `balances` | `Record<string, WalletBalance>` | Per-chain `native` (`symbol`, `balanceWei`, `balanceDisplay`) and `tokens` |
+| `send(params)` | `(SendTransactionParams) => Promise<SendTransactionResult>` | Send a native or contract call (`chain`, `to`, `valueWei`, optional `data`, `password`, `passkeyToken`, `gasless`) |
 | `swap(params)` | `(SwapParams) => Promise<SwapResult>` | Swap tokens via 0x DEX aggregator |
-| `sendWithPasskey(params)` | `(SendParams) => Promise<SendResult>` | Send with passkey tx authorization (challenge → sign → send) |
-| `refresh()` | `() => Promise<void>` | Force-refresh balances |
+| `refreshWallets()` / `refreshBalance(chain)` | `() => Promise<…>` | Reload wallets, or one chain's balance |
+| `generateWallets(chains?)` | `(string[]?) => Promise<WalletInfo[]>` | Create wallets for more chains |
+| `loginWithEmailOtp` / `loginWithSocial` / `logout` | | Sign the user in or out |
+| `currentUser` / `getCurrentUser()` | | Who is signed in |
+| `getEffectiveSpendPolicy()` / `getEffectiveAuthPolicy()` | | Limits and step-up rules in force |
+| `client` | `OneclawWalletClient` | Lower-level client (`sendEmailOtp`, `sendWithPasskey`, `createOnrampSession`, …) |
 
 ---
 
@@ -142,14 +155,14 @@ On first login, wallets are auto-provisioned for the specified `chains`. Subsequ
 ```tsx
 import { useOneclawWallet } from "@1claw/wallet-react";
 
-const { socialLogin, sendEmailOtp, verifyEmailOtp } = useOneclawWallet();
+const { client, loginWithEmailOtp, loginWithSocial } = useOneclawWallet();
 
 // Email OTP
-await sendEmailOtp("user@example.com");
-await verifyEmailOtp("user@example.com", "123456", ["ethereum", "solana"]);
+await client.sendEmailOtp("user@example.com");
+await loginWithEmailOtp("user@example.com", "123456", ["ethereum", "solana"]);
 
 // Social login
-await socialLogin({ provider: "google", id_token: googleIdToken });
+await loginWithSocial("google", googleIdToken, ["ethereum"]);
 ```
 
 ---
@@ -168,6 +181,7 @@ If you want to show a custom UI instead of a raw redirect (e.g., an in-app modal
 
 ```tsx
 <OneclawEmbeddedWallet
+  appId={APP_ID}
   onLinkRequired={(authorizeUrl, appSlug) => {
     // Custom modal, or:
     window.location.href = authorizeUrl;
@@ -206,8 +220,9 @@ The consent page shows your app name, the permissions requested, and Approve/Den
 Platform developers control what users can do with their wallets via spend policies. Policies are enforced server-side before signing.
 
 ```typescript
-// Set app-wide defaults (server-side, using your plt_ key)
-await platformClient.createSpendPolicy(appId, {
+// Set app-wide defaults (server-side, with @1claw/sdk and your plt_ key)
+const platformClient = createClient({ baseUrl: "https://api.1claw.co", token: process.env.PLATFORM_KEY! });
+await platformClient.platform.createSpendPolicy(appId, {
   max_value_per_tx_eth: "0.1",
   daily_limit_eth: "1.0",
   allowed_chains: ["ethereum", "base"],
@@ -224,15 +239,18 @@ Users see a clear error if a transaction violates a policy — the widget never 
 For high-value sends, require WebAuthn passkey confirmation instead of (or in addition to) a password:
 
 ```tsx
-const { beginPasskeyTxAuth, completePasskeyTxAuth, sendWithPasskey } = useOneclawWallet();
+const { send } = useOneclawWallet();
 
-// Full flow: passkey challenge → sign → send
-await sendWithPasskey({
+// With no password, send() reads the user's auth policy. When it requires a
+// passkey, it runs the challenge, the WebAuthn assertion and the send for you.
+await send({
   chain: "ethereum",
   to: "0x...",
-  amount: "1.0",
+  valueWei: "1000000000000000000", // 1 ETH
 });
 ```
+
+To drive the steps yourself, use `client.treasurySendTxDigest`, `client.beginPasskeyTxAuth`, `client.completePasskeyTxAuth`, then `client.sendWithPasskey({ ..., passkeyToken })`.
 
 The passkey proof binds to the specific transaction parameters (chain, to, value) — it cannot be replayed for a different transaction.
 
@@ -246,7 +264,7 @@ When connected to an EVM chain with Pimlico configured, pass `gasless: true` to 
 await send({
   chain: "ethereum",
   to: "0x...",
-  amount: "0.01",
+  valueWei: "10000000000000000",
   gasless: true,
 });
 ```
@@ -260,7 +278,7 @@ The user pays no gas; the paymaster covers it.
 The `"buy"` feature integrates partner widgets (Coinbase Onramp, MoonPay) so users can purchase crypto directly into their wallet:
 
 ```tsx
-<OneclawEmbeddedWallet features={{ send: true, receive: true, buy: true }} />
+<OneclawEmbeddedWallet appId={APP_ID} features={{ send: true, receive: true, buy: true }} />
 ```
 
 No additional configuration needed — the widget handles widget URLs and callbacks.
@@ -271,7 +289,7 @@ No additional configuration needed — the widget handles widget URLs and callba
 
 | Environment variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_ONECLAW_API_KEY` | Your `plt_` Platform API key |
+| `NEXT_PUBLIC_ONECLAW_APP_ID` | Your platform app UUID (the widget's `appId`) |
 | `NEXT_PUBLIC_ONECLAW_BASE_URL` | API base URL (default: `https://api.1claw.co`) |
 
 ---
@@ -279,7 +297,7 @@ No additional configuration needed — the widget handles widget URLs and callba
 ## Prerequisites
 
 - A 1Claw account with a **Pro or higher** plan
-- A Platform App (`plt_` API key) — [create one in the dashboard](/docs/platform-api/overview)
+- A Platform App (its UUID is the widget's `appId`) — [create one in the dashboard](/docs/platform-api/overview)
 - React 18+ and a bundler (Next.js, Vite, etc.)
 
 ---
@@ -302,8 +320,8 @@ import { SignInWith1Claw, handleSignInCallback } from "@1claw/wallet-react";
 // Callback page
 const params = new URLSearchParams(window.location.search);
 const tokens = await handleSignInCallback({
-  code: params.get("code"),
-  state: params.get("state"),
+  code: params.get("code")!,
+  state: params.get("state")!,
   clientId: "your-app-slug",
   redirectUri: "http://localhost:3000/callback",
 });
@@ -321,6 +339,7 @@ Raw CSS variables go inside `cssVars`, and the prefix is `--ocw-`:
 
 ```tsx
 <OneclawEmbeddedWallet
+  appId={APP_ID}
   theme={{
     mode: "dark",
     brandColor: "#e94560",

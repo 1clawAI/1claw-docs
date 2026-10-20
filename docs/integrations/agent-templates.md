@@ -137,9 +137,13 @@ The `name` must match your directory under `templates/`. Without this entry, CI 
 
 ### Docker smoke test
 
+Template Dockerfiles `COPY shared /app/shared`, so build from a context that holds both your template and the repo's `shared/` directory (this is what CI does):
+
 ```bash
-cd templates/my-framework
-docker build -t test-my-framework .
+ctx="$(mktemp -d)/my-framework"
+cp -R templates/my-framework "$ctx"
+cp -R shared "$ctx/shared"
+docker build -t test-my-framework "$ctx"
 docker run --rm -p 3000:3000 test-my-framework
 curl http://localhost:3000/health
 ```
@@ -174,7 +178,7 @@ git push origin add-my-framework-template
 
 3. Wait for CI:
    - Manifest validation (`template.yaml` fields, registry listing, no secrets)
-   - Docker build smoke test (currently `langchain`, `crewai`, `openai-agents`; expand matrix in a follow-up PR if needed)
+   - Docker build smoke test for every template listed in the `matrix.template` array in `.github/workflows/validate.yml` (add yours there)
 
 4. A maintainer will review and merge. After merge, the template is available via `1claw spawn --refresh`.
 
@@ -197,7 +201,7 @@ if [ -S "$DAEMON_SOCKET" ] && command -v 1claw-mcp >/dev/null 2>&1; then
         1claw-mcp --local 2>/tmp/mcp.log &
 fi
 
-exec python agent.py   # or: npx tsx agent.ts
+exec /app/shared/start-with-chat-ui.sh python agent.py   # serves the chat UI on :3000, then runs your agent
 ```
 
 See [CONTRIBUTING.md](https://github.com/1clawAI/agent-templates/blob/main/CONTRIBUTING.md) in the template repo for Dockerfile details and the full manifest schema.

@@ -72,6 +72,6 @@ for p in policies.data["policies"]:
 ## Update a policy
 
 **Endpoint:** `PUT /v1/vaults/:vault_id/policies/:policy_id`  
-**Body:** `permissions` (array), optional `conditions` (object), optional `expires_at` (ISO 8601). Only these fields can be updated; path pattern and principal are fixed after creation.
+**Body:** `permissions` (array, required), plus optional `conditions`, `expires_at` (ISO 8601), `effect`, `priority`, `attribute_conditions`, `consensus_trigger`, and `tx_conditions`. Path pattern and principal are fixed after creation.
 
 In the **dashboard**, open **Vaults → [vault] → Policies** and click the pencil (edit) icon on a policy to change permissions, conditions, or expiry. Use the trash icon to delete a policy.

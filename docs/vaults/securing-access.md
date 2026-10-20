@@ -24,8 +24,8 @@ Always, unless the agent genuinely needs to access every vault. Most agents serv
 
 Set `vault_ids` on the agent (via the dashboard, SDK, or API):
 
-```bash
-# SDK
+```typescript
+// SDK
 const agent = await client.agents.create({
     name: "web-backend",
     vault_ids: ["<vault-uuid>"],

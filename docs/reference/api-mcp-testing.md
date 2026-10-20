@@ -72,6 +72,8 @@ curl -s -X POST "$API/v1/auth/google" \
 
 ### Refresh token
 
+Not implemented yet: the endpoint returns **400** ("Refresh tokens not yet implemented"). Request a new token instead.
+
 ```bash
 curl -s -X POST "$API/v1/auth/refresh" \
   -H "Content-Type: application/json" \
@@ -116,7 +118,7 @@ curl -s "$API/v1/auth/api-keys" \
 # Exchange API key for JWT
 curl -s -X POST "$API/v1/auth/api-key-token" \
   -H "Content-Type: application/json" \
-  -d '{"api_key":"1claw_..."}' \
+  -d '{"api_key":"1ck_..."}' \
   | python3 -m json.tool
 
 # Revoke an API key
@@ -386,9 +388,9 @@ curl -s -X POST "$API/v1/agents/$AGENT_ID/transactions" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "chain_id": 1,
+    "chain": "base",
     "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "value": "0x0",
+    "value": "0.001",
     "data": "0x"
   }' \
   | python3 -m json.tool
@@ -479,14 +481,14 @@ curl -s "$API/v1/security/ip-rules" \
 curl -s -X POST "$API/v1/security/ip-rules" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"cidr":"203.0.113.0/24","rule_type":"allow","description":"Office network"}' \
+  -d '{"cidr":"203.0.113.0/24","rule_type":"allow","label":"Office network"}' \
   | python3 -m json.tool
 
 # Create a block rule
 curl -s -X POST "$API/v1/security/ip-rules" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"cidr":"198.51.100.5/32","rule_type":"block","description":"Suspicious IP"}' \
+  -d '{"cidr":"198.51.100.5/32","rule_type":"block","label":"Suspicious IP"}' \
   | python3 -m json.tool
 
 # Delete an IP rule
@@ -523,10 +525,11 @@ curl -s -X PUT "$API/v1/admin/x402" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "enabled": true,
-    "facilitator_url": "https://api.cdp.coinbase.com/platform/v2/x402",
-    "payment_address": "0x...",
-    "network": "base-sepolia"
+    "pay_to": "0x...",
+    "network": "eip155:8453",
+    "scheme": "exact",
+    "free_tier_limit": 1000,
+    "facilitator_url": "https://api.cdp.coinbase.com/platform/v2/x402"
   }' \
   | python3 -m json.tool
 
@@ -548,8 +551,10 @@ curl -s -X POST "$API/v1/admin/chains" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Polygon",
+    "name": "polygon",
+    "display_name": "Polygon",
     "chain_id": 137,
+    "native_currency": "POL",
     "rpc_url": "https://polygon-rpc.com",
     "explorer_url": "https://polygonscan.com",
     "is_testnet": false,
@@ -584,9 +589,9 @@ Or add to your MCP client configuration (e.g. Claude Desktop, Cursor):
             "command": "npx",
             "args": ["-y", "@1claw/mcp"],
             "env": {
-                "ONECLAW_API_URL": "https://api.1claw.co",
+                "ONECLAW_BASE_URL": "https://api.1claw.co",
                 "ONECLAW_AGENT_ID": "<agent-uuid>",
-                "ONECLAW_API_KEY": "ocv_..."
+                "ONECLAW_AGENT_API_KEY": "ocv_..."
             }
         }
     }
@@ -740,7 +745,7 @@ curl -s -X POST "$MCP" \
       "name": "share_secret",
       "arguments": {
         "secret_id": "<secret-uuid>",
-        "email": "colleague@example.com",
+        "recipient_type": "creator",
         "expires_at": "2026-03-01T00:00:00Z",
         "max_access_count": 5
       }
@@ -754,9 +759,9 @@ For direct stdio testing, pipe JSON-RPC messages:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
-  ONECLAW_API_URL=https://api.1claw.co \
+  ONECLAW_BASE_URL=https://api.1claw.co \
   ONECLAW_AGENT_ID=<agent-uuid> \
-  ONECLAW_API_KEY=ocv_... \
+  ONECLAW_AGENT_API_KEY=ocv_... \
   npx @1claw/mcp
 ```
 

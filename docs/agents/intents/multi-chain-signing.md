@@ -84,7 +84,7 @@ Repeat for each chain the agent needs (`bitcoin`, `solana`, `xrp`, `cardano`, `t
 | Check balance | `GET /v1/agents/{id}/signing-keys/{chain}/balance` | `client.signingKeys.getBalance(agentId, chain)` |
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
-| Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | — (requires `X-Auth-Confirm` password) |
+| Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | `client.signingKeys.export(agentId, chain, password)` (sent as `X-Auth-Confirm`) |
 | Import (BYOK) | `POST /v1/agents/{id}/signing-keys/{chain}/import` | `client.signingKeys.importKey(agentId, chain, { private_key, format })` |
 
 Only human users can provision, rotate, export, and import keys — agents receive 403.
@@ -217,13 +217,22 @@ const trx = await client.agents.submitTransaction(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="ocv_...")
-resp = client.agents.submit_transaction(
-    agent_id,
-    chain="ethereum",
-    to="0x000000000000000000000000000000000000dEaD",
-    value="0",
+
+# Bitcoin: send 0.001 BTC
+btc = client.agents.submit_transaction(
+    agent_id, chain="bitcoin-signet", to="tb1q...", value="0.001"
 )
-print(resp.data.get("tx_hash"))
+
+# Solana: send 0.25 SOL
+sol = client.agents.submit_transaction(
+    agent_id, chain="solana-devnet", to="9xQ...", value="0.25"
+)
+
+# XRP: send 10 XRP with a destination tag
+xrp = client.agents.submit_transaction(
+    agent_id, chain="xrp-testnet", to="rPT1...", value="10", destination_tag=12345
+)
+print(xrp.data.get("tx_hash"))
 ```
 
 </TabItem>
@@ -254,7 +263,7 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \
 
 ### Token transfers
 
-For SPL, TRC-20, ERC-20, and Cardano native assets, add `token_mint`:
+For SPL and TRC-20 tokens, add `token_mint`. On EVM chains `token_mint` is ignored: send an ERC-20 transfer as ordinary calldata in `data`. Cardano native-asset transfers are not yet supported.
 
 ```typescript
 // Solana SPL token (USDC)

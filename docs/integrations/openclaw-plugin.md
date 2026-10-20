@@ -19,13 +19,13 @@ Use it when your agent lives in OpenClaw and you want vault access, signing, and
 
 | Feature | Default | Description |
 |--------|---------|-------------|
-| **Native agent tools** | On | 13 tools: secrets, vaults, policies, sharing, EVM simulate/submit. Prefix: `oneclaw_*`. |
+| **Native agent tools** | On | 29 tools: secrets, env vars, vaults, access grants, sharing, signing keys and EVM sign/simulate/submit, approvals, execution bindings, memory, automations. Prefix: `oneclaw_*`. |
 | **Secret redaction** | On | Scans outbound messages and redacts leaked secret values before they leave the gateway. |
 | **Secret injection** | Off | Replaces `{{1claw:path/to/secret}}` placeholders with real values at prompt time. |
 | **Shroud routing** | Off | When the agent has `shroud_enabled`, routes LLM traffic through [Shroud](https://shroud.1claw.co). |
 | **Key rotation monitor** | Off | Background service that warns when secrets expire within 7 days. |
-| **Slash commands** | On | `/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`. |
-| **Gateway RPC** | — | `1claw.status` for programmatic health/status. |
+| **Slash commands** | On | `/oneclaw`, `/oneclaw-list`, `/oneclaw-rotate`, `/oneclaw-bootstrap` (plus `/oneclaw-enroll`, always registered). |
+| **Gateway RPC** | — | `1claw.status` for programmatic health/status, `1claw.bootstrap` to run bootstrap. |
 | **Bundled skill** | — | 1claw skill (`skills/1claw/SKILL.md`) is auto-discovered by OpenClaw. |
 
 All of these are configurable via `plugins.entries.1claw.config.features`.
@@ -115,13 +115,15 @@ See [OpenClaw plugin docs](https://docs.openclaw.ai/tools/plugin) for the full t
 
 ## Slash commands
 
-When **slash commands** are enabled, the plugin registers:
+When **slash commands** are enabled, the plugin registers (`/oneclaw-enroll` is registered regardless):
 
 | Command | Description |
 |--------|-------------|
 | `/oneclaw` | Connection status, vault info, token TTL, and which features are on. |
 | `/oneclaw-list` | List secret paths in the vault (metadata only). Optional argument: path prefix. |
 | `/oneclaw-rotate <path> <new-value>` | Rotate a secret at `path` to a new value. |
+| `/oneclaw-bootstrap` | Resolve the agent identity, create and share a vault if none exists, and write non-secret IDs to `.1claw/identity.env`. |
+| `/oneclaw-enroll <email> [agent-name]` | Self-enroll a new agent. Registered even when no API key is configured. |
 
 These run without invoking the AI agent. Require auth by default.
 
@@ -129,9 +131,10 @@ These run without invoking the AI agent. Require auth by default.
 
 ## Gateway RPC
 
-The plugin registers a single RPC method for programmatic checks:
+The plugin registers two RPC methods:
 
 - **`1claw.status`** — Returns authentication state, agent ID, vault ID, token TTL, vault count, enabled features, and security mode. Useful for health checks or admin tooling.
+- **`1claw.bootstrap`** — Runs the same steps as `/oneclaw-bootstrap` and returns the result.
 
 See [OpenClaw Gateway RPC](https://docs.openclaw.ai) for how to call it from your stack.
 

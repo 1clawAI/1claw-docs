@@ -24,7 +24,7 @@ Wallet access policies (v0.53.1) extend [spend policies](/docs/guides/embedded-w
 | **Purpose** | Cap what embedded-wallet **end-users** can send/swap | Grant **specific principals** permission to act on wallets |
 | **Set by** | Platform app (`plt_` key) | Org admin (human JWT) |
 | **Endpoints** | `/v1/platform/apps/{id}/spend-policies` | `/v1/treasury/wallets/access-policies` |
-| **Enforcement** | Live on send/swap | API + dashboard live; runtime enforcement on treasury routes is rolling out with v0.53.1 |
+| **Enforcement** | Live on send/swap | Live on treasury send, swap, export and the self-custody prepare routes, once the org has at least one policy |
 
 Use **spend policies** for consumer wallet caps in embedded apps. Use **wallet access policies** when agents, team roles, or platform apps need granular wallet permissions inside an org.
 
@@ -44,7 +44,7 @@ Each policy row defines:
 | `conditions` | JSONB for extended conditions |
 | `expires_at` | Optional expiry |
 
-Resolution order in the domain evaluator: direct principal match → role tag match → platform app match → org-wide default. **No matching policy = deny** (fail-closed).
+Resolution order in the domain evaluator: direct principal match → role tag match → platform app match → org-wide default. While an org has no active policies, treasury actions are not restricted by this layer. Once one exists, **no matching policy = deny** (fail-closed). The treasury routes currently evaluate the caller by principal only (no role tags or platform app), so grant users directly or org-wide.
 
 ## API endpoints
 

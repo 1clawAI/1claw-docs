@@ -153,6 +153,10 @@ Condition types: `value_above`, `chain_in`, `to_address_in`, `function_selector_
 
 Webhook events: `pending_approval.created`, `.approved`, `.rejected`, `.executed`, `.expired`.
 
+### Self-custody sends
+
+A person's sends from a self-custody wallet go through the same `treasury_send` consensus as a server-custody treasury send, because the vault co-signs them. `POST /v1/treasury/wallets/{chain}/tss/prepare`, `POST /v1/treasury/wallets/{chain}/multisig/prepare` (Tron) and `POST /v1/treasury/multisig-safes/{id}/prepare` (2-of-3 Safes) run your Cedar/OPA transaction policy and then the consensus check. A match answers **202** with `status: pending_approval` and `pending_approval_id`; once it is approved and executed, call the same `prepare` again with the same transfer and `"approval_id": "<pending_approval_id>"`. Agent self-custody sends (`POST /v1/agents/{agent_id}/tss/prepare`) work the same way. See [Key custody](/docs/security/custody).
+
 ```bash
 # List pending approvals
 curl -s "https://api.1claw.co/v1/pending-approvals?status=pending" \

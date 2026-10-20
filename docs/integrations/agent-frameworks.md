@@ -42,7 +42,7 @@ npm install @1claw/plugin-elizaos
 }
 ```
 
-The plugin provides actions for vault access (`get_secret`, `put_secret`), multi-chain signing (`submit_transaction`, `sign_message`), and Shroud LLM routing. Set `ONECLAW_AGENT_API_KEY` in your environment and the plugin handles JWT exchange and token refresh.
+The plugin provides actions for vault access (`GET_SECRET`, `LIST_SECRETS`, `PUT_SECRET`), multi-chain signing (`SUBMIT_TRANSACTION`, `SIGN_MESSAGE`, `SIGN_TYPED_DATA`), and Shroud LLM routing. Set `ONECLAW_AGENT_API_KEY` in your environment and the plugin handles JWT exchange and token refresh.
 
 ## GOAT SDK
 
@@ -51,20 +51,6 @@ The plugin provides actions for vault access (`get_secret`, `put_secret`), multi
 ### Option 1: MCP tools (recommended)
 
 GOAT supports MCP tool providers. Point it at the 1claw MCP server:
-
-```typescript
-import { getOnChainTools } from "@goat-sdk/adapter-vercel-ai";
-import { oneclaw } from "@goat-sdk/wallet-oneclaw";
-
-const tools = await getOnChainTools({
-  wallet: oneclaw({
-    apiKey: process.env.ONECLAW_AGENT_KEY!,
-    agentId: process.env.ONECLAW_AGENT_ID!,
-  }),
-});
-```
-
-Or configure MCP directly in GOAT's tool registry:
 
 ```json
 {
@@ -88,6 +74,7 @@ const oneclaw = createClient({
   baseUrl: "https://api.1claw.co",
   apiKey: process.env.ONECLAW_AGENT_KEY!,
 });
+const agentId = process.env.ONECLAW_AGENT_ID!;
 
 // Custom GOAT tool that uses 1claw for signing
 const signTransactionTool = {
@@ -107,14 +94,14 @@ const signTransactionTool = {
       data,
       simulate_first: true,
     });
-    return { txHash: tx.data.tx_hash, status: tx.data.status };
+    return { txHash: tx.data?.tx_hash, status: tx.data?.status };
   },
 };
 ```
 
 ## LangChain
 
-[LangChain](https://langchain.com) agents use tools for external actions. For Python, start with the official package: [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) ([integration guide](/docs/integrations/langchain)). It ships eleven tools, encrypted chat history, and a memory retriever without hand-rolling HTTP.
+[LangChain](https://langchain.com) agents use tools for external actions. For Python, start with the official package: [`langchain-1claw`](https://pypi.org/project/langchain-1claw/) ([integration guide](/docs/integrations/langchain)). It ships thirteen tools, encrypted chat history, and a memory retriever without hand-rolling HTTP.
 
 You can also integrate through MCP or custom tools if you prefer.
 
@@ -169,7 +156,7 @@ async def get_agent_token():
             f"{ONECLAW_BASE}/v1/auth/agent-token",
             json={"api_key": AGENT_KEY},
         )
-        return resp.json()["token"]
+        return resp.json()["access_token"]
 
 @tool
 async def get_secret(vault_id: str, path: str) -> str:
@@ -231,6 +218,14 @@ from crewai.tools import tool
 import httpx
 
 ONECLAW_BASE = "https://api.1claw.co"
+AGENT_KEY = "ocv_..."
+
+def _get_agent_token() -> str:
+    resp = httpx.post(
+        f"{ONECLAW_BASE}/v1/auth/agent-token",
+        json={"api_key": AGENT_KEY},
+    )
+    return resp.json()["access_token"]
 
 @tool
 def fetch_api_key(vault_id: str, secret_path: str) -> str:

@@ -118,8 +118,8 @@ export async function POST(req: Request) {
   );
 
   return NextResponse.json({
-    txHash: tx.data.tx_hash,
-    status: tx.data.status,
+    txHash: tx.data?.tx_hash,
+    status: tx.data?.status,
   });
 }
 ```
@@ -140,7 +140,7 @@ export async function GET() {
 
   const res = await fetch(
     `https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd`,
-    { headers: { "x-cg-pro-api-key": secret.data.value } },
+    { headers: { "x-cg-pro-api-key": secret.data?.value } },
   );
 
   return NextResponse.json(await res.json());
@@ -151,7 +151,7 @@ export async function GET() {
 
 ```typescript
 // scripts/monitor.ts
-import { createPublicClient, http, parseAbiItem } from "viem";
+import { createPublicClient, encodeFunctionData, http, parseAbiItem } from "viem";
 import { base } from "viem/chains";
 import { oneclaw } from "./lib/oneclaw";
 

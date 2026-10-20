@@ -175,9 +175,9 @@ console.log(data.versions); // newest first; check is_disabled
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-data = client.secrets.list(vault_id)
-for s in data.data["secrets"]:
-    print(f"{s['path']} ({s['type']}, v{s['version']})")
+data = client.secrets.list_versions(vault_id, "api-keys/openai")
+for v in data.data["versions"]:  # newest first
+    print(v["version"], v.get("is_disabled", False))
 ```
 
 </TabItem>
@@ -221,7 +221,7 @@ console.log(data.value);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-secret = client.secrets.get(vault_id, "api-keys/openai")
+secret = client.secrets.get_version(vault_id, "api-keys/openai", 3)
 print(secret.data["value"])
 ```
 
@@ -307,13 +307,8 @@ console.log(data.api_key); // New key — store securely
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+resp = client.agents.rotate_key(agent_id)
+api_key = resp.data["api_key"]  # new key, shown once
 ```
 
 </TabItem>

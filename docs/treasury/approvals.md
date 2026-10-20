@@ -31,7 +31,7 @@ Agent                           1claw                         Human
   |                               |  <------------------------- |
   |                               |                             |
   |  <-- approval result -------- |                             |
-  |  (approved or denied)         |                             |
+  |  (approved or rejected)       |                             |
 ```
 
 1. The agent creates an approval request: what the action is, a `summary` for the
@@ -199,18 +199,20 @@ curl -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/decide" \
 curl -X POST "https://api.1claw.co/v1/approvals/$APPROVAL_ID/decide" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"decision": "denied"}'
+  -d '{"decision": "rejected"}'
 ```
+
+Approving a tier 2 or tier 3 request also needs a re-auth token from `POST /v1/auth/reauth/complete` in the `X-Auth-Confirm` header (tier 3 refuses a password-based token).
 
 </TabItem>
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
 // Approve
-await client.approvals.decide(approvalId, { decision: "approved" });
+await client.approvals.decide(approvalId, "approved", { stepUpToken: reauthToken });
 
 // Deny
-await client.approvals.decide(approvalId, { decision: "denied" });
+await client.approvals.decide(approvalId, "rejected", { reason: "Not this order" });
 ```
 
 </TabItem>
@@ -277,23 +279,20 @@ The mobile app (iOS, TestFlight) provides push-notification-based approval. When
 
 ```typescript
 // Agent realizes it needs a secret it cannot access
-try {
-  await agentClient.secrets.get(vaultId, "production/stripe-key");
-} catch (err) {
-  if (err.status === 403) {
-    // Request access through the approval flow
-    await agentClient.approvals.request({
-      action: "access_request",
-      target_type: "agent",
-      target_id: agentId,
-      summary: {
-        vault_id: vaultId,
-        path_pattern: "production/stripe-key",
-        permissions: ["read"],
-      },
-      reason: "Need Stripe key to process refunds",
-    });
-  }
+const secret = await agentClient.secrets.get(vaultId, "production/stripe-key");
+if (secret.meta?.status === 403) {
+  // Request access through the approval flow
+  await agentClient.approvals.request({
+    action: "access_request",
+    target_type: "agent",
+    target_id: agentId,
+    summary: {
+      vault_id: vaultId,
+      path_pattern: "production/stripe-key",
+      permissions: ["read"],
+    },
+    reason: "Need Stripe key to process refunds",
+  });
 }
 ```
 
@@ -324,12 +323,13 @@ const APPROVAL_THRESHOLD = 1.0;
 
 if (txValue > APPROVAL_THRESHOLD) {
   const approval = await agentClient.approvals.request({
-    action: "transaction",
+    action: "transfer.large",
     target_type: "transaction",
     target_id: agentId,
-    summary: `Transfer ${txValue} ETH to 0xRecipient... on Ethereum`,
+    summary: { title: `Transfer ${txValue} ETH to 0xRecipient... on Ethereum` },
+    payload: { chain: "ethereum", to: "0xRecipient...", value_eth: txValue.toString() },
     reason: "Large position exit required by strategy",
-    risk_tier: 3,
+    declared_risk_tier: 3,
   });
 
   // Poll for decision (or set up a webhook)
@@ -360,8 +360,8 @@ curl -X POST https://api.1claw.co/v1/webhooks \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://your-server.com/webhooks/1claw",
-    "events": ["policy.created", "policy.updated", "policy.deleted"],
-    "secret": "your-webhook-signing-secret"
+    "events": ["approval.created", "approval.decided"],
+    "description": "Approval notifications"
   }'
 ```
 

@@ -37,7 +37,7 @@ Per-agent `address_screening_policy` JSON:
 
 Evaluated at transaction signing time via `address_screening::screen_recipient()`. Org operators can seed a global deny list with env `ONECLAW_SCREENING_DENY_LIST` (comma-separated addresses). `approve` mode can route screened recipients to tx HITL when configured.
 
-CLI: `--address-screening-policy '{"mode":"deny"}'` on `agent create|update`.
+CLI: `--address-screening-policy deny` (one of `off`, `deny`, `approve`) on `agent create|update`.
 
 ## Governance APIs
 
@@ -45,7 +45,9 @@ CLI: `--address-screening-policy '{"mode":"deny"}'` on `agent create|update`.
 | -------- | ----------- |
 | `GET /v1/org/guardrail-shadow-report` | Aggregate `guardrail_shadow.would_deny` by `reason_code` (owner/admin) |
 | `GET /v1/org/guardrail-revisions` | Revision history for agent/binding guardrail PATCH |
-| `POST /v1/agents/{id}/guardrails/replay` | Dry-run draft guardrails against recent txs (read-only) |
+| `POST /v1/agents/{id}/guardrails/replay` | Summarise the agent's recent transactions (up to 500 in the last `days`) by recorded outcome: `allowed`, `denied`, `would_require_approval` (read-only) |
+
+`draft_guardrails` and `draft_approval_policy` are accepted by the replay endpoint but not yet evaluated: the counts reflect each transaction's recorded status, not the draft.
 
 ### SDK
 

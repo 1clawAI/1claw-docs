@@ -192,8 +192,9 @@ For **`anyone_with_link`** shares, `GET /v1/share/{share_id}` requires **no** `A
 
 ```bash
 curl https://api.1claw.co/v1/share/{share_id}
-# If the share has a passphrase, include it in the request body (JSON):
-# curl --data '{"passphrase":"your-passphrase"}' https://api.1claw.co/v1/share/{share_id}
+# If the share has a passphrase, send it as a JSON body on the same GET:
+# curl -X GET -H "Content-Type: application/json" \
+#   --data '{"passphrase":"your-passphrase"}' https://api.1claw.co/v1/share/{share_id}
 ```
 
 </TabItem>
@@ -210,7 +211,9 @@ const { data: secret } = await client.sharing.access(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-secret = client.sharing.access(share_id).data
+# The public route is GET /v1/share/{share_id}; call it directly.
+resp = client._http.request("GET", f"/v1/share/{share_id}", skip_auth=True)
+secret = resp.data
 ```
 
 </TabItem>
@@ -244,7 +247,7 @@ await client.sharing.revoke(shareId);
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-client.sharing.delete(share_id)
+client._http.request("DELETE", f"/v1/share/{share_id}")
 ```
 
 </TabItem>

@@ -118,42 +118,11 @@ Response includes:
 }
 ```
 
-### Private keys (requires access policy)
+### Private keys (not readable through the secrets API)
 
-Private keys are stored as secrets in the `__agent-keys` vault. To let an agent read its own keys, grant it a policy:
+Private keys are stored as secrets in the `__agent-keys` vault, and `GET /v1/vaults/{vault_id}/secrets/{path}` on that vault returns **403** for every caller, whatever policies exist, the org owner included. Writes, deletes and version reads of `__agent-keys` are refused the same way. Agents use their keys through the signing and transaction endpoints instead of reading them.
 
-```bash
-# Grant agent read access to its own keys in __agent-keys
-curl -X POST "https://api.1claw.co/v1/vaults/<agent-keys-vault-id>/policies" \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "principal_type": "agent",
-    "principal_id": "<agent_id>",
-    "permissions": ["read"],
-    "secret_path_pattern": "agents/<agent_id>/**"
-  }'
-```
-
-Then the agent can read its private keys:
-
-```bash
-# Ed25519 SSH identity key
-GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ssh/private_key
-
-# P-256 ECDH key
-GET /v1/vaults/<agent-keys-vault-id>/secrets/agents/<agent_id>/ecdh/private_key
-```
-
-:::warning Intents API blocks raw key reads
-When `intents_api_enabled` is true on the agent, `get_secret` returns **403** for `private_key` and `ssh_key` type secrets even with a read policy. Agents must use the transaction/sign proxy instead of exfiltrating raw keys.
-:::
-
-Humans can resolve the `__agent-keys` vault id via `GET /v1/org/agent-keys-vault` and reveal keys in the dashboard Agent Identity card.
-
-:::tip
-The `ecdh:setup-agents` script in the [Google A2A example](/docs/vaults/golden-path) automates this: it creates agents and grants each one read access to its own keys.
-:::
+To replace an agent's identity keys, a human calls `POST /v1/agents/{agent_id}/rotate-identity-keys`; the new public keys come back on the agent record. Humans can resolve the `__agent-keys` vault id via `GET /v1/org/agent-keys-vault`.
 
 ## Key formats
 

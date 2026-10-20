@@ -27,7 +27,7 @@ Embedded wallets require a **Pro or higher** plan for the [Platform API](/docs/p
 | **React widget** | [`@1claw/wallet-react`](/docs/treasury/wallet-react) — full UI or headless `useOneclawWallet()` |
 | **Platform bootstrap** | Declarative templates provision vaults, agents, wallets, and policies per user |
 | **Fiat ramps** | Coinbase Onramp and MoonPay widget URLs |
-| **Audit & custody** | Hash-chained audit log, optional MPC and CMEK on paid tiers |
+| **Audit & custody** | Hash-chained audit log; a `custody` label on every wallet, and optional 2-of-3 [self-custody wallets](/docs/security/custody) |
 
 ## Architecture
 
@@ -66,7 +66,7 @@ flowchart TB
 3. **Treasury wallets** — HSM-generated keys in `__treasury-keys` at `users/{user_id}/chains/{chain}/private_key`. Sends and swaps require human step-up (`X-Auth-Confirm` password or passkey tx token).
 
 :::tip Custody guarantee
-When you bootstrap with `platform_locked: true`, your platform operator account **cannot read** end-user secret values — only lifecycle operations (create, delete, rotate). See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee).
+Vaults and agents created by bootstrap are marked `platform_locked`, so your platform operator account **cannot read** end-user secret values, only run lifecycle operations (create, delete, rotate). See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee).
 :::
 
 ## Embedded wallets vs agent signing keys

@@ -10,7 +10,13 @@ Embedded wallets inherit 1Claw's HSM-backed key hierarchy, envelope encryption, 
 
 ## Who can sign
 
-Every treasury wallet and agent signing key carries `custody: "server"` today: 1Claw holds the whole private key (envelope-encrypted, HSM-wrapped) and can sign after policy and approvals without a second party. That is custodial, and the controls below limit who *else* can reach the key, not whether 1Claw can. Passkey-held 2-party threshold keys (`custody: "client_tss"`, where neither 1Claw nor the user can sign alone) are in progress — see [Key custody](/docs/security/custody) before making a non-custodial claim about wallets built on this API.
+Every treasury wallet carries a `custody` label (on `GET /v1/treasury/wallets`):
+
+- **`server`** (the default, and every wallet the widget auto-provisions): 1Claw holds the whole private key (envelope-encrypted, HSM-wrapped) and can sign after policy and approvals without a second party. That is custodial, and the controls below limit who *else* can reach the key, not whether 1Claw can.
+- **`client_tss`**: a 2-of-3 FROST key on Solana, XRP, Cardano or Bitcoin (Taproot). The vault holds share 1; shares 2 and 3 are made on the user's device. Share 2 is wrapped under the user's passkey (WebAuthn PRF) and share 3 lives only in an offline recovery kit sealed under a recovery code. 1Claw cannot sign alone, and kit plus code can spend without 1Claw.
+- **`client_multisig`** (beta): a Tron 2-of-3 native multisig or an EVM 2-of-3 Safe, with the same device key, recovery kit and code.
+
+Self-custody wallets are created from the 1Claw dashboard, not auto-provisioned, and which chains an org can create is set by per-org rollout flags (`GET /v1/keys/tss/chains`). A wallet counts as backed up only once a passkey holds its share and a recovery kit for its current shares is confirmed; runtimes and agents refuse one that is not. Recovery (restore from kit, share refresh, the offline `oneclaw-recover` tool) is on [Key custody](/docs/security/custody); read it before making a non-custodial claim about wallets built on this API.
 
 ## Key storage model
 
@@ -18,13 +24,15 @@ Every treasury wallet and agent signing key carries `custody: "server"` today: 1
 | ----- | ---------------- |
 | **HSM / KMS** | Org KEK wraps per-secret DEKs; tier-aware HSM vs software protection |
 | **`__treasury-keys` vault** | Per-org vault at `users/{user_id}/chains/{chain}/private_key` |
-| **MPC (paid tiers)** | Pro/Team: XOR 2-of-2 client custody; Business/Enterprise: Shamir 2-of-3 multi-HSM |
+| **Self-custody (optional)** | `client_tss` / `client_multisig` wallets: 1Claw holds one share or key of three (vault-level MPC is not used for `__treasury-keys`) |
 | **Direct secret reads** | Blocked — keys are never returned via `GET /v1/vaults/.../secrets/...` |
 
-Private keys are only exposed through:
+For `server` wallets, private keys are only exposed through:
 
 - `POST /v1/treasury/wallets/{chain}/export` (password re-auth, audit-logged)
 - Server-side signing on send/swap (user never sees the key)
+
+A self-custody wallet has no private key anywhere, so export answers `409`.
 
 :::info Agents cannot use treasury wallets
 All treasury wallet endpoints enforce `require_human()`. Autonomous signing uses [agent signing keys](/docs/agents/intents/multi-chain-signing), not embedded treasury wallets.
@@ -32,7 +40,7 @@ All treasury wallet endpoints enforce `require_human()`. Autonomous signing uses
 
 ## Platform custody guarantee
 
-When you bootstrap with **`platform_locked: true`**, your platform operator account can manage lifecycle (create, delete, rotate) but **cannot read** end-user secret values — including treasury private keys.
+Bootstrap marks the vaults and agents it creates **`platform_locked`** (not a template option; it is always set), so your platform operator account can manage lifecycle (create, delete, rotate) but **cannot read** end-user secret values, including treasury private keys.
 
 See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee).
 
@@ -41,9 +49,9 @@ See [Platform API — custody](/docs/platform-api/multi-tenant#custody-guarantee
 Before any treasury wallet transaction is signed, the server evaluates guardrails in order:
 
 1. **Human step-up** — `X-Auth-Confirm` (password) or `X-Passkey-Token` (WebAuthn bound to tx digest)
-2. **Sanctions screen** — destination and any ERC-20 recipient in the calldata checked against the OFAC SDN list; refused with `403` and audited as `sanctions.blocked`; fails closed (`503`) if the list is older than 7 days. Not configurable. See [Key custody](/docs/security/custody).
+2. **Sanctions screen** — destination and any ERC-20 recipient in the calldata checked against the OFAC SDN list (EVM addresses with or without the `0x` prefix); refused with `403` and audited as `sanctions.blocked`; fails closed (`503`) if the list is older than 7 days. Not configurable. See [Key custody](/docs/security/custody).
 3. **[Spend policies](/docs/guides/embedded-wallets/spend-policies)** — app default + optional per-user override (`validate_wallet_send()`)
-4. **[Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies)** — role/principal grants (Pro+; API live, runtime enforcement rolling out)
+4. **[Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies)** — principal grants (Pro+), enforced once the org has at least one policy
 5. **Account lockout** — failed re-auth on export/send/swap increments lockout counter (10 failures → 15-minute lock)
 
 Clients and widgets cannot bypass server-side checks — a blocked transaction never reaches signing.
@@ -55,7 +63,7 @@ Clients and widgets cannot bypass server-side checks — a blocked transaction n
 | Email OTP | 5-minute TTL, auth-rate-limited (5 burst / 1 sec per IP) |
 | Social login | Server-verified ID tokens; no email auto-linking (409 on conflict) |
 | Sign in with 1Claw | PKCE (S256) required in production; RS256 ID tokens |
-| Passkey tx auth | 5-minute token bound to `SHA256(chain\|to\|value_wei\|data)` |
+| Passkey tx auth | 5-minute token bound to a SHA-256 digest of the send (`chain`, `to`, value, `data` and the chain-specific fields) |
 
 See [Authentication](/docs/guides/embedded-wallets/authentication).
 

@@ -29,19 +29,18 @@ const client = createClient({ baseUrl: "https://api.1claw.co" });
 // 1. Send a login code
 await client.auth.sendEmailOtp({ email: "user@example.com" });
 
-// 2. Verify the code — returns JWT + provisions wallets
+// 2. Verify the code: returns a JWT (stored on the client) and provisions wallets
 const { data } = await client.auth.verifyEmailOtp({
   email: "user@example.com",
   code: "123456",
   auto_provision_chains: ["ethereum"],
 });
 
-client.http.setToken(data.token);
-
-// 3. Send funds (requires password re-auth)
+// 3. Send funds (requires password re-auth). The API reads `value_wei`
+// (wei on EVM chains); the SDK's request type still declares `amount`.
 await client.treasuryWallets.sendFromWallet(
   "ethereum",
-  { to: "0x...", amount: "0.01" },
+  { to: "0x...", value_wei: "10000000000000000" } as any,
   userPassword,
 );
 ```
@@ -57,17 +56,21 @@ npm install @1claw/wallet-react
 ```
 
 ```tsx
-import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-react";
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
 function App() {
   return (
-    <OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
-      <OneclawEmbeddedWallet
-        chains={["ethereum", "base"]}
-        features={{ send: true, swap: true, receive: true, buy: true }}
-        socialProviders={["google", "apple"]}
-      />
-    </OneclawWalletProvider>
+    <OneclawEmbeddedWallet
+      appId="your-platform-app-id"
+      baseUrl="https://api.1claw.co"
+      chains={["ethereum", "base"]}
+      features={{ send: true, swap: true, receive: true, buy: true }}
+      socialProviders={["google", "apple"]}
+      socialProviderConfig={{
+        google: { clientId: "your-google-client-id" },
+        apple: { clientId: "your-apple-service-id", redirectUri: "https://yourapp.com/auth/apple" },
+      }}
+    />
   );
 }
 ```
@@ -81,7 +84,7 @@ import { createClient } from "@1claw/sdk";
 
 const platform = createClient({
   baseUrl: "https://api.1claw.co",
-  apiKey: process.env.PLATFORM_KEY!, // plt_...
+  token: process.env.PLATFORM_KEY!, // plt_... is sent as the bearer token, not exchanged like an apiKey
 });
 
 // App-wide defaults

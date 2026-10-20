@@ -117,44 +117,37 @@ A greyed **Next** always says what is missing ("To continue: pick an agent").
 ## Create via CLI
 
 ```bash
-# Deploy from current directory
-1claw runtime create \
-  --name "my-agent" \
+# Create a runtime bound to an existing agent
+1claw runtime create my-agent \
+  --agent-id <agent-id> \
   --template python \
-  --preset medium \
-  --env OPENAI_API_KEY=vault://secrets/openai-key
+  --preset medium
 
-# Deploy with hosting
-1claw runtime create \
-  --name "api-agent" \
-  --template node \
-  --preset large \
-  --expose-http \
-  --slug "my-api-agent" \
-  --inbound-auth api_key
-
-# Shorthand: deploy to cloud
-1claw deploy --google-cloud
+# Or: agent + keys + default-vault grant + runtime + start, in one call
+1claw runtime provision my-agent --agent my-agent --template python
 
 # Manage lifecycle
 1claw runtime start <id>
 1claw runtime stop <id>
-1claw runtime logs <id> --follow
+1claw runtime logs <id> --tail 100
 
 # Check slug availability
 1claw runtime slug-check my-agent-name
 ```
+
+The CLI does not set hosting options. To expose a runtime, set `expose_http`, `slug`
+and `inbound_auth` in the dashboard or on `POST /v1/runtimes` / `PATCH /v1/runtimes/{id}`.
 
 ## Source repository
 
 Runtimes support git-based deployment. Specify a repo URL and the runtime clones it at startup:
 
 ```bash
-1claw runtime create \
-  --name "research-crew" \
+1claw runtime create research-crew \
+  --agent-id <agent-id> \
   --template python \
-  --source "https://github.com/myorg/research-agent.git" \
-  --branch main
+  --source-repo "https://github.com/myorg/research-agent.git" \
+  --source-branch main
 ```
 
 The container runs `pip install -r requirements.txt` (Python) or `npm install` (Node.js) then executes the entrypoint.
@@ -206,9 +199,9 @@ https://{slug}.run.1claw.co
 | `small` | 0.5 | 512 MB | Pro | **Included** for your first runtime (Pro+), otherwise $15/mo add-on |
 | `medium` | 1 | 2 GB | Pro | **Included** for your first runtime (Pro+), otherwise $39/mo add-on |
 | `large` | 2 | 4 GB | Pro | $99/mo add-on |
-| `small-cc` | 0.5 | 512 MB | Business | add-on (TEE) |
-| `medium-cc` | 1 | 2 GB | Business | add-on (TEE) |
-| `large-cc` | 4 | 8 GB | Business | add-on (TEE) |
+| `small-cc` | 0.5 | 512 MB | Pro | add-on (TEE) |
+| `medium-cc` | 1 | 2 GB | Pro | add-on (TEE) |
+| `large-cc` | 4 | 8 GB | Pro | add-on (TEE) |
 
 **Every plan from Pro up includes one runtime at no charge** — Small or Medium (up to 1 vCPU / 2 GB), with no monthly hour cap and no subscription item. The vault assigns the included slot automatically to the first small/medium runtime you create (`billing_kind: included` on the runtime; `GET /v1/runtimes` returns `included_runtime: { allowance, used, presets }`). Deleting it frees the slot. Large and the `-cc` presets are always paid add-ons; additional small/medium runtimes beyond the included one are add-ons too. Runtimes without an add-on or the included slot (`billing_kind: pool`) draw from the plan's pool hours below.
 
@@ -216,13 +209,13 @@ https://{slug}.run.1claw.co
 
 ### Tier limits
 
-| Tier | Max runtimes | Included runtime (no hour cap) | Pool hours / month |
-|------|-------------|-------------------------------|--------------------|
-| Free | — (Cloud Runtimes need Pro or higher) | — | — |
-| Pro | 3 | 1 (small or medium) | 100 |
-| Team | 10 | 1 (small or medium) | 500 |
-| Business | 25 | 1 (small or medium) | 2,000 |
-| Enterprise | Custom | 1 (small or medium) | Custom |
+| Tier | Max runtimes | Running at once | Included runtime (no hour cap) | Pool hours / month |
+|------|-------------|-----------------|-------------------------------|--------------------|
+| Free | — (Cloud Runtimes need Pro or higher) | — | — | — |
+| Pro | 3 | 3 | 1 (small or medium) | 100 |
+| Team | 20 | 10 | 1 (small or medium) | 1,000 |
+| Business | 50 | 25 | 1 (small or medium) | 4,000 |
+| Enterprise | Unlimited | Unlimited | 1 (small or medium) | Unlimited |
 
 ## Runtime Chat (Hermes / OpenClaw / OpenClaude)
 
@@ -283,10 +276,7 @@ SDK: `client.runtimes.createShellSession(id, { password })`. The dashboard Termi
 ## Logs and monitoring
 
 ```bash
-# Stream logs in real-time
-1claw runtime logs <id> --follow
-
-# Last 100 log lines (API returns `{ entries: [{ timestamp?, message }] }`)
+# Last 100 log lines (the CLI fetches; for live streaming use the dashboard or the SSE endpoint below) (API returns `{ entries: [{ timestamp?, message }] }`)
 1claw runtime logs <id> --tail 100
 ```
 
@@ -354,7 +344,7 @@ or a token with no runtime image is refused. Exact match — pin the digest.
 
 ## Idle auto-stop
 
-Runtimes with no inbound requests for `idle_timeout_secs` (default: 300s for Free, 900s for Pro+) are automatically stopped to save resources. They restart on the next request (cold start ~2–5s).
+Runtimes with no inbound requests for `idle_timeout_secs` are automatically stopped to save resources. The API default is 14400 s (4 hours); `1claw runtime create` sends 1800 s unless you pass `--idle-timeout`. Non-zero values are clamped to 300–86400 s.
 
 Disable idle timeout for always-on agents:
 

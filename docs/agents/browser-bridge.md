@@ -97,11 +97,12 @@ Or against the API directly:
 ```bash
 curl -X POST https://api.1claw.co/v1/browser/devices \
   -H "Authorization: Bearer $USER_TOKEN" \
+  -H "X-Auth-Confirm: $REAUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"label":"laptop","public_key_pin":"<bridge public key>"}'
 ```
 
-The `bb_` credential comes back once and is never returned again.
+`X-Auth-Confirm` takes a re-auth token for purpose `browser.device.pair` from `POST /v1/auth/reauth/complete`; your password is accepted there only when no passkey or authenticator app is enrolled. The `bb_` credential comes back once and is never returned again.
 
 Define a binding — which secret may be typed, and where:
 
@@ -110,7 +111,7 @@ curl -X POST https://api.1claw.co/v1/browser/credentials \
   -H "Authorization: Bearer $USER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "acme-login",
+    "label": "acme-login",
     "vault_id": "<vault>",
     "secret_path": "acme/password",
     "login_url": "https://app.acme.example/login",

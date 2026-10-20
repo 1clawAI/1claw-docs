@@ -333,7 +333,7 @@ See [Guardrail governance](/docs/agents/guardrail-governance).
 ```bash
 1claw agent accounts list <agent-id>
 1claw agent accounts migrate <agent-id> --chain ethereum [--deprecate-eoa]
-1claw agent accounts deprecate-eoa <agent-id> --chain ethereum
+1claw agent accounts deprecate-eoa <agent-id> ethereum
 1claw safe module-registry ethereum
 1claw safe sync-allowances
 ```
@@ -347,13 +347,14 @@ HTTP and GraphQL calls through named bindings — credentials stay server-side. 
 ```bash
 1claw agent binding create <agent-id> \
   --name stripe-api --type http \
-  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer","allowed_hosts":["api.stripe.com"],"allowed_paths":["/v1/*"]}' \
-  --credential sk_live_...
+  --config '{"base_url":"https://api.stripe.com","auth_type":"bearer"}' \
+  --guardrails '{"allowed_hosts":["api.stripe.com"],"allowed_paths":["/v1/*"]}' \
+  --credential '{"token":"sk_live_..."}'
 1claw agent binding list <agent-id>
 1claw agent binding get <agent-id> <binding-id>
 1claw agent binding update <agent-id> <binding-id> --active false
 1claw agent binding test <agent-id> <binding-id>
-1claw agent binding rotate-credential <agent-id> <binding-id> --credential sk_live_new_...
+1claw agent binding rotate-credential <agent-id> <binding-id> --credential '{"token":"sk_live_new_..."}'
 # Local proxy: a vendor CLI/SDK with a base-URL override runs through the binding, no key on this machine.
 # The proxy requires a per-run token (printed at startup, or --token / ONECLAW_PROXY_TOKEN);
 # the tool presents it as its API key, so other local processes cannot drive the binding.
@@ -442,7 +443,7 @@ Cache secrets locally in an AES-256-GCM encrypted file for offline `env run`.
 
 ```bash
 1claw env cache                        # Download and cache secrets locally
-1claw env cache --ttl 3600             # Cache with 1-hour TTL (default: 300s)
+1claw env cache --ttl 3600             # Cache with 1-hour TTL (the default)
 1claw env cache-status                 # Show cache age, vault ID, secret count
 1claw env cache-clear                  # Delete the local cache
 ```
@@ -908,33 +909,33 @@ In a standalone Cloud Run deploy there is no host daemon, so the container uses 
 ## Cedar policies (Team+)
 
 ```bash
-1claw cedar-policy create --name "deny-prod-writes" --policy-text '<cedar policy>'
+1claw cedar-policy create --policy-text '<cedar policy>' --description "deny-prod-writes"
 1claw cedar-policy list
 1claw cedar-policy get <id>
 1claw cedar-policy delete <id>
-1claw cedar-policy test --policy-text '<cedar policy>' --request '{"principal":"agent:...","action":"read","resource":"secrets/prod/*"}'
+1claw cedar-policy test --principal 'agent:...' --action read --resource 'secrets/prod/*'
 ```
 
 ## OPA policies (Business+)
 
 ```bash
-1claw opa-policy create --name "require-mfa" --policy-text '<rego policy>'
+1claw opa-policy create --rego '<rego policy>' --description "require-mfa"
 1claw opa-policy list
 1claw opa-policy get <id>
 1claw opa-policy delete <id>
-1claw opa-policy test --policy-text '<rego policy>' --input '{"principal_type":"agent"}'
+1claw opa-policy test --input '{"principal_type":"agent"}'
 ```
 
-## Sub-organizations (Enterprise)
+## Sub-organizations (Pro+)
 
 ```bash
-1claw sub-org create --name "Team Alpha"
+1claw sub-org create "Team Alpha"
 1claw sub-org list
 1claw sub-org get <id>
 1claw sub-org archive <id>
-1claw sub-org grant <id> --user <user-id> --permission admin
-1claw sub-org revoke <id> --permission <perm-id>
-1claw sub-org add-user <id> --user <user-id>
+1claw sub-org grant <id> --permission admin
+1claw sub-org revoke <id> admin
+1claw sub-org add-user <id> --user-id <user-id>
 1claw sub-org wallets <id> --chains ethereum,solana
 ```
 

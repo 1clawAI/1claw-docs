@@ -50,12 +50,12 @@ const tx = await agentClient.agents.submitTransaction(agentId, {
   gasless: true, // ERC-4337 UserOperation, gas sponsored by Pimlico paymaster
 });
 
-console.log("UserOp hash:", tx.data.user_op_hash);
+console.log("UserOp hash:", tx.data.tx_hash); // for gasless sends, tx_hash holds the UserOperation hash
 ```
 
 Requirements:
 
-- Agent must have `intents_api_enabled: true`
+- Agent must have `intents_api_enabled: true` and `allow_erc4337: true`
 - Agent must be in `smart_account` mode (a Safe is deployed per chain)
 - `PIMLICO_API_KEY` must be configured on the 1claw deployment
 
@@ -81,7 +81,7 @@ const oneclaw = create1clawClient({
 const oneclawSigner = {
   address: agentEoaAddress, // from GET /v1/agents/{id} -> evm_address
   async signMessage({ message }: { message: string }) {
-    const result = await oneclaw.agents.signIntent(agentId, {
+    const result = await oneclaw.agents.sign(agentId, {
       intent_type: "personal_sign",
       chain: "base",
       message: Buffer.from(message).toString("hex"),
@@ -89,7 +89,7 @@ const oneclawSigner = {
     return result.data.signature as `0x${string}`;
   },
   async signTypedData(typedData: any) {
-    const result = await oneclaw.agents.signIntent(agentId, {
+    const result = await oneclaw.agents.sign(agentId, {
       intent_type: "typed_data",
       chain: "base",
       typed_data: typedData,
@@ -148,7 +148,7 @@ const oneclawSigner = {
       typeof message === "string"
         ? Buffer.from(message).toString("hex")
         : Buffer.from(message).toString("hex");
-    const result = await oneclaw.agents.signIntent(agentId, {
+    const result = await oneclaw.agents.sign(agentId, {
       intent_type: "personal_sign",
       chain: "ethereum",
       message: hex,
@@ -156,7 +156,7 @@ const oneclawSigner = {
     return result.data.signature as `0x${string}`;
   },
   signTypedData: async (typedData: any) => {
-    const result = await oneclaw.agents.signIntent(agentId, {
+    const result = await oneclaw.agents.sign(agentId, {
       intent_type: "typed_data",
       chain: "ethereum",
       typed_data: typedData,

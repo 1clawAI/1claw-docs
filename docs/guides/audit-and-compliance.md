@@ -12,7 +12,7 @@ All API access (and relevant failures) can be recorded in an **audit log**. Secr
 
 **GET /v1/audit/events** — Returns events for the caller’s organization. Query parameters may include:
 
-- `resource_id` — Filter by resource (e.g. secret path).
+- `resource_id` — Filter by resource UUID.
 - `actor_id` — Filter by actor (user or agent UUID).
 - `action` — Filter by action type.
 - `from`, `to` — Time range (ISO 8601).
@@ -32,31 +32,34 @@ curl "https://api.1claw.co/v1/audit/events?action=secret.read&limit=25" \
   "events": [
     {
       "id": "a7e2c...",
-      "action": "secret.read",
-      "actor_id": "agent-uuid",
+      "org_id": "org-uuid",
       "actor_type": "agent",
+      "actor_id": "agent-uuid",
+      "action": "secret.read",
       "resource_type": "secret",
       "resource_id": "secret-uuid",
-      "org_id": "org-uuid",
-      "details": { "vault_id": "vault-uuid", "path": "keys/eth-signer" },
-      "ip_address": "203.0.113.50",
-      "created_at": "2026-02-27T14:00:00Z"
+      "metadata": { "vault_id": "vault-uuid", "path": "keys/eth-signer" },
+      "timestamp": "2026-02-27T14:00:00Z",
+      "request_id": null,
+      "prev_event_id": "prev-event-uuid",
+      "integrity_hash": "hex..."
     }
   ],
   "count": 1
 }
 ```
 
-Each event includes `id`, `org_id`, `actor_type`, `actor_id`, `action`, `resource_type`, `resource_id`, `details`, `ip_address`, and `created_at`.
+Each event includes `id`, `org_id`, `actor_type`, `actor_id`, `action`, `resource_type`, `resource_id`, `metadata`, `timestamp`, `request_id`, `prev_event_id`, and `integrity_hash`. Sensitive keys inside `metadata` (for example `token`, `password`, `api_key`) are returned as `"[REDACTED]"`. `limit` defaults to 50 and is capped at 1000.
 
 ## Typical events
 
-- `secret.read`, `secret.write`, `secret.delete` — Secret access (path and actor; no value).
-- `auth.success`, `auth.failure` — Authentication attempts (no credentials logged).
-- `policy.create`, `policy.update`, `policy.delete` — Access policy changes.
-- `agent.register`, `agent.rotate_key`, `agent.deactivate` — Agent lifecycle events.
-- `transaction.submit` — Transaction submitted via Intents API.
-- `transaction.simulate` — Transaction simulation requested.
+- `secret.read`, `secret.write`, `secret.delete`: Secret access (path and actor; no value).
+- `policy.denied`: A secret read refused by policy.
+- `auth.login`: Human sign-in (no credentials logged).
+- `policy.create`, `policy.update`, `policy.delete`: Access policy changes.
+- `agent.create`, `agent.update`, `agent.delete`, `agent.tokens_revoked`: Agent lifecycle events.
+- `transaction.sign`, `transaction.submit`: Transactions signed or submitted via the Intents API.
+- `transaction.guardrail_rejected`: A transaction refused by agent guardrails.
 
 ## Tamper-evident hash chain
 

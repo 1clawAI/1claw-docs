@@ -1,6 +1,6 @@
 ---
 title: Agent Memory
-description: Three-tier memory system for AI agents — scratch (ephemeral), durable (persistent KV), and semantic (vector search). Encrypted at rest.
+description: Three-tier memory system for AI agents — scratch (ephemeral), durable (persistent KV), and semantic (text search over key + value). Encrypted at rest.
 sidebar_label: "Agent Memory — scratch, durable, semantic storage"
 sidebar_position: 22
 ---
@@ -48,7 +48,9 @@ await client.agents.update(agentId, { memory_enabled: true });
 </TabItem>
 <TabItem value="cli" label="CLI">
 
-Use the REST API or dashboard — there is no `agent update --memory-enabled` flag yet.
+```bash
+1claw agent update <agent-id> --memory true
+```
 
 </TabItem>
 </Tabs>
@@ -145,10 +147,11 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/memory/search" \
 |--------|------|-------------|
 | `GET` | `/v1/agents/{id}/memory` | List namespaces |
 | `GET` | `/v1/agents/{id}/memory/{namespace}` | List entries in namespace |
+| `DELETE` | `/v1/agents/{id}/memory/{namespace}` | Delete every entry in a namespace |
 | `PUT` | `/v1/agents/{id}/memory/{namespace}/{key}` | Upsert entry |
 | `GET` | `/v1/agents/{id}/memory/{namespace}/{key}` | Get entry |
 | `DELETE` | `/v1/agents/{id}/memory/{namespace}/{key}` | Delete entry |
-| `POST` | `/v1/agents/{id}/memory/search` | Semantic search |
+| `POST` | `/v1/agents/{id}/memory/search` | Search (lexical, key + value) |
 
 ## Namespaces
 
@@ -173,21 +176,21 @@ Scratch entries auto-expire after their TTL. Use for:
 ```typescript
 await client.memory.put(agentId, "session", "conversation-context", {
   value: JSON.stringify({ topic: "refactoring", files: ["main.ts"] }),
-  ttl_seconds: 1800, // scratch tier defaults when ttl is set
+  ttl_seconds: 1800, // expires after 30 minutes; omit ttl_seconds and send tier "scratch" (REST/CLI) for the 1-hour default
 });
 ```
 
-A background worker reaps expired entries every 60 seconds.
+Expired entries stop being returned as soon as their TTL passes. A daily background job (00:05 UTC) deletes them.
 
 ## Semantic search
 
-Semantic-tier entries are automatically embedded (1536-dimensional vectors via pgvector). Search returns entries ranked by cosine similarity:
+Search is lexical, not embedding-based (see "How search works" above). It scores entries in the namespace on key + value and returns them ranked by score:
 
 ```json
 {
-  "entries": [
-    { "key": "api-limits", "value": "The 1Claw free tier...", "score": 0.92 },
-    { "key": "pricing-faq", "value": "Pro plan includes...", "score": 0.85 }
+  "results": [
+    { "id": "…", "key": "api-limits", "value": "The 1Claw free tier...", "score": 0.95, "namespace": "knowledge", "tier": "semantic", "created_at": "…", "updated_at": "…" },
+    { "id": "…", "key": "pricing-faq", "value": "Pro plan includes...", "score": 0.6, "namespace": "knowledge", "tier": "durable", "created_at": "…", "updated_at": "…" }
   ]
 }
 ```
@@ -202,7 +205,7 @@ Use for RAG (Retrieval-Augmented Generation), knowledge bases, or any scenario w
 | `get_memory` | Read a memory entry |
 | `list_memory` | List entries in a namespace |
 | `delete_memory` | Delete a memory entry |
-| `search_memory` | Semantic similarity search |
+| `search_memory` | Search entries by key + value (lexical) |
 
 ## Limits
 
@@ -211,7 +214,6 @@ Use for RAG (Retrieval-Augmented Generation), knowledge bases, or any scenario w
 | Max value size | 64 KB |
 | Max entries per agent | 10,000 |
 | Max namespaces per agent | 100 |
-| Vector dimensions | 1536 |
 
 ## Encryption
 
@@ -223,8 +225,8 @@ All memory values are encrypted with a per-entry DEK (data encryption key) via e
 |-------|------|-------------|
 | `memory_enabled` | `boolean` | Enable/disable memory for this agent (default: `false`) |
 | `memory_namespace_allowlist` | `string[]` | Restrict namespaces the agent can access (empty = all) |
-| `default_llm_provider` | `string` | LLM provider for embeddings (optional) |
-| `default_llm_model` | `string` | Model for embeddings (optional) |
+| `default_llm_provider` | `string` | Default LLM provider for the agent (optional; not used by memory search) |
+| `default_llm_model` | `string` | Default LLM model for the agent (optional; not used by memory search) |
 
 ## Dashboard
 
@@ -238,4 +240,4 @@ The agent detail page shows a **Memory** card with:
 
 - [Cloud Runtimes](/docs/runtimes/overview) — deploy an agent that uses memory across restarts
 - [Automations](/docs/automations/overview) — trigger memory cleanup on a schedule
-- [Shroud](/docs/agents/shroud/overview) — route LLM embeddings through the proxy
+- [Shroud](/docs/agents/shroud/overview) — route LLM calls through the proxy

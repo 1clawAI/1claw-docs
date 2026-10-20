@@ -117,7 +117,7 @@ curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "external_subject": "your-app:user-12345"
+    "display_name": "Ada Lovelace"
   }'
 ```
 
@@ -134,7 +134,7 @@ const platform = createClient({
 
 const { data } = await platform.platform.upsertUser({
   email: "user@example.com",
-  external_subject: "your-app:user-12345",
+  display_name: "Ada Lovelace",
 });
 
 console.log(data.connection_id, data.is_new);
@@ -143,7 +143,7 @@ console.log(data.connection_id, data.is_new);
 </TabItem>
 </Tabs>
 
-You can also pass a `subject_token` (OIDC JWT verified against your app's JWKS) instead of email. Set `create_sub_org: true` to isolate each user in a [sub-organization](/docs/guides/embedded-wallets/advanced#sub-organizations).
+With `email`, the connection's `external_subject` is the email address. You can also pass a `subject_token` (OIDC JWT verified against your app's JWKS) instead of email. Set `create_sub_org: true` to isolate each user in a [sub-organization](/docs/guides/embedded-wallets/advanced#sub-organizations).
 
 ## Step 4: Bootstrap resources (optional)
 
@@ -178,15 +178,16 @@ Two common paths:
 ### A. React widget (recommended)
 
 ```tsx
-import { OneclawWalletProvider, OneclawEmbeddedWallet } from "@1claw/wallet-react";
+import { OneclawEmbeddedWallet } from "@1claw/wallet-react";
 
-<OneclawWalletProvider apiKey="plt_..." baseUrl="https://api.1claw.co">
-  <OneclawEmbeddedWallet
-    chains={["ethereum", "base", "solana"]}
-    socialProviders={["google", "apple"]}
-    features={{ send: true, swap: true, receive: true, buy: true }}
-  />
-</OneclawWalletProvider>
+<OneclawEmbeddedWallet
+  appId={APP_ID} // platform app UUID; no plt_ key in the browser
+  baseUrl="https://api.1claw.co"
+  chains={["ethereum", "base", "solana"]}
+  socialProviders={["google", "apple"]}
+  socialProviderConfig={{ google: { clientId: GOOGLE_CLIENT_ID } }}
+  features={{ send: true, swap: true, receive: true, buy: true }}
+/>
 ```
 
 See [React integration](/docs/guides/embedded-wallets/react-integration).
@@ -202,10 +203,11 @@ await client.auth.sendEmailOtp({
 const { data } = await client.auth.verifyEmailOtp({
   email: "user@example.com",
   code: "123456",
+  platform_app_id: APP_UUID,
   auto_provision_chains: ["ethereum", "solana"],
 });
 
-// data.access_token — user JWT
+// The response body carries the user JWT in `token`
 // Wallets created on first login for listed chains
 ```
 

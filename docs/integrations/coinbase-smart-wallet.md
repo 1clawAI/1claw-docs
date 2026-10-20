@@ -82,7 +82,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/coinbase/commerce-
   -d '{
     "value": "'"$COINBASE_COMMERCE_KEY"'",
     "type": "api_key",
-    "description": "Coinbase Commerce API key"
+    "metadata": { "description": "Coinbase Commerce API key" }
   }'
 ```
 
@@ -90,7 +90,7 @@ Your agent fetches the key at runtime:
 
 ```typescript
 const secret = await agent.secrets.get(vaultId, "coinbase/commerce-api-key");
-const commerceKey = secret.data.value;
+const commerceKey = secret.data?.value;
 ```
 
 Benefits over environment variables:
@@ -130,13 +130,15 @@ If you deploy a Safe multisig and want both a Smart Wallet user and a 1claw agen
 ```typescript
 // Agent proposes a treasury transaction
 const proposal = await agent.treasury.propose(treasuryId, {
-  chain: "base",
-  to_address: "0xRecipient...",
+  to: "0xRecipient...",
   value_wei: "1000000000000000000", // 1 ETH
+  safe_tx_hash: safeTxHash, // computed with your Safe SDK
+  nonce: safeNonce,
 });
 
 // Human signs with Smart Wallet (EIP-712 signature)
-// When threshold is met, 1claw auto-executes
+// When threshold is met the proposal is marked approved; execute it:
+await agent.treasury.executeProposal(treasuryId, proposal.data!.id);
 ```
 
 See the [Safe integration guide](/docs/treasury/safe-multisig) for the full setup.

@@ -13,10 +13,10 @@ A session is only offered the toolsets its agent is entitled to (see the [overvi
 | Toolset | Offered when | Tools |
 | --- | --- | --- |
 | `inspect` | always | `inspect_content` |
-| `vault` | any agent | `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `list_versions`, `rotate_and_store`, `rotate_generate`, `get_env_bundle`, `resolve_env`, `share_secret`, `grant_access`, `create_vault`, `list_vaults`, `list_oauth_connections`, `list_oauth_providers`, `oauth_revoke_consent`, `oauth_revoke_token` |
-| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
-| `intents` | `intents_api_enabled` | `simulate_transaction`, `simulate_bundle`, `submit_transaction`, `sign_transaction`, `sign_message`, `sign_typed_data`, `sign_digest`, `list_transactions`, `get_transaction`, `provision_signing_key`, `import_signing_key`, `list_signing_keys`, `get_signing_key_balance`, `get_portfolio`, `import_smart_account`, `list_agent_accounts`, `get_safe_module_registry`, `lease_bankr_key` |
-| `execute` | `execution_intents_enabled` | `list_bindings`, `test_binding`, `execute_http`, `execute_intent`, `list_executions`, `list_installed_connectors`, `list_connector_presets` |
+| `vault` | any agent | `list_secrets`, `get_secret`, `put_secret`, `delete_secret`, `describe_secret`, `list_versions`, `rotate_and_store`, `rotate_generate`, `get_env_bundle`, `resolve_env`, `share_secret`, `grant_access`, `create_vault`, `list_vaults`, `list_oauth_connections`, `list_oauth_providers`, `oauth_revoke_consent`, `oauth_revoke_token`, `list_child_agents`, `request_secret`, `check_secret_request` |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals`, `cancel_approval` |
+| `intents` | `intents_api_enabled` | `simulate_transaction`, `simulate_bundle`, `submit_transaction`, `sign_transaction`, `sign_message`, `sign_typed_data`, `sign_digest`, `list_transactions`, `get_transaction`, `provision_signing_key`, `import_signing_key`, `list_signing_keys`, `get_signing_key_balance`, `get_portfolio`, `import_smart_account`, `list_agent_accounts`, `get_safe_module_registry`, `lease_bankr_key`, `spend_from_passkey_safe` |
+| `execute` | `execution_intents_enabled` | `list_bindings`, `test_binding`, `execute_http`, `execute_intent`, `list_executions`, `list_installed_connectors`, `list_connector_presets`, `list_event_subscriptions` |
 | `cards` | `cards_enabled` | `list_cards`, `get_card_status`, `search_gift_cards`, `order_card`, `order_gift_card` |
 | `memory` | `memory_enabled` | `put_memory`, `get_memory`, `list_memory`, `search_memory`, `delete_memory`, `get_peer_context` |
 | `channels` | `shroud_enabled` | `list_channels`, `create_channel`, `send_channel_message` |
@@ -25,7 +25,7 @@ A session is only offered the toolsets its agent is entitled to (see the [overvi
 | `delegation` | `has_delegations` on the exchange, else opt-in | `list_delegations`, `create_delegation`, `get_effective_delegations`, `delegate_task`, `org_directory` |
 | `chat` | opt-in | `list_chat_conversations`, `send_chat_message` |
 | `automations` | opt-in | `list_automations`, `list_automation_presets`, `create_agent_automation`, `trigger_automation`, `cancel_automation_run` |
-| `runtimes` | opt-in | `list_runtimes`, `manage_runtime`, `runtime_status`, `runtime_logs` |
+| `runtimes` | opt-in | `list_runtimes`, `manage_runtime`, `runtime_status`, `runtime_logs`, `runtime_env` |
 | `notification` | opt-in | `list_notification_targets` |
 | `admin` | never on an agent (human JWT over stdio only) | `create_binding`, `create_sub_org`, `list_sub_orgs`, `approve_pending_approval`, `execute_pending_approval`, `migrate_agent_to_safe`, `deprecate_agent_eoa`, `sync_org_safe_allowances`, `list_cedar_policies`, `test_cedar_policy`, `list_opa_policies`, `test_opa_policy`, `get_policy_backend_settings`, `update_policy_backend_settings`, `get_shadow_report`, `get_guardrail_shadow_report`, `list_guardrail_revisions`, `replay_agent_guardrails`, `upload_contract_abi`, `list_contract_abis` |
 | `platform` | never (plt_ keys are rejected) | `platform_list_apps`, `platform_create_app`, `platform_delete_app`, `platform_rotate_key`, `platform_rotate_webhook_secret`, `platform_app_stats`, `platform_list_users`, `platform_bootstrap_user`, `platform_siwe_challenge`, `platform_reissue_claim`, `platform_transfer_ownership`, `platform_grant_access`, `platform_list_grants`, `platform_marketplace`, `platform_list_templates`, `platform_create_template`, `platform_get_template`, `platform_preview_template`, `platform_list_entitlements`, `platform_get_spend_policy`, `platform_get_connection`, `platform_connection_usage`, `platform_get_connection_spend_policy`, `platform_set_connection_spend_policy`, `platform_list_connection_approvals`, `platform_get_connection_approval`, `platform_decide_connection_approval`, `platform_list_connection_pending_approvals`, `platform_create_connection_pending_approval`, `platform_decide_connection_pending_approval`, `platform_create_connection_runtime`, `platform_get_connection_runtime`, `platform_delete_connection_runtime`, `platform_connection_agent_chat`, `platform_list_connection_signing_keys`, `platform_get_connection_signing_key`, `platform_deactivate_connection_signing_key`, `platform_patch_connection_agent`, `platform_connection_passkey_enroll_begin`, `platform_connection_passkey_enroll_complete`, `platform_get_connection_portfolio`, `platform_list_connection_automations`, `platform_get_connection_otel_summary`, `platform_get_connection_otel_threats`, `platform_get_connection_otel_topology`, `platform_get_fleet`, `platform_list_fleet_agents`, `platform_plan_fleet_rollout` |
@@ -119,6 +119,7 @@ Fetch the decrypted value of a secret by its path. Use this immediately before m
 | Name   | Type   | Required | Description                          |
 | ------ | ------ | -------- | ------------------------------------ |
 | `path` | string | Yes      | Secret path (e.g. `api-keys/stripe`) |
+| `client_share` | string | No | Base64 client share, required for client-custody MPC vaults |
 
 ### Example
 
@@ -224,6 +225,7 @@ Store a new value for an existing secret, creating a new version. Useful when an
 | ------- | ------ | -------- | --------------------- |
 | `path`  | string | Yes      | Secret path to rotate |
 | `value` | string | Yes      | The new secret value  |
+| `type`  | string | No       | Secret type; keeps the existing type if omitted |
 
 ### Example
 
@@ -319,6 +321,7 @@ Grant a user or agent access to a vault by creating an access policy.
 | `principal_id`        | string   | Yes      | UUID of the user or agent                                             |
 | `permissions`         | string[] | No       | Array of permissions: `read`, `write`, `delete` (default: `["read"]`) |
 | `secret_path_pattern` | string   | No       | Glob pattern to restrict access (default: `**` — all secrets)         |
+| `tx_conditions`       | object   | No       | Transaction conditions for signing policies (e.g. `match_mode`, `function_name_in`, `function_selector_in`, `erc20_amount_above`) |
 
 ### Example
 
@@ -373,6 +376,7 @@ Provision an HSM-backed signing key for a blockchain. The private key is generat
 | Name    | Type   | Required | Description                                                                  |
 | ------- | ------ | -------- | ---------------------------------------------------------------------------- |
 | `chain` | string | Yes      | Blockchain name: `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, `tron`   |
+| `agent_id` | string | No     | Agent ID. Defaults to the authenticated agent                                |
 
 ### Example
 
@@ -395,7 +399,9 @@ List all active signing keys for the current agent.
 
 ### Parameters
 
-None.
+| Name       | Type   | Required | Description                                       |
+| ---------- | ------ | -------- | ------------------------------------------------- |
+| `agent_id` | string | No       | Agent ID. Defaults to the authenticated agent     |
 
 ### Example
 
@@ -419,14 +425,16 @@ Sign an EIP-191 personal message. Requires `message_signing_enabled: true` on th
 
 | Name      | Type   | Required | Description                                             |
 | --------- | ------ | -------- | ------------------------------------------------------- |
-| `message` | string | Yes      | The message to sign (UTF-8 string or hex-encoded bytes) |
-| `chain`   | string | Yes      | Chain name (e.g. `ethereum`)                            |
+| `message` | string | Yes      | Hex-encoded message bytes to sign (`0x`-prefixed or raw hex) |
+| `chain`   | string | No       | Chain name (default: `ethereum`)                        |
+| `signing_key_path` | string | No | Vault path to the signing key. Defaults to the agent's key for the chain |
+| `agent_id` | string | No      | Agent ID. Defaults to the authenticated agent           |
 
 ### Example
 
 ```
 Agent: "Sign this message to prove my identity"
-→ sign_message(message: "Hello from my agent", chain: "ethereum")
+→ sign_message(message: "0x48656c6c6f2066726f6d206d79206167656e74", chain: "ethereum")
 
 {
   "signature": "0x3045...",
@@ -445,8 +453,10 @@ Sign EIP-712 typed structured data (e.g. ERC-20 Permit, gasless approvals). The 
 
 | Name         | Type   | Required | Description                                      |
 | ------------ | ------ | -------- | ------------------------------------------------ |
-| `chain`      | string | Yes      | Chain name (e.g. `ethereum`)                     |
+| `chain`      | string | No       | Chain name (default: `ethereum`)                 |
 | `typed_data` | object | Yes      | Full EIP-712 JSON (types, primaryType, domain, message) |
+| `signing_key_path` | string | No | Vault path to the signing key. Defaults to the agent's key for the chain |
+| `agent_id`   | string | No       | Agent ID. Defaults to the authenticated agent    |
 
 ### Example
 
@@ -475,8 +485,10 @@ No domain/transaction inspection is performed and guardrails are bypassed. The a
 
 | Name    | Type   | Required | Description                                          |
 | ------- | ------ | -------- | ---------------------------------------------------- |
-| `chain` | string | Yes      | Chain name (e.g. `ethereum`)                         |
+| `chain` | string | No       | Chain name (default: `ethereum`)                     |
 | `hash`  | string | Yes      | 0x-prefixed 32-byte (64 hex char) digest to sign     |
+| `signing_key_path` | string | No | Vault path to the signing key. Defaults to the agent's key for the chain |
+| `agent_id` | string | No    | Agent ID. Defaults to the authenticated agent        |
 
 ### Example
 
@@ -500,12 +512,14 @@ Sign and broadcast a transaction. Optionally simulate first via Tenderly.
 
 | Name               | Type    | Required | Description                                                      |
 | ------------------ | ------- | -------- | ---------------------------------------------------------------- |
-| `chain`            | string  | Yes      | Chain name (e.g. `base`, `ethereum`, `sepolia`)                  |
+| `chain`            | string  | Yes      | Chain name (e.g. `base`, `ethereum`, `bitcoin-testnet`, `solana-devnet`) or numeric EVM chain ID |
 | `to`               | string  | Yes      | Recipient address                                                |
-| `value`            | string  | No       | Value in ETH (e.g. `"0.1"`)                                     |
-| `data`             | string  | No       | Calldata hex (e.g. `"0x"`)                                      |
-| `signing_key_path` | string  | No       | Vault path to signing key (default: `keys/{chain}-signer`)       |
-| `simulate_first`   | boolean | No       | Run Tenderly simulation before signing (default: true)           |
+| `value`            | string  | Yes      | Value in the chain's major unit as a decimal string (e.g. `"0.1"` ETH, `"0.001"` BTC) |
+| `data`             | string  | No       | Calldata hex (EVM contract interactions)                         |
+| `signing_key_path` | string  | No       | Vault path to signing key. Auto-resolves the per-chain signing key if provisioned, otherwise `keys/{chain}-signer` |
+| `simulate_first`   | boolean | No       | Run Tenderly simulation before signing (EVM only, default: true) |
+
+Optional chain-specific fields are also accepted: `nonce`, `gas_price`, `gas_limit`, `max_fee_per_gas`, `max_priority_fee_per_gas` (EVM); `token_mint`, `token_decimals` (ERC-20 / SPL / TRC-20 transfers); `destination_tag`, `memo`, `xrpl_tx_json` (XRP); `fee_rate_sat_per_vbyte` (Bitcoin); `fee_limit_sun`, `tron_transaction` (Tron); `ttl` (Cardano); and `raw_transaction`.
 
 ### Example
 
@@ -545,7 +559,7 @@ Simulate a transaction via Tenderly without signing or broadcasting.
 
 ### Parameters
 
-Same as `submit_transaction` (minus `simulate_first`).
+`chain`, `to`, `value` (all required), plus optional `data`, `signing_key_path`, and `gas_limit` (default 21000).
 
 ### Example
 
@@ -702,6 +716,7 @@ Register a new platform app. Returns a `plt_` API key (one-time — it won't be 
 | `description`   | string | No       | Description of the platform app                                                             |
 | `billing_model` | string | No       | `platform_pays` (default), `user_pays`, or `hybrid`                                         |
 | `auth_mode`     | string | No       | `silent` (default), `user_signin`, or `configurable`                                        |
+| `api_key_expires_at` | string | No  | ISO 8601 expiry for the `plt_` API key                                                      |
 
 ### Example
 
@@ -726,7 +741,9 @@ Bootstrap resources for a connected user from a template. Creates a vault, agent
 | Name            | Type   | Required | Description                                           |
 | --------------- | ------ | -------- | ----------------------------------------------------- |
 | `connection_id` | string | Yes      | UUID of the platform user connection (from `upsert`)  |
-| `template_id`   | string | Yes      | UUID of the bootstrap template to apply               |
+| `template_id`   | string | No       | UUID of the bootstrap template to apply (uses the app default if omitted) |
+| `return_to`     | string | No       | URL to redirect the user to after claiming            |
+| `parameters`    | object | No       | Template parameters substituted as `{{params.*}}`     |
 
 ### Example
 
@@ -751,14 +768,18 @@ Lease a short-lived Bankr wallet API key for the current agent. Requires explici
 
 | Name       | Type   | Required | Description                                              |
 | ---------- | ------ | -------- | -------------------------------------------------------- |
-| `ttl`      | number | No       | Lease TTL in seconds (default: 900, max: 86400)          |
+| `ttl_seconds` | number | No    | Lease TTL in seconds (recommend 300 to 900; max 86400)   |
 | `wallet_id`| string | No       | Bankr wallet ID (defaults to org-configured default)     |
+| `llm_gateway_enabled` | boolean | No | Enable LLM gateway access (default true)          |
+| `agent_api_enabled` | boolean | No | Enable agent API access (default false)             |
+| `read_only` | boolean | No      | Read-only key (default true)                             |
+| `agent_id` | string | No       | Agent ID. Defaults to the authenticated agent            |
 
 ### Example
 
 ```
 Agent: "I need a Bankr API key to check wallet balances"
-→ lease_bankr_key(ttl: 600)
+→ lease_bankr_key(ttl_seconds: 600)
 
 Bankr key leased:
   Lease ID: a1b2c3d4-...
@@ -778,17 +799,19 @@ Create a treasury multisig proposal.
 
 | Name          | Type   | Required | Description                                   |
 | ------------- | ------ | -------- | --------------------------------------------- |
-| `treasury_id` | string | Yes      | UUID of the treasury                          |
-| `to`          | string | Yes      | Recipient address                             |
-| `value`       | string | Yes      | Value in wei                                  |
-| `chain`       | string | Yes      | Chain name (e.g. `ethereum`)                  |
+| `treasury_id` | string | Yes      | UUID of the treasury Safe                     |
+| `to`          | string | Yes      | Destination address (0x-prefixed)             |
+| `safe_tx_hash`| string | Yes      | EIP-712 Safe tx hash (computed off-chain)     |
+| `nonce`       | number | Yes      | Safe nonce at time of proposal                |
+| `value_wei`   | string | No       | Value in wei (default: `"0"`)                 |
 | `data`        | string | No       | Calldata hex (default: `"0x"`)                |
+| `operation`   | number | No       | `0` = Call (default), `1` = DelegateCall      |
 
 ### Example
 
 ```
 Agent: "Propose sending 0.1 ETH from the team treasury"
-→ treasury_propose(treasury_id: "abc123-...", to: "0xRecipient...", value: "100000000000000000", chain: "ethereum")
+→ treasury_propose(treasury_id: "abc123-...", to: "0xRecipient...", value_wei: "100000000000000000", safe_tx_hash: "0x9f2c...", nonce: 7)
 
 Proposal created:
   ID: def456-...
@@ -809,7 +832,8 @@ Sign (approve or reject) a treasury multisig proposal.
 | `treasury_id` | string | Yes      | UUID of the treasury                               |
 | `proposal_id` | string | Yes      | UUID of the proposal                               |
 | `signature`   | string | Yes      | EIP-712 signature hex                              |
-| `decision`    | string | Yes      | `approve` or `reject`                              |
+| `signer_address` | string | Yes   | Signer's Ethereum address (0x-prefixed)            |
+| `decision`    | string | No       | `approve` (default) or `reject`                    |
 
 ---
 
@@ -836,9 +860,10 @@ Execute an HTTP request through a named binding. Requires `execution_intents_ena
 | --------- | ------ | -------- | --------------------------------------------- |
 | `binding` | string | Yes      | Binding name (e.g. `stripe-api`)              |
 | `method`  | string | No       | HTTP method (default `GET`)                   |
-| `path`    | string | Yes      | Path and query (e.g. `/v1/customers`)         |
-| `body`    | string | No       | Request body                                  |
+| `path`    | string | No       | Path appended to the binding's `base_url` (e.g. `/v1/customers`) |
+| `body`    | object | No       | JSON request body (for POST/PUT/PATCH)        |
 | `headers` | object | No       | Extra headers (auth injected server-side)     |
+| `execution_mode` | string | No | `vault` (default) or `tee`                   |
 
 ---
 
@@ -851,9 +876,10 @@ Generic execution for HTTP, GraphQL, and other binding types.
 | Name             | Type   | Required | Description                                |
 | ---------------- | ------ | -------- | ------------------------------------------ |
 | `binding`        | string | Yes      | Binding name                               |
-| `intent_type`    | string | Yes      | `http`, `graphql`, etc.                    |
-| `params`         | object | Yes      | Type-specific params (e.g. GraphQL query)  |
+| `intent_type`    | string | No       | `http`, `graphql`, etc. (matches the binding) |
+| `params`         | object | No       | Type-specific params (e.g. GraphQL query)  |
 | `execution_mode` | string | No       | `vault` (default) or `tee` when available  |
+| `dry_run`        | boolean | No      | Validate guardrails without executing      |
 
 ---
 
@@ -872,9 +898,11 @@ Create a binding (human-only).
 | Name           | Type   | Required | Description              |
 | -------------- | ------ | -------- | ------------------------ |
 | `name`         | string | Yes      | Unique binding name      |
-| `binding_type` | string | Yes      | `http`, `graphql`, etc.  |
-| `config`       | object | Yes      | Connection config        |
-| `credential`   | string | No       | Credential (write-only)  |
+| `binding_type` | string | No       | `http` (default), `graphql`, `postgres`, etc. |
+| `config`       | object | No       | Connection config (e.g. `base_url`, `auth_type`, `auth_header`) |
+| `guardrails`   | object | No       | Guardrails (e.g. `allowed_hosts`, `max_duration_ms`) |
+| `credential_source` | object | No  | `{ type: "inline", value }` or `{ type: "vault_ref", vault_id, path }` |
+| `credential`   | object | No       | Legacy inline credential (write-only); prefer `credential_source` |
 
 ---
 
@@ -887,6 +915,7 @@ Test binding connectivity (same SSRF/allowlist checks as execute).
 | Name         | Type   | Required | Description  |
 | ------------ | ------ | -------- | ------------ |
 | `binding_id` | string | Yes      | Binding UUID |
+| `timeout_ms` | number | No       | Connectivity timeout in ms (default 5000; the vault clamps it to 1000 to 30000) |
 
 ---
 
@@ -898,8 +927,8 @@ List recent execution events for the agent.
 
 | Name     | Type   | Required | Description                       |
 | -------- | ------ | -------- | --------------------------------- |
-| `limit`  | number | No       | Max events (default 20)           |
-| `status` | string | No       | `success`, `error`, or `denied`   |
+| `limit`  | number | No       | Max events (1 to 100, default 50) |
+| `offset` | number | No       | Pagination offset (default 0)     |
 
 ---
 
@@ -912,8 +941,8 @@ Order a prepaid card via x402 payment on Base. The agent never sees the PAN.
 | Name         | Type   | Required | Description                              |
 | ------------ | ------ | -------- | ---------------------------------------- |
 | `amount_usd` | string | Yes      | Amount in USD (e.g. `"25.00"`)           |
-| `kind`       | string | No       | `prepaid` (default) or `gift_card`       |
-| `country`    | string | No       | ISO country code for gift card search    |
+| `country`    | string | No       | Country code for the prepaid card (default `US`) |
+| `agent_id`   | string | No       | Agent ID. Defaults to the authenticated agent |
 
 ---
 
@@ -926,8 +955,8 @@ Order a gift card for a specific brand/server.
 | Name             | Type   | Required | Description                        |
 | ---------------- | ------ | -------- | ---------------------------------- |
 | `amount_usd`     | string | Yes      | Amount in USD                      |
-| `laso_server_id` | string | Yes      | Server ID from `search_gift_cards` |
-| `country`        | string | No       | ISO country code                   |
+| `laso_server_id` | string | No       | Server ID from `search_gift_cards` |
+| `agent_id`       | string | No       | Agent ID. Defaults to the authenticated agent |
 
 ---
 
@@ -939,7 +968,7 @@ Search available gift card brands by keyword.
 
 | Name      | Type   | Required | Description              |
 | --------- | ------ | -------- | ------------------------ |
-| `query`   | string | Yes      | Brand name to search for |
+| `query`   | string | No       | Brand name to search for |
 | `country` | string | No       | ISO country code filter  |
 
 ---
@@ -983,6 +1012,8 @@ Manually fire an automation by ID. Returns the queued run record.
 | Name            | Type   | Required | Description        |
 | --------------- | ------ | -------- | ------------------ |
 | `automation_id` | string | Yes      | Automation UUID    |
+| `input`         | object | No       | JSON input, exposed to steps as `{{trigger.*}}` |
+| `idempotency_key` | string | No     | Same key twice returns the run already started for it |
 
 ---
 
@@ -1003,13 +1034,13 @@ Response uses API shape `{ entries: [{ timestamp?, message, level? }] }`.
 
 ## runtime_status
 
-Get the current status of a cloud runtime.
+Get the status of an agent's cloud runtime.
 
 ### Parameters
 
-| Name         | Type   | Required | Description    |
-| ------------ | ------ | -------- | -------------- |
-| `runtime_id` | string | Yes      | Runtime UUID   |
+| Name       | Type   | Required | Description                                  |
+| ---------- | ------ | -------- | -------------------------------------------- |
+| `agent_id` | string | Yes      | Agent ID. Use `me` for the calling agent     |
 
 ---
 
@@ -1040,11 +1071,11 @@ Store a value in agent memory.
 
 | Name        | Type   | Required | Description                                      |
 | ----------- | ------ | -------- | ------------------------------------------------ |
-| `namespace` | string | No       | Memory namespace (default `default`)             |
+| `agent_id`  | string | Yes      | Agent ID. Use `me` for the calling agent         |
+| `namespace` | string | Yes      | Memory namespace (e.g. `context`, `state`)       |
 | `key`       | string | Yes      | Memory key                                       |
-| `value`     | string | Yes      | Value to store (max 64KB)                        |
-| `tier`      | string | No       | `scratch` or `durable` (default `durable`)       |
-| `ttl_secs`  | number | No       | TTL in seconds (scratch tier only)               |
+| `value`     | any    | Yes      | JSON value to store                              |
+| `ttl_seconds` | number | No     | TTL in seconds; the entry auto-expires after it  |
 
 ---
 
@@ -1056,7 +1087,8 @@ Retrieve a value from agent memory.
 
 | Name        | Type   | Required | Description                          |
 | ----------- | ------ | -------- | ------------------------------------ |
-| `namespace` | string | No       | Memory namespace (default `default`) |
+| `agent_id`  | string | Yes      | Agent ID. Use `me` for the calling agent |
+| `namespace` | string | Yes      | Memory namespace                     |
 | `key`       | string | Yes      | Memory key                           |
 
 ---
@@ -1069,7 +1101,8 @@ List memory entries in a namespace.
 
 | Name        | Type   | Required | Description                          |
 | ----------- | ------ | -------- | ------------------------------------ |
-| `namespace` | string | No       | Memory namespace (default `default`) |
+| `agent_id`  | string | Yes      | Agent ID. Use `me` for the calling agent |
+| `namespace` | string | Yes      | Memory namespace                     |
 
 ---
 
@@ -1081,7 +1114,8 @@ Delete a memory entry.
 
 | Name        | Type   | Required | Description                          |
 | ----------- | ------ | -------- | ------------------------------------ |
-| `namespace` | string | No       | Memory namespace (default `default`) |
+| `agent_id`  | string | Yes      | Agent ID. Use `me` for the calling agent |
+| `namespace` | string | Yes      | Memory namespace                     |
 | `key`       | string | Yes      | Memory key to delete                 |
 
 ---
@@ -1094,7 +1128,8 @@ Semantic search over agent memory using vector similarity.
 
 | Name        | Type   | Required | Description                          |
 | ----------- | ------ | -------- | ------------------------------------ |
-| `namespace` | string | No       | Memory namespace (default `default`) |
+| `agent_id`  | string | Yes      | Agent ID. Use `me` for the calling agent |
+| `namespace` | string | Yes      | Memory namespace                     |
 | `query`     | string | Yes      | Natural language search query        |
 | `top_k`     | number | No       | Number of results (default 5, max 50)|
 
@@ -1108,8 +1143,9 @@ Send a message to an agent and receive a response via Shroud LLM proxy.
 
 | Name       | Type   | Required | Description                |
 | ---------- | ------ | -------- | -------------------------- |
-| `agent_id` | string | Yes      | Agent UUID                 |
+| `agent_id` | string | No       | Agent UUID (defaults to the authenticated agent) |
 | `message`  | string | Yes      | Message content            |
+| `conversation_id` | string | No | Continue an existing conversation |
 | `model`    | string | No       | LLM model override         |
 | `provider` | string | No       | LLM provider override      |
 
@@ -1123,7 +1159,7 @@ List chat conversations for an agent.
 
 | Name       | Type   | Required | Description    |
 | ---------- | ------ | -------- | -------------- |
-| `agent_id` | string | Yes      | Agent UUID     |
+| `agent_id` | string | No       | Agent UUID (defaults to the authenticated agent) |
 
 ---
 
@@ -1135,10 +1171,14 @@ Create a messaging channel (Telegram, WhatsApp, or Discord) for an agent.
 
 | Name           | Type   | Required | Description                               |
 | -------------- | ------ | -------- | ----------------------------------------- |
-| `agent_id`     | string | Yes      | Agent UUID                                |
+| `agent_id`     | string | No       | Agent UUID (defaults to the authenticated agent) |
 | `channel_type` | string | Yes      | `telegram`, `whatsapp`, or `discord`      |
-| `channel_name` | string | Yes      | Display name for the channel              |
-| `metadata`     | object | No       | Channel-specific config (bot token, etc.) |
+| `config`       | object | Yes      | Channel config. Telegram: `{ bot_token }`. WhatsApp: `{ phone_number_id, access_token, verify_token }`. Discord: `{ bot_token, application_id }` |
+| `channel_name` | string | No       | Display name for the channel              |
+| `slash_commands_enabled` | boolean | No | Enable slash commands             |
+| `voice_transcription_enabled` | boolean | No | Enable voice transcription   |
+| `sender_allowlist` | array | No     | Allowed sender IDs                        |
+| `auto_respond_enabled` | boolean | No | Enable auto-respond                     |
 
 ---
 
@@ -1150,7 +1190,7 @@ List messaging channels for an agent.
 
 | Name       | Type   | Required | Description    |
 | ---------- | ------ | -------- | -------------- |
-| `agent_id` | string | Yes      | Agent UUID     |
+| `agent_id` | string | No       | Agent UUID (defaults to the authenticated agent) |
 
 ---
 
@@ -1162,10 +1202,10 @@ Send an outbound message through a channel.
 
 | Name         | Type   | Required | Description                   |
 | ------------ | ------ | -------- | ----------------------------- |
-| `agent_id`   | string | Yes      | Agent UUID                    |
+| `agent_id`   | string | No       | Agent UUID (defaults to the authenticated agent) |
 | `channel_id` | string | Yes      | Channel UUID                  |
+| `external_chat_id` | string | Yes | External chat/user ID (Telegram chat_id, WhatsApp phone number, Discord channel_id) |
 | `content`    | string | Yes      | Message content               |
-| `chat_id`    | string | No       | External chat/thread ID       |
 
 ---
 
@@ -1187,8 +1227,10 @@ Dry-run a Cedar policy against a simulated request.
 
 | Name      | Type   | Required | Description                                 |
 | --------- | ------ | -------- | ------------------------------------------- |
-| `policy`  | string | Yes      | Cedar policy text                           |
-| `request` | object | Yes      | Simulated authorization request to evaluate |
+| `principal` | string | Yes    | Principal (e.g. `Agent::"<uuid>"`)          |
+| `action`    | string | Yes    | Action (e.g. `Action::"read"`)              |
+| `resource`  | string | Yes    | Resource (e.g. `Secret::"path/to/secret"`)  |
+| `context`   | object | No     | Context for condition evaluation            |
 
 ---
 
@@ -1210,8 +1252,8 @@ Dry-run an OPA policy against a simulated input.
 
 | Name     | Type   | Required | Description                     |
 | -------- | ------ | -------- | ------------------------------- |
-| `policy` | string | Yes      | Rego policy text                |
 | `input`  | object | Yes      | Simulated input to evaluate     |
+| `data`   | object | No       | Optional data override          |
 
 ---
 
@@ -1235,6 +1277,7 @@ Create a sub-organization.
 | ------------- | ------ | -------- | ---------------- |
 | `name`        | string | Yes      | Sub-org name     |
 | `description` | string | No       | Description      |
+| `billing_model` | string | No     | `inherit` (default) or `independent` |
 
 ---
 
@@ -1259,7 +1302,7 @@ Import an existing Gnosis Safe smart account for an agent.
 
 | Name           | Type    | Required | Description                                    |
 | -------------- | ------- | -------- | ---------------------------------------------- |
-| `agent_id`     | string  | Yes      | Agent UUID                                     |
+| `agent_id`     | string  | No       | Agent UUID (defaults to the authenticated agent) |
 | `chain`        | string  | Yes      | Chain name (e.g. `ethereum`)                   |
 | `chain_id`     | number  | Yes      | Numeric chain ID                               |
 | `safe_address` | string  | Yes      | Safe contract address                          |
@@ -1275,10 +1318,11 @@ Import an existing private key as a signing key for an agent (BYOK). Human-only,
 
 | Name          | Type   | Required | Description                         |
 | ------------- | ------ | -------- | ----------------------------------- |
-| `agent_id`    | string | Yes      | Agent UUID                          |
-| `chain`       | string | Yes      | Chain name                          |
+| `agent_id`    | string | No       | Agent UUID (defaults to the authenticated agent) |
+| `chain`       | string | Yes      | `ethereum`, `bitcoin`, `solana`, `xrp`, `cardano`, or `tron` |
 | `private_key` | string | Yes      | The raw private key                 |
 | `format`      | string | No       | `hex` (default), `base64`, or `wif` |
+| `password`    | string | Yes      | Account password for re-authentication |
 
 ---
 
@@ -1292,5 +1336,4 @@ Search the public agent directory.
 | ------- | ------ | -------- | ----------------------------------- |
 | `query` | string | No       | Search query                        |
 | `tags`  | string | No       | Comma-separated tag filter          |
-| `limit` | number | No       | Max results (default 20)            |
 

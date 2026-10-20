@@ -15,10 +15,14 @@ curl https://api.1claw.co/v1/agents/$AGENT/trust
 
 ```json
 {
-  "badges": ["verified_publisher", "popular"],
-  "rating": 4.6,
-  "review_count": 23,
-  "flagged_for_review": false
+  "trust": {
+    "tier": "identity_verified",
+    "install_count": 140,
+    "avg_rating": 4.6,
+    "review_count": 23,
+    "badges": ["verified_publisher", "popular"],
+    "flagged_for_review": false
+  }
 }
 ```
 
@@ -33,6 +37,7 @@ owner, from parties with no accountability.
 ```bash
 curl -X POST https://api.1claw.co/v1/agents/$AGENT/review \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"rating":5,"comment":"Reliable"}'
 ```
 
@@ -47,7 +52,8 @@ reputation at machine speed.
 
 ```bash
 curl -X POST https://api.1claw.co/v1/agents/$AGENT/report \
-  -H "Authorization: Bearer $TOKEN" -d '{"reason":"spam"}'
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"reason":"spam"}'
 ```
 
 **One report per person per agent**, on the same reasoning as reviews. Reporting

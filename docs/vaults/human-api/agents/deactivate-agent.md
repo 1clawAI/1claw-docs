@@ -80,19 +80,14 @@ console.log(data.api_key); // Store new key
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+resp = client.agents.rotate_key(agent_id)
+api_key = resp.data["api_key"]  # shown once
 ```
 
 </TabItem>
 </Tabs>
 
-**Example response (200):** Same shape as create agent: `{ "agent": { ... }, "api_key": "ocv_..." }`. Store the new `api_key` and update the agent's config.
+**Example response (200):** `{ "api_key": "ocv_..." }`. Store the new `api_key` and update the agent's config.
 
 ---
 

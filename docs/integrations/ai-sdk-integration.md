@@ -45,7 +45,7 @@ export const oneclawTools = {
     }),
     execute: async ({ path }) => {
       const result = await oneclaw.secrets.get(vaultId, path);
-      return { path, type: result.data.type, fetched: true };
+      return { path, type: result.data?.type, fetched: true };
       // Intentionally not returning the raw value to the LLM.
       // Use the value in subsequent server-side logic, not in prompts.
     },
@@ -60,12 +60,11 @@ export const oneclawTools = {
         .describe("Filter by path prefix, e.g. apis/"),
     }),
     execute: async ({ prefix }) => {
-      const result = await oneclaw.secrets.list(vaultId, { prefix });
+      const result = await oneclaw.secrets.list(vaultId, prefix);
       return {
-        secrets: result.data.secrets.map((s: any) => ({
+        secrets: (result.data?.secrets ?? []).map((s) => ({
           path: s.path,
           type: s.type,
-          description: s.description,
         })),
       };
     },
@@ -94,8 +93,8 @@ export const oneclawTools = {
         simulate_first: true,
       });
       return {
-        txHash: tx.data.tx_hash,
-        status: tx.data.status,
+        txHash: tx.data?.tx_hash,
+        status: tx.data?.status,
         chain,
       };
     },
@@ -110,15 +109,15 @@ export const oneclawTools = {
         .describe("The message to sign (will be hex-encoded)"),
     }),
     execute: async ({ chain, message }) => {
-      const hex = Buffer.from(message).toString("hex");
-      const result = await oneclaw.agents.signIntent(agentId, {
+      const hex = "0x" + Buffer.from(message).toString("hex");
+      const result = await oneclaw.agents.sign(agentId, {
         intent_type: "personal_sign",
         chain,
         message: hex,
       });
       return {
-        signature: result.data.signature,
-        from: result.data.from,
+        signature: result.data?.signature,
+        from: result.data?.from,
       };
     },
   }),
@@ -160,7 +159,7 @@ import { experimental_createMCPClient as createMCPClient } from "ai";
 const mcpClient = await createMCPClient({
   transport: {
     type: "sse",
-    url: "https://mcp.1claw.co/mcp",
+    url: "https://mcp.1claw.co/sse",
     headers: {
       Authorization: `Bearer ${process.env.ONECLAW_AGENT_KEY}`,
     },
@@ -210,7 +209,7 @@ def _get_token() -> str:
         f"{ONECLAW_BASE}/v1/auth/agent-token",
         json={"api_key": AGENT_KEY},
     )
-    _token_cache["token"] = resp.json()["token"]
+    _token_cache["token"] = resp.json()["access_token"]
     return _token_cache["token"]
 
 def _headers():
@@ -228,7 +227,7 @@ def list_secrets(prefix: str = "") -> dict:
     secrets = resp.json().get("secrets", [])
     return {
         "secrets": [
-            {"path": s["path"], "type": s.get("type"), "description": s.get("description")}
+            {"path": s["path"], "type": s.get("type")}
             for s in secrets
         ]
     }

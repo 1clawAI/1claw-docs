@@ -156,7 +156,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 | GET    | `/v1/agents`                      | List agents                                             |
 | GET    | `/v1/agents/me`                   | Get calling agent's own profile (includes `created_by`) |
 | GET    | `/v1/agents/:agent_id`            | Get agent                                               |
-| PATCH  | `/v1/agents/:agent_id`            | Update agent (name, description, intents_api_enabled)  |
+| PATCH  | `/v1/agents/:agent_id`            | Update agent (name, scopes, intents_api_enabled, guardrails, ...) |
 | DELETE | `/v1/agents/:agent_id`            | Deactivate agent                                        |
 | POST   | `/v1/agents/:agent_id/rotate-key` | Rotate agent API key                                    |
 | POST   | `/v1/agents/:agent_id/children`   | Create a child agent (subset of the parent's vaults/scopes, own key; human-only) |
@@ -225,7 +225,53 @@ Multi-chain treasury wallets and Safe multisig management. See [Treasury guide](
 | POST   | `/v1/treasury/wallets/:chain/export`      | Export wallet with private key (audit-logged)   |
 | POST   | `/v1/treasury/wallets/:chain/import`      | Import wallet (BYOK, requires X-Auth-Confirm)  |
 | POST   | `/v1/treasury/wallets/:chain/rotate`      | Rotate wallet keypair                          |
+| POST   | `/v1/treasury/wallets/:chain/sign-message`    | EIP-191 `personal_sign`                    |
+| POST   | `/v1/treasury/wallets/:chain/sign-typed-data` | Sign EIP-712 typed data with the wallet key |
 | DELETE | `/v1/treasury/wallets/:chain`             | Deactivate wallet                              |
+
+### Self-custody wallets (2-of-3 FROST, `custody: "client_tss"`)
+
+Solana, XRP, Cardano and Bitcoin Taproot, enabled per org (Solana by default). Human users only; agents and platform-delegated sessions get 403. See [Key custody](/docs/security/custody) for the share layout, recovery kit and refresh.
+
+| Method | Path                                         | Description                                                    |
+| ------ | -------------------------------------------- | -------------------------------------------------------------- |
+| GET    | `/v1/keys/tss/chains`                        | Chains this caller can create a self-custody wallet on         |
+| GET    | `/v1/keys/tss/prf-salt`                      | The account's master-wrap PRF salt (created on first use)      |
+| POST   | `/v1/keys/tss/keygen/begin`                  | Start distributed keygen                                       |
+| POST   | `/v1/keys/tss/keygen/round2`                 | Keygen round 2                                                 |
+| POST   | `/v1/keys/tss/keygen/complete`               | Finish keygen (`X-Passkey-Token`)                              |
+| POST   | `/v1/keys/:key_id/kit`                       | Confirm the offline recovery kit was saved                     |
+| POST   | `/v1/keys/:key_id/tss/sign/begin`            | Start a signing round (`X-Passkey-Token`)                      |
+| POST   | `/v1/keys/:key_id/tss/sign/complete`         | Finish a signing round                                         |
+| POST   | `/v1/treasury/wallets/:chain/tss/prepare`    | Build a send for co-signing (policy + consensus; optional `approval_id`) |
+| POST   | `/v1/treasury/wallets/:chain/tss/broadcast`  | Broadcast the co-signed transaction                            |
+| PUT    | `/v1/keys/:key_id/client-share`              | Store a wrapped client share                                   |
+| GET    | `/v1/keys/:key_id/client-share`              | List wrapped client shares                                     |
+| POST   | `/v1/keys/:key_id/client-share/rewrap`       | Add a wrap for another passkey or the recovery code (`X-Auth-Confirm`) |
+| DELETE | `/v1/keys/:key_id/client-share/:share_id`    | Delete a wrapped client share                                  |
+| POST   | `/v1/keys/:key_id/client-share/restore`      | Lost passkeys: upload share 2 re-wrapped from the kit (re-auth) |
+| POST   | `/v1/keys/:key_id/tss/refresh/begin` · `round2` · `complete` · `commit` · `abort` | Share refresh (new shares, same key and address) |
+
+### Tron 2-of-3 multisig (beta, `custody: "client_multisig"`)
+
+| Method | Path                                                   | Description                               |
+| ------ | ------------------------------------------------------ | ----------------------------------------- |
+| POST   | `/v1/treasury/multisig/wallets`                        | Create a 2-of-3 multisig wallet           |
+| POST   | `/v1/treasury/wallets/:chain/multisig/activation`      | Prepare the on-chain permission update    |
+| POST   | `/v1/treasury/wallets/:chain/multisig/activation/complete` | Submit the signed activation          |
+| POST   | `/v1/treasury/wallets/:chain/multisig/activation/status`   | Check activation status               |
+| POST   | `/v1/treasury/wallets/:chain/multisig/prepare`         | Build a send (policy + consensus; optional `approval_id`) |
+| POST   | `/v1/treasury/wallets/:chain/multisig/broadcast`       | Broadcast the signed send                 |
+
+### EVM 2-of-3 Safes (beta, native transfers only)
+
+| Method | Path                                        | Description                                      |
+| ------ | ------------------------------------------- | ------------------------------------------------ |
+| POST   | `/v1/treasury/multisig-safes`               | Create a 2-of-3 Safe                             |
+| GET    | `/v1/treasury/multisig-safes`               | List Safes                                       |
+| DELETE | `/v1/treasury/multisig-safes/:id`           | Retire a Safe that is undeployed and empty       |
+| POST   | `/v1/treasury/multisig-safes/:id/prepare`   | Build a transfer (policy + consensus; optional `approval_id`) |
+| POST   | `/v1/treasury/multisig-safes/:id/execute`   | Execute the signed transfer                      |
 
 ### Safe multisig management
 

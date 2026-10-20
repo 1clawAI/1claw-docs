@@ -43,14 +43,15 @@ Org webhook HMAC secrets are returned **once** at create time. There is no org-l
 
 ## Verifying signatures
 
-Each delivery includes an `X-Webhook-Signature` header containing an HMAC-SHA256 hex digest of the raw request body, computed with your webhook secret. Verify the signature before processing the payload.
+Each delivery includes an `X-Webhook-Signature` header containing an HMAC-SHA256 hex digest of the raw request body. The HMAC key is the lowercase hex SHA-256 of your webhook secret (the server stores only that hash), not the secret string itself. Verify the signature before processing the payload.
 
 ```python
 import hmac
 import hashlib
 
 def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
-    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    key = hashlib.sha256(secret.encode()).hexdigest().encode()
+    expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 ```
 
@@ -88,6 +89,11 @@ Subscribe to one or more event types when creating or updating a webhook:
 | `agent.transaction.broadcast` | Agent transaction broadcast to chain |
 | `agent.transaction.signed` | Agent transaction signed (sign-only mode) |
 | `signing_key.rotated` | Agent signing key rotated |
+| `tx.awaiting_approval` | Agent transaction held for human approval |
+| `sign.awaiting_approval` | Agent signature request held for human approval |
+| `tss_key.recovered_via_code` | Self-custody key restored from its offline recovery kit |
+| `signing_key.recovered` | Self-custody agent signing key restored from its kit |
+| `tss_key.resharded` | Self-custody key refreshed to new shares (same address) |
 
 ### Policies
 
@@ -169,7 +175,7 @@ The new secret is returned once. Update your verification logic before the next 
 
 ```typescript
 // TypeScript SDK
-const webhook = await client.webhooks.create({
+const { data: webhook } = await client.webhooks.create({
   url: "https://your-app.com/webhooks/1claw",
   events: ["agent.transaction.broadcast"],
 });

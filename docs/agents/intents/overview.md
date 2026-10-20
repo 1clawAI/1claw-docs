@@ -247,10 +247,14 @@ const { data: tx } = await client.agents.getTransaction(agentId, txId);
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-agents = client.agents.list()
-for a in agents.data["agents"]:
-    print(a["name"], a["id"])
+client = create_client(api_key="ocv_...")
+
+# List transactions
+tx_list = client.agents.list_transactions(agent_id)
+
+# Get transaction
+tx = client.agents.get_transaction(agent_id, tx_id)
+print(tx.data["status"], tx.data.get("tx_hash"))
 ```
 
 </TabItem>
@@ -304,14 +308,15 @@ console.log(signedTx.tx_hash);   // 0xabc123...
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+client = create_client(api_key="ocv_...")
+resp = client.agents.sign_transaction(
+    agent_id,
+    chain="ethereum",
+    to="0xRecipientAddress",
+    value="0.1",
+    signing_key_path="keys/ethereum-signer",
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+print(resp.data["signed_tx"], resp.data["tx_hash"])
 ```
 
 </TabItem>
@@ -392,14 +397,16 @@ const { data: sim } = await client.agents.simulateTransaction(agentId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+client = create_client(api_key="ocv_...")
+resp = client.agents.simulate_transaction(
+    agent_id,
+    chain="base",
+    to="0xRecipientAddress",
+    value="0.5",
+    data="0x",
+    signing_key_path="wallets/hot-wallet",
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+print(resp.data["status"], resp.data["gas_used"])
 ```
 
 </TabItem>
@@ -460,11 +467,12 @@ from oneclaw import create_client
 client = create_client(api_key="ocv_...")
 resp = client.agents.submit_transaction(
     agent_id,
-    chain="ethereum",
-    to="0x000000000000000000000000000000000000dEaD",
-    value="0",
+    chain="base",
+    to="0xRecipientAddress",
+    value="0.5",
+    simulate_first=True,
 )
-print(resp.data.get("tx_hash"))
+print(resp.data.get("tx_hash"), resp.data.get("simulation_status"))
 ```
 
 </TabItem>
@@ -507,14 +515,16 @@ const { data: bundle } = await client.agents.simulateBundle(agentId, {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+client = create_client(api_key="ocv_...")
+resp = client.agents.simulate_bundle(
+    agent_id,
+    [
+        {"chain": "base", "to": "0xToken", "value": "0", "data": "0xapprove..."},
+        {"chain": "base", "to": "0xRouter", "value": "0", "data": "0xswap..."},
+    ],
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+for sim in resp.data["simulations"]:
+    print(sim["status"])
 ```
 
 </TabItem>
@@ -568,9 +578,12 @@ from oneclaw import create_client
 client = create_client(api_key="ocv_...")
 resp = client.agents.submit_transaction(
     agent_id,
-    chain="ethereum",
-    to="0x000000000000000000000000000000000000dEaD",
-    value="0",
+    chain="base",
+    to="0xRecipientAddress",
+    value="0.1",
+    max_fee_per_gas="30000000000",
+    max_priority_fee_per_gas="1500000000",
+    simulate_first=True,
 )
 print(resp.data.get("tx_hash"))
 ```

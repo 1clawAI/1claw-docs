@@ -24,7 +24,7 @@ sidebar_position: 0
 
 - [Agent frameworks hub](/docs/integrations/agent-frameworks) — Eliza, GOAT, LangChain, CrewAI
 - [Vercel AI SDK](/docs/integrations/ai-sdk-integration)
-- [OpenClaw](/docs/integrations/openclaw) — Cursor plugin
+- [OpenClaw](/docs/integrations/openclaw) — gateway plugin and skill
 - [elizaOS](/docs/integrations/elizaos)
 - [Scaffold-Agent](/docs/integrations/scaffold-agent)
 

@@ -63,7 +63,7 @@ const data = await res.json();
 from oneclaw import create_client
 
 client = create_client()
-client.agents.enroll("my-agent", "admin@example.com")
+client.agents.enroll("my-agent", human_email="human@example.com")
 ```
 
 </TabItem>
@@ -135,11 +135,11 @@ print(client.resolved_agent_id)
 {
   "access_token": "eyJhbGciOiJFZERTQSIs...",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 900
 }
 ```
 
-Use this as `Authorization: Bearer <access_token>` for subsequent requests. Token is short-lived (default 1 hour; agents with a custom `token_ttl_seconds` may differ — `expires_in` is the authoritative value).
+Use this as `Authorization: Bearer <access_token>` for subsequent requests. Token is short-lived (default 15 minutes; agents with a custom `token_ttl_seconds` may differ; `expires_in` is the authoritative value).
 
 ## 2. List secrets you can access
 
@@ -174,7 +174,7 @@ for (const s of data.secrets) {
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
+client = create_client(api_key="ocv_...")
 data = client.secrets.list(vault_id)
 for s in data.data["secrets"]:
     print(f"{s['path']} ({s['type']}, v{s['version']})")
@@ -212,7 +212,7 @@ console.log(`Retrieved ${secret.path} (${secret.type}, v${secret.version})`);
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
+client = create_client(api_key="ocv_...")
 secret = client.secrets.get(vault_id, "api-keys/openai")
 print(secret.data["value"])
 ```

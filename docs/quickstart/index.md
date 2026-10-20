@@ -243,7 +243,7 @@ touching the secret.
 
 Guardrails are per binding — host and path allowlists, method limits, and for GraphQL
 `--allow-mutations`, `--allow-introspection`, `--max-query-depth`, `--max-aliases`. An
-agent cannot widen them; `1claw agent binding update` takes an `approval_id` for a queued
+agent cannot widen them; `PATCH /v1/agents/{id}/bindings/{binding_id}` takes an `approval_id` for a queued
 widening. Review runs with `1claw agent binding executions <agent-id>`.
 
 ---
@@ -279,8 +279,8 @@ These are checked before signing, not after. See [Guardrails](/docs/agents/inten
   --simulate
 ```
 
-`--simulate` runs the transaction without broadcasting, which is the on-chain equivalent
-of `dry_run`. Drop it to send. For signing without submitting, `1claw agent sign`.
+`--simulate` runs a Tenderly simulation before signing; if it reverts, the submit is refused
+(422) and nothing is signed or broadcast. For signing without submitting, `1claw agent sign`.
 
 Details: [Intents overview](/docs/agents/intents/overview),
 [Signing](/docs/agents/intents/signing),

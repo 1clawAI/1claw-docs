@@ -108,8 +108,8 @@ Connect your agents to external messaging platforms. When a user sends a message
 | Platform | Config Keys | Webhook |
 |----------|------------|---------|
 | **Telegram** | `bot_token` | `POST /v1/webhooks/telegram/{path}` |
-| **WhatsApp** | `phone_number_id`, `access_token`, `verify_token` | `GET/POST /v1/webhooks/whatsapp/{path}` |
-| **Discord** | `bot_token`, `application_id` | `POST /v1/webhooks/discord/{path}` |
+| **WhatsApp** | `phone_number_id`, `access_token` | `GET/POST /v1/webhooks/whatsapp/{path}` |
+| **Discord** | `bot_token` | `POST /v1/webhooks/discord/{path}` |
 
 ### API Endpoints
 
@@ -135,14 +135,7 @@ Connect your agents to external messaging platforms. When a user sends a message
   --config '{"bot_token":"123456:ABC-DEF..."}'
 ```
 
-4. Copy the webhook URL from the response
-5. Set the webhook with Telegram:
-
-```bash
-curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"<WEBHOOK_URL>"}'
-```
+4. 1Claw registers the webhook with Telegram for you, together with a secret token that every inbound update must carry. Do not call `setWebhook` yourself: a webhook set without that secret token is rejected with 401. If registration failed or the webhook was changed, call `POST /v1/agents/{id}/channels/{cid}/refresh-webhook` to register it again.
 
 ### WhatsApp Cloud API Setup
 
@@ -154,11 +147,11 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 1claw channel create <agent-id> \
   --type whatsapp \
   --name "Support WhatsApp" \
-  --config '{"phone_number_id":"1234567890","access_token":"EAA...","verify_token":"my-secret-verify-token"}'
+  --config '{"phone_number_id":"1234567890","access_token":"EAA..."}'
 ```
 
 4. In the Meta dashboard, set the webhook URL to the returned `webhook_url`
-5. Use the `verify_token` you provided as the verification token
+5. For the verify token, use the channel's `webhook_path` (the last segment of `webhook_url`); the verification challenge is accepted only when `hub.verify_token` equals it
 
 ### Discord Bot Setup
 
@@ -170,7 +163,7 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 1claw channel create <agent-id> \
   --type discord \
   --name "Discord Bot" \
-  --config '{"bot_token":"MTIz...","application_id":"1234567890"}'
+  --config '{"bot_token":"MTIz..."}'
 ```
 
 4. Set the interactions endpoint URL in the Discord developer portal to the returned `webhook_url`

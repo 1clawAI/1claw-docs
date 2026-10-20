@@ -170,7 +170,7 @@ appears to succeed without doing anything.
 | Type | Description | Example |
 |------|-------------|---------|
 | `cron` | Cron expression (alias: `schedule`) | `0 */6 * * *` — every 6 hours in `timezone` |
-| `webhook` | Public tokenized URL | `POST /v1/automations/{id}/webhook/{token}` |
+| `webhook` | Public tokenized URL | `POST /v1/automations/webhook/{id}/{token}` |
 | `event` | Vault or policy lifecycle event | `secret.rotated`, `policy.created` |
 | `manual` | API call or dashboard button | One-off test runs |
 
@@ -200,12 +200,12 @@ When `trigger_type` is `webhook`, the create response includes **one-time** cred
   "id": "...",
   "name": "deploy-notify",
   "trigger_type": "webhook",
-  "webhook_url": "https://api.1claw.co/v1/automations/{id}/webhook/whk_...",
+  "webhook_url": "https://api.1claw.co/v1/automations/webhook/{id}/whk_...",
   "webhook_token": "whk_..."
 }
 ```
 
-- **URL pattern:** `POST https://api.1claw.co/v1/automations/{automation_id}/webhook/{token}`
+- **URL pattern:** `POST https://api.1claw.co/v1/automations/webhook/{automation_id}/{token}`
 - The token is stored as a SHA-256 hash server-side; it is only returned on create (and after rotation).
 - **Rotate:** `POST /v1/automations/{id}/rotate-webhook-token` (human-only) mints a new `whk_` token and returns a fresh URL once.
 - No Bearer auth required — the token in the path is the secret.
@@ -234,13 +234,13 @@ When the bound agent has **`shroud_enabled`**, swap / submit_transaction steps s
   --trigger cron \
   --cron "0 0 * * *" \
   --timezone "America/New_York" \
-  --workflow '{"steps":[{"action":"rotate_generate","params":{"length":32}}]}'
+  --workflow '{"steps":[{"type":"rotate_generate","params":{"vault_id":"<vault-id>","path":"api-keys/stripe","length":32}}]}'
 
 # Webhook trigger — save webhook_url from the create response
 1claw automation create deploy-notify \
   --agent-id <uuid> \
   --trigger webhook \
-  --workflow '{"steps":[{"action":"run_agent_task","params":{"prompt":"Deploy hook fired"}}]}'
+  --workflow '{"steps":[{"type":"log","message":"Deploy hook fired"}]}'
 
 # Manual trigger + runs
 1claw automation trigger <automation-id>
@@ -269,8 +269,13 @@ const { data: automation } = await client.automations.create({
   workflow_spec: {
     steps: [
       {
-        action: "rotate_generate",
-        params: { length: 32, charset: "alphanumeric" },
+        type: "rotate_generate",
+        params: {
+          vault_id: process.env.ONECLAW_VAULT_ID!,
+          path: "api-keys/stripe",
+          length: 32,
+          charset: "alphanumeric",
+        },
       },
     ],
   },
@@ -295,7 +300,7 @@ curl -X POST "https://api.1claw.co/v1/automations" \
     "timezone": "America/New_York",
     "workflow_spec": {
       "steps": [
-        { "action": "rotate_generate", "params": { "length": 32 } }
+        { "type": "rotate_generate", "params": { "vault_id": "'"$VAULT_ID"'", "path": "api-keys/stripe", "length": 32 } }
       ]
     }
   }'
@@ -518,13 +523,15 @@ Step output: `{ "raw": "0x…", "values": [...], "value": values[0], "named": { 
 
 ## Presets
 
-`GET /v1/automations/presets` (public, no auth) returns 10 marketing-ready templates you can use as starting points:
+`GET /v1/automations/presets` (public, no auth) returns 12 templates you can use as starting points:
 
 | Preset | Trigger | Use case |
 |--------|---------|----------|
 | `rotate-api-keys-weekly` | cron | Security — rotate secrets on a schedule |
 | `daily-dca-buy` | cron | DeFi — dollar-cost averaging |
 | `health-check-alert` | cron | Monitoring — ping services, alert on failure |
+| `approve-then-send` | manual (no `default_cron`) | Workflow: approval gate, hand-off, `awaiting_callback` |
+| `alert-on-event-batch` | cron | Monitoring: `for_each` fan-out over new connector items |
 | `database-sync` | cron | Integration — sync data between systems |
 | `weekly-content-draft` | cron | Marketing — AI-generated content drafts |
 | `lead-nurture-email` | webhook | Marketing — trigger email sequences |
@@ -536,8 +543,8 @@ Step output: `{ "raw": "0x…", "values": [...], "value": values[0], "named": { 
 Each preset includes `description`, `workflow_spec`, `default_cron`, `estimated_cost_per_run`, and optional `trigger_type`.
 
 ```bash
-# Fetch presets via CLI
-curl https://api.1claw.co/v1/automations/presets | jq '.[].name'
+# Fetch presets (or: 1claw automation presets)
+curl https://api.1claw.co/v1/automations/presets | jq '.presets[].id'
 ```
 
 ## Run history
@@ -588,6 +595,9 @@ Only runs with status `running` or `awaiting_approval` are cancellable. Agents r
 |------|-------------|
 | `list_automations` | List automations for the current org |
 | `trigger_automation` | Manually fire an automation |
+| `list_automation_presets` | List preset templates |
+| `create_agent_automation` | Create a simple manual or webhook automation for the calling agent |
+| `cancel_automation_run` | Cancel a `running` or `awaiting_approval` run |
 
 ## Dashboard
 

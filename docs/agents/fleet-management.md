@@ -136,7 +136,7 @@ curl -s -X POST "https://api.1claw.co/v1/vaults/$VAULT_ID/policies" \
     "permissions": ["read"],
     "conditions": {
       "ip_allowlist": ["10.0.0.0/8"],
-      "time_window": {"after": "08:00", "before": "20:00", "timezone": "UTC"}
+      "time_window": {"start_hour": 8, "end_hour": 20, "timezone": "UTC"}
     },
     "expires_at": "2026-06-01T00:00:00Z"
   }'
@@ -150,7 +150,7 @@ For short-lived tasks (CI pipelines), reduce the token TTL:
 1claw agent update $AGENT_ID --token-ttl 300  # 5 minutes
 ```
 
-For long-running agents, the default 3600s (1 hour) is usually fine — the SDK auto-refreshes before expiry.
+For long-running agents, the default 900s (15 minutes) is usually fine; the SDK auto-refreshes before expiry.
 
 ## Agent-to-human sharing at scale
 
@@ -217,7 +217,8 @@ done
 Filter audit events by agent to monitor a specific agent's activity:
 
 ```bash
-1claw audit list --actor-type agent --actor-id $AGENT_ID --limit 50
+curl -s "https://api.1claw.co/v1/audit/events?actor_id=$AGENT_ID&limit=50" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 In the dashboard, the **Audit Log** page supports filtering by actor type and ID.
@@ -250,7 +251,7 @@ Deactivated agents cannot exchange tokens or access secrets, but their records a
 - [ ] Use **conditional policies** (IP allowlist, time windows) for sensitive paths.
 - [ ] Enable **transaction guardrails** for any agent with Intents API access.
 - [ ] Review the **audit log** regularly for unexpected access patterns.
-- [ ] **Rotate agent keys** periodically via `1claw agent rotate-key <id>`.
+- [ ] **Rotate agent keys** periodically via `POST /v1/agents/{id}/rotate-key` (`client.agents.rotateKey(id)` in the SDK).
 - [ ] **Deactivate** agents when their task is complete rather than deleting (preserves audit trail).
 
 ## Next steps

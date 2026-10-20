@@ -80,25 +80,29 @@ Pair with deposit destinations (`auto_credit_account_id`) for "deposit → ledge
 
 ## Sub-organizations
 
-Enterprise hierarchical isolation — each end-user or business unit gets its own sub-org with separate vaults, agents, and policies under a parent org.
+Hierarchical isolation: each end-user or business unit gets its own sub-org with separate vaults, agents, and policies under a parent org. Limits by tier: Pro 10, Team 50, Business 500, Enterprise unlimited (Free: none).
 
-```typescript
-await client.subOrgs.create({
-  name: "Acme Corp — Tenant 42",
-  description: "Isolated resources",
-  billing_model: "user_pays",
-});
+```bash
+# Create (isolation_mode: "full" (default) or "shared_billing")
+curl -X POST "https://api.1claw.co/v1/org/sub-orgs" \
+  -H "Authorization: Bearer $USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Acme Corp - Tenant 42", "isolation_mode": "full"}'
 
-await client.subOrgs.addUser(subOrgId, { user_id: userUuid });
-await client.subOrgs.generateWallets(subOrgId, { chains: ["ethereum"] });
+# Add a member by email (creates the user in the sub-org)
+curl -X POST "https://api.1claw.co/v1/org/sub-orgs/$SUB_ORG_ID/users" \
+  -H "Authorization: Bearer $USER_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "role": "member"}'
 ```
+
+The request types for `client.subOrgs.create` and `addUser` in `@1claw/sdk` 0.62.0 do not match these bodies (they declare `description`/`billing_model` and `user_id`), so use the HTTP API. `POST /v1/org/sub-orgs/{id}/wallets/generate` exists but does not generate wallets yet (it answers `status: "not_yet_implemented"`).
 
 Enable per-user isolation at provision time:
 
 ```typescript
 await platform.platform.upsertUser({
   email: "user@example.com",
-  external_subject: "tenant:42",
   create_sub_org: true,
 });
 ```
@@ -107,7 +111,7 @@ See [Multi-tenant Platform API](/docs/platform-api/multi-tenant).
 
 ## CMEK and MPC custody
 
-Treasury keys in `__treasury-keys` use org envelope encryption (AES-256-GCM DEKs wrapped by KMS KEKs). Paid tiers add stronger custody:
+Server-custody treasury keys in `__treasury-keys` use org envelope encryption (AES-256-GCM DEKs wrapped by KMS KEKs). These options protect how 1Claw stores a key it holds; they do not change who can sign. For keys 1Claw cannot sign with alone (2-of-3 self-custody wallets), see [Key custody](/docs/security/custody). Paid tiers add stronger storage protection:
 
 ### MPC (vault-level)
 
@@ -116,7 +120,7 @@ Treasury keys in `__treasury-keys` use org envelope encryption (AES-256-GCM DEKs
 | XOR 2-of-2 client custody | Pro / Team | Server share + client share on read |
 | Shamir 2-of-3 multi-HSM | Business / Enterprise | GCP + AWS + Azure; no client share required |
 
-Enable on a vault: `POST /v1/vaults/{id}/mpc` with `{ custody_mode, providers? }`.
+Enable on a vault: `POST /v1/vaults/{id}/mpc` with `{ "mpc_custody": "2of3_multi_hsm" }` (or `2of2_client_custody`, `2of3_client_custody`).
 
 Details: [MPC](/docs/vaults/mpc).
 
@@ -130,7 +134,7 @@ Customer-managed AES-256-GCM layer — your key never leaves your environment; o
 Details: [CMEK](/docs/vaults/cmek).
 
 :::note Treasury vault specifics
-`__treasury-keys` MPC mode is auto-selected from billing tier at first wallet generation. CMEK applies when enabled on the underlying vault infrastructure your org uses for treasury storage.
+Vault-level MPC does not apply to `__treasury-keys`: it uses standard envelope encryption under the org KEK, and wallet generation clears any MPC setting on it.
 :::
 
 ### TEE signing (agents, not treasury sends)
@@ -163,7 +167,7 @@ Role-based grants for send, swap, balance view, and export are available via:
 - `POST/GET/DELETE /v1/treasury/wallets/access-policies`
 - Dashboard: **Settings → Wallet Access**
 
-See [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies). Runtime enforcement on every treasury send/swap path is part of the v0.53.1 parity sprint — **spend policies remain the primary cap for embedded end-user sends today**.
+See [Wallet access policies](/docs/guides/embedded-wallets/wallet-access-policies). Treasury send, swap, export and the self-custody prepare routes enforce them once the org has at least one policy; **spend policies remain the primary cap for embedded end-user sends**.
 
 ### Credential recovery (org admin)
 

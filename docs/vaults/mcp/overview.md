@@ -68,7 +68,7 @@ The server ships 162 tools, but a session is only offered the **toolsets its age
 | --- | --- | --- |
 | `inspect` | always | `inspect_content` |
 | `vault` | any agent | secrets, versions, rotation, env bundles, vaults, sharing, connected accounts |
-| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals` |
+| `approvals` | any agent | `request_approval`, `get_approval_status`, `get_approval`, `list_approvals`, `list_pending_approvals`, `cancel_approval` |
 | `intents` | agent has **Intents API** enabled | signing, simulation, submission, signing keys, portfolio, Safe accounts |
 | `execute` | agent has **Execution Intents** enabled | bindings, `execute_http`, `execute_intent`, executions, connectors |
 | `cards` | agent has **Cards** enabled | cards and gift cards |

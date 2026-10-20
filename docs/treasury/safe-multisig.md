@@ -13,6 +13,10 @@ import TabItem from '@theme/TabItem';
 
 If you already run a Safe for your DAO, project treasury, or team funds, this is how you wire it into 1claw so agents can propose transactions and humans retain final approval.
 
+:::tip Looking for a Safe 1Claw creates for you?
+This page is about connecting a Safe you already run. 1Claw can also create two kinds of self-custody Safe: a **passkey-owned Safe** (your passkey is the only owner) and a **2-of-3 Safe** (beta: your device key, your recovery key and 1Claw's key, threshold 2, recoverable offline). Both are described on [Key custody](/docs/security/custody#passkey-owned-safes-on-evm-available-now).
+:::
+
 ## How it works
 
 ```
@@ -64,9 +68,8 @@ TREASURY=$(curl -s -X POST https://api.1claw.co/v1/treasury \
     "chain_id": 1,
     "threshold": 2,
     "signers": [
-      "0xSigner1...",
-      "0xSigner2...",
-      "0xSigner3..."
+      { "signer_type": "user", "signer_id": "USER_UUID", "signer_address": "0xSigner1..." },
+      { "signer_type": "agent", "signer_id": "AGENT_UUID", "signer_address": "0xSigner2..." }
     ]
   }')
 
@@ -83,7 +86,10 @@ const treasury = await client.treasury.create({
   chain: "ethereum",
   chain_id: 1,
   threshold: 2,
-  signers: ["0xSigner1...", "0xSigner2...", "0xSigner3..."],
+  signers: [
+    { signer_type: "user", signer_id: userId, signer_address: "0xSigner1..." },
+    { signer_type: "agent", signer_id: agentId, signer_address: "0xSigner2..." },
+  ],
 });
 ```
 
@@ -118,7 +124,7 @@ curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/access-requests/$REQ
     "delegation_mode": "owner",
     "guardrails": {
       "to_allowlist": ["0xAllowedContract..."],
-      "max_value_eth": "1.0",
+      "max_value_eth": 1.0,
       "allowed_chains": ["ethereum"]
     }
   }'
@@ -144,10 +150,12 @@ PROPOSAL=$(curl -s -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/propos
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "chain": "ethereum",
-    "to_address": "0xRecipient...",
+    "to": "0xRecipient...",
     "value_wei": "500000000000000000",
-    "data_hex": "0x"
+    "data": "0x",
+    "operation": 0,
+    "safe_tx_hash": "0xSafeTxHash...",
+    "nonce": 5
   }')
 
 PROPOSAL_ID=$(echo "$PROPOSAL" | jq -r '.id')
@@ -160,10 +168,11 @@ echo "Status: $(echo "$PROPOSAL" | jq -r '.status')"
 
 ```typescript
 const proposal = await agentClient.treasury.propose(treasuryId, {
-  chain: "ethereum",
-  to_address: "0xRecipient...",
+  to: "0xRecipient...",
   value_wei: "500000000000000000", // 0.5 ETH
-  data_hex: "0x",
+  data: "0x",
+  safe_tx_hash: safeTxHash, // EIP-712 SafeTx hash for this Safe nonce
+  nonce: 5,
 });
 
 console.log("Proposal ID:", proposal.data.id);
@@ -188,7 +197,8 @@ curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_
   -H "Content-Type: application/json" \
   -d '{
     "decision": "approve",
-    "signature": "0xEIP712Signature..."
+    "signature": "0xEIP712Signature...",
+    "signer_address": "0xYourSignerAddress"
   }'
 ```
 
@@ -199,6 +209,7 @@ curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_
 await client.treasury.signProposal(treasuryId, proposalId, {
   decision: "approve",
   signature: eip712Signature,
+  signer_address: "0xYourSignerAddress",
 });
 ```
 
@@ -211,7 +222,7 @@ To reject:
 curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_ID/sign" \
   -H "Authorization: Bearer $SIGNER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"decision": "reject"}'
+  -d '{"decision": "reject", "signature": "0x", "signer_address": "0xYourSignerAddress"}'
 ```
 
 ## Step 5: Auto-execute on threshold
@@ -234,20 +245,19 @@ curl -X POST "https://api.1claw.co/v1/treasury/$TREASURY_ID/proposals/$PROPOSAL_
 
 For low-value, routine transactions, you can configure auto-approve rules on the delegation. When an agent creates a proposal matching a rule, 1claw automatically inserts the agent's signature. If that meets the threshold, the transaction executes immediately with no human interaction.
 
-```bash
-curl -X PATCH "https://api.1claw.co/v1/treasury/$TREASURY_ID/delegations/$DELEGATION_ID" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "auto_approve_rules": [
-      {
-        "max_value_eth": "0.01",
-        "to_allowlist": ["0xKnownContract..."],
-        "auto": true
-      }
-    ]
-  }'
+```json
+{
+  "auto_approve_rules": [
+    {
+      "max_value_eth": "0.01",
+      "to_allowlist": ["0xKnownContract..."],
+      "auto": true
+    }
+  ]
+}
 ```
+
+`auto_approve_rules` is a field on the treasury delegation record. There is no public API route that sets it yet.
 
 This rule means: if the agent proposes a transaction to `0xKnownContract...` with value under 0.01 ETH, auto-sign with the agent's key. If that meets threshold (e.g., 1-of-2), execute immediately.
 

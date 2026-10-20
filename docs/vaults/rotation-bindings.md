@@ -108,6 +108,8 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/signing-keys/ethereum/rot
 
 This deactivates the old key and provisions a new one. The old address is preserved in the signing key history. Fund the new address before routing transactions to it.
 
+A self-custody (`client_tss`) signing key cannot be rotated this way: rotating would replace it with a server key, so the vault answers `409` to its owner and `403` to anyone else. The owner deactivates it and creates the replacement they want (see [Custody](/docs/security/custody)).
+
 ### Version history
 
 Every rotation creates a new version. View the history:
@@ -149,8 +151,8 @@ const result = await agent.bindings.execute(agentId, {
   binding: "stripe",
   intent_type: "http",
   params: {
-    url: "https://api.stripe.com/v1/charges",
     method: "GET",
+    path: "/v1/charges",
   },
 });
 ```
@@ -169,13 +171,14 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
   -d '{
     "name": "stripe",
     "binding_type": "http",
-    "description": "Stripe API",
     "config": {
       "base_url": "https://api.stripe.com",
       "auth_type": "bearer"
     },
-    "allowed_hosts": ["api.stripe.com"],
-    "allowed_paths": ["/v1/*"],
+    "guardrails": {
+      "allowed_hosts": ["api.stripe.com"],
+      "allowed_paths": ["/v1/*"]
+    },
     "credential_source": {
       "type": "vault_ref",
       "vault_id": "'"$VAULT_ID"'",
@@ -191,13 +194,14 @@ curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings" \
 await client.bindings.create(agentId, {
   name: "stripe",
   binding_type: "http",
-  description: "Stripe API",
   config: {
     base_url: "https://api.stripe.com",
     auth_type: "bearer",
   },
-  allowed_hosts: ["api.stripe.com"],
-  allowed_paths: ["/v1/*"],
+  guardrails: {
+    allowed_hosts: ["api.stripe.com"],
+    allowed_paths: ["/v1/*"],
+  },
   credential_source: {
     type: "vault_ref",
     vault_id: vaultId,
@@ -226,13 +230,13 @@ const result = await agent.bindings.execute(agentId, {
   binding: "stripe",
   intent_type: "http",
   params: {
-    url: "https://api.stripe.com/v1/charges?limit=5",
     method: "GET",
+    path: "/v1/charges?limit=5",
   },
 });
 
-console.log(result.data.status_code); // 200
-console.log(result.data.body); // Stripe response
+console.log(result.data?.result?.status); // 200
+console.log(result.data?.result?.body); // Stripe response
 ```
 
 The agent specifies what to call. 1claw handles credential injection, SSRF protection, and host allowlisting.
@@ -243,12 +247,14 @@ The agent specifies what to call. 1claw handles credential injection, SSRF prote
 |------|------|-------------|
 | `http` | Pro+ | REST API calls with credential injection |
 | `graphql` | Pro+ | GraphQL queries with credential injection |
-| `postgres` | Team+ | Database queries |
-| `mysql` | Team+ | Database queries |
-| `redis` | Team+ | Key-value operations |
-| `grpc` | Team+ | gRPC calls |
-| `smtp` | Team+ | Email sending |
-| `s3` | Team+ | Object storage operations |
+| `postgres` | Pro+ | Database queries (`sslmode=verify-full` or `disable` only; see [Database bindings: TLS mode](/docs/agents/intents/guardrails#database-tls-mode)) |
+| `mysql` | Pro+ | Database queries (`ssl-mode=VERIFY_IDENTITY` or `DISABLED` only) |
+| `redis` | Pro+ | Key-value operations |
+| `grpc` | Pro+ | gRPC calls |
+| `smtp` | Pro+ | Email sending |
+| `s3` | Pro+ | Object storage operations |
+| `cloud_sdk` | Pro+ | Cloud provider API calls (requires `guardrails.allowed_hosts`) |
+| `custom` | Pro+ | Custom integrations |
 
 ### Testing a binding
 
@@ -267,7 +273,7 @@ For inline credentials, rotate explicitly:
 curl -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/bindings/$BINDING_ID/rotate-credential" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"credential": {"api_key": "new_key_value"}}'
+  -d '{"credential": {"token": "new_key_value"}}'
 ```
 
 For `vault_ref` bindings, just rotate the source secret. The binding picks up the new value on the next execution.

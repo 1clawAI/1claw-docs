@@ -63,7 +63,7 @@ Compromise of the database or application memory dumps does not reveal secrets w
 | **Vault MPC** | Shamir or XOR split of per-secret DEK shares across GCP/AWS/Azure (and optional client share). |
 | **Org Shamir KEK** | 2-of-3 split of the org KEK across HSM providers; reconstruction in Shroud TEE. |
 
-These protect **encryption keys and ciphertext**. Agent and treasury **signing keys** use standard envelope encryption in `__agent-keys` / `__treasury-keys`, gated by policies and guardrails. 1Claw does not offer threshold transaction signing (no Turnkey-style MPC-CMP).
+These protect **encryption keys and ciphertext**. Server-custody (`custody: server`) agent and treasury **signing keys** use standard envelope encryption in `__agent-keys` / `__treasury-keys`, gated by policies and guardrails. Self-custody keys are different: a `client_tss` key is a 2-of-3 FROST threshold key (Solana, XRP, Cardano, Bitcoin Taproot) of which the vault holds one share, and Tron and EVM have 2-of-3 multisig wallets (beta). See [Key custody](/docs/security/custody).
 
 ## KMS version cleanup
 

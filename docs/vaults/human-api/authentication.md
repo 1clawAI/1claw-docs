@@ -114,13 +114,15 @@ await client.auth.google({
 <TabItem value="python" label="Python">
 
 ```python
-from oneclaw import create_client
+# The Python SDK has no Google sign-in helper; call the endpoint directly.
+import httpx
 
-client = create_client()
-resp = client.request("POST", "/v1/auth/google", json={"id_token": "<google-id-token>"})
-if resp.error:
-    raise RuntimeError(resp.error)
-# resp.data contains access_token, token_type, expires_in
+resp = httpx.post(
+    "https://api.1claw.co/v1/auth/google",
+    json={"id_token": "<google-id-token>"},
+)
+resp.raise_for_status()
+token = resp.json()["access_token"]  # also token_type, expires_in
 ```
 
 </TabItem>
@@ -212,7 +214,7 @@ await client.auth.logout();
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.request("DELETE", "/v1/auth/token")
+resp = client.auth.revoke_token()
 if resp.error:
     raise RuntimeError(resp.error)
 # 204 No Content on success
@@ -263,20 +265,16 @@ await client.auth.changePassword({
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.request(
-    "POST",
-    "/v1/auth/change-password",
-    json={"current_password": "...", "new_password": "..."},
-)
+resp = client.auth.change_password("...", "...")
 if resp.error:
     raise RuntimeError(resp.error)
-print(resp.data)  # {"message": "Password changed successfully"}
+print(resp.data)  # {"message": "Password changed successfully. ..."}
 ```
 
 </TabItem>
 </Tabs>
 
-**Response (200):** `{ "message": "Password changed successfully" }`
+**Response (200):** `{ "message": "Password changed successfully. All existing sessions have been revoked." }`
 
 ---
 
@@ -328,7 +326,7 @@ When the setting is off, secret reads behave as before (policy + JWT only).
 
 Platform-provisioned users who signed up via OIDC or Google (and have no password) can set their first password:
 
-`POST /v1/auth/set-password` with `{ "password": "..." }` (min 8 characters). Returns 400 if user already has a password set. After setting, email/password login is enabled alongside existing auth methods.
+`POST /v1/auth/set-password` with `{ "password": "...", "password_confirm": "..." }` (at least 12 characters, with the same strength rules as signup). Returns 400 if user already has a password set. After setting, email/password login is enabled alongside existing auth methods.
 
 ---
 

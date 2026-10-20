@@ -81,7 +81,7 @@ single-agent `PATCH` and may narrow further.
 
 Two categories are excluded, and will stay excluded:
 
-**Guardrails** — `max_transaction_value_usd`, `daily_spend_limit_usd`, and the
+**Guardrails** — `tx_max_value`, `tx_daily_limit`, `tx_to_allowlist`, and the
 rest. Raising a spend limit across a fleet is not a deployment operation. It is
 a thousand separate decisions that happen to share a form, and each one belongs
 to the agent it affects, through the guardrail approval flow.

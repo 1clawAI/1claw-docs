@@ -42,14 +42,7 @@ The `__treasury-keys` vault:
 - Is **hidden** from `GET /v1/vaults` and Shroud's secrets manifest
 - **Blocks** direct secret reads — use export endpoint or signing APIs only
 
-[MPC custody](/docs/vaults/mpc) is auto-configured by billing tier when the vault is created:
-
-| Tier | Mode | Meaning |
-| ---- | ---- | ------- |
-| Pro / Team | XOR 2-of-2 client custody | Server share + optional client share on read |
-| Business / Enterprise | Shamir 2-of-3 multi-HSM | GCP + AWS + Azure KMS shares |
-
-See [Advanced — custody tiers](/docs/guides/embedded-wallets/advanced#cmek-and-mpc-custody).
+Keys in it are envelope-encrypted under the org's KEK, the same as `__agent-keys`. Vault-level [MPC](/docs/vaults/mpc) is not used for this vault: wallet generation clears any MPC setting on it.
 
 ## Wallet quota
 
@@ -88,7 +81,7 @@ The React widget provisions chains from its `chains` prop on first successful lo
 
 ```typescript
 const { data } = await client.treasuryWallets.generateWallets({
-  chains: ["ethereum", "solana"], // omit for all six
+  chains: ["ethereum", "solana"], // omit for every supported chain
 });
 
 for (const w of data.wallets) {
@@ -115,7 +108,8 @@ Chains where the user already has an active wallet are skipped silently.
 
 ```typescript
 const { data } = await client.treasuryWallets.listWallets();
-// data.wallets[] — id, chain, address, curve, is_active
+// data.wallets[]: id, chain, address, curve, public_key_hex, is_active, created_at, custody
+// self-custody wallets also carry backup (and multisig_status / multisig_keys for Tron multisig)
 ```
 
 ```bash
@@ -132,8 +126,9 @@ const { data } = await client.treasuryWallets.getWalletBalance("ethereum", [
   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base USDC
 ]);
 
-console.log(data.native_balance, data.native_symbol);
-console.log(data.tokens);
+// Response body: { chain, address,
+//   native: { symbol, balance_wei, balance_display },
+//   tokens: [{ contract_address, balance_raw }] }
 ```
 
 ```bash
@@ -142,6 +137,10 @@ curl "https://api.1claw.co/v1/treasury/wallets/ethereum/balance?tokens=0x833589.
 ```
 
 The React widget refreshes balances every 30 seconds.
+
+## Self-custody wallets
+
+Everything above describes `custody: "server"` wallets, which 1Claw can sign for alone. A user can instead create a 2-of-3 self-custody wallet from the dashboard (Treasury): FROST threshold keys (`custody: "client_tss"`) on Solana, XRP, Cardano and Bitcoin (Taproot), where the vault holds share 1 and the user's passkey and offline recovery kit hold shares 2 and 3; or, in beta, a Tron 2-of-3 native multisig or an EVM 2-of-3 Safe (`client_multisig`). Which chains an org can create is set by per-org rollout flags; `GET /v1/keys/tss/chains` lists them. Export, rotate and server-side send refuse a self-custody wallet. See [Key custody](/docs/security/custody).
 
 ## Import, export, rotate
 

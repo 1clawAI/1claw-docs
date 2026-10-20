@@ -94,11 +94,11 @@ Terms you’ll see in the API, dashboard, SDK, and CLI.
 
 **Spend policy** — The limits attached to a wallet: maximum value per transaction, spend per day, which chains and tokens are allowed, and which destination addresses. For a token transfer the destination is judged on the decoded recipient, not the token contract.
 
-**Safe** — A smart-contract account (Safe, formerly Gnosis Safe) rather than a plain keypair, so the rules about who may spend live on-chain. 1Claw can provision Safes whose signer is a passkey on EVM chains.
+**Safe** — A smart-contract account (Safe, formerly Gnosis Safe) rather than a plain keypair, so the rules about who may spend live on-chain. 1Claw can provision Safes whose signer is a passkey on EVM chains, and (in beta, per org) 2-of-3 Safes for native transfers.
 
 **Shamir secret sharing** — Splitting a key into N shares such that any M of them reconstruct it and fewer reveal nothing. Used for key custody across multiple HSM providers, so no single provider holds a usable key.
 
-**FROST** — A threshold signature scheme in which several parties each hold a share and produce one ordinary signature together, without ever assembling the private key. Used for Ed25519 chains such as Solana.
+**FROST** — A threshold signature scheme in which several parties each hold a share and produce one ordinary signature together, without ever assembling the private key. Used for 2-of-3 self-custody wallets (`custody: "client_tss"`) on Solana, XRP, Cardano and Bitcoin Taproot, which you can recover from an offline kit without 1Claw. See [Key custody](/docs/security/custody).
 
 ## Shroud and the enclave
 

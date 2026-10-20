@@ -37,7 +37,7 @@ Separate asymmetric keys (not envelope KEKs):
 - **Per-org shared KEK:** All vaults in an org share `organizations.kek_id`. Envelope isolation is at the DEK level (unique per secret, AAD-bound to `vault_id:path`).
 - **KEK protection level:** HSM for paid tiers (FIPS 140-2 Level 3), SOFTWARE for Free.
 - **Shamir custody:** Org-level Shamir (migration 203) splits the **org KEK** across GCP + AWS (+ optional client share on Business/Enterprise). Vault-level MPC splits **per-secret DEKs**. Reconstruction of org KEK material is forwarded to the **Shroud TEE**; returns 501 when Shroud is not configured.
-- **Not threshold transaction signing:** Agent and treasury signing keys use standard HSM envelope encryption. Policy consensus gates who may authorize a sign/export action; it does not split a secp256k1/Ed25519 private key across signers.
+- **Shamir is not threshold transaction signing:** Server-custody (`custody: server`) agent and treasury signing keys use standard HSM envelope encryption. Policy consensus gates who may authorize a sign/export action; it does not split a private key across signers. Threshold signing is the separate self-custody feature (section 7).
 - **Auto-rotation:** 365-day rotation period on KEKs. Nightly DEK re-wrap ensures old versions can be destroyed (`KEEP_RECENT=1`).
 - **CMEK (opt-in):** Customer-managed AES-256-GCM layer on top of HSM envelope encryption. Key never touches server.
 
@@ -130,7 +130,8 @@ Administrative mutations (policy CRUD, key export, member changes) can require m
 ### 7. Embedded Wallet Custody
 
 - **6-chain support:** Ethereum, Bitcoin, Solana, XRP, Cardano, Tron
-- **HSM-backed generation:** Private keys stored via envelope encryption with the org KEK in `__treasury-keys`
+- **HSM-backed generation:** Server-custody private keys stored via envelope encryption with the org KEK in `__treasury-keys`
+- **Self-custody (2-of-3):** `client_tss` FROST keys (Solana for every org; XRP, Cardano and Bitcoin Taproot per-org rollout) where the vault holds share 1, a passkey unlocks share 2 and share 3 lives only in an offline recovery kit; Tron native 2-of-3 multisig and EVM 2-of-3 Safes (beta). Recoverable with kit + recovery code and no 1Claw involvement. See [Key custody](/docs/security/custody)
 - **MPC custody (vault-level option; org Shamir on Team+):** Tier-based **encryption key** custody. Org Shamir splits the **KEK**, not signing keys.
 - **Spend policies enforced:** `allowed_tokens`, `to_allowlist`, `daily_limit_eth`, `max_value_per_tx_eth` via `validate_wallet_send()` on treasury send/swap
 - **Role-based wallet access:** `wallet_access_policies` enforced via `enforce_wallet_access()` on send/swap/export
@@ -203,7 +204,7 @@ curl -s https://api.1claw.co/.well-known/jwks.json | jq .
 curl -X POST https://api.1claw.co/v1/org/cedar-policies/test \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"policy": "...", "context": {...}}'
+  -d '{"cedar_text": "...", "principal_type": "agent", "principal_id": "<agent_id>", "action": "read", "resource_path": "api-keys/stripe", "vault_id": "<vault_id>", "context": {}}'
 ```
 
 ---

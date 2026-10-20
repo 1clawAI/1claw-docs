@@ -17,15 +17,16 @@ If your agents access secrets, call LLMs, run automations, communicate through c
 
 ## Custody: read the label before you compare
 
-Turnkey users ask this first, so here it is first. Turnkey generates keys inside an enclave and has no server-side path that can produce a signature without the enclave's policy engine. 1Claw has three custody models, and every key carries a `custody` field that says which one it is:
+Turnkey users ask this first, so here it is first. Turnkey generates keys inside an enclave and has no server-side path that can produce a signature without the enclave's policy engine. 1Claw has four custody models, and every key carries a `custody` field that says which one it is:
 
 | `custody` | Who can sign alone | Chains | Turnkey analogue |
 |---|---|---|---|
 | `server` (the default today) | **1Claw**, after policy, guardrails, approvals and the OFAC screen. The key is envelope-encrypted under a KMS KEK and unwrapped in the vault (or Shroud's TEE) to sign. | All six | None — this is closer to a hosted wallet with a policy engine in front |
-| `client_tss` | **Nobody.** 2-of-2 FROST: 1Claw holds one share, the user's passkey (WebAuthn PRF) wraps the other. The server signing path refuses the key outright. An agent can co-sign unattended only through a runtime share holder the user provisioned. | Solana | Turnkey's enclave guarantee, with the second share in the user's hands rather than in a second enclave |
+| `client_tss` | **Nobody.** 2-of-3 FROST: 1Claw holds one share; the user's device holds the other two, one wrapped under their passkey (WebAuthn PRF) and one only in an offline recovery kit. The server signing path refuses the key outright. An agent can co-sign unattended only through a runtime share holder the user provisioned. | Solana; XRP, Cardano and Bitcoin (Taproot) for orgs in the rollout | Turnkey's enclave guarantee, with the other shares in the user's hands rather than in a second enclave |
+| `client_multisig` | **Nobody.** Three ordinary keys, any two of which sign: 1Claw's, the user's device key (wrapped under their passkey) and an offline recovery key. Enforced on chain by Tron account permissions or a 2-of-3 Safe. Beta. | Tron; EVM chains (native transfers only) | A chain-native multisig rather than a threshold key |
 | `passkey_owner` | **Nobody.** A Safe whose only owner is the user's passkey (Safe's WebAuthn signer + P-256 verifier / RIP-7212). 1Claw relays gas; no key exists. | Base, Optimism, Arbitrum, Polygon, Ethereum | Closest to a Turnkey passkey wallet |
 
-Details, guard tests and the counsel-facing statement are on the [Custody](/docs/security/custody) page. The honest migration answer: if your product promised users a non-custodial wallet on Turnkey, provision `passkey_owner` Safes (EVM) or `client_tss` wallets (Solana) on 1Claw; if it was a server-side signer behind Turnkey policies, `server` custody plus 1Claw's policy engine is the like-for-like move and the rest of this guide is about that.
+Details, guard tests and the counsel-facing statement are on the [Custody](/docs/security/custody) page. The honest migration answer: if your product promised users a non-custodial wallet on Turnkey, provision `passkey_owner` Safes (EVM) or `client_tss` wallets (Solana, and the rollout chains) on 1Claw; if it was a server-side signer behind Turnkey policies, `server` custody plus 1Claw's policy engine is the like-for-like move and the rest of this guide is about that.
 
 ## Migration Checklist
 
@@ -61,9 +62,8 @@ Use `action_kind_in` to match all actions in a category:
 ```json
 {
   "consensus_trigger": {
-    "action_in": [],
-    "conditions": [{ "action_kind_in": { "kinds": ["signing_key", "member"] } }],
-    "min_approvals": 2
+    "conditions": [{ "type": "action_kind_in", "kinds": ["signing_key", "member"] }],
+    "approval": { "min_approvals": 2 }
   }
 }
 ```
@@ -87,6 +87,8 @@ policy.filter(Activity.type == "ACTIVITY_TYPE_SIGN_TRANSACTION")
   "value_above": "1000000000000000000"
 }
 ```
+
+`value_above` matches transactions above the threshold, so to cap value put it on a `deny` policy beside an allow policy for the chain and addresses.
 
 **1Claw expression engine (v2 — all tiers):**
 ```
@@ -119,12 +121,14 @@ when {
 {
   "consensus_trigger": {
     "conditions": [
-      { "value_above": { "threshold_wei": "5000000000000000000" } },
-      { "chain_in": ["ethereum", "bitcoin"] }
+      { "type": "value_above", "threshold_wei": "5000000000000000000" },
+      { "type": "chain_in", "chains": ["ethereum", "bitcoin"] }
     ],
-    "min_approvals": 2,
-    "required_roles": ["admin"],
-    "require_credential_types": ["passkey", "totp"],
+    "approval": {
+      "min_approvals": 2,
+      "required_roles": ["admin"],
+      "require_credential_types": ["passkey", "totp"]
+    },
     "skip_when": [{ "value_above": "100000000000000000", "to_address_in": ["0xsafe..."] }],
     "require_when": [{ "always": true }]
   }
@@ -147,7 +151,7 @@ when {
 | Capability | On Turnkey | On 1Claw |
 |-----------|-----------|---------|
 | Agent memory (encrypted, semantic search) | Build yourself | Built-in (`PUT /v1/agents/{id}/memory/{ns}/{key}`) |
-| Cron/webhook automations | Build yourself | Built-in (14 step types, approval gates) |
+| Cron/webhook automations | Build yourself | Built-in (19 step types, approval gates) |
 | LLM proxy with secret redaction | Not available | Shroud (AMD SEV-SNP TEE) |
 | Messaging channels (Telegram, WhatsApp, Discord) | Build yourself | Built-in with auto-respond |
 | Agent-to-agent delegation | Build yourself | Built-in with human-controlled authorization |
@@ -187,13 +191,13 @@ const client = new OneclawClient({ baseUrl, apiKey });
 const result = await client.agents.submitTransaction(agentId, {
   chain: "ethereum",
   to: "0x...",
-  value: "1000000000000000000",
+  value: "1.0", // ETH, not wei
 });
 // Or sign a message / typed data / digest
 const sig = await client.agents.sign(agentId, {
   intent_type: "personal_sign",
   chain: "ethereum",
-  message: "hello",
+  message: "0x68656c6c6f", // hex-encoded "hello"
 });
 ```
 

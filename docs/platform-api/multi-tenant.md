@@ -200,7 +200,7 @@ Per-agent capability flags that a template can set:
 | `execution_intents_enabled` / `execution` | Execution Intents |
 | `shroud_enabled`, `shroud_config` | Shroud LLM proxy |
 | `memory_enabled` / `memory` | Agent memory |
-| `raw_signing_enabled` | Raw/blind digest signing (`sign_digest`, `eip712_digest`) |
+| `raw_signing_enabled` | Raw/blind digest signing (`sign_digest`, `eip712_digest`). Honoured only at bootstrap, where it also sets `raw_signing_policy` to `approve` |
 | `message_signing_enabled` | `personal_sign` message signing |
 | `environment`, `environment_locked` | Environment pinning |
 | `default_llm_model`, `system_prompt` | LLM defaults |
@@ -247,6 +247,13 @@ const { data } = await platform.platform.addConnectionAgents(connectionId, {
 // data.agent_api_keys[0].api_key — returned once, never retrievable again
 ```
 
+Agents added this way always start with `raw_signing_enabled: false`, even if
+the template sets it. To turn raw signing on, call
+`PATCH /v1/platform/connections/{connection_id}/agents/{agent_id}` with
+`{"raw_signing_enabled": true}` and an `X-Auth-Confirm` re-auth token the end
+user obtained for purpose `security.guardrail.edit`; the agent's
+`raw_signing_policy` becomes `approve`.
+
 **One agent per call.** A template declaring more than one agent is refused with
 `400`, both when the template is written and when it is used. The reason is the
 API key: it is returned once and cannot be re-issued to a platform app, because
@@ -290,7 +297,7 @@ const connection = await platformClient.platform.upsertUser({
 // 2. Bootstrap their resources from the template
 const bootstrap = await platformClient.platform.bootstrapUser(
   connection.data.connection_id,
-  { template_name: "trader-setup" },
+  { template_id: templateId }, // the id returned by createTemplate
 );
 
 console.log("Vault ID:", bootstrap.data.summary.vault_id);
@@ -330,8 +337,9 @@ import { createClient } from "@1claw/sdk";
 // Client using the bootstrapped agent's API key
 const tradingAgent = createClient({
   baseUrl: "https://api.1claw.co",
-  apiKey: bootstrapResult.summary.agent_api_key,
+  apiKey: bootstrap.data.summary.agent_api_key,
 });
+const agentId = bootstrap.data.summary.agent_id;
 
 // Submit a trade
 const tx = await tradingAgent.agents.submitTransaction(agentId, {

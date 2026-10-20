@@ -18,7 +18,7 @@ The principal (user or agent) immediately loses the permissions that policy gran
 
 **DELETE /v1/agents/:agent_id**
 
-The agent is marked inactive. It can no longer exchange its API key for a JWT. Existing JWTs may still work until they expire (typically short-lived). For immediate effect, rotate the agent key (so the old key fails) and/or keep token lifetime short.
+Permanently deletes the agent, removes its policies, and revokes all of its active JWTs immediately. It can no longer exchange its API key for a JWT. To disable an agent temporarily without deleting it, use `PATCH /v1/agents/:agent_id` with `{ "is_active": false }`.
 
 ## Rotate agent key
 

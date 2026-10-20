@@ -49,7 +49,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/rpc/ethereum-mainn
   -d '{
     "value": "https://eth-mainnet.g.alchemy.com/v2/your-key",
     "type": "api_key",
-    "description": "Ethereum mainnet RPC"
+    "metadata": { "description": "Ethereum mainnet RPC" }
   }'
 ```
 
@@ -99,7 +99,7 @@ const tx = await client.agents.submitTransaction(agentId, {
   simulate_first: true,
 });
 
-console.log("tx_hash:", tx.data.tx_hash);
+console.log("tx_hash:", tx.data?.tx_hash);
 ```
 
 Key differences:

@@ -104,20 +104,23 @@ See [Audit hash chain verification](/docs/security/audit-verification) for limit
 | Consensus composability | `skip_when` / `require_when` on policies prevent automation breakage |
 | Hash-chained audit | Every event cryptographically linked; `payload_hash` binds pending approvals to actions |
 | Shamir-split key custody | Org KEK and optional vault DEK shares split across HSM providers (envelope encryption, not threshold signing) |
+| Self-custody wallets | 2-of-3 FROST threshold keys (`client_tss`) and 2-of-3 multisig wallets, recoverable without 1Claw. See [Key custody](/docs/security/custody) |
 
 ### MPC and Shamir key custody (not threshold signing)
 
-1Claw uses Shamir secret sharing for **encryption key custody**, not for multi-party **transaction signing**:
+1Claw uses Shamir secret sharing for **encryption key custody**, not for multi-party **transaction signing** (threshold signing is a separate feature, below):
 
 | Layer | What is split | Where shares live | Where reconstruction happens |
 |-------|----------------|-------------------|------------------------------|
 | **Vault MPC** (`2of3_multi_hsm`, optional per vault) | Per-secret **DEK** | GCP KMS, AWS KMS, Azure Key Vault | Vault API during authorized secret read/write |
 | **Org Shamir KEK** (Team+ / Business+, migration 203) | Organization **KEK** | GCP + AWS (+ optional client share on Business/Enterprise) | Shroud TEE via `POST .../shamir/reconstruct` (501 when Shroud unconfigured) |
-| **Treasury / agent signing keys** | N/A (single HSM envelope) | `__treasury-keys` / `__agent-keys` vaults | Standard envelope encryption, gated by policies |
+| **Treasury / agent signing keys** (`custody: server`) | N/A (single HSM envelope) | `__treasury-keys` / `__agent-keys` vaults | Standard envelope encryption, gated by policies |
 
 This is **envelope encryption with Shamir-split KEKs/DEKs**. It is not Turnkey-style MPC-CMP **threshold signing**, where multiple parties co-sign a transaction without assembling the full private key.
 
-**Turnkey comparison:** Turnkey's QuorumOS performs n-of-m **signature** quorum on private keys. 1Claw's Shamir modes ensure no single cloud HSM provider holds a complete DEK or org KEK, but transaction signatures are produced by a single signing key after policy checks.
+**Turnkey comparison:** Turnkey's QuorumOS performs n-of-m **signature** quorum on private keys. 1Claw's Shamir modes ensure no single cloud HSM provider holds a complete DEK or org KEK, but a `server`-custody key produces transaction signatures alone after policy checks.
+
+**Threshold signing (self-custody).** A `client_tss` key is a 2-of-3 FROST key: the vault holds share 1, your passkey unlocks share 2 for everyday signing, and share 3 exists only in your offline recovery kit. Solana is available to every organization; XRP, Cardano and Bitcoin (Taproot) are enabled per organization during rollout (`GET /v1/keys/tss/chains` lists what yours can create). Tron wallets use a native 2-of-3 multisig and EVM wallets a 2-of-3 Safe (both beta). 1Claw cannot sign alone with any of these. See [Key custody](/docs/security/custody).
 
 ---
 

@@ -57,6 +57,7 @@ print(result["output"])
 | Secrets | get, put, list, rotate |
 | Memory | put, get, semantic search |
 | Signing | EIP-191 message sign, multi-chain transactions, balance check |
+| Environment variables | resolve, list |
 | Automations | trigger workflow runs |
 
 Plus `OneclawChatMessageHistory` for durable conversation storage and `OneclawMemoryRetriever` for RAG over agent memory.

@@ -53,7 +53,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/web3auth/client-id
   -d '{
     "value": "'"$WEB3AUTH_CLIENT_ID"'",
     "type": "api_key",
-    "description": "Web3Auth client ID"
+    "metadata": { "description": "Web3Auth client ID" }
   }'
 
 curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/web3auth/client-secret" \
@@ -62,7 +62,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/web3auth/client-se
   -d '{
     "value": "'"$WEB3AUTH_CLIENT_SECRET"'",
     "type": "api_key",
-    "description": "Web3Auth verifier secret"
+    "metadata": { "description": "Web3Auth verifier secret" }
   }'
 ```
 
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
     simulate_first: true,
   });
 
-  return Response.json({ txHash: tx.data.tx_hash });
+  return Response.json({ txHash: tx.data?.tx_hash });
 }
 ```
 

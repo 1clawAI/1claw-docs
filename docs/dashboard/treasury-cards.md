@@ -12,13 +12,17 @@ sidebar_position: 3
 
 | Tab | Purpose |
 |-----|---------|
-| **Wallets** | Generate native multi-chain wallets; Send, Swap, Receive per chain |
+| **Wallets** | Generate native multi-chain wallets; Send, Swap, Receive per chain. Also holds the passkey Safes card and, in beta, the 2-of-3 Safes card |
+| **Deposits** | Deposit destinations that route incoming funds |
+| **Accounts** | Internal ledger accounts |
 | **Safes** | List multisig treasuries; deploy smart accounts |
-| **Proposals** | Pending/approved/executed Safe proposals |
+| **Access Requests** | Agents asking for wallet access |
 
 ### Wallet cards
 
 Each chain shows address, balance (30s refresh), **Send** (with gasless option on EVM), **Swap** (0x aggregator), and **Export** (password re-auth).
+
+On chains enabled for your org, a **Self-custody** button creates a 2-of-3 wallet (`custody: "client_tss"`) instead, or moves an existing server wallet to self-custody. A self-custody wallet has no private key to export: its backup dialog offers the recovery kit, **Restore from kit** and **Refresh shares**, and the card asks you to back it up before receiving funds. See [Key custody](/docs/security/custody).
 
 ### Treasury detail
 

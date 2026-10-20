@@ -65,18 +65,18 @@ Org setting **`env.enforce_agent_environment_scope`** (Settings → Security) bl
 ```json
 {
   "production": {
-    "max_value": "1.0",
-    "daily_limit": "10.0",
-    "to_allowlist": ["0x..."]
+    "tx_max_value": "1.0",
+    "tx_daily_limit": "10.0",
+    "tx_to_allowlist": ["0x..."]
   },
   "preview": {
-    "max_value": "0.1",
-    "daily_limit": "1.0"
+    "tx_max_value": "0.1",
+    "tx_daily_limit": "1.0"
   }
 }
 ```
 
-Per-environment values intersect with global agent guardrails — the **strictest** limit wins.
+Recognized keys are `tx_max_value`, `tx_daily_limit`, `tx_max_per_day`, `tx_to_allowlist`, `tx_token_allowlist`, and `tx_allowed_chains`. When the agent's environment has an entry, each key present **replaces** the agent's global value for that transaction; keys you leave out keep the global value. Other keys are ignored.
 
 ## Create and update
 
@@ -102,7 +102,7 @@ curl -s -X PATCH "https://api.1claw.co/v1/agents/$AGENT_ID" \
     "environment": "production",
     "environment_locked": true,
     "per_environment_guardrails": {
-      "production": { "max_value": "1.0" }
+      "production": { "tx_max_value": "1.0" }
     }
   }'
 ```
@@ -140,7 +140,7 @@ await client.agents.update(agentId, {
   environment: "production",
   environment_locked: true,
   per_environment_guardrails: {
-    production: { max_value: "1.0", daily_limit: "10.0" },
+    production: { tx_max_value: "1.0", tx_daily_limit: "10.0" },
   },
 });
 

@@ -68,8 +68,10 @@ await client.secrets.set(vault.id, "api-keys/openai", "sk-proj-...", {
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.vaults.create("My Vault", description="Secrets for my app")
+resp = client.vaults.create("Production", description="Prod secrets")
 vault_id = resp.data["id"]
+
+client.secrets.set(vault_id, "api-keys/openai", "sk-proj-...", type="api_key")
 ```
 
 </TabItem>
@@ -109,13 +111,9 @@ const apiKey = data.api_key; // Store securely — shown only once
 from oneclaw import create_client
 
 client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
-)
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+resp = client.agents.create("My Bot", description="CI agent")
+agent_id = resp.data["agent"]["id"]
+api_key = resp.data.get("api_key")  # store securely, shown only once
 ```
 
 </TabItem>
@@ -160,7 +158,7 @@ client.policies.create(
     vault_id,
     principal_type="agent",
     principal_id=agent_id,
-    secret_path_pattern="production/*",
+    secret_path_pattern="**",
     permissions=["read"],
 )
 ```
@@ -209,8 +207,10 @@ const { data: secret } = await agentClient.secrets.get(VAULT_ID, "api-keys/opena
 ```python
 from oneclaw import create_client
 
+# In the agent's runtime: the ocv_ key auto-exchanges for an agent JWT
 client = create_client(api_key="ocv_your_agent_key")
-print(client.resolved_agent_id)
+secret = client.secrets.get(vault_id, "api-keys/openai")
+# Use secret.data["value"]; don't log or persist it
 ```
 
 </TabItem>

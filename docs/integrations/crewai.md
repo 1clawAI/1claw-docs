@@ -8,7 +8,7 @@ sidebar_position: 2
 
 CrewAI agents call tools the same way other frameworks do. The friction is credentials: you do not want API keys in prompts, repo files, or crew memory, and you do not want every crew author rewriting auth and vault HTTP.
 
-[`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) (`import oneclaw_crewai`) ships eleven CrewAI tools backed by the same agent API as the rest of 1Claw. One shared client, one `get_all_tools()` call, and your researcher or operator agent can fetch secrets, write memory, sign transactions, or kick off automations without touching raw keys.
+[`1claw-crewai-tools`](https://pypi.org/project/1claw-crewai-tools/) (`import oneclaw_crewai`) ships thirteen CrewAI tools backed by the same agent API as the rest of 1Claw. One shared client, one `get_all_tools()` call, and your researcher or operator agent can fetch secrets, write memory, sign transactions, or kick off automations without touching raw keys.
 
 ## Install
 

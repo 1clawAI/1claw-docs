@@ -35,7 +35,7 @@ Agents do **not** get blanket vault access. Humans attach **policies** that gran
 
 A parent agent can be given cheap sub-agents for fan-out work — one child per document to summarise, one per lead to qualify — without each one being a full, human-registered agent.
 
-- **Created by a human** with `POST /v1/agents/{agent_id}/children` (`agents.createChild` in the SDK, `create_child` in Python). Up to 50 per parent; a child cannot have children.
+- **Created by a human** with `POST /v1/agents/{agent_id}/children` (`agents.createChild` in the SDK, `create_child` in Python). Up to 50 per parent; a child cannot have children. When the parent has `pay_enabled` or `cards_enabled`, only an org owner or admin may create a child (others get 403), because the child copies the parent's pay and card guardrails and so opens a new daily spend bucket.
 - **Bounded by the parent.** A child's `vault_ids` and `scopes` default to the parent's and must be a subset of them — a superset is refused. Vault policies and guardrails are inherited from the parent (policy lookups include the parent's), so a child can never do more than its parent.
 - **Its own identity.** Each child has its own `ocv_` API key, its own memory namespaces (default `child:{child_id}`) and its own `action_approval_policy`, so its actions are attributable and its approvals are separate.
 - **Free of the agent cap.** Children do not count against the plan's agent limit. Agent responses carry `agent_type` (`standard` | `child`) and `parent_agent_id`; `GET /v1/agents/{agent_id}/children` lists a parent's children.

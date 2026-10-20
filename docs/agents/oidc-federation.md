@@ -130,7 +130,7 @@ Anthropic returns an `sk-ant-oat01-…` token you can then use against the Claud
 | `iss` | `https://api.1claw.co` (or your `vault_public_url` if customized) |
 
 :::note Issuer moved to `api.1claw.co`
-Tokens minted before this change carry `https://api.1claw.co`. Both hosts serve
+Tokens minted before this change carry `https://api.1claw.xyz`. Both hosts serve
 identical JWKS, and the API accepts either issuer on validation, so existing
 tokens keep working until they expire. If you configured a relying party against
 the old issuer, update it to `https://api.1claw.co` — the `iss` claim must match

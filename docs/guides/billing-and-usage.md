@@ -170,13 +170,13 @@ Toggle between credits and x402 in the billing dashboard or via API:
 # Use prepaid credits for overages
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"overage_method": "credits"}' \
+  -d '{"method": "credits"}' \
   https://api.1claw.co/v1/billing/overage-method
 
 # Use x402 micropayments for overages
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"overage_method": "x402"}' \
+  -d '{"method": "x402"}' \
   https://api.1claw.co/v1/billing/overage-method
 ```
 
@@ -206,30 +206,40 @@ curl -H "Authorization: Bearer $TOKEN" \
   https://api.1claw.co/v1/billing/subscription
 ```
 
-Response includes subscription status, usage, and credits:
+Response includes the tier, status, credit balance, overage method, and a usage meter per resource (`limit` of `-1` means unlimited):
 
 ```json
 {
-    "subscription": {
-        "tier": "pro",
-        "status": "active",
-        "current_period_end": "2026-03-20T00:00:00Z",
-        "cancel_at_period_end": false
-    },
+    "tier": "pro",
+    "interval": "monthly",
+    "period_end": "2026-03-20T00:00:00Z",
+    "status": "active",
+    "credit_balance_cents": 5000,
+    "credit_balance_micro_usd": 50000000,
+    "credit_balance_usd": "50.00",
+    "overage_method": "credits",
     "usage": {
-        "tier_limit": 20000,
-        "current_month": {
-            "total_requests": 18472,
-            "tier_requests": 18472,
-            "overage_requests": 0,
-            "total_cost_usd": 0.0
-        }
+        "requests": { "used": 18472, "limit": 20000 },
+        "secrets": { "used": 120, "limit": 500 },
+        "agents": { "used": 4, "limit": 10 },
+        "vaults": { "used": 2, "limit": 5 },
+        "team_members": { "used": 1, "limit": 2 },
+        "intent_transactions": { "used": 0, "limit": 20000 },
+        "wallets": { "used": 3, "limit": 10000 },
+        "shares": { "used": 5, "limit": 100 },
+        "automations": { "used": 1, "limit": 10 },
+        "automation_runs": { "used": 40, "limit": 5000 },
+        "runtimes": { "used": 1, "limit": 3 }
     },
-    "credits": {
-        "balance_usd": 50.0,
-        "expiring_next_30_days": 0.0
+    "runtime_hours": { "used": 12.5, "limit": 100, "paid_instances": 0, "resets_at": "2026-03-20T00:00:00Z" },
+    "overage": {
+        "paid_requests": 0,
+        "total_cost_cents": 0,
+        "total_cost_usd": "0.00",
+        "pending_failed_debits": 0,
+        "pending_failed_cents": 0
     },
-    "overage_method": "credits"
+    "kek_protection_level": "hsm"
 }
 ```
 
@@ -242,17 +252,20 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```json
 {
-    "balance_usd": 50.0,
-    "expiring_next_30_days": 0.0,
-    "expiring_credits": []
+    "balance_cents": 5000,
+    "balance_micro_usd": 50000000,
+    "balance_usd": "50.00",
+    "expiring_within_90_days": null
 }
 ```
 
-#### Get Credit Transactions
+When some credits expire within 90 days, `expiring_within_90_days` is `{ "amount_cents": ..., "earliest_expiry": "..." }`.
+
+#### Get Credit Transaction History
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.1claw.co/v1/billing/credits/transactions?limit=20&offset=0"
+  "https://api.1claw.co/v1/billing/credits/transactions?limit=20&page=1"
 ```
 
 ```json
@@ -261,24 +274,26 @@ curl -H "Authorization: Bearer $TOKEN" \
         {
             "id": "uuid",
             "type": "topup",
-            "amount_usd": 50.0,
-            "balance_after_usd": 50.0,
+            "amount_cents": 5000,
+            "balance_after_cents": 5000,
+            "description": null,
             "created_at": "2026-02-15T10:30:00Z"
         },
         {
             "id": "uuid",
-            "type": "usage",
-            "amount_usd": -0.5,
-            "balance_after_usd": 49.5,
+            "type": "debit",
+            "amount_cents": -50,
+            "balance_after_cents": 4950,
             "description": "Overage charges for 625 requests",
             "created_at": "2026-02-18T14:22:00Z"
         }
     ],
-    "total": 2,
-    "limit": 20,
-    "offset": 0
+    "page": 1,
+    "limit": 20
 }
 ```
+
+`limit` defaults to 25 (max 100); `page` starts at 1.
 
 #### Legacy Usage Endpoints (Still Available)
 

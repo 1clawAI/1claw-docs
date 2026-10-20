@@ -80,7 +80,7 @@ curl -s -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/demo/api-key" \
   -d '{
     "value": "sk-test-abc123def456",
     "type": "api_key",
-    "description": "Demo API key for walkthrough"
+    "metadata": { "description": "Demo API key for walkthrough" }
   }'
 ```
 
@@ -114,7 +114,7 @@ AGENT=$(curl -s -X POST https://api.1claw.co/v1/agents \
   }')
 
 AGENT_ID=$(echo "$AGENT" | jq -r '.agent.id')
-AGENT_KEY=$(echo "$AGENT" | jq -r '.agent.api_key')
+AGENT_KEY=$(echo "$AGENT" | jq -r '.api_key')
 echo "Agent ID: $AGENT_ID"
 echo "Agent API Key: $AGENT_KEY"   # save this, shown once
 ```
@@ -129,7 +129,7 @@ const agent = await client.agents.create({
 });
 
 const agentId = agent.data.agent.id;
-const agentKey = agent.data.agent.api_key; // save this, shown once
+const agentKey = agent.data.api_key; // save this, shown once
 ```
 
 </TabItem>
@@ -209,7 +209,7 @@ Exchange the agent API key for a JWT, then submit a transaction on Sepolia. The 
 # Exchange agent key for JWT
 AGENT_TOKEN=$(curl -s -X POST https://api.1claw.co/v1/auth/agent-token \
   -H "Content-Type: application/json" \
-  -d "{\"api_key\": \"$AGENT_KEY\"}" | jq -r '.token')
+  -d "{\"api_key\": \"$AGENT_KEY\"}" | jq -r '.access_token')
 
 # Submit a testnet transaction
 TX=$(curl -s -X POST "https://api.1claw.co/v1/agents/$AGENT_ID/transactions" \

@@ -90,7 +90,7 @@ For local setups, run the MCP server via stdio. Only `ONECLAW_AGENT_API_KEY` is 
 }
 ```
 
-Or auto-configure with the CLI: `1claw setup --client cursor` (or `--client claude`).
+Or auto-configure with the CLI: `1claw setup --client cursor` (or `--client claude-desktop`, `--client claude-code`).
 
 ## Quick start (local daemon — offline, zero-knowledge)
 
@@ -127,7 +127,7 @@ The server ships 162 tools, but a session is only offered the **toolsets its age
 | `memory` | agent has **Memory** enabled | memory tools + `get_peer_context` |
 | `channels` | agent has **Shroud** enabled | Telegram / WhatsApp / Discord channels |
 | `directory` | agent is **discoverable** | agent directory + job board |
-| `treasury`, `delegation`, `chat`, `automations`, `runtimes`, `notification` | opt-in only | no per-agent flag exists for these — request them explicitly |
+| `treasury`, `delegation`, `chat`, `automations`, `runtimes`, `notification` | opt-in only | no per-agent flag exists for these, so request them explicitly. Exceptions: `treasury` is on by default when the agent signs for a treasury, and `delegation` when it has delegations |
 | `admin` | never on an agent session | human-only endpoints (policies, sub-orgs, approval votes, Safe migration) |
 | `platform` | never | `plt_` endpoints; the MCP server does not accept platform keys |
 

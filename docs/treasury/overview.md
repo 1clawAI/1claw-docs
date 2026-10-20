@@ -89,7 +89,8 @@ Response:
       "public_key_hex": "04abcdef...",
       "address": "0x4e83...",
       "is_active": true,
-      "created_at": "2026-05-16T12:00:00Z"
+      "created_at": "2026-05-16T12:00:00Z",
+      "custody": "server"
     },
     {
       "id": "e5f6a7b8-...",
@@ -98,7 +99,8 @@ Response:
       "public_key_hex": "aabbccdd...",
       "address": "7xKX...",
       "is_active": true,
-      "created_at": "2026-05-16T12:00:00Z"
+      "created_at": "2026-05-16T12:00:00Z",
+      "custody": "server"
     }
   ]
 }
@@ -133,21 +135,18 @@ Response:
 {
   "chain": "ethereum",
   "address": "0x4e83...",
-  "native_balance": "1.234567890000000000",
-  "tokens": [
-    {
-      "contract": "0xA0b8...",
-      "symbol": "USDC",
-      "decimals": 6,
-      "balance": "500.000000"
-    }
-  ]
+  "native": {
+    "symbol": "ETH",
+    "balance_wei": "1234567890000000000",
+    "balance_display": "1.23456789"
+  },
+  "tokens": []
 }
 ```
 
 ### Send from treasury wallet
 
-Send native currency or ERC-20 tokens from your treasury wallet. Signs an EIP-1559 transaction and broadcasts via RPC. Requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.send`.
+Send native currency or ERC-20 tokens from your treasury wallet. Signs an EIP-1559 transaction and broadcasts via RPC. On EVM chains the amount is `value_wei`, an integer string in wei (`value` is accepted as an alias); on other chains it is a decimal in major units. Requires password re-authentication via the `X-Auth-Confirm` header. Audit-logged as `treasury_wallet.send`.
 
 ```bash
 curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/send" \
@@ -156,7 +155,7 @@ curl -X POST "https://api.1claw.co/v1/treasury/wallets/ethereum/send" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "0xRecipient...",
-    "value": "0.5"
+    "value_wei": "500000000000000000"
   }'
 ```
 
@@ -256,6 +255,26 @@ curl -X POST "https://api.1claw.co/v1/treasury/wallets/bitcoin/send" \
 `POST /v1/treasury/wallets/{chain}/swap` only supports EVM chains. Non-EVM chains return 400.
 :::
 
+### Self-custody wallets
+
+The wallets above are `custody: server`: 1Claw holds the key. You can also hold a wallet yourself, with 1Claw as one signer of three. Each wallet in `GET /v1/treasury/wallets` carries `custody` (`server`, `client_tss`, `client_multisig`) and, for self-custody wallets, `backup`. The full model, recovery and offline tool are on [Key custody](/docs/security/custody).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/keys/tss/chains` | Chains your organization can create self-custody wallets on (`chains`, `multisig_chains`, `multisig_safe_chains`) |
+| POST | `/v1/keys/tss/keygen/begin`, `…/round2`, `…/complete` | 2-of-3 FROST key generation with your browser (Solana; XRP, Cardano and Bitcoin in beta) |
+| POST | `/v1/treasury/wallets/{chain}/tss/prepare` | Build a self-custody transfer (`to`, `value`, optional `memo`, optional `approval_id`) |
+| POST | `/v1/treasury/wallets/{chain}/tss/broadcast` | Submit the co-signed transfer |
+| POST | `/v1/treasury/multisig/wallets` | Create a Tron 2-of-3 multisig wallet (beta) |
+| POST | `/v1/treasury/wallets/{chain}/multisig/activation`, `…/activation/complete`, `…/activation/status` | Install the 2-of-3 account permission on Tron |
+| POST | `/v1/treasury/wallets/{chain}/multisig/prepare`, `…/broadcast` | Send from an active Tron multisig wallet |
+| POST, GET | `/v1/treasury/multisig-safes` | Create or list 2-of-3 Safes on EVM (beta) |
+| DELETE | `/v1/treasury/multisig-safes/{id}` | Retire a Safe that was never deployed and holds nothing |
+| POST | `/v1/treasury/multisig-safes/{id}/prepare`, `…/execute` | Send native coin from a 2-of-3 Safe |
+| POST | `/v1/keys/{key_id}/kit` | Confirm a recovery kit with a kit proof |
+
+These routes are driven by the dashboard and `@1claw/tss-wasm` in the browser: every send needs the device's signature, so they are not useful from a server script alone. Every `prepare` runs wallet access, the sanctions screen, spend policies, Cedar/OPA policy and `treasury_send` consensus (`202` with `pending_approval_id`; call again with `approval_id`). Export and rotate refuse self-custody wallets with `409`.
+
 ### Rotate keypair
 
 Deactivates the current wallet and generates a new keypair for the same chain. The old wallet is retained for audit but its key is no longer usable.
@@ -328,7 +347,7 @@ curl -X POST "https://api.1claw.co/v1/treasury/{id}/access-requests/{rid}/approv
     "auto_add_signer": true,
     "delegation_mode": "delegated",
     "guardrails": {
-      "max_value_eth": "1.0",
+      "max_value_eth": 1.0,
       "to_allowlist": ["0xrecipient..."]
     }
   }'
@@ -467,9 +486,11 @@ curl -X POST "https://api.1claw.co/v1/webhooks" \
   -d '{
     "url": "https://your-app.com/webhook",
     "events": ["wallet.transfer.sent", "proposal.executed"],
-    "secret": "your-hmac-secret"
+    "description": "Treasury events"
   }'
 ```
+
+The response includes the signing `secret` once; store it to verify deliveries.
 
 Failed deliveries are retried up to 5 times with exponential backoff.
 

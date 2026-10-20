@@ -99,18 +99,18 @@ All API endpoints are organized into resource modules:
 | `client.agents`            | `create()`, `list()`, `get()`, `update()`, `delete()`, `rotateKey()`, `enroll()`, `submitTransaction()`, `signTransaction()`, `listTransactions()`, `getTransaction()`, `simulateTransaction()`, `simulateBundle()`, `sign()`, `leaseBankrKey()`, `listBankrKeys()`, `revokeBankrKey()`, `importSmartAccount()` |
 | `client.signingKeys`       | `create()`, `list()`, `rotate()`, `deactivate()`, `export()`, `importKey()`                         |
 | `client.sharing`           | `create()`, `access()`, `revoke()`                                                                 |
-| `client.approvals`         | `request()`, `list()`, `get()`, `decide()`                                                         |
+| `client.approvals`         | `request()`, `list()`, `approve()`, `deny()`, `decide()`, `getStatus()`, `cancel()`, `check()`, `subscribe()`                                                       |
 | `client.apiKeys`           | `create()`, `list()`, `revoke()`                                                                   |
-| `client.billing`           | `usage()`, `history()`, `subscribe()`, `portal()`, `subscription()`, `creditsTopup()`, `creditsBalance()`, `creditsTransactions()`, `llmTokenBilling()`, `subscribeLlmTokenBilling()`, `disableLlmTokenBilling()` |
+| `client.billing`           | `usage()`, `history()`, `llmTokenBilling()`, `subscribeLlmTokenBilling()`, `disableLlmTokenBilling()`, `cancelLlmDuplicateSubscriptions()` |
 | `client.audit`             | `query()`                                                                                          |
 | `client.org`               | `listMembers()`, `updateMemberRole()`, `removeMember()`, `getBankrConfig()`, `setBankrConfig()`, `deleteBankrConfig()` |
 | `client.x402`              | `getPaymentRequirement()`, `pay()`, `verifyReceipt()`, `withPayment()`                             |
 | `client.chains`            | `list()`, `get()`                                                                                  |
 | `client.treasury`          | `create()`, `list()`, `get()`, `update()`, `delete()`, `addSigner()`, `removeSigner()`, `propose()`, `listProposals()`, `getProposal()`, `signProposal()`, `executeProposal()` |
-| `client.treasuryWallets`   | `generate()`, `list()`, `get()`, `balance()`, `send()`, `swap()`, `export()`, `rotate()`, `deactivate()`, `getEffectiveSpendPolicy()` |
+| `client.treasuryWallets`   | `generateWallets()`, `listWallets()`, `getWallet()`, `getWalletBalance()`, `sendFromWallet()`, `swapFromWallet()`, `exportWallet()`, `rotateWallet()`, `deactivateWallet()`, `importWallet()`, `getEffectiveSpendPolicy()` |
 | `client.platform`          | `createApp()`, `listApps()`, `getApp()`, `updateApp()`, `deleteApp()`, `createTemplate()`, `listTemplates()`, `upsertUser()`, `bootstrapUser()`, `reissueClaim()`, `listConnectedApps()`, `claimPreview()`, `claimRedeem()`, `createSpendPolicy()`, `listSpendPolicies()`, `setUserSpendPolicy()`, `deleteSpendPolicy()`, `getConnectionOtelTopology()`, `getConnectionOtelThreats()`, `getConnectionOtelSummary()`, `connectionOtelStream()` |
 | `client.devices`           | `list()`, `revoke()`                                                                               |
-| `client.passkeys`          | `list()`, `register()`, `delete()`                                                                 |
+| `client.passkeys`          | `list()`, `registerBegin()`, `registerComplete()`, `revoke()`                                                               |
 | `client.depositDestinations` | `create()`, `list()`, `get()`, `update()`                                                        |
 | `client.internalAccounts`  | `create()`, `list()`, `get()`, `transfer()`, `getLedger()`                                         |
 | `client.fiat`              | `createOnrampSession()`, `initiateOfframp()`                                                       |
@@ -169,7 +169,8 @@ await client.envVars.create(vaultId, {
   sensitive: true,
 });
 
-const { vars, sources } = await client.envVars.resolve(vaultId, "production");
+const { data: resolved } = await client.envVars.resolve(vaultId, "production");
+// resolved.vars, resolved.sources
 ```
 
 Tag agents with an environment for auto-resolve and policy scoping:
@@ -182,7 +183,7 @@ await client.agents.create({
 });
 
 // When env_auto_resolve is true on the agent JWT, omit environment
-const { vars } = await client.envVars.resolve(vaultId);
+const { data } = await client.envVars.resolve(vaultId);
 ```
 
 See [Environment Variables](/docs/guides/environment-variables) and [Agent Environment Tagging](/docs/guides/agent-environment-tagging).
@@ -218,7 +219,7 @@ const result = await handler.handle("1claw_get_secret", {
 });
 ```
 
-Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_keys`, `1claw_request_approval`, `1claw_check_approval_status`, `1claw_pay_and_fetch`, `1claw_create_vault`, `1claw_list_vaults`, `1claw_share_secret`.
+Available MCP tools: `1claw_get_secret`, `1claw_set_secret`, `1claw_list_secret_keys`, `1claw_delete_secret`, `1claw_request_approval`, `1claw_check_approval_status`, `1claw_pay_and_fetch`, `1claw_create_vault`, `1claw_list_vaults`, `1claw_share_secret`.
 
 ## Examples
 

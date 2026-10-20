@@ -78,7 +78,7 @@ The response includes the `public_key`, derived `address`, `curve`, and `key_ver
 | List | `GET /v1/agents/{id}/signing-keys` | `client.signingKeys.list(agentId)` |
 | Rotate | `POST /v1/agents/{id}/signing-keys/{chain}/rotate` | `client.signingKeys.rotate(agentId, chain)` |
 | Deactivate | `DELETE /v1/agents/{id}/signing-keys/{chain}` | `client.signingKeys.deactivate(agentId, chain)` |
-| Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | `client.signingKeys.export(agentId, chain, { password })` |
+| Export | `POST /v1/agents/{id}/signing-keys/{chain}/export` | `client.signingKeys.export(agentId, chain, password)` |
 
 Only human users can provision, rotate, and export keys — agents get 403. Export requires password re-authentication via the `X-Auth-Confirm` header and is audit-logged as `signing_key.export`. Failed re-auth increments `failed_login_attempts` and can trigger account lockout. Keys for non-EVM chains (Bitcoin, Solana, XRP, Cardano, Tron) support both address derivation **and on-chain transaction signing + broadcast** — see [Non-EVM transaction signing](#non-evm) below.
 
@@ -148,7 +148,7 @@ Bitcoin testnet/signet addresses use the `tb1q…` prefix (derived from the same
 | Bitcoin | [mempool.space](https://mempool.space/) | None (public API) |
 | Solana | Solana JSON-RPC | None (public endpoints: `api.devnet.solana.com`, `api.mainnet-beta.solana.com`) |
 | XRP | XRPL HTTP JSON-RPC | None (public: `xrplcluster.com`, `s.altnet.rippletest.net:51234`) |
-| Cardano | [Blockfrost](https://blockfrost.io/) | `BLOCKFROST_PROJECT_ID` (generic fallback), or per-network: `BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_PREVIEW`, `BLOCKFROST_PROJECT_ID_MAINNET`. Also accepts `BLOCKFROST_API_KEY` as an alias. Free tier: 50k req/day. |
+| Cardano | [Blockfrost](https://blockfrost.io/), or [Koios](https://koios.rest/) when no Blockfrost key is set | Optional. `BLOCKFROST_PROJECT_ID` (generic fallback), or per-network: `BLOCKFROST_PROJECT_ID_PREPROD`, `BLOCKFROST_PROJECT_ID_PREVIEW`, `BLOCKFROST_PROJECT_ID_MAINNET`. Also accepts `BLOCKFROST_API_KEY` as an alias. Without any of these, the free Koios API (no key) is used. |
 | Tron | [TronGrid](https://www.trongrid.io/) | None (public API: `api.trongrid.io`, `api.shasta.trongrid.io`) |
 
 #### Cardano Preprod faucet (API)
@@ -227,13 +227,25 @@ const { data: usdt } = await client.agents.signTransaction(agentId, {
 from oneclaw import create_client
 
 client = create_client(api_key="ocv_...")
-resp = client.agents.submit_transaction(
+
+# Solana: send 0.25 SOL
+sol = client.agents.submit_transaction(
     agent_id,
-    chain="ethereum",
-    to="0x000000000000000000000000000000000000dEaD",
-    value="0",
+    chain="solana-devnet",
+    to="9xQ...",
+    value="0.25",
 )
-print(resp.data.get("tx_hash"))
+print(sol.data.get("tx_hash"), sol.data.get("status"))
+
+# Tron TRC-20 (USDT): send 5 tokens, sign only (no broadcast)
+usdt = client.agents.sign_transaction(
+    agent_id,
+    chain="tron",
+    to="TR7NH...",
+    value="5",
+    token_mint="TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+    token_decimals=6,
+)
 ```
 
 </TabItem>
@@ -339,14 +351,14 @@ console.log(data.signature, data.message_hash, data.from);
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+client = create_client(api_key="ocv_...")
+resp = client.agents.sign_intent(
+    agent_id,
+    intent_type="personal_sign",
+    chain="ethereum",
+    message="Hello from my agent!",
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+print(resp.data["signature"], resp.data["message_hash"], resp.data["from"])
 ```
 
 </TabItem>
@@ -398,14 +410,19 @@ console.log(data.signature, data.typed_data_hash, data.from);
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="1ck_...")
-resp = client.agents.create(
-    "my-agent",
-    description="CI/CD bot",
-    intents_api_enabled=True,
+client = create_client(api_key="ocv_...")
+resp = client.agents.sign_intent(
+    agent_id,
+    intent_type="typed_data",
+    chain="ethereum",
+    typed_data={
+        "types": {"Permit": [...]},
+        "primaryType": "Permit",
+        "domain": {"name": "USD Coin", "version": "2", "chainId": 1, "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"},
+        "message": {"owner": "0x...", "spender": "0x...", "value": "1000000", "nonce": "0", "deadline": "1735689600"},
+    },
 )
-agent = resp.data["agent"]
-api_key = resp.data.get("api_key")  # shown once
+print(resp.data["signature"], resp.data["typed_data_hash"], resp.data["from"])
 ```
 
 </TabItem>

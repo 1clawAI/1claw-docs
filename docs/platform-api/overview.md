@@ -26,8 +26,7 @@ curl -X POST "https://api.1claw.co/v1/platform/apps" \
     "description": "DeFi automation for end users",
     "billing_model": "platform_pays",
     "auth_mode": "silent",
-    "max_connected_users": 1000,
-    "max_requests_per_minute": 120
+    "max_connected_users": 1000
   }'
 ```
 
@@ -38,7 +37,6 @@ Optional fields on app creation:
 | Field | Type | Description |
 |---|---|---|
 | `max_connected_users` | integer | Cap on connected users (new connections rejected when reached) |
-| `max_requests_per_minute` | integer | Per-app rate limit for Platform API endpoints |
 
 :::tip Key expiration and rotation
 Set `api_key_expires_at` (ISO 8601) when creating the app to auto-expire the key. Rotate at any time with `POST /v1/platform/apps/{id}/rotate-key`, optionally setting a new expiry. Expired keys return 401.
@@ -87,8 +85,7 @@ curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
-    "external_subject": "telegram:123456789"
+    "email": "user@example.com"
   }'
 ```
 
@@ -100,7 +97,6 @@ curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "external_subject": "telegram:123456789",
     "create_sub_org": true
   }'
 ```
@@ -178,11 +174,11 @@ Agent wallet addresses come from **signing keys** provisioned at bootstrap (`sum
 ```bash
 curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/signing-keys?agent_id=AGENT_UUID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
-# → { "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1", "is_active": true }] }
+# → { "agent_id": "...", "keys": [{ "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1" }] }
 
 curl "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/signing-keys/ethereum?agent_id=AGENT_UUID" \
   -H "Authorization: Bearer plt_YOUR_KEY"
-# → { "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1" }
+# → { "agent_id": "...", "chain": "ethereum", "address": "0x...", "public_key": "...", "curve": "secp256k1" }
 ```
 
 :::warning `wallet_address` ≠ agent signing key
@@ -199,7 +195,6 @@ curl -X POST "https://api.1claw.co/v1/agents/AGENT_UUID/transactions" \
   -H "Content-Type: application/json" \
   -d '{
     "chain": "ethereum",
-    "chain_id": 1,
     "to": "0xRecipientAddress",
     "value": "0.01",
     "data": "0x"
@@ -215,7 +210,6 @@ curl -X POST "https://api.1claw.co/v1/agents/AGENT_UUID/transactions/sign" \
   -H "Content-Type: application/json" \
   -d '{
     "chain": "ethereum",
-    "chain_id": 1,
     "to": "0xRecipientAddress",
     "value": "0.01",
     "data": "0x"
@@ -549,12 +543,34 @@ want — see:
 | GET | `/v1/platform/connections/{id}/signing-keys?agent_id=` | List agent signing keys (public metadata only — never private keys) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}?agent_id=` | Deactivate signing key for connection agent |
+| POST | `/v1/platform/connections/{id}/agents` | Add one agent to an already-bootstrapped connection from a template (`template_id`, optional `params`); raw signing always provisioned off |
 | PATCH | `/v1/platform/connections/{id}/agents/{agent_id}` | Enable Intents/Execution Intents, memory, update `system_prompt`, turn raw signing off (on needs the end user's re-auth token) |
 | GET | `/v1/platform/connections/{id}/portfolio` | Agent portfolio/balances (`?chains=`, `?include_tokens=`) |
 | GET | `/v1/platform/connections/{id}/balances` | Alias for portfolio |
 | GET/POST | `/v1/platform/connections/{id}/automations` | List/create automations for connection agents |
 | POST | `/v1/platform/connections/{id}/automations/{aid}/runs/{rid}/cancel` | Cancel automation run |
 | GET/PUT/DELETE | `/v1/platform/connections/{id}/memory/{namespace}/{key}` | Connection-scoped agent memory (optional `?agent_id=`) |
+
+### Add an agent to an existing connection
+
+Bootstrap runs once per connection. To add an agent later, `POST /v1/platform/connections/{id}/agents` with a template of your app: only the template's agent portion (`agents`, per-agent `signing_keys`, `eoa`, `runtime`) is applied, and the new agent attaches to the vault the connection already has. One agent per call; a template declaring more is refused with `400`. The response carries the agent's API key once.
+
+An agent added this way always has `raw_signing_enabled: false`, whatever the template says. Raw signing can only be on at the initial bootstrap, which runs on the end user's consent (and there it also sets `raw_signing_policy` to `approve`). To enable it on an added agent, use the end user's re-auth route [below](#raw-blind-signing-on-a-connection-agent).
+
+```bash
+curl -X POST "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/agents" \
+  -H "Authorization: Bearer plt_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "template_id": "TEMPLATE_UUID", "params": { "account": "0xabc..." } }'
+```
+
+```typescript
+const { data } = await client.platform.addConnectionAgents(connectionId, {
+  template_id: templateId,
+  params: { account: "0xabc..." },
+});
+// data.agent_api_keys[0].api_key is the new agent's key, shown once
+```
 
 ### Enable Intents on an existing agent (no re-bootstrap)
 
@@ -892,18 +908,17 @@ First `POST /v1/platform/siwe/challenge` with optional `domain` in the body auto
 curl -X POST "https://api.1claw.co/v1/platform/siwe/challenge" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "domain": "myapp.com" }'
-# → { "message": "...", "nonce": "...", "expires_at": "..." }
+  -d '{ "domain": "myapp.com" }'
+# → { "nonce": "...", "expires_in": ..., "domain": "myapp.com" }
 
-# 2. User signs message in wallet, then upsert
+# 2. Build an EIP-4361 message with that nonce and domain, have the user sign it, then upsert
 curl -X POST "https://api.1claw.co/v1/platform/users/upsert" \
   -H "Authorization: Bearer plt_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "subject_token_type": "urn:1claw:params:oauth:token-type:siwe",
     "siwe_message": "<EIP-4361 message>",
-    "siwe_signature": "0x<65-byte ECDSA hex>",
-    "external_subject": "eip155:1:0x742d35cc6634c0532925a3b844bc9e7595f0beb0"
+    "siwe_signature": "0x<65-byte ECDSA hex>"
   }'
 ```
 
@@ -983,7 +998,10 @@ curl -X DELETE "https://api.1claw.co/v1/platform/connections/CONNECTION_ID/grant
 
 ```typescript
 // User-authenticated client (1ck_ key)
-const userClient = new OneclawClient({ apiKey: "1ck_user_key" });
+const userClient = new OneclawClient({
+  baseUrl: "https://api.1claw.co",
+  apiKey: "1ck_user_key",
+});
 
 // Grant access
 const { data } = await userClient.platform.grantAccess(connectionId, {
@@ -1142,14 +1160,7 @@ curl -X POST "https://api.1claw.co/v1/platform/connections/CONN_ID/bootstrap" \
 
 ## Platform Rate Limiting
 
-Per-app rate limits are enforced on all Platform API endpoints. Set `max_requests_per_minute` when creating or updating your app:
-
-```bash
-curl -X PATCH "https://api.1claw.co/v1/platform/apps/APP_ID" \
-  -H "Authorization: Bearer YOUR_USER_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{ "max_requests_per_minute": 120 }'
-```
+Platform API calls made with a `plt_` key are rate limited per app: a burst of 100 requests, refilling at 20 per second. Delegated calls (`X-Platform-Connection`) are also limited per connection: a burst of 20, refilling at 5 per second. Bootstrap has its own per-app bucket with a burst of 10. These limits are fixed; there is no per-app setting.
 
 Requests exceeding the limit return `429 Too Many Requests`.
 
@@ -1324,7 +1335,7 @@ Delegation scopes are enforced on 4 handler groups: secrets, policies, bindings,
 
 ```typescript
 const scoped = client.platform.withConnection(connectionId);
-const vaults = await scoped.listVaults();
+const vaults = await scoped.vaults.list();
 ```
 
 ### Delegation log
@@ -1350,9 +1361,11 @@ GET /v1/platform/connections/{connection_id}/delegation-log
 ```typescript
 import { OneclawClient } from "@1claw/sdk";
 
+// A plt_ key is sent as the bearer token as-is: pass it as `token`.
+// `apiKey` is for ocv_ and 1ck_ keys, which the SDK exchanges for a JWT.
 const client = new OneclawClient({
   baseUrl: "https://api.1claw.co",
-  apiKey: "plt_YOUR_KEY",
+  token: "plt_YOUR_KEY",
 });
 
 // Create a template
@@ -1368,7 +1381,6 @@ const template = await client.platform.createTemplate(appId, {
 // Provision + bootstrap a user
 const user = await client.platform.upsertUser({
   email: "user@example.com",
-  external_subject: "tg:12345",
 });
 const result = await client.platform.bootstrapUser(user.data.connection_id, {
   template_id: template.data.id,
@@ -1381,49 +1393,53 @@ console.log("Agent API Key:", result.data.summary.agent_api_key); // one-time �
 ### Python
 
 ```python
-from oneclaw import OneclawClient
+from oneclaw import create_client
 
-client = OneclawClient(
+# A plt_ key is sent as the bearer token as-is: pass it as `token`.
+# `api_key` is for ocv_ and 1ck_ keys, which the SDK exchanges for a JWT.
+client = create_client(
     base_url="https://api.1claw.co",
-    api_key="plt_YOUR_KEY",
+    token="plt_YOUR_KEY",
 )
 
 # Create a template
-template = client.platform.create_template(app_id, {
-    "name": "default-template",
-    "spec": {
+template = client.platform.create_template(
+    app_id,
+    "default-template",
+    {
         "vault": {"name": "user-vault"},
         "agents": [{"name": "bot", "intents": {"enabled": True}}],
         "signing_keys": [{"chain": "ethereum"}],
         "policies": [{"principal_ref": "agents.primary", "vault_ref": "vault", "paths": ["**"]}],
     },
-})
+)
 
-# Provision + bootstrap a user
-user = client.platform.upsert_user({
-    "email": "user@example.com",
-    "external_subject": "tg:12345",
-})
-result = client.platform.bootstrap_user(user["connection_id"], {
-    "template_id": template["id"],
-})
-print("Claim URL:", result["claim_url"])
-print("Agent ID:", result["summary"]["agent_id"])
-print("Agent API Key:", result["summary"]["agent_api_key"])  # one-time — store securely
-print("Signing keys:", result["summary"]["signing_keys"])
+# Provision + bootstrap a user (every method returns a response with .data and .error)
+user = client.platform.upsert_user(email="user@example.com")
+result = client.platform.bootstrap_user(
+    user.data["connection_id"],
+    template.data["id"],
+)
+summary = result.data["summary"]
+print("Claim URL:", result.data["claim_url"])
+print("Agent ID:", summary["agent_id"])
+print("Agent API Key:", summary["agent_api_key"])  # one-time — store securely
+print("Signing keys:", summary["signing_keys"])
+
+# Key rotation needs an org owner or admin (user key or JWT), not a plt_ key
+admin = create_client(base_url="https://api.1claw.co", api_key="1ck_YOUR_USER_KEY")
 
 # Rotate platform key
-rotated = client.platform.rotate_key(app_id, {
-    "api_key_expires_at": "2027-01-01T00:00:00Z",
-})
-print("New key:", rotated["api_key"])
+rotated = admin.platform.rotate_key(app_id, api_key_expires_at="2027-01-01T00:00:00Z")
+print("New key:", rotated.data["api_key"])
 
 # Create a spend policy
-policy = client.platform.create_spend_policy(app_id, {
-    "max_value_per_tx_eth": "0.5",
-    "daily_limit_eth": "2.0",
-    "allowed_chains": ["ethereum", "base"],
-})
+policy = client.platform.create_spend_policy(
+    app_id,
+    max_value_per_tx_eth="0.5",
+    daily_limit_eth="2.0",
+    allowed_chains=["ethereum", "base"],
+)
 ```
 
 ---
@@ -1438,7 +1454,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | PATCH | `/v1/platform/apps/{id}` | User JWT (full update) or `plt_` (**siwe_domain only**) | Update platform app |
 | DELETE | `/v1/platform/apps/{id}` | User JWT | Delete platform app |
 | POST | `/v1/platform/apps/{id}/rotate-key` | User JWT | Rotate `plt_` API key |
-| POST | `/v1/platform/apps/{id}/templates` | User JWT | Create bootstrap template |
+| POST | `/v1/platform/apps/{id}/templates` | User JWT or `plt_` | Create bootstrap template |
 | GET | `/v1/platform/apps/{id}/templates` | User JWT or `plt_` | List templates |
 | GET | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Get template by ID |
 | PATCH | `/v1/platform/apps/{id}/templates/{tid}` | User JWT or `plt_` | Update template |
@@ -1462,6 +1478,7 @@ policy = client.platform.create_spend_policy(app_id, {
 | GET | `/v1/platform/connections/{id}/signing-keys` | `plt_` key | List agent signing keys (public metadata) |
 | GET | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Single-chain signing key lookup |
 | DELETE | `/v1/platform/connections/{id}/signing-keys/{chain}` | `plt_` key | Deactivate agent signing key |
+| POST | `/v1/platform/connections/{id}/agents` | `plt_` key | Add one agent from a template (`template_id`, `params`); `raw_signing_enabled` is always off |
 | PATCH | `/v1/platform/connections/{id}/agents/{aid}` | `plt_` key | Patch `intents_api_enabled`, `execution_intents_enabled`, `memory_enabled`, `system_prompt`; `raw_signing_enabled` off directly, on only with the end user's `X-Auth-Confirm` token |
 | GET | `/v1/platform/connections/{id}/portfolio` | `plt_` key | Agent portfolio/balances for connection |
 | GET | `/v1/platform/connections/{id}/balances` | `plt_` key | Alias for portfolio |

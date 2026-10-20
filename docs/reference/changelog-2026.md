@@ -8,7 +8,43 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-19 {#2026-10-19}
+
+**Sanctions: a bare 40-hex EVM address is screened like its `0x` form.** The OFAC screen compared addresses in their `0x` lowercase form, and an EVM `to` written as 40 hex digits without `0x` was accepted by the signing paths but not recognised by the screen. Every EVM address is now put in the same canonical form before it is screened, and the spend-policy allow and deny lists use that form too. A listed address is refused with `403` however it is written. See [Key custody](/docs/security/custody#every-custody-model-sits-behind-the-same-screens).
+
+**Self-custody sends run policy and consensus at `prepare`.** `POST /v1/treasury/wallets/{chain}/tss/prepare`, `POST /v1/treasury/wallets/{chain}/multisig/prepare` (Tron) and `POST /v1/treasury/multisig-safes/{id}/prepare` (2-of-3 Safes) now run your Cedar/OPA transaction policy and the `treasury_send` M-of-N consensus policy, the same checks a server-custody treasury send runs, because the vault co-signs these transfers. A consensus hold answers `202` with `status: pending_approval` and `pending_approval_id`; once it is approved and executed, call `prepare` again with the same transfer and the new optional `approval_id` field. Safe `prepare` also checks wallet access. See [Policy engine: self-custody sends](/docs/treasury/policy-engine#self-custody-sends).
+
+**Safe sends count toward the daily cap.** Sends from 2-of-3 Safes and passkey-owned Safes were recorded in the spend ledger at 0 ETH, so they never counted against a daily limit. They are now recorded at their value.
+
+**Agents added to a platform connection keep raw signing off.** An agent created with `POST /v1/platform/connections/{id}/agents` always has `raw_signing_enabled: false`, whatever the template says; only the initial bootstrap, which runs on the end user's consent, can turn it on, and when it does it also sets `raw_signing_policy` to `approve`. To enable raw signing on an added agent, use the end user's re-auth route on `PATCH /v1/platform/connections/{id}/agents/{agent_id}`. See [Add an agent to an existing connection](/docs/platform-api/overview#add-an-agent-to-an-existing-connection).
+
+**Database bindings accept two TLS modes.** `postgres` bindings accept only `sslmode=verify-full` or `sslmode=disable`, and `mysql` bindings only `ssl-mode=VERIFY_IDENTITY` or `ssl-mode=DISABLED`. Every other mode, and a connection string that names none (the driver default is `prefer`), is refused with `400` at execute and test time. If your binding's connection string has no mode, add `sslmode=verify-full`. See [Database bindings: TLS mode](/docs/agents/intents/guardrails#database-tls-mode).
+
+**Binding tests.** `POST /v1/agents/{id}/bindings/{binding_id}/test` clamps `timeout_ms` to 1000 through 30000 (default 5000), and its `error` is scrubbed of the binding's credential the same way `execute` results are.
+
+**Request headers on `custom` and `grpc` bindings.** Headers an agent passes on a `custom` or `grpc` execute now go through the same `allowed_request_headers` guardrail as `http` and `graphql` (default `content-type`, `accept`, `user-agent`, `idempotency-key`). `grpc` bindings let gRPC and Connect protocol headers (`grpc-*`, `connect-*`, such as `grpc-timeout` or `connect-protocol-version`) through without an allowlist entry, except names containing `auth` or `host`. See [Agent-supplied request headers](/docs/agents/intents/guardrails#request-headers).
+
+**Adding a passkey wrap needs a step-up.** A second or later wrap of a self-custody share, through `PUT /v1/keys/{key_id}/client-share` or `POST /v1/keys/{key_id}/client-share/rewrap`, needs re-authentication in `X-Auth-Confirm` with purpose `tss.key.wrap_add` (a passkey or authenticator app once either is enrolled). The first wrap of a new key or a refresh does not.
+
+**Kits are confirmed only with a proof.** `POST /v1/treasury/multisig/wallets` and `POST /v1/treasury/multisig-safes` no longer take a `kit_sealed` flag. A multisig wallet's kit is recorded only by `POST /v1/keys/{key_id}/kit` with the recovery key's proof.
+
+**Child agents of a paying parent.** Creating a child of an agent with 1Claw Pay or cards enabled now needs an org owner or admin, because the child copies the parent's pay and card guardrails and so opens a new daily spend bucket.
+
+**Rotation.** A signing-key or treasury-wallet rotation that fails after the new key is written rolls the stored version back, and two rotations of the same key cannot run at once.
+
 ### 2026-10-18 {#2026-10-18}
+
+**Bitcoin self-custody (beta).** 2-of-3 self-custody wallets on Bitcoin, as Taproot (BIP86) addresses whose key is FROST over secp256k1 (`frost-secp256k1-tr`). The vault builds a PSBT from confirmed UTXOs and signs only spends of the wallet's own Taproot outputs to standard addresses, with no `OP_RETURN`, nothing below dust and a fee inside a fixed band; your browser runs the same checks. A Bitcoin transfer has one signature per input, so `sign/begin` now also returns `signing_payloads` and `server_commitments_all`, and `sign/complete` and `broadcast` take lists; the single-payload fields are unchanged for Solana, XRP and Cardano clients. `oneclaw-recover` sends and sweeps Bitcoin from a kit. See [Key custody](/docs/security/custody).
+
+**Tron 2-of-3 native multisig (beta).** A Tron self-custody wallet is three ordinary keys (1Claw's, your device's and your recovery key) under the account's own 2-of-3 owner and active permissions (`custody: client_multisig`). Create with `POST /v1/treasury/multisig/wallets`, activate (at least 101 TRX on the address; the network burns 100 TRX) with `…/multisig/activation`, `…/activation/complete` and `…/activation/status`, and send with `…/multisig/prepare` and `…/multisig/broadcast`. `oneclaw-recover` spends from the kit without 1Claw. See [Tron 2-of-3 native multisig](/docs/security/custody#tron-2-of-3-native-multisig-beta).
+
+**2-of-3 Safes on EVM (beta).** A Safe v1.4.1 with three owners (1Claw's key, your device key, your recovery key) and threshold 2 on Base, Optimism, Arbitrum, Polygon, Ethereum, Base Sepolia and Sepolia: `POST`/`GET /v1/treasury/multisig-safes`, `POST …/{id}/prepare` and `…/{id}/execute` for native transfers, and `DELETE …/{id}` to retire one that was never deployed and holds nothing. Your Ethereum treasury wallet pays gas. Unlike a passkey-owned Safe, losing every passkey is recoverable from the kit. See [2-of-3 Safes on EVM](/docs/security/custody#2-of-3-safes-on-evm-beta).
+
+All three are enabled per organization during the beta and listed by `GET /v1/keys/tss/chains` (`chains`, `multisig_chains`, `multisig_safe_chains`). The wallet list reports `multisig_status` and the three public keys for a multisig wallet.
+
+**Dashboard: agent settings and treasury could render blank.** A build artifact from 2026-10-17 failed to parse in the browser, so the agent detail page and the treasury page rendered empty and row clicks did nothing. Fixed, and CI now parses every built chunk.
+
+**Postgres over TLS to SNI-routed hosts works again.** The previous day's change pinned every database connection to an IP address, which drops the TLS server name, and Neon and PlanetScale route on it. TLS connections now keep the hostname (it is still resolved and checked first); only plaintext connections are pinned.
 
 **Agent self-custody sends are gated at `prepare`, and `prepare` can answer `202`.** `POST /v1/agents/{agent_id}/tss/prepare` now runs the approval policy, Cedar/OPA policy and M-of-N consensus as well as the guardrails and sanctions screen, and writes a `prepared` ledger row before returning, so daily limits count the transfer from that moment. A human-approval hold answers `202` with `status: awaiting_approval`, `transaction_id` and `approval_id` (action `agent_tss_transaction`); call `prepare` again with `resume_tx_id` once approved. A consensus hold answers `202` with `pending_approval_id`; call again with `approval_id`. The response gains `transaction_id`. `sign/complete` and `broadcast` refuse a prepare that recorded no ledger row, and `broadcast` no longer re-runs the guardrails.
 
@@ -25,6 +61,47 @@ sidebar_label: "2026"
 **CMEK** cannot be enabled or rotated on `__agent-keys` or `__treasury-keys` (`400`).
 
 **Pay.** Only owners and admins may change Pay settings or create spending grants. No allowlist is not a wildcard: an unattended agent with no allowlist can pay no one, and naming any recipient not already listed is a widening that needs the step-up.
+
+### 2026-10-17 {#2026-10-17}
+
+**2-of-3 self-custody wallets.** A `client_tss` wallet is now a 2-of-3 FROST key: the vault holds share 1, your browser runs participants 2 and 3 in a dealerless key generation, and neither the vault nor anyone else ever holds the full key. Share 2 is wrapped under your passkey (WebAuthn PRF, one salt per account from `GET /v1/keys/tss/prf-salt`, a separate wrap key per wallet). Share 3 goes only into an **offline recovery kit**, sealed in your browser under a recovery code that never reaches 1Claw, and a wallet is not created until its kit has been downloaded and proved. Any two shares sign: the vault and your passkey every day, or your kit and code with no 1Claw involvement.
+
+- **Backup gate.** A wallet is "backed up" when a passkey holds share 2 and a kit for its current shares is confirmed (`backup` on `GET /v1/treasury/wallets`). Runtimes and agents refuse a wallet that is not backed up.
+- **Restore from kit.** Lost every passkey: the kit and code are opened in your browser and share 2 is wrapped under a new passkey (`POST /v1/keys/{key_id}/client-share/restore`, re-authentication purpose `tss.key.restore`). Audited and sent as the webhook `tss_key.recovered_via_code`.
+- **Share refresh.** If a passkey or device is compromised, the same participants mint new shares of the same key (same address) and retire the old ones. Two-phase, so an interrupted refresh can be finished or abandoned (`/v1/keys/{key_id}/tss/refresh/begin`, `round2`, `complete`, `commit`, `abort`). Webhook `tss_key.resharded`.
+- **XRP and Cardano** self-custody wallets alongside Solana, with device-checked signing: your browser derives the bytes it signs and refuses anything but a plain native transfer.
+- **Per-organization rollout.** Solana is on for everyone; XRP and Cardano are enabled per organization. `GET /v1/keys/tss/chains` lists what yours can create. Only creation is gated.
+- **Offline recovery tool.** [`oneclaw-recover`](https://github.com/1clawAI/1claw/tree/main/packages/tss-recovery) signs with shares 2 and 3 on your machine using only public network endpoints: `addresses`, `prepare`, `sign` (offline), `broadcast`.
+- **Agents co-sign** XRP and Cardano self-custody wallets through the runtime share holder, and the sidecar derives the signed bytes itself.
+- **Self-custody agent signing keys.** `key_kind: agent_signing_key` on `POST /v1/keys/tss/keygen/begin` creates a 2-of-3 key for an agent that you own. Restoring one from its kit is audited and sent as the webhook `signing_key.recovered`.
+- **Move to self-custody (re-key)** on Solana, XRP and Cardano: `replace_existing: true` sweeps the old wallet's native balance to the new self-custody address. Refused while the old wallet holds anything a native sweep would strand (tokens, trust lines, token UTXOs).
+- **Export refuses self-custody keys** with `409`; there is no private key to export.
+
+See [Key custody](/docs/security/custody).
+
+**Cardano works without a Blockfrost key.** When no Blockfrost project id is configured, Cardano UTXOs, fee parameters, submission, balances and transaction outcomes come from the public Koios API. Server-custody Cardano sends that failed with "Cardano signing requires BLOCKFROST_PROJECT_ID" now go through.
+
+### 2026-10-15 {#2026-10-15}
+
+**Transactions settle to `confirmed`, `reverted` or `dropped`.** `broadcast` used to be the last status a transaction ever reached. A background reconciler now asks the chain: a mined transaction becomes `confirmed` (with `block_number` and `confirmed_at`) or `reverted`, and an EVM transaction whose nonce the sender has moved past without it being mined becomes `dropped`. Solana, XRP, Tron, Bitcoin and Cardano confirm and revert but never drop. A `dropped` transaction stops counting against spend limits. See [Transaction statuses](/docs/agents/intents/overview).
+
+**1Claw Pay answers an x402 challenge in its own version.** `pay.sign` now builds the payment header in the challenge's `x402Version`: a v2 challenge gets `{x402Version: 2, resource, accepted, payload}` with the seller's `accepts` entry echoed unchanged, and a v1 challenge gets `{x402Version: 1, scheme, network, payload}`. The previous hybrid header was refused by strict v2 facilitators such as Coinbase CDP. See [Paying x402 paywalls](/docs/guides/pay).
+
+**CLI 0.61.35.** Interactive password and secret prompts no longer echo what you type.
+
+### 2026-10-14 {#2026-10-14}
+
+**Execution Intents no longer hand the credential back.** An upstream that echoes request headers (debug, echo and whoami endpoints) returned the injected credential to the agent in the execute result, and the audit copy kept it too. The result and the audit record now have the binding's credential removed by exact value before they are returned or stored. (On 2026-10-18 this was extended to encoded forms of the credential and to error messages.)
+
+**CLI 0.61.34.** `1claw agent update` can now complete the re-authentication its guardrail flags require, by prompt or `--password-stdin`, and commands that took a password as a command-line flag read it from stdin instead. `1claw setup` no longer prints a newly provisioned agent key to the terminal.
+
+**Hosted runtimes answer on the model you chose.** Shroud now strips a provider prefix such as `anthropic/` that names the provider it is already calling, and normalises Anthropic model versions to dashes (`claude-opus-4-6`), so runtimes that sent a gateway-style model name stopped failing with a 404. The dashboard offers the runtime restart that applies a model change where you make it.
+
+### 2026-10-13 {#2026-10-13}
+
+**1Claw Pay in the dashboard.** Agent → **1Claw Pay (x402)** turns Pay on and sets the per-payment and daily caps, the passkey requirement and the `payTo` allowlist, and the runtime page links to the bound agent's controls. `GET /v1/agents/{id}` now reports the five `pay_*` guardrails, so a client can see an agent's payment limits. Sending `null` for a Pay setting clears it (removing a cap needs the same step-up as raising one). Every change to an agent's Pay settings is audited with the values before and after. See [Paying x402 paywalls](/docs/guides/pay).
+
+**CLI 0.61.33.** A 1Claw banner above `1claw --help` in a terminal; never in a pipe, with `--json`, or with `ONECLAW_NO_BANNER=1`.
 
 ### 2026-10-12 {#2026-10-12}
 

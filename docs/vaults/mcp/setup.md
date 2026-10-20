@@ -61,8 +61,9 @@ console.log(data.access_token);
 ```python
 from oneclaw import create_client
 
-client = create_client(api_key="ocv_your_agent_key")
-print(client.resolved_agent_id)
+client = create_client()
+resp = client.auth.agent_token("ocv_...", agent_id="<your-agent-uuid>")
+print(resp.data["access_token"])
 ```
 
 </TabItem>

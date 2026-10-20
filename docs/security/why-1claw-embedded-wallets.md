@@ -50,7 +50,7 @@ Hierarchical org management for isolating resources per end-user or business uni
 
 ### Multi-Chain Treasury Wallets
 
-HSM-backed wallet generation for 6 chains. Send, swap (via 0x DEX aggregator), receive, import, export. Vault-level MPC custody optional; org Shamir KEK on Team+.
+HSM-backed wallet generation for 6 chains. Send, swap (via 0x DEX aggregator), receive, import, export. Vault-level MPC custody optional; org Shamir KEK on Team+. Self-custody 2-of-3 wallets (threshold keys on Solana, XRP, Cardano and Bitcoin; multisig on Tron and EVM, beta) are covered in [Key custody](/docs/security/custody).
 
 ### OAuth2 / "Sign in with 1Claw"
 

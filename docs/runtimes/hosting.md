@@ -39,17 +39,12 @@ Client                     1Claw Edge                    Your Runtime Container
 <TabItem value="cli" label="CLI">
 
 ```bash
-# Create a runtime with hosting enabled
-1claw runtime create \
-  --name "my-api-agent" \
+# The CLI does not set hosting fields. Create the runtime here, then enable
+# hosting in the dashboard or with PATCH /v1/runtimes/{id} (see the curl tab).
+1claw runtime create my-api-agent \
+  --agent-id <agent-id> \
   --template node \
-  --preset medium \
-  --expose-http \
-  --slug "my-api-agent" \
-  --inbound-auth api_key
-
-# Enable hosting on an existing runtime
-1claw runtime update <id> --expose-http --slug "my-api-agent"
+  --preset medium
 ```
 
 </TabItem>
@@ -61,6 +56,7 @@ curl -X POST "https://api.1claw.co/v1/runtimes" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "my-api-agent",
+    "agent_id": "'"$AGENT_ID"'",
     "template": "node",
     "preset": "medium",
     "expose_http": true,
@@ -75,6 +71,7 @@ curl -X POST "https://api.1claw.co/v1/runtimes" \
 ```typescript
 const { data: runtime } = await client.runtimes.create({
   name: "my-api-agent",
+  agent_id: agentId,
   template: "node",
   preset: "medium",
   expose_http: true,
@@ -93,7 +90,7 @@ console.log(runtime.public_url); // https://my-api-agent.run.1claw.co
 https://{slug}.run.1claw.co
 ```
 
-All paths and query parameters are forwarded as-is to your container. The container must listen on the configured `http_port` (default: 8080).
+All paths and query parameters are forwarded as-is to your container. The container must listen on the configured `http_port` (default: 8000).
 
 ## Inbound authentication
 
@@ -107,7 +104,7 @@ Control who can reach your runtime:
 
 ### API key auth
 
-When `inbound_auth: "api_key"`, the runtime gets an auto-generated inbound API key. Callers must include it as a Bearer token. The key is available from `GET /v1/runtimes/{id}` (human-only).
+When `inbound_auth: "api_key"`, Vault generates an inbound API key for the runtime and stores only its SHA-256 hash, which the sidecar checks against the Bearer token. The plaintext key is not returned by `GET /v1/runtimes/{id}` or any other runtime endpoint.
 
 ### JWT auth
 
@@ -157,10 +154,13 @@ To avoid cold starts for latency-sensitive endpoints, disable idle timeout:
 
 ## Custom port
 
-By default, the edge forwards to port 8080. If your application listens on a different port:
+By default, the edge forwards to port 8000. If your application listens on a different port, set `http_port`:
 
 ```bash
-1claw runtime update <id> --http-port 3000
+curl -X PATCH "https://api.1claw.co/v1/runtimes/$RUNTIME_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"http_port": 3000}'
 ```
 
 ## HTTPS and TLS
@@ -202,14 +202,19 @@ async def chat(body: dict):
 ```
 
 ```bash
-1claw runtime create \
-  --name "fastapi-agent" \
-  --template python \
-  --preset small \
-  --expose-http \
-  --slug "fastapi-agent" \
-  --inbound-auth public \
-  --env PORT=8080
+curl -X POST "https://api.1claw.co/v1/runtimes" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "fastapi-agent",
+    "agent_id": "'"$AGENT_ID"'",
+    "template": "python",
+    "preset": "small",
+    "expose_http": true,
+    "http_port": 8000,
+    "slug": "fastapi-agent",
+    "inbound_auth": "public"
+  }'
 ```
 
 Your agent is now live at `https://fastapi-agent.run.1claw.co/chat`.

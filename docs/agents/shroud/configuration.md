@@ -45,7 +45,7 @@ This is essential for:
 ### Full Configuration
 
 ```typescript
-const agent = await client.agents.create({
+const { data: agent } = await client.agents.create({
   name: "my-secure-agent",
   shroud_enabled: true,
   shroud_config: {
@@ -354,7 +354,7 @@ Threat detections are available in:
 
 - **Audit logs** — Query via `client.audit.query()` or the Dashboard
 - **Inspection metadata** — Returned in response headers when threats are detected
-- **Prometheus metrics** — `shroud_threats_detected_total` with labels for threat type
+- **Prometheus metrics**: `shroud_injections_detected_total` (injection attempts) and `shroud_secrets_redacted_total`; there is no per-threat-type counter
 
 Set up alerts for:
 - Spike in blocked requests (possible attack in progress)

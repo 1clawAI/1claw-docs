@@ -52,7 +52,7 @@ Response includes `sources` mapping each key to `"shared"`, `"vault"`, or `"bran
 | `GET` | `/v1/org/env-vars` | List shared vars |
 | `POST` | `/v1/org/env-vars` | Create shared var |
 | `PATCH` | `/v1/org/env-vars/{key}` | Update shared var |
-| `DELETE` | `/v1/org/env-vars/{id}` | Delete shared var |
+| `POST` | `/v1/org/env-vars/{id}/delete` | Delete shared var |
 | `POST` | `/v1/org/env-vars/{id}/link` | Link shared var to a vault |
 | `DELETE` | `/v1/org/env-vars/{id}/links/{vault_id}` | Unlink from vault |
 

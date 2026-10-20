@@ -56,7 +56,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/fireblocks/api-sec
   -d '{
     "value": "'"$(cat fireblocks-secret.key)"'",
     "type": "private_key",
-    "description": "Fireblocks API private key for JWT signing"
+    "metadata": { "description": "Fireblocks API private key for JWT signing" }
   }'
 
 curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/fireblocks/api-key" \
@@ -65,7 +65,7 @@ curl -X PUT "https://api.1claw.co/v1/vaults/$VAULT_ID/secrets/fireblocks/api-key
   -d '{
     "value": "'"$FIREBLOCKS_API_KEY"'",
     "type": "api_key",
-    "description": "Fireblocks API key"
+    "metadata": { "description": "Fireblocks API key" }
   }'
 ```
 
@@ -75,8 +75,10 @@ Your application fetches these at runtime:
 const apiKey = await oneclaw.secrets.get(vaultId, "fireblocks/api-key");
 const apiSecret = await oneclaw.secrets.get(vaultId, "fireblocks/api-secret");
 
-const fireblocks = new FireblocksSDK(apiSecret.data.value, apiKey.data.value);
+const fireblocks = new FireblocksSDK(apiSecret.data!.value, apiKey.data!.value);
 ```
+
+An agent with the Intents API enabled cannot read `private_key` or `ssh_key` secrets directly (the read returns 403), so read the Fireblocks API secret from an identity that does not have the Intents API enabled.
 
 Benefits:
 
@@ -138,7 +140,7 @@ const oneclaw = createClient({
 const apiKey = await oneclaw.secrets.get(vaultId, "fireblocks/api-key");
 const apiSecret = await oneclaw.secrets.get(vaultId, "fireblocks/api-secret");
 
-const fireblocks = new FireblocksSDK(apiSecret.data.value, apiKey.data.value);
+const fireblocks = new FireblocksSDK(apiSecret.data!.value, apiKey.data!.value);
 
 // Agent queries Fireblocks for balances
 const vaultAccounts = await fireblocks.getVaultAccountsWithPageInfo({});
