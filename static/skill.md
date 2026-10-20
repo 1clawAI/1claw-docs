@@ -1933,7 +1933,7 @@ Unified `POST /v1/agents/{id}/sign` with `intent_type`:
 - `eip712_digest` (alias `digest`) — raw/blind signing of a client-computed 32-byte `hash` → 65-byte `r‖s‖v` signature; for ERC-1271/ERC-7739 nested EIP-712 flows (e.g. Polymarket). Requires human-set `raw_signing_enabled` (off by default); bypasses guardrails; audit-logged.
 - `transaction` — EIP-2718 types 0–4 (legacy, EIP-2930, EIP-1559, EIP-4844, EIP-7702)
 
-Use `sign_message`, `sign_typed_data`, and `sign_digest` MCP tools, or `client.agents.signIntent()`.
+Use `sign_message`, `sign_typed_data`, and `sign_digest` MCP tools, or `client.agents.sign()`.
 
 #### Replay protection (Idempotency-Key)
 
