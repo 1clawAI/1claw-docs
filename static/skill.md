@@ -204,7 +204,7 @@ npx @1claw/cli agent enroll my-agent
 
 The human receives the Agent ID + API key by email after approval. They then configure policies for your access.
 
-**Pairing (no email, you collect your own key):** enroll with your own Ed25519 `public_key` and, optionally, the access you need as `requested_access` (`vault` defaults to `default`, `permissions` to `["read","write"]`, any of `read`, `write`, `delete`, `list`; system vaults `__*` and `..` in the path are refused with 400). Show the human the `fingerprint` and `approval_url`; they open it signed in (wallet-login accounts work, no email needed), see the requested vault, path and permissions, and approve. Approving grants exactly that (the vault is created if missing) instead of the default starter grant; the human can untick "Grant this access" (`grant_requested_access: false`) to give only the starter grant.
+**Pairing (no email, you collect your own key):** enroll with your own Ed25519 `public_key` and, optionally, the access you need as `requested_access` (`vault` defaults to `default`, `permissions` to `["read","write"]`, any of `read`, `write`, `delete`, `share`, with `list` accepted as `read`; system vaults `__*` and `..` in the path are refused with 400). Show the human the `fingerprint` and `approval_url`; they open it signed in (wallet-login accounts work, no email needed), see the requested vault, path and permissions, and approve. Approving grants exactly that (the vault is created if missing) instead of the default starter grant; the human can untick "Grant this access" (`grant_requested_access: false`) to give only the starter grant.
 
 ```bash
 curl -s -X POST https://api.1claw.co/v1/agents/enroll \

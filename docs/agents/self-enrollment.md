@@ -171,7 +171,7 @@ curl -s -X POST https://api.1claw.co/v1/agents/enroll \
 | ----- | ------- | ----- |
 | `vault` | `default` | Vault name, 1 to 64 characters. System vaults (names starting with `__`) are refused. Created on approval if the org does not have it. |
 | `path` | (required) | Secret path pattern, such as `harness/**`. Traversal (`..`), zero-width and confusable characters are refused. |
-| `permissions` | `["read", "write"]` | Any of `read`, `write`, `delete`, `list`. |
+| `permissions` | `["read", "write"]` | Any of `read`, `write`, `delete`, `share`. `list` is accepted and granted as `read` (listing secrets needs `read`). |
 
 A bad request is refused with `400` at `POST /v1/agents/enroll`, so the agent learns about it before the human sees anything. The request is only a request: nothing is granted until a signed-in human approves.
 
