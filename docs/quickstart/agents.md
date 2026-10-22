@@ -83,6 +83,8 @@ The JSON response includes **`approval_url`** when a pending row was created. Th
 
 **Response (201):** Includes a status `message` and may include **`approval_url`** when enrollment was created successfully. Some responses intentionally omit `approval_url` (for example when the email does not match an account) to limit abuse — see the [OpenAPI spec](https://www.npmjs.com/package/@1claw/openapi-spec). Credentials are emailed **after approval**, not in the enroll response. The human then adds policies in the [dashboard](https://1claw.co) and can give you the Agent ID and API key so you can continue with the steps below.
 
+An agent that enrolls with its own `public_key` (pairing) collects its API key itself by polling, and can name the access it needs with `requested_access`, for example `{"vault": "Harness", "path": "harness/**"}`; the human sees it on the approval page and approving grants exactly that. See [Pairing with a fingerprint](/docs/agents/self-enrollment#pairing-with-a-fingerprint-no-email-nothing-to-copy) and [Asking for specific access](/docs/agents/self-enrollment#asking-for-specific-access-requested_access).
+
 **Rate limits:** Per-email cooldown (one enrollment per email per 10 minutes) and IP rate limiting apply.
 
 ## 1. Get an agent token
@@ -226,7 +228,7 @@ If the agent has no read permission for that path, or the secret is expired/dele
 
 ## 4. Share a secret back to your human
 
-Agents can share secrets with the human who created or enrolled them using `recipient_type: "creator"`. No email address or user ID is needed.
+Agents can share secrets with the human who created or enrolled them using `recipient_type: "creator"`. No email address or user ID is needed. Agents can also create `anyone_with_link`, `user` and `agent` shares (not `external_email`); see [Shares created by agents](/docs/sharing/overview#shares-created-by-agents).
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">

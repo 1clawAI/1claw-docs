@@ -172,6 +172,45 @@ The backend resolves the agent's `created_by` field to identify the human. No us
 share_secret(secret_id: "...", recipient_type: "creator", expires_at: "2026-12-31T00:00:00Z")
 ```
 
+## Shares created by agents
+
+An agent can create a share for any secret it can read (the same vault binding, scope and `read` policy checks as reading the secret). Agents may use `anyone_with_link`, `user`, `agent` and `creator`; `external_email` is refused with `403` for agents.
+
+A link an agent hands to a person or another tool:
+
+```bash
+curl -X POST https://api.1claw.co/v1/secrets/{secret_id}/share \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient_type": "anyone_with_link",
+    "expires_at": "2026-10-23T00:00:00Z",
+    "max_access_count": 1,
+    "passphrase": "correct-horse-battery"
+  }'
+```
+
+A direct share to another agent in the same org:
+
+```typescript
+const { data: share } = await client.sharing.create(secretId, {
+  recipient_type: "agent",
+  recipient_id: otherAgentId,
+  expires_at: "2026-10-23T00:00:00Z",
+  max_access_count: 3,
+});
+```
+
+What to expect:
+
+- `creator` is resolved to a `user` share for the human who created the agent, so the response's `recipient_type` is `user`.
+- `user` and `agent` recipients must be in the agent's org.
+- When someone opens a share an agent created, the access notification goes to the human who created that agent.
+- The agent can revoke its own shares with `DELETE /v1/share/{share_id}`.
+- Agent-created shares count toward the org's share limits (10 per minute, and the plan's monthly share allowance), counted by the secret's org.
+
+Before 2026-10-22, every share an agent created failed with `500`. That is fixed.
+
 ## Invite-by-email flow
 
 When a human shares with `recipient_type: "external_email"`:

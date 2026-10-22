@@ -8,6 +8,12 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-22 {#2026-10-22}
+
+**Pairing can ask for specific access.** `POST /v1/agents/enroll` takes an optional `requested_access`: `{ "vault": "Harness", "path": "harness/**", "permissions": ["read", "write"] }` (`vault` defaults to `default`, `permissions` to read and write; any of `read`, `write`, `delete`, `list`). It is checked at enroll: system vaults (`__*`) and path traversal are refused with `400`. `GET /v1/agents/enroll/pending` returns `requested_access` and `requested_access_whole_vault`, and the approval page shows the request with a "Grant this access" checkbox. `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`): it grants exactly the request (the vault is created if missing, a policy is written on the path and the vault is bound to the agent) instead of the default starter grant, and returns `granted_access`. The agent's first `approved` poll of `GET /v1/agents/enroll/{pairing_id}/status` returns `granted_access` with its API key. This works for wallet-login accounts with no email: the agent enrolls link-only with a public key and the human opens `approval_url` signed in. See [Asking for specific access](/docs/agents/self-enrollment#asking-for-specific-access-requested_access).
+
+**Agents can create share links.** `POST /v1/secrets/{id}/share` called by an agent answered `500`, because the share's creator had to be a user. Agents can now create `anyone_with_link`, `user`, `agent` and `creator` shares (not `external_email`). Opening a share an agent created notifies the human who created that agent. Share limits (10 per minute and the plan's monthly allowance) now count every share on the org's secrets, including agents' shares. See [Shares created by agents](/docs/sharing/overview#shares-created-by-agents).
+
 ### 2026-10-19 {#2026-10-19}
 
 **Sanctions: a bare 40-hex EVM address is screened like its `0x` form.** The OFAC screen compared addresses in their `0x` lowercase form, and an EVM `to` written as 40 hex digits without `0x` was accepted by the signing paths but not recognised by the screen. Every EVM address is now put in the same canonical form before it is screened, and the spend-policy allow and deny lists use that form too. A listed address is refused with `403` however it is written. See [Key custody](/docs/security/custody#every-custody-model-sits-behind-the-same-screens).

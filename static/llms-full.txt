@@ -5659,7 +5659,8 @@ Agent (no credentials)
   │      └── Pending enrollment; human approves via email link or approval_url
   │      └── Credentials emailed to the human after approval
   │
-  ├── 2. Human creates access policies in the dashboard
+  ├── 2. Access: what the agent asked for (requested_access), the default
+  │      starter grant, or policies the human creates in the dashboard
   │
   ├── 3. Agent exchanges API key for JWT
   │      └── POST /v1/auth/agent-token
@@ -5779,11 +5780,87 @@ curl -s "https://api.1claw.co/v1/agents/enroll/$PAIRING_ID/status?poll=$POLL_TOK
 # → { status: "pending" | "approved" | "denied" | "expired", api_key?, agent_id?, vault_ids? }
 ```
 
+Pairing works for any signed-in account, including wallet-login accounts that have no email address: the agent enrolls link-only with its public key, and the human opens `approval_url` while signed in.
+
 The SDKs wrap this: `AgentsResource.pair(baseUrl, { name, public_key }, onFingerprint)` in TypeScript, `agents.enroll(name, public_key=…)` + `agents.enrollment_status(pairing_id, poll_token)` in Python. The public key becomes the agent's identity key (`ssh_public_key`) on approval. The parked key expires 15 minutes after approval if never collected.
+
+### Asking for specific access (`requested_access`)
+
+An enrolling agent can say what it needs: one vault (by name), one secret path pattern in it, and permissions. The approval page shows the request to the human before they decide, and approving grants exactly that, instead of the default starter grant.
+
+```bash
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "harness-relay",
+    "public_key": "ssh-ed25519 AAAAC3Nza…",
+    "requested_access": {
+      "vault": "Harness",
+      "path": "harness/**",
+      "permissions": ["read", "write"]
+    }
+  }'
+```
+
+| Field | Default | Rules |
+| ----- | ------- | ----- |
+| `vault` | `default` | Vault name, 1 to 64 characters. System vaults (names starting with `__`) are refused. Created on approval if the org does not have it. |
+| `path` | (required) | Secret path pattern, such as `harness/**`. Traversal (`..`), zero-width and confusable characters are refused. |
+| `permissions` | `["read", "write"]` | Any of `read`, `write`, `delete`, `list`. |
+
+A bad request is refused with `400` at `POST /v1/agents/enroll`, so the agent learns about it before the human sees anything. The request is only a request: nothing is granted until a signed-in human approves.
+
+The human's side:
+
+- `GET /v1/agents/enroll/pending?token=…` returns `requested_access` and, when the pattern covers the whole vault (`**`, `**/*` or `*`), `requested_access_whole_vault: true`. The approval page warns about a whole-vault request.
+- `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`). With `true`, the vault is created if missing, a policy for the agent is written on `path` with `permissions`, and the vault is bound to the agent. With `false` (the approval page's "Grant this access" checkbox unticked), the agent gets the default starter grant instead. The response gains `granted_access`.
+
+The agent's side: the first `approved` poll returns `granted_access` next to `api_key`:
+
+```json
+{
+  "pairing_id": "…",
+  "status": "approved",
+  "agent_name": "harness-relay",
+  "fingerprint": "SHA256:…",
+  "agent_id": "…",
+  "api_key": "ocv_…",
+  "vault_ids": ["…"],
+  "granted_access": {
+    "vault": "Harness",
+    "vault_id": "…",
+    "vault_created": true,
+    "path": "harness/**",
+    "permissions": ["read", "write"],
+    "granted": true
+  }
+}
+```
+
+`granted_access` is absent when the agent asked for nothing or the human declined the request.
+
+With the TypeScript SDK (`@1claw/sdk` 0.63.1 or later):
+
+```typescript
+import { AgentsResource } from "@1claw/sdk";
+
+const result = await AgentsResource.pair(
+  "https://api.1claw.co",
+  {
+    name: "harness-relay",
+    public_key: "ssh-ed25519 AAAAC3Nza…",
+    requested_access: { vault: "Harness", path: "harness/**", permissions: ["read", "write"] },
+  },
+  (fingerprint, approvalUrl) => console.log(fingerprint, approvalUrl),
+);
+console.log(result.api_key, result.granted_access);
+```
 
 ## 2. Human grants access
 
-The human receives an email with the agent's ID and API key. In the [dashboard](https://1claw.co):
+Without a `requested_access` (or when the human declines it), approval applies the default starter grant in the vault named `default`, with a sample secret at `examples/hello`: `read` and `write` on `examples/**` when that vault already existed, or on `**` when it was just created for this agent (it then holds only the sample).
+
+For anything else, the human adds policies. The emailed flow sends the agent's ID and API key to the human. In the [dashboard](https://1claw.co):
 
 1. Go to **Vaults** and select (or create) a vault.
 2. Navigate to **Policies** → **Create Policy**.
@@ -5884,7 +5961,7 @@ print(resp.data["path"], f"v{resp.data['version']}")
 
 ## 5. Share secrets back to your human
 
-Agents can share any secret they own back to the human who created them using `recipient_type: "creator"`. No email address or user ID is needed — the API resolves it from `created_by`.
+Agents can share any secret they can read back to the human who created them using `recipient_type: "creator"`. No email address or user ID is needed: the API resolves it from the agent's `created_by`. Agents can also create `anyone_with_link`, `user` and `agent` shares (not `external_email`); see [Sharing Secrets](/docs/sharing/overview#shares-created-by-agents).
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -5982,8 +6059,8 @@ await client.sharing.create(secretMeta.id, {
 
 ## Security notes
 
-- **Zero access by default** — A freshly enrolled agent cannot read any secrets until the human creates policies.
-- **API key is never in the enroll response** — It is emailed to the human after they approve. The agent never sees its own key via `POST /v1/agents/enroll`.
+- **Least access by default:** a freshly enrolled agent gets either the starter grant in the `default` vault (`examples/**`, or `**` on a vault created just for it) or exactly the `requested_access` the human approved. Everything else needs a policy.
+- **API key is never in the enroll response:** it is emailed to the human after they approve, or, for a pairing, collected once by the agent from the status poll. The agent never sees its own key via `POST /v1/agents/enroll`.
 - **Rate limiting** — Enrollment is rate-limited per email (10 min cooldown when email is used), with caps on pending rows and per IP.
 - **Uniform responses** — Some branches use the same 201 shape to limit email enumeration; `approval_url` may be omitted in those cases.
 
@@ -23968,6 +24045,8 @@ The JSON response includes **`approval_url`** when a pending row was created. Th
 
 **Response (201):** Includes a status `message` and may include **`approval_url`** when enrollment was created successfully. Some responses intentionally omit `approval_url` (for example when the email does not match an account) to limit abuse — see the [OpenAPI spec](https://www.npmjs.com/package/@1claw/openapi-spec). Credentials are emailed **after approval**, not in the enroll response. The human then adds policies in the [dashboard](https://1claw.co) and can give you the Agent ID and API key so you can continue with the steps below.
 
+An agent that enrolls with its own `public_key` (pairing) collects its API key itself by polling, and can name the access it needs with `requested_access`, for example `{"vault": "Harness", "path": "harness/**"}`; the human sees it on the approval page and approving grants exactly that. See [Pairing with a fingerprint](/docs/agents/self-enrollment#pairing-with-a-fingerprint-no-email-nothing-to-copy) and [Asking for specific access](/docs/agents/self-enrollment#asking-for-specific-access-requested_access).
+
 **Rate limits:** Per-email cooldown (one enrollment per email per 10 minutes) and IP rate limiting apply.
 
 ## 1. Get an agent token
@@ -24111,7 +24190,7 @@ If the agent has no read permission for that path, or the secret is expired/dele
 
 ## 4. Share a secret back to your human
 
-Agents can share secrets with the human who created or enrolled them using `recipient_type: "creator"`. No email address or user ID is needed.
+Agents can share secrets with the human who created or enrolled them using `recipient_type: "creator"`. No email address or user ID is needed. Agents can also create `anyone_with_link`, `user` and `agent` shares (not `external_email`); see [Shares created by agents](/docs/sharing/overview#shares-created-by-agents).
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -25783,7 +25862,11 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
-| POST   | `/v1/agents/enroll`| Self-enroll (optional `human_email`, or link-only with `approval_url`); credentials after approval (no auth) |
+| POST   | `/v1/agents/enroll`| Self-enroll (optional `human_email`, or link-only with `approval_url`; optional `public_key` for pairing and `requested_access` `{vault, path, permissions}`); credentials after approval (no auth) |
+| GET    | `/v1/agents/enroll/:pairing_id/status?poll=` | Pairing poll; the first `approved` response carries `api_key` and, when granted, `granted_access` (no auth) |
+| GET    | `/v1/agents/enroll/pending?token=` | Enrollment details for the approval page, including `requested_access` and `requested_access_whole_vault` (no auth) |
+| POST   | `/v1/agents/enroll/approve` | Approve (signed in); optional `grant_requested_access` (default `true`); response includes `granted_access` |
+| POST   | `/v1/agents/enroll/deny` | Deny (signed in) |
 
 ## Agents
 
@@ -25831,7 +25914,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 | Method | Path                           | Description                                                                     |
 | ------ | ------------------------------ | ------------------------------------------------------------------------------- |
-| POST   | `/v1/secrets/:secret_id/share` | Create share (`creator`, `user`, `agent`, `external_email`, `anyone_with_link`) |
+| POST   | `/v1/secrets/:secret_id/share` | Create share (`creator`, `user`, `agent`, `external_email`, `anyone_with_link`; agents may use all but `external_email`) |
 | GET    | `/v1/shares/outbound`          | List shares you created                                                         |
 | GET    | `/v1/shares/inbound`           | List shares sent to you                                                         |
 | POST   | `/v1/shares/:share_id/accept`  | Accept an inbound share                                                         |
@@ -26465,6 +26548,12 @@ sidebar_label: "2026"
 ## 2026 {#2026}
 
 ### 2026-10 (latest)
+
+### 2026-10-22 {#2026-10-22}
+
+**Pairing can ask for specific access.** `POST /v1/agents/enroll` takes an optional `requested_access`: `{ "vault": "Harness", "path": "harness/**", "permissions": ["read", "write"] }` (`vault` defaults to `default`, `permissions` to read and write; any of `read`, `write`, `delete`, `list`). It is checked at enroll: system vaults (`__*`) and path traversal are refused with `400`. `GET /v1/agents/enroll/pending` returns `requested_access` and `requested_access_whole_vault`, and the approval page shows the request with a "Grant this access" checkbox. `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`): it grants exactly the request (the vault is created if missing, a policy is written on the path and the vault is bound to the agent) instead of the default starter grant, and returns `granted_access`. The agent's first `approved` poll of `GET /v1/agents/enroll/{pairing_id}/status` returns `granted_access` with its API key. This works for wallet-login accounts with no email: the agent enrolls link-only with a public key and the human opens `approval_url` signed in. See [Asking for specific access](/docs/agents/self-enrollment#asking-for-specific-access-requested_access).
+
+**Agents can create share links.** `POST /v1/secrets/{id}/share` called by an agent answered `500`, because the share's creator had to be a user. Agents can now create `anyone_with_link`, `user`, `agent` and `creator` shares (not `external_email`). Opening a share an agent created notifies the human who created that agent. Share limits (10 per minute and the plan's monthly allowance) now count every share on the org's secrets, including agents' shares. See [Shares created by agents](/docs/sharing/overview#shares-created-by-agents).
 
 ### 2026-10-19 {#2026-10-19}
 
@@ -33216,6 +33305,45 @@ The backend resolves the agent's `created_by` field to identify the human. No us
 ```
 share_secret(secret_id: "...", recipient_type: "creator", expires_at: "2026-12-31T00:00:00Z")
 ```
+
+## Shares created by agents
+
+An agent can create a share for any secret it can read (the same vault binding, scope and `read` policy checks as reading the secret). Agents may use `anyone_with_link`, `user`, `agent` and `creator`; `external_email` is refused with `403` for agents.
+
+A link an agent hands to a person or another tool:
+
+```bash
+curl -X POST https://api.1claw.co/v1/secrets/{secret_id}/share \
+  -H "Authorization: Bearer $AGENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient_type": "anyone_with_link",
+    "expires_at": "2026-10-23T00:00:00Z",
+    "max_access_count": 1,
+    "passphrase": "correct-horse-battery"
+  }'
+```
+
+A direct share to another agent in the same org:
+
+```typescript
+const { data: share } = await client.sharing.create(secretId, {
+  recipient_type: "agent",
+  recipient_id: otherAgentId,
+  expires_at: "2026-10-23T00:00:00Z",
+  max_access_count: 3,
+});
+```
+
+What to expect:
+
+- `creator` is resolved to a `user` share for the human who created the agent, so the response's `recipient_type` is `user`.
+- `user` and `agent` recipients must be in the agent's org.
+- When someone opens a share an agent created, the access notification goes to the human who created that agent.
+- The agent can revoke its own shares with `DELETE /v1/share/{share_id}`.
+- Agent-created shares count toward the org's share limits (10 per minute, and the plan's monthly share allowance), counted by the secret's org.
+
+Before 2026-10-22, every share an agent created failed with `500`. That is fixed.
 
 ## Invite-by-email flow
 

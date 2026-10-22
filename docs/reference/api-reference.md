@@ -146,7 +146,11 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
-| POST   | `/v1/agents/enroll`| Self-enroll (optional `human_email`, or link-only with `approval_url`); credentials after approval (no auth) |
+| POST   | `/v1/agents/enroll`| Self-enroll (optional `human_email`, or link-only with `approval_url`; optional `public_key` for pairing and `requested_access` `{vault, path, permissions}`); credentials after approval (no auth) |
+| GET    | `/v1/agents/enroll/:pairing_id/status?poll=` | Pairing poll; the first `approved` response carries `api_key` and, when granted, `granted_access` (no auth) |
+| GET    | `/v1/agents/enroll/pending?token=` | Enrollment details for the approval page, including `requested_access` and `requested_access_whole_vault` (no auth) |
+| POST   | `/v1/agents/enroll/approve` | Approve (signed in); optional `grant_requested_access` (default `true`); response includes `granted_access` |
+| POST   | `/v1/agents/enroll/deny` | Deny (signed in) |
 
 ## Agents
 
@@ -194,7 +198,7 @@ Human-in-the-loop approval queue for irreversible agent actions. Agents submit a
 
 | Method | Path                           | Description                                                                     |
 | ------ | ------------------------------ | ------------------------------------------------------------------------------- |
-| POST   | `/v1/secrets/:secret_id/share` | Create share (`creator`, `user`, `agent`, `external_email`, `anyone_with_link`) |
+| POST   | `/v1/secrets/:secret_id/share` | Create share (`creator`, `user`, `agent`, `external_email`, `anyone_with_link`; agents may use all but `external_email`) |
 | GET    | `/v1/shares/outbound`          | List shares you created                                                         |
 | GET    | `/v1/shares/inbound`           | List shares sent to you                                                         |
 | POST   | `/v1/shares/:share_id/accept`  | Accept an inbound share                                                         |

@@ -204,6 +204,23 @@ npx @1claw/cli agent enroll my-agent
 
 The human receives the Agent ID + API key by email after approval. They then configure policies for your access.
 
+**Pairing (no email, you collect your own key):** enroll with your own Ed25519 `public_key` and, optionally, the access you need as `requested_access` (`vault` defaults to `default`, `permissions` to `["read","write"]`, any of `read`, `write`, `delete`, `list`; system vaults `__*` and `..` in the path are refused with 400). Show the human the `fingerprint` and `approval_url`; they open it signed in (wallet-login accounts work, no email needed), see the requested vault, path and permissions, and approve. Approving grants exactly that (the vault is created if missing) instead of the default starter grant; the human can untick "Grant this access" (`grant_requested_access: false`) to give only the starter grant.
+
+```bash
+curl -s -X POST https://api.1claw.co/v1/agents/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"name":"harness-relay","public_key":"ssh-ed25519 AAAA...",
+       "requested_access":{"vault":"Harness","path":"harness/**","permissions":["read","write"]}}'
+# -> { pairing_id, fingerprint, poll_token, approval_url, expires_at }
+
+# Poll every few seconds. The first "approved" response carries api_key (once) and granted_access.
+curl -s "https://api.1claw.co/v1/agents/enroll/$PAIRING_ID/status?poll=$POLL_TOKEN"
+# -> { status: "approved", agent_id, api_key: "ocv_...", vault_ids,
+#      granted_access: { vault: "Harness", vault_id, vault_created, path: "harness/**", permissions: ["read","write"], granted: true } }
+```
+
+`granted_access` is absent when you asked for nothing or the human declined the request. CLI: `npx @1claw/cli agent enroll my-agent --pair`.
+
 ### Option 1: MCP server (recommended for AI agents)
 
 Add to your MCP client configuration. Only the API key is required — agent ID and vault are auto-discovered.
@@ -2163,6 +2180,8 @@ await client.sharing.create(secretId, {
 ```
 
 The human sees the share in their Inbound shares and accepts it. This is the primary pattern for agents that discover or generate credentials and need to report them to their human.
+
+Agents can also create `anyone_with_link`, `user` and `agent` share links (`POST /v1/secrets/{id}/share`) for any secret they can read; `external_email` is human-only (403). Add a `passphrase` and a short `expires_at` / `max_access_count` to an `anyone_with_link` share, since the URL alone returns the plaintext. When a share you created is opened, the human who created you is notified. Your shares count toward the org's share limits (10/min, plus the plan's monthly allowance).
 
 ---
 
