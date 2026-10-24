@@ -174,7 +174,7 @@ share_secret(secret_id: "...", recipient_type: "creator", expires_at: "2026-12-3
 
 ## Shares created by agents
 
-An agent can create a share for any secret it can read (the same vault binding, scope and `read` policy checks as reading the secret). Agents may use `anyone_with_link`, `user`, `agent` and `creator`; `external_email` is refused with `403` for agents.
+An agent can create a share for any secret it can read (the same vault binding, scope and `read` policy checks as reading the secret). A share an agent creates expires within 30 days and opens at most 100 times: a longer `expires_at` or larger `max_access_count`, or none, is clamped to those limits, and the response shows the values applied. Agents may use `anyone_with_link`, `user`, `agent` and `creator`; `external_email` is refused with `403` for agents.
 
 A link an agent hands to a person or another tool:
 
@@ -206,7 +206,8 @@ What to expect:
 - `creator` is resolved to a `user` share for the human who created the agent, so the response's `recipient_type` is `user`.
 - `user` and `agent` recipients must be in the agent's org.
 - When someone opens a share an agent created, the access notification goes to the human who created that agent.
-- The agent can revoke its own shares with `DELETE /v1/share/{share_id}`.
+- The agent can revoke its own shares with `DELETE /v1/share/{share_id}`, and an org owner or admin can revoke any of them.
+- Deleting the agent, or a critical risk verdict that revokes it, deletes every share it created.
 - Agent-created shares count toward the org's share limits (10 per minute, and the plan's monthly share allowance), counted by the secret's org.
 
 Before 2026-10-22, every share an agent created failed with `500`. That is fixed.
@@ -262,7 +263,7 @@ Returns the decrypted secret value if the share is still valid (not expired, und
 
 ## Revoke a share
 
-Only the creator can revoke:
+The share's creator, or an owner or admin of the org that owns the secret, can revoke it:
 
 <Tabs groupId="code-examples">
 <TabItem value="curl" label="curl">
@@ -292,6 +293,17 @@ client._http.request("DELETE", f"/v1/share/{share_id}")
 </TabItem>
 </Tabs>
 
+### List every share in your org
+
+Org owners and admins can list the shares on the org's secrets, including ones agents created:
+
+```bash
+curl https://api.1claw.co/v1/shares/org?created_by_type=agent \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Each item carries `created_by` and `created_by_type` (`user` or `agent`). Omit `created_by_type` to list all of them.
+
 ## Email notifications
 
 When a share is created with `external_email`, the recipient receives an email. The share creator also receives a notification each time the shared secret is accessed.
@@ -320,6 +332,7 @@ For bulk operations across many agents, see [Managing Agent Fleets](/docs/agents
 
 ## Security considerations
 
+- **Same checks as a read:** creating a share runs the checks reading the secret runs. Secrets in system vaults (`__*`), `private_key` and `ssh_key` secrets of an agent with intents enabled, and callers whose delegation scope lacks `secrets:read` are refused; a vault that requires a passkey needs `X-Auth-Confirm`; sharing a honeytoken fires its alert.
 - **`anyone_with_link` bearer risk:** Unauthenticated `GET /v1/share/{id}` returns plaintext. Use passphrase + IP allowlist; rotate/revoke on leak.
 - Shares respect the `max_access_count` — once exhausted, the link is dead.
 - Shares expire at `expires_at` — past that datetime, access is denied.

@@ -494,6 +494,8 @@ Share a secret via link, with your creator, or with a specific user/agent.
 
 Targeted shares (creator/user/agent) require the recipient to explicitly accept before access.
 
+A share you create as an agent expires within 30 days and opens at most 100 times (longer or unlimited values are clamped), and it is deleted when you are. Sharing runs the same checks as reading: system vaults, your own `private_key`/`ssh_key` secrets when intents are enabled, and honeytokens cannot be shared silently.
+
 ### simulate_transaction
 
 Simulate an EVM transaction via Tenderly without signing. Returns balance changes, gas estimates, success/revert status.
@@ -1392,7 +1394,8 @@ Base URL: `https://api.1claw.co`. All authenticated endpoints require `Authoriza
 | `GET`    | `/v1/shares/inbound`      | List shares sent to you                         |
 | `POST`   | `/v1/shares/{id}/accept`  | Accept an inbound share                         |
 | `POST`   | `/v1/shares/{id}/decline` | Decline an inbound share                        |
-| `DELETE` | `/v1/share/{id}`          | Revoke a share                                  |
+| `GET`    | `/v1/shares/org`          | List every share in the org (owner/admin)       |
+| `DELETE` | `/v1/share/{id}`          | Revoke a share (creator, or org owner/admin)    |
 | `GET`    | `/v1/share/{id}`          | Access a share (public, may require passphrase) |
 
 ### Intents API (requires `intents_api_enabled`)

@@ -8,6 +8,36 @@ sidebar_label: "2026"
 
 ### 2026-10 (latest)
 
+### 2026-10-24 {#2026-10-24}
+
+**Share links answer to the same checks as reading the secret.** `POST /v1/secrets/{id}/share` now refuses what a direct read refuses: secrets in system vaults (`__*`), `private_key` and `ssh_key` secrets of an agent with intents enabled, a caller whose delegation scope lacks `secrets:read`, and a vault that requires a passkey (send `X-Auth-Confirm` as you would for the read). Creating a share of a honeytoken fires its alert. Existing shares are unchanged and keep opening.
+
+**Org owners and admins can see and revoke every share.** `GET /v1/shares/org` lists the shares on your org's secrets, including ones agents created (each item carries `created_by` and `created_by_type`; filter with `?created_by_type=agent`). `DELETE /v1/share/{share_id}` now works for an owner or admin of the share's org as well as its creator. See [Revoke a share](/docs/sharing/overview#revoke-a-share).
+
+**Shares an agent creates are bounded, and end with the agent.** A share created by an agent expires within 30 days and opens at most 100 times: a longer `expires_at`, a larger `max_access_count`, or none at all is clamped to those limits (the response shows the values applied). Deleting an agent, or a critical risk verdict that revokes it, deletes the shares it created.
+
+**Deleting an agent stops its runtimes first.** `DELETE /v1/agents/{id}` (and the bulk delete) now stops each of the agent's runtimes and cancels its billing before removing anything, the same as `DELETE /v1/runtimes/{id}`. If a runtime cannot be stopped, the single delete answers with the error and changes nothing; the bulk delete skips that agent and reports it.
+
+**Pairing approval runs your consensus policies.** When `POST /v1/agents/enroll/approve` grants a `requested_access`, it now answers to the `policy.create` consensus policy (and `vault.create` when the vault does not exist yet), the same as writing that policy yourself. A hold returns the usual pending-approval response; approve it and call `approve` again with `approval_id`. Orgs without consensus policies see no change. A requested path of `/**` or `/*` is now flagged `requested_access_whole_vault: true` like `**`.
+
+**Sanctions: uppercase bech32 addresses are screened.** A Bitcoin, Litecoin or Cardano address written in uppercase (`BC1...`, `ADDR1...`), which the networks accept, is now screened in its lowercase form, so a listed address is refused however it is cased.
+
+**Passkey-owned Safes run the full send gates.** `POST /v1/treasury/passkey-safes/{id}/prepare` and `…/execute` now run wallet access, the Cedar/OPA transaction policy and `treasury_send` consensus as well as the sanctions screen and spend policies, like the other self-custody sends. A consensus hold answers `202` with `pending_approval_id`; call `prepare` again with `approval_id` once approved, and pass the same `approval_id` to `execute`.
+
+**An approval is spent only when the send is recorded.** For self-custody `prepare` calls, an M-of-N approval is now spent in the same database transaction that records the prepared transfer, so a network error before that point no longer uses up the approval. Call `prepare` again with the same `approval_id`.
+
+**Agent signer rotation is temporarily unavailable.** `POST /v1/agents/{agent_id}/rotate-signer-key` answers `501` and the dashboard button is disabled while the flow is rebuilt. The agent's current signer keeps working. To change it today, deploy a new smart account for the agent and move funds to it.
+
+**`grpc` bindings: an explicit protocol-header list.** The headers an agent may send without an `allowed_request_headers` entry are now exactly `grpc-timeout`, `grpc-encoding`, `grpc-accept-encoding`, `connect-protocol-version` and `connect-timeout-ms` (previously any `grpc-*` or `connect-*` name). A header with the same name as the binding's credential header is never forwarded. See [Agent-supplied request headers](/docs/agents/intents/guardrails#request-headers).
+
+**Execution results scrub more credential forms.** Results and errors from bindings now also have the credential removed when it appears base64-encoded as HTTP basic auth or SMTP `AUTH PLAIN`, or when it came from a `smtp://user:pass@host` URL.
+
+**Agent wallet generation.** Generating an agent's EOA while another generation for the same agent is running answers `409`; try again once it finishes.
+
+**Shroud: redaction survives a partial manifest.** If the vault could not decrypt some of an org's secrets while Shroud refreshed its redaction list, Shroud could replace the full list with the shorter one, so the missing secrets were no longer redacted from LLM traffic until the next refresh. Shroud now merges a partial list onto what it holds, refuses a full refresh that is suspiciously short, and reports not ready until its first manifest has loaded. Thanks to Kilian Valdman for the report and the fix.
+
+**MCP server 0.64.1.** Dependency updates (including zod 4 and undici); no tool changes.
+
 ### 2026-10-22 {#2026-10-22}
 
 **Pairing can ask for specific access.** `POST /v1/agents/enroll` takes an optional `requested_access`: `{ "vault": "Harness", "path": "harness/**", "permissions": ["read", "write"] }` (`vault` defaults to `default`, `permissions` to read and write; any of `read`, `write`, `delete`, `share`, and `list` is accepted as `read`). It is checked at enroll: system vaults (`__*`) and path traversal are refused with `400`. `GET /v1/agents/enroll/pending` returns `requested_access` and `requested_access_whole_vault`, and the approval page shows the request with a "Grant this access" checkbox. `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`): it grants exactly the request (the vault is created if missing, a policy is written on the path and the vault is bound to the agent) instead of the default starter grant, and returns `granted_access`. The agent's first `approved` poll of `GET /v1/agents/enroll/{pairing_id}/status` returns `granted_access` with its API key. This works for wallet-login accounts with no email: the agent enrolls link-only with a public key and the human opens `approval_url` signed in. See [Asking for specific access](/docs/agents/self-enrollment#asking-for-specific-access-requested_access).

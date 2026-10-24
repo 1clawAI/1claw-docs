@@ -177,8 +177,8 @@ A bad request is refused with `400` at `POST /v1/agents/enroll`, so the agent le
 
 The human's side:
 
-- `GET /v1/agents/enroll/pending?token=…` returns `requested_access` and, when the pattern covers the whole vault (`**`, `**/*` or `*`), `requested_access_whole_vault: true`. The approval page warns about a whole-vault request.
-- `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`). With `true`, the vault is created if missing, a policy for the agent is written on `path` with `permissions`, and the vault is bound to the agent. With `false` (the approval page's "Grant this access" checkbox unticked), the agent gets the default starter grant instead. The response gains `granted_access`.
+- `GET /v1/agents/enroll/pending?token=…` returns `requested_access` and, when the pattern covers the whole vault (`**`, `**/*` or `*`, with or without a leading `/`), `requested_access_whole_vault: true`. The approval page warns about a whole-vault request.
+- `POST /v1/agents/enroll/approve` takes an optional `grant_requested_access` (default `true`). With `true`, the vault is created if missing, a policy for the agent is written on `path` with `permissions`, and the vault is bound to the agent. With `false` (the approval page's "Grant this access" checkbox unticked), the agent gets the default starter grant instead. The response gains `granted_access`. Granting the request answers to your org's `policy.create` consensus policy (and `vault.create` when the vault is created), the same as writing the policy yourself: a hold returns the pending-approval response, and once it is approved you call `approve` again with `approval_id`.
 
 The agent's side: the first `approved` poll returns `granted_access` next to `api_key`:
 

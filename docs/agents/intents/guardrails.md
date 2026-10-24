@@ -603,7 +603,7 @@ On `http`, `graphql`, `grpc` and `custom` bindings, headers the agent sends in `
 
 `Host`, `Authorization`, `Cookie`, `Proxy-Authorization`, `X-Forwarded-*` and metadata or hop-by-hop headers are always refused, even if listed in `allowed_request_headers`. The binding's own credential is the only authorization the request carries.
 
-`grpc` bindings also pass gRPC and Connect protocol headers (names starting `grpc-` or `connect-`, such as `grpc-timeout` or `connect-protocol-version`) without an allowlist entry, unless the name contains `auth` or `host`.
+`grpc` bindings also pass these gRPC and Connect protocol headers without an allowlist entry: `grpc-timeout`, `grpc-encoding`, `grpc-accept-encoding`, `connect-protocol-version` and `connect-timeout-ms`. A header with the same name as the binding's credential header is never forwarded, even when `allowed_request_headers` names it.
 
 ```json
 { "guardrails": { "allowed_request_headers": ["content-type", "accept", "x-request-id"] } }
