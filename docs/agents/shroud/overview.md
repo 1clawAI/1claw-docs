@@ -31,21 +31,23 @@ Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1c
 
 Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
 
+A `PATCH` that includes `shroud_config` **replaces the whole object**: send every field you want to keep, because an omitted field falls back to its default. Changing it also revokes the agent's existing tokens. Shroud answers the next request on an old token with a `401`; re-exchange the agent key (or retry, when you authenticate with the `ocv_` key itself) to get a token carrying the new config.
+
 ### Basic settings
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
+| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in prompts is handled (email, phone, SSN, IPv4, API-key shapes). `block` refuses the request; `redact` replaces each match with `[REDACTED_<TYPE>]` before the provider sees it; `warn` and `allow` forward it unchanged. Unset: detected and logged, not changed. Payment card numbers and CVVs are always blocked. |
 | `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
 | `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
 | `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
 | `allowed_models` | string[] | Models the agent may use (empty = all) |
 | `denied_models` | string[] | Models explicitly blocked |
-| `max_tokens_per_request` | number | Token cap per LLM request |
+| `max_tokens_per_request` | number | Caps the prompt's token count, and the output a request asks for (`max_tokens`, `max_completion_tokens`, `max_output_tokens`). A request asking for more output than the cap gets a 400. A request that sets no output limit is checked on its prompt only. |
 | `max_requests_per_minute` | number | Per-minute rate limit |
 | `max_requests_per_day` | number | Per-day rate limit |
 | `daily_budget_usd` | number | Daily LLM spend cap in USD |
-| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
+| `enable_secret_redaction` | boolean | Always on: vault secret values are redacted for every agent. `false` is rejected with a 400. |
 | `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
 
 ### Threat detection (per detector)

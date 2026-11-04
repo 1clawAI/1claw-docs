@@ -14,8 +14,8 @@ Controls what happens when threats are detected:
 | Mode | Behavior |
 |------|----------|
 | `block` | Reject the entire request with 403 |
-| `surgical` | Remove only the malicious content, continue processing |
-| `log_only` | Allow the request but audit the threat |
+| `surgical` | Not yet implemented: currently behaves like `block` |
+| `log_only` | Allow the request but log and audit the injection score. This covers the agent's `injection_threshold` and `context_injection_threshold` and Shroud's built-in 0.9 hard block. Detectors with their own `action` (social engineering, network, tool calls) still follow that action. |
 
 ```typescript
 sanitization_mode: "block"  // block | surgical | log_only

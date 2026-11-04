@@ -675,13 +675,7 @@ Because Aho–Corasick matches all patterns simultaneously in **O(n)** time (whe
 
 **Configuration:**
 
-```typescript
-{
-  enable_secret_redaction: true  // Toggle vault-aware secret redaction
-}
-```
-
-When `enable_secret_redaction` is `false`, the Aho–Corasick automaton is not loaded and no secret scanning occurs. The **Advanced Secret Redaction** and **Secret Injection Detection** features (below) provide additional layers on top of this core mechanism.
+Secret redaction is always on, for every agent. There is no per-agent switch: `enable_secret_redaction: false` is rejected with a 400. A new or rotated secret is redacted within seconds of being stored. The **Advanced Secret Redaction** and **Secret Injection Detection** features (below) provide additional layers on top of this core mechanism.
 
 :::tip Secret Redaction vs. Secret Injection Detection
 **Secret redaction** protects secrets you *own* (in your vault) from leaking to the LLM. **Secret injection detection** (next section) catches secrets you *don’t* own — rogue credentials that appear in prompts but aren’t from the vault. Use both for comprehensive secret protection.

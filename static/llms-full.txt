@@ -6091,8 +6091,8 @@ Controls what happens when threats are detected:
 | Mode | Behavior |
 |------|----------|
 | `block` | Reject the entire request with 403 |
-| `surgical` | Remove only the malicious content, continue processing |
-| `log_only` | Allow the request but audit the threat |
+| `surgical` | Not yet implemented: currently behaves like `block` |
+| `log_only` | Allow the request but log and audit the injection score. This covers the agent's `injection_threshold` and `context_injection_threshold` and Shroud's built-in 0.9 hard block. Detectors with their own `action` (social engineering, network, tool calls) still follow that action. |
 
 ```typescript
 sanitization_mode: "block"  // block | surgical | log_only
@@ -6717,21 +6717,23 @@ Try out the examples in this repo: **[Shroud Demo](https://github.com/1clawAI/1c
 
 Each agent with `shroud_enabled: true` can have a `shroud_config` JSON object. Configure via Dashboard (Agents → Shroud LLM Proxy), API (`PATCH /v1/agents/:id`), SDK, or CLI.
 
+A `PATCH` that includes `shroud_config` **replaces the whole object**: send every field you want to keep, because an omitted field falls back to its default. Changing it also revokes the agent's existing tokens. Shroud answers the next request on an old token with a `401`; re-exchange the agent key (or retry, when you authenticate with the `ocv_` key itself) to get a token carrying the new config.
+
 ### Basic settings
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in LLM traffic is handled |
+| `pii_policy` | `block` \| `redact` \| `warn` \| `allow` | How PII in prompts is handled (email, phone, SSN, IPv4, API-key shapes). `block` refuses the request; `redact` replaces each match with `[REDACTED_<TYPE>]` before the provider sees it; `warn` and `allow` forward it unchanged. Unset: detected and logged, not changed. Payment card numbers and CVVs are always blocked. |
 | `injection_threshold` | number (0.0–1.0) | Prompt injection detection sensitivity |
 | `context_injection_threshold` | number (0.0–1.0) | Context injection detection sensitivity |
 | `allowed_providers` | string[] | LLM providers the agent may use (empty = all) |
 | `allowed_models` | string[] | Models the agent may use (empty = all) |
 | `denied_models` | string[] | Models explicitly blocked |
-| `max_tokens_per_request` | number | Token cap per LLM request |
+| `max_tokens_per_request` | number | Caps the prompt's token count, and the output a request asks for (`max_tokens`, `max_completion_tokens`, `max_output_tokens`). A request asking for more output than the cap gets a 400. A request that sets no output limit is checked on its prompt only. |
 | `max_requests_per_minute` | number | Per-minute rate limit |
 | `max_requests_per_day` | number | Per-day rate limit |
 | `daily_budget_usd` | number | Daily LLM spend cap in USD |
-| `enable_secret_redaction` | boolean | Redact vault secrets from LLM context |
+| `enable_secret_redaction` | boolean | Always on: vault secret values are redacted for every agent. `false` is rejected with a 400. |
 | `enable_response_filtering` | boolean | Filter sensitive data from LLM responses |
 
 ### Threat detection (per detector)
@@ -7845,13 +7847,7 @@ Because Aho–Corasick matches all patterns simultaneously in **O(n)** time (whe
 
 **Configuration:**
 
-```typescript
-{
-  enable_secret_redaction: true  // Toggle vault-aware secret redaction
-}
-```
-
-When `enable_secret_redaction` is `false`, the Aho–Corasick automaton is not loaded and no secret scanning occurs. The **Advanced Secret Redaction** and **Secret Injection Detection** features (below) provide additional layers on top of this core mechanism.
+Secret redaction is always on, for every agent. There is no per-agent switch: `enable_secret_redaction: false` is rejected with a 400. A new or rotated secret is redacted within seconds of being stored. The **Advanced Secret Redaction** and **Secret Injection Detection** features (below) provide additional layers on top of this core mechanism.
 
 :::tip Secret Redaction vs. Secret Injection Detection
 **Secret redaction** protects secrets you *own* (in your vault) from leaking to the LLM. **Secret injection detection** (next section) catches secrets you *don’t* own — rogue credentials that appear in prompts but aren’t from the vault. Use both for comprehensive secret protection.
