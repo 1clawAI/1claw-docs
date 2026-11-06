@@ -41284,6 +41284,8 @@ await client.bindings.create(agentId, {
 
 Use `vault_ref` whenever possible. It means a single rotation of the source secret propagates to every binding that references it.
 
+The agent needs a policy on the source path. Grant `use`, not `read`: `use` lets the vault inject the credential into the outbound request, while `read` would also let the agent fetch the plaintext with `GET /v1/vaults/{id}/secrets/{path}`. Existing `read` policies keep working.
+
 ### Executing through a binding
 
 ```typescript
@@ -41408,6 +41410,7 @@ Patterns use glob rules: `*` matches one segment, `**` matches zero or more segm
 ## Permissions
 
 - **read** — Can GET secret value and list (metadata).
+- **use** — Lets the vault inject the secret into an Execution Intent through a `vault_ref` binding, without the agent being able to GET its value. Grant `use` instead of `read` when an agent only needs to act with a credential.
 - **write** — Can PUT (create/update) secrets at matching paths.
 - **delete** — Can DELETE secrets at matching paths.
 - **rotate** — Can trigger server-side secret rotation.

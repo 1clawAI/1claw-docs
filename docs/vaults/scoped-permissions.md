@@ -19,6 +19,7 @@ Patterns use glob rules: `*` matches one segment, `**` matches zero or more segm
 ## Permissions
 
 - **read** — Can GET secret value and list (metadata).
+- **use** — Lets the vault inject the secret into an Execution Intent through a `vault_ref` binding, without the agent being able to GET its value. Grant `use` instead of `read` when an agent only needs to act with a credential.
 - **write** — Can PUT (create/update) secrets at matching paths.
 - **delete** — Can DELETE secrets at matching paths.
 - **rotate** — Can trigger server-side secret rotation.

@@ -222,6 +222,8 @@ await client.bindings.create(agentId, {
 
 Use `vault_ref` whenever possible. It means a single rotation of the source secret propagates to every binding that references it.
 
+The agent needs a policy on the source path. Grant `use`, not `read`: `use` lets the vault inject the credential into the outbound request, while `read` would also let the agent fetch the plaintext with `GET /v1/vaults/{id}/secrets/{path}`. Existing `read` policies keep working.
+
 ### Executing through a binding
 
 ```typescript
