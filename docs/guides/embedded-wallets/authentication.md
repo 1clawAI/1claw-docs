@@ -203,7 +203,7 @@ Two opt-in scopes return more about the person, and each gets its own line on th
 | Scope | What the app gets |
 |---|---|
 | `referral` | `referral_code` and `referral_link` in UserInfo. The access token can also call `GET /v1/referrals/me` (optionally with `from`/`to` in RFC 3339 for a window) for the person's own code, link and counts: `total` signups and `qualified` referrals. The list of who signed up is not included. |
-| `plan` | `plan` in UserInfo: `free`, `pro`, `team`, `business` or `enterprise`. This is the plan in force now: a paid subscription that is past due, paused or canceled reports `free`, and so does an expired grant. |
+| `plan` | `plan` in UserInfo: `free`, `pro`, `team`, `business` or `enterprise`. This is the plan in force now: a subscription that is in a trial, past due, paused or canceled reports `free`, and so does an expired grant. |
 
 Apart from `/v1/referrals/me` with `referral`, an OAuth access token can call only UserInfo.
 
