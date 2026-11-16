@@ -528,7 +528,7 @@ curl -s -X PUT "$API/v1/admin/x402" \
     "pay_to": "0x...",
     "network": "eip155:8453",
     "scheme": "exact",
-    "free_tier_limit": 1000,
+    "free_tier_limit": 100,
     "facilitator_url": "https://api.cdp.coinbase.com/platform/v2/x402"
   }' \
   | python3 -m json.tool

@@ -69,7 +69,7 @@ Once you can see the error, the usual causes are:
 ## 403 Forbidden
 
 - **No permission for this resource** — Your token is valid but you don’t have a policy that allows this action on this vault/path. Add or update a policy (dashboard: Vault → Policies), or use a vault you own or have been granted access to.
-- **Resource limit exceeded** — You’ve hit your subscription’s limit for vaults, secrets, or agents. The response body has `type: "resource_limit_exceeded"` and a message like "Vault limit reached (3/3 on free tier)". Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
+- **Resource limit exceeded**: You’ve hit your subscription’s limit for vaults, secrets, or agents. The response body has `type: "resource_limit_exceeded"` and a message like "Vault limit reached (1/1 on free tier)". Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
 - **Intents API** — You’re calling a transaction endpoint (e.g. submit or simulate) but your agent doesn’t have `intents_api_enabled`. Enable it in the dashboard (Agent → edit) or via the API.
 - **IP denied** — Your org has IP allow/block rules and your current IP is not allowed. Check Security → IP rules in the dashboard.
 

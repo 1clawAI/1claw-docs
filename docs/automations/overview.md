@@ -612,7 +612,7 @@ Navigate to **Automations** in the sidebar to:
 
 | Tier | Max automations | Runs / month |
 |------|----------------|-------------|
-| Free | 2 | 100 |
+| Free | 1 | 10 |
 | Pro | 10 | 5,000 |
 | Team | 50 | 50,000 |
 | Business | 200 | 500,000 |

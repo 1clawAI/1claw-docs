@@ -1614,7 +1614,7 @@ Agent signing mode is configured per-agent via `agents.treasury_signing_mode` (`
 
 ### Billing quotas (v0.47.3)
 
-Wallet quota (treasury wallets + signing keys + smart accounts + agent EOAs): Free 10, Pro 10,000, Team 250,000, Business 1,000,000. Signature quota: Free 100, Pro 20,000, Team 200,000, Business 1,000,000. Signature overage is a flat per-signature charge (not a percent of transaction value). Signing POSTs do not consume the API Calls meter. Treasury wallets are available on all tiers.
+Wallet quota (treasury wallets + signing keys + smart accounts + agent EOAs): Free 10, Pro 10,000, Team 250,000, Business 1,000,000. Signature quota: Free 10, Pro 20,000, Team 200,000, Business 1,000,000. Signature overage is a flat per-signature charge (not a percent of transaction value). Signing POSTs do not consume the API Calls meter. Treasury wallets are available on all tiers.
 
 `GET /v1/billing/subscription` `usage` includes `requests`, `wallets`, and `intent_transactions` (`{ used, limit }`).
 
@@ -2386,7 +2386,7 @@ All error responses include a `detail` field with a human-readable message.
 
 | Tier       | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Price                                        |
 | ---------- | ------------ | --------- | ------------- | --------- | --------- | --------- | -------------------------------------------- |
-| Free       | 1,000        | 10        | 100           | 3         | 50        | 2         | $0                                           |
+| Free       | 100          | 10        | 10            | 1         | 10        | 1         | $0                                           |
 | Pro        | 20,000       | 10,000    | 20,000        | 5         | 500       | 10        | $29/mo                                       |
 | Team       | 200,000      | 250,000   | 200,000       | 100       | 5,000     | 50        | $299/mo (SSO, Platform API)                  |
 | Business   | 1,000,000    | 1,000,000 | 1,000,000     | Unlimited | Unlimited | 200       | $999/mo (+ CMEK, Intents, Shroud Enterprise, Treasury Wallets) |

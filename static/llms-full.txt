@@ -4887,7 +4887,7 @@ await client.memory.put(agentId, "preferences", "timezone", {
 
 // Write semantic memory (searchable over key + value)
 await client.memory.put(agentId, "knowledge", "api-limits", {
-  value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
+  value: "The 1Claw free tier allows 100 requests per month and 1 vault.",
 });
 
 // Read
@@ -8923,7 +8923,7 @@ Navigate to **Automations** in the sidebar to:
 
 | Tier | Max automations | Runs / month |
 |------|----------------|-------------|
-| Free | 2 | 100 |
+| Free | 1 | 10 |
 | Pro | 10 | 5,000 |
 | Team | 50 | 50,000 |
 | Business | 200 | 500,000 |
@@ -10259,13 +10259,15 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 
 | Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ------------ | --------- | ------------- | --------- | --------- | --------- | ---------- |
-| **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
+| **Free**       | $0            | —                      | 100         | 10        | 10          | 1         | 10        | 1         | 1 (owner)  |
 | **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 2          |
 | **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.co/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
+
+Organizations created before November 17, 2026 keep the previous Free limits (1,000 API calls/mo, 100 signatures/mo, 3 vaults, 50 secrets, 2 agents, 2 automations with 100 runs/mo) until January 1, 2027. `GET /v1/billing/subscription` returns `free_limits_grandfathered_until` and `upcoming_free_limits` for these orgs.
 
 ### Execution Intents vs Intents API
 
@@ -10278,7 +10280,7 @@ Two separate products with different meters:
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
 
-**Included signatures/mo:** Free 100 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
+**Included signatures/mo:** Free 10 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
 
 :::note
 The Intents API is **not** gated by tier. Nothing in the enforcement path checks your plan — the only switch is the per-agent `intents_api_enabled` toggle. An earlier version of this table said "Business+", which sent at least one Team customer towards a plan upgrade they did not need.
@@ -10297,7 +10299,7 @@ Each tier enforces hard limits on the number of vaults, secrets, and agents your
     "type": "resource_limit_exceeded",
     "title": "Resource Limit Exceeded",
     "status": 403,
-    "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
+    "detail": "Vault limit reached (1/1 on free tier). Upgrade your plan for more."
 }
 ```
 
@@ -15092,7 +15094,7 @@ Once you can see the error, the usual causes are:
 ## 403 Forbidden
 
 - **No permission for this resource** — Your token is valid but you don’t have a policy that allows this action on this vault/path. Add or update a policy (dashboard: Vault → Policies), or use a vault you own or have been granted access to.
-- **Resource limit exceeded** — You’ve hit your subscription’s limit for vaults, secrets, or agents. The response body has `type: "resource_limit_exceeded"` and a message like "Vault limit reached (3/3 on free tier)". Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
+- **Resource limit exceeded**: You’ve hit your subscription’s limit for vaults, secrets, or agents. The response body has `type: "resource_limit_exceeded"` and a message like "Vault limit reached (1/1 on free tier)". Upgrade your plan or delete unused resources. See [Billing & Usage](/docs/guides/billing-and-usage).
 - **Intents API** — You’re calling a transaction endpoint (e.g. submit or simulate) but your agent doesn’t have `intents_api_enabled`. Enable it in the dashboard (Agent → edit) or via the API.
 - **IP denied** — Your org has IP allow/block rules and your current IP is not allowed. Check Security → IP rules in the dashboard.
 
@@ -24913,7 +24915,7 @@ The shortest manual path if you are not using `1claw setup`:
 
 | Requirement | Details |
 | ----------- | ------- |
-| **Account** | Free tier at [1claw.co](https://1claw.co) — 1,000 requests/month, 3 vaults, 2 agents |
+| **Account** | Free tier at [1claw.co](https://1claw.co): 100 requests/month, 1 vault, 1 agent, 10 secrets |
 | **CLI** | Node 20+ for `npm install -g @1claw/cli`, or Homebrew tap above |
 | **API base URL** | `https://api.1claw.co` |
 | **curl / HTTP client** | Only needed if you skip the CLI and follow the REST quickstarts |
@@ -25467,7 +25469,7 @@ curl -s -X PUT "$API/v1/admin/x402" \
     "pay_to": "0x...",
     "network": "eip155:8453",
     "scheme": "exact",
-    "free_tier_limit": 1000,
+    "free_tier_limit": 100,
     "facilitator_url": "https://api.cdp.coinbase.com/platform/v2/x402"
   }' \
   | python3 -m json.tool
@@ -26552,7 +26554,13 @@ sidebar_label: "2026"
 
 ## 2026 {#2026}
 
-### 2026-10 (latest)
+### 2026-11 (latest)
+
+### 2026-11-16 {#2026-11-16}
+
+**New Free plan limits.** The Free plan now includes 100 API calls a month, 10 signatures a month (Intents API), 1 automation with 10 automation runs a month, 1 vault, 1 agent and 10 secrets (previously 1,000 API calls, 100 signatures, 2 automations with 100 runs, 3 vaults, 2 agents and 50 secrets). Wallets (10), shares (10 a month), the owner-only seat and overage prices are unchanged, and paid plans are unchanged. Organizations created before November 17, 2026 keep the previous Free limits until January 1, 2027, then move to the new ones automatically. The vault, agent, secret and automation limits apply to new creates only: an org already above them keeps its existing vaults, agents, secrets and automations and can still read, update and delete them, but cannot create more of that kind until it is back under the limit or upgrades. The monthly API call and signature allowances work as before once used up: further calls are billed from prepaid credits or x402, and answer `402` when neither covers them. See [Billing & Usage](/docs/guides/billing-and-usage).
+
+### 2026-10
 
 ### 2026-10-24 {#2026-10-24}
 
@@ -29527,7 +29535,7 @@ When creating vaults, secrets, or agents beyond your tier's quota, the API retur
   "type": "resource_limit_exceeded",
   "title": "Resource Limit Exceeded",
   "status": 403,
-  "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
+  "detail": "Vault limit reached (1/1 on free tier). Upgrade your plan for more."
 }
 ```
 

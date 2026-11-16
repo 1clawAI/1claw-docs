@@ -369,7 +369,7 @@ The shortest manual path if you are not using `1claw setup`:
 
 | Requirement | Details |
 | ----------- | ------- |
-| **Account** | Free tier at [1claw.co](https://1claw.co) — 1,000 requests/month, 3 vaults, 2 agents |
+| **Account** | Free tier at [1claw.co](https://1claw.co): 100 requests/month, 1 vault, 1 agent, 10 secrets |
 | **CLI** | Node 20+ for `npm install -g @1claw/cli`, or Homebrew tap above |
 | **API base URL** | `https://api.1claw.co` |
 | **curl / HTTP client** | Only needed if you skip the CLI and follow the REST quickstarts |

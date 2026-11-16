@@ -6,7 +6,13 @@ sidebar_label: "2026"
 
 ## 2026 {#2026}
 
-### 2026-10 (latest)
+### 2026-11 (latest)
+
+### 2026-11-16 {#2026-11-16}
+
+**New Free plan limits.** The Free plan now includes 100 API calls a month, 10 signatures a month (Intents API), 1 automation with 10 automation runs a month, 1 vault, 1 agent and 10 secrets (previously 1,000 API calls, 100 signatures, 2 automations with 100 runs, 3 vaults, 2 agents and 50 secrets). Wallets (10), shares (10 a month), the owner-only seat and overage prices are unchanged, and paid plans are unchanged. Organizations created before November 17, 2026 keep the previous Free limits until January 1, 2027, then move to the new ones automatically. The vault, agent, secret and automation limits apply to new creates only: an org already above them keeps its existing vaults, agents, secrets and automations and can still read, update and delete them, but cannot create more of that kind until it is back under the limit or upgrades. The monthly API call and signature allowances work as before once used up: further calls are billed from prepaid credits or x402, and answer `402` when neither covers them. See [Billing & Usage](/docs/guides/billing-and-usage).
+
+### 2026-10
 
 ### 2026-10-24 {#2026-10-24}
 

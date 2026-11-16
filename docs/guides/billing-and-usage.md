@@ -18,13 +18,15 @@ Every organization starts on the **Free** tier and can upgrade to paid plans for
 
 | Tier           | Monthly Price | Annual (billed yearly) | API calls/mo | Wallets   | Signatures/mo | Vaults    | Secrets   | Agents    | Team seats |
 | -------------- | ------------- | ---------------------- | ------------ | --------- | ------------- | --------- | --------- | --------- | ---------- |
-| **Free**       | $0            | —                      | 1,000       | 10        | 100         | 3         | 50        | 2         | 1 (owner)  |
+| **Free**       | $0            | —                      | 100         | 10        | 10          | 1         | 10        | 1         | 1 (owner)  |
 | **Pro**        | $29           | $290 (~$24.17/mo)      | 20,000      | 10,000    | 20,000      | 5         | 500       | 10        | 2          |
 | **Team**       | $299          | $2,990 (~$249.17/mo)   | 200,000     | 250,000   | 200,000     | 100       | 5,000     | 50        | 20         |
 | **Business**   | $999          | $9,990 (~$832.50/mo)   | 1,000,000   | 1,000,000 | 1,000,000   | Unlimited | Unlimited | 200       | 50         |
 | **Enterprise** | Custom        | Custom                 | Unlimited   | Unlimited | Unlimited   | Unlimited | Unlimited | Unlimited | Unlimited  |
 
 Limits match the live [pricing page](https://1claw.co/pricing) and backend `tier_limits` in the Vault (`vault/src/domain/billing.rs`).
+
+Organizations created before November 17, 2026 keep the previous Free limits (1,000 API calls/mo, 100 signatures/mo, 3 vaults, 50 secrets, 2 agents, 2 automations with 100 runs/mo) until January 1, 2027. `GET /v1/billing/subscription` returns `free_limits_grandfathered_until` and `upcoming_free_limits` for these orgs.
 
 ### Execution Intents vs Intents API
 
@@ -37,7 +39,7 @@ Two separate products with different meters:
 
 **Execution Intents monthly limits:** Pro 1,000 · Team 10,000 · Business 50,000 · Enterprise unlimited.
 
-**Included signatures/mo:** Free 100 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
+**Included signatures/mo:** Free 10 · Pro 20,000 · Team 200,000 · Business 1,000,000 · Enterprise unlimited. Past the included amount, each signature is debited from prepaid credits (or paid per call with `X-PAYMENT`); if the balance will not cover it the request returns **402** naming the amount, rather than being refused as a plan limit.
 
 :::note
 The Intents API is **not** gated by tier. Nothing in the enforcement path checks your plan — the only switch is the per-agent `intents_api_enabled` toggle. An earlier version of this table said "Business+", which sent at least one Team customer towards a plan upgrade they did not need.
@@ -56,7 +58,7 @@ Each tier enforces hard limits on the number of vaults, secrets, and agents your
     "type": "resource_limit_exceeded",
     "title": "Resource Limit Exceeded",
     "status": 403,
-    "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
+    "detail": "Vault limit reached (1/1 on free tier). Upgrade your plan for more."
 }
 ```
 

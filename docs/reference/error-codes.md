@@ -44,7 +44,7 @@ When creating vaults, secrets, or agents beyond your tier's quota, the API retur
   "type": "resource_limit_exceeded",
   "title": "Resource Limit Exceeded",
   "status": 403,
-  "detail": "Vault limit reached (3/3 on free tier). Upgrade your plan for more."
+  "detail": "Vault limit reached (1/1 on free tier). Upgrade your plan for more."
 }
 ```
 

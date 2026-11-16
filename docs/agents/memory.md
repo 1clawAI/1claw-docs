@@ -81,7 +81,7 @@ await client.memory.put(agentId, "preferences", "timezone", {
 
 // Write semantic memory (searchable over key + value)
 await client.memory.put(agentId, "knowledge", "api-limits", {
-  value: "The 1Claw free tier allows 1000 requests per month and 3 vaults.",
+  value: "The 1Claw free tier allows 100 requests per month and 1 vault.",
 });
 
 // Read
