@@ -8,6 +8,16 @@ sidebar_label: "2026"
 
 ### 2026-11 (latest)
 
+### 2026-11-17 {#2026-11-17}
+
+**Pearl on Shroud.** Send `X-Shroud-Provider: pearl` to call Pearl's open models (DeepSeek V4, Qwen3.8, GLM-5.3) through Shroud, with the prompt, the answer and the model's reasoning text inspected. Three ways to pay: your Pearl key in `X-Shroud-Api-Key`; your Pearl key stored at `providers/pearl/api-key`, so the agent never holds it; or no Pearl key, where 1Claw's key serves the call and your 1Claw balance (credits, or USDC over x402) pays the listed per-token price, held before the call and settled on the tokens used. Every Pearl response carries `x-shroud-pearl-billing: byok` or `managed`. `GET https://shroud.1claw.co/v1/models?provider=pearl` lists the models and prices, synced from Pearl hourly. See [Shroud: Pearl](/docs/agents/shroud/overview#pearl).
+
+**Provider key and access changes reach Shroud on the next call.** Storing, replacing or deleting a provider key, creating, changing or deleting a policy that names an agent, and deleting a vault now tell Shroud before the API answers, so Shroud drops the cached key or token at once. Previously a deleted key could keep being used for up to 5 minutes, and a new grant could take up to 30 seconds to be seen.
+
+**Policies must name a principal in the vault's organization.** `POST /v1/vaults/{id}/policies` now answers 400 `principal_id is not a user or agent in this organization` when `principal_id` is not a user or agent of the vault's org.
+
+**Price card fields.** `LlmModelPrice` (`GET /v1/spend/ai/prices`, `GET /v1/admin/llm-prices`) now documents `cached_input_micro_usd_per_mtok`, `capabilities`, `is_active` and `synced_at`.
+
 ### 2026-11-16 {#2026-11-16}
 
 **New Free plan limits.** The Free plan now includes 100 API calls a month, 10 signatures a month (Intents API), 1 automation with 10 automation runs a month, 1 vault, 1 agent and 10 secrets (previously 1,000 API calls, 100 signatures, 2 automations with 100 runs, 3 vaults, 2 agents and 50 secrets). Wallets (10), shares (10 a month), the owner-only seat and overage prices are unchanged, and paid plans are unchanged. Organizations created before November 17, 2026 keep the previous Free limits until January 1, 2027, then move to the new ones automatically. The vault, agent, secret and automation limits apply to new creates only: an org already above them keeps its existing vaults, agents, secrets and automations and can still read, update and delete them, but cannot create more of that kind until it is back under the limit or upgrades. The monthly API call and signature allowances work as before once used up: further calls are billed from prepaid credits or x402, and answer `402` when neither covers them. See [Billing & Usage](/docs/guides/billing-and-usage).

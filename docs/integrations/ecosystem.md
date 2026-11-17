@@ -105,6 +105,19 @@ Privacy-first inference with zero data retention, optional TEE and E2EE modes. S
 
 ---
 
+### Pearl
+
+Open models (DeepSeek, Qwen, GLM) behind an OpenAI-compatible API. Bring your Pearl key, keep it in your 1Claw vault, or use 1Claw's key and pay from your 1Claw balance with credits or USDC over x402.
+
+| | |
+|---|---|
+| **Website** | [platform.pearlresearch.ai](https://platform.pearlresearch.ai) |
+| **Provider header** | `X-Shroud-Provider: pearl` |
+| **Supported models** | [Reference](/docs/reference/shroud-supported-models#pearl-models) |
+| **Guide** | [1Claw x Pearl: open models through Shroud](https://1claw.co/blog/pearl-open-models-on-shroud) |
+
+---
+
 ### Bankr LLM Gateway
 
 Unified LLM interface for crypto agents — Claude, Gemini, GPT, Grok, and more through a single API. Pay with LLM credits, launch fees, or wallet balance on Base and other chains. OpenAI- and Anthropic-compatible endpoints.

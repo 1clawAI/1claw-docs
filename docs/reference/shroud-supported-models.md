@@ -117,6 +117,23 @@ OpenRouter is itself a model routing gateway — it maintains its own catalog of
 
 ---
 
+## Pearl (`X-Shroud-Provider: pearl`) {#pearl-models}
+
+[Pearl](https://platform.pearlresearch.ai) serves open models through an OpenAI-compatible API. Unlike the empty-allowlist providers above, Pearl's callable set is **exactly Pearl's current catalog**: 1Claw syncs Pearl's `/v1/models` every hour, and a model that is not in the last successful sync is refused with 404. Use the id as Pearl publishes it, slash included:
+
+| Model id |
+|---|
+| `deepseek-ai/DeepSeek-V4-Pro-0813` |
+| `deepseek-ai/DeepSeek-V4.1-Flash` |
+| `deepseek-ai/DeepSeek-V4.1-Flash-1017` |
+| `Qwen/Qwen3.8-27B` |
+| `zai-org/GLM-5.3` |
+| `zai-org/GLM-5.3-Flash` |
+
+This list changes when Pearl's catalog does. `GET https://shroud.1claw.co/v1/models?provider=pearl` returns the live list with prices. JSON mode, tools and image input follow each model's published capabilities (400 before Pearl is called when a model lacks one). Keys, billing and managed mode: [Shroud: Pearl](/docs/agents/shroud/overview#pearl).
+
+---
+
 ## Bankr LLM Gateway (`X-Shroud-Provider: bankr`) {#bankr-models}
 
 [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) is a unified interface for frontier models (Claude, Gemini, GPT, Grok, and more) with cost tracking and flexible payment (LLM credits, launch fees, or wallet balance). It exposes OpenAI-compatible `/v1/chat/completions` and Anthropic-compatible `/v1/messages` at `https://llm.bankr.bot`. Authenticate with your Bankr API key (`bk_...`) via the `X-API-Key` header.

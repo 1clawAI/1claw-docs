@@ -171,6 +171,7 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 | `darkbloom`    | Darkbloom (hardware-attested Apple Silicon, E2E encrypted) — [notes](/docs/reference/shroud-supported-models#darkbloom-models) |
 | `venice`       | Venice AI (privacy-focused, no data retention) — [notes](/docs/reference/shroud-supported-models#venice-models) |
 | `bankr`        | Bankr LLM Gateway (multi-provider, cost tracking, wallet-funded) — [notes](/docs/reference/shroud-supported-models#bankr-models) |
+| `pearl`        | Pearl (open models: DeepSeek, Qwen, GLM). Your key, a vault key, or 1Claw-managed. See [Pearl](#pearl) |
 
 - **Gemini:** Use `X-Shroud-Provider: google` or `gemini`. Store the API key at `providers/google/api-key` (or use `X-Shroud-Api-Key`). Shroud maps `/v1/chat/completions` to Google’s `generateContent` endpoint.
 - **OpenRouter:** Use `X-Shroud-Provider: openrouter`. One API key gives access to many models; set `model` in the request body to the OpenRouter model ID (e.g. `anthropic/claude-3.5-sonnet`).
@@ -178,6 +179,37 @@ Shroud supports the following LLM providers. Set `X-Shroud-Provider` to one of t
 - **Venice:** Use `X-Shroud-Provider: venice`. Privacy-first inference with no data retention. Store API key at `providers/venice/api-key`. Supports Claude, GPT, Grok, and TEE-backed models.
 - **Bankr:** Use `X-Shroud-Provider: bankr`. Routes to [Bankr LLM Gateway](https://docs.bankr.bot/llm-gateway/overview/) at `https://llm.bankr.bot`. Store your `bk_` key at `providers/bankr/api-key` (LLM Gateway permission required). OpenAI-compatible `model` IDs (e.g. `claude-opus-4.6`, `gemini-2.5-flash`).
 - **Full allowlist:** [Shroud supported models](/docs/reference/shroud-supported-models) (kept in sync with `shroud/config/providers/*.toml`).
+
+### Pearl {#pearl}
+
+Send `X-Shroud-Provider: pearl` and use Pearl's model id as is, slash included (for example `deepseek-ai/DeepSeek-V4-Pro-0813`). The request body is OpenAI-compatible, and Pearl's `reasoning` field (such as `"reasoning": {"effort": "high"}`) is forwarded unchanged. Shroud inspects the prompt, the answer, and the model's reasoning text.
+
+`GET https://shroud.1claw.co/v1/models?provider=pearl` lists the models you can call right now, with prices. The list comes from Pearl's own catalog, synced hourly. A model that is not in it is refused with 404. JSON mode, tools and image input follow each model's published capabilities: a request that asks for one the model lacks gets a 400 before Pearl is called.
+
+Shroud picks the key in this order:
+
+| Order | Key | Who pays for tokens |
+|---|---|---|
+| 1 | `X-Shroud-Api-Key: <your Pearl key>` | Pearl bills your Pearl account. |
+| 2 | Your Pearl key stored at `providers/pearl/api-key` in a vault the agent can read | Pearl bills your Pearl account. The agent never sees the key. |
+| 3 | No Pearl key: 1Claw's key (managed) | Your 1Claw balance, at the per-token prices listed by `/v1/models?provider=pearl`. |
+
+Router-key calls also pay the usual [$0.005 inspection fee](#inspection-fee) in every mode.
+
+Every Pearl response carries `x-shroud-pearl-billing: byok` or `x-shroud-pearl-billing: managed`, so you can see which key paid.
+
+**Vault key changes take effect on the next call.** When you store, replace or delete a provider key, grant or revoke an agent's access with a policy, or delete the vault that holds the key, the vault tells Shroud before it answers you. If the vault cannot be reached during a key lookup, Shroud answers 503 rather than quietly billing the call as managed.
+
+**Managed mode.** Prices are per token, listed by `/v1/models?provider=pearl` and in the dashboard's Spend tab. Before calling Pearl, Shroud holds enough of your balance to cover the whole prompt plus `max_tokens` of output. When Pearl reports usage it settles the real cost and releases the rest. A stream cut off before Pearl reports usage keeps the hold. If the balance cannot cover the hold, Shroud answers 402 before Pearl is called. On the [x402 rail](#inspection-fee) that 402 carries a quote you can pay in USDC on Base and retry. Fund the balance with credits (card) or x402. If Pearl's prices could not be synced in the last 24 hours, managed calls are refused with 503 rather than charged at a guessed rate.
+
+```bash
+# Managed: no Pearl key needed
+curl https://shroud.1claw.co/v1/chat/completions \
+  -H "Authorization: Bearer $SHROUD_ROUTER_KEY" \
+  -H "X-Shroud-Provider: pearl" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek-ai/DeepSeek-V4.1-Flash", "messages": [{"role": "user", "content": "Hello"}]}'
+```
 
 ### Request and response format
 
