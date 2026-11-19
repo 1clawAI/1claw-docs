@@ -8,6 +8,10 @@ sidebar_label: "2026"
 
 ### 2026-11 (latest)
 
+### 2026-11-19 {#2026-11-19}
+
+**MCP server 0.64.2.** Security release: `POST /mcp` is now rate limited (429 with `RateLimit-*` headers), a proxy-supplied client IP is trusted only with the shared proxy secret, and hono, @hono/node-server, follow-redirects and qs are updated. No tool changes. `@1claw/mcp-vault` and `@1claw/mcp-guard` follow in lockstep.
+
 ### 2026-11-17 {#2026-11-17}
 
 **Pearl on Shroud.** Send `X-Shroud-Provider: pearl` to call Pearl's open models (DeepSeek V4, Qwen3.8, GLM-5.3) through Shroud, with the prompt, the answer and the model's reasoning text inspected. Three ways to pay: your Pearl key in `X-Shroud-Api-Key`; your Pearl key stored at `providers/pearl/api-key`, so the agent never holds it; or no Pearl key, where 1Claw's key serves the call and your 1Claw balance (credits, or USDC over x402) pays the listed per-token price, held before the call and settled on the tokens used. Every Pearl response carries `x-shroud-pearl-billing: byok` or `managed`. `GET https://shroud.1claw.co/v1/models?provider=pearl` lists the models and prices, synced from Pearl hourly. See [Shroud: Pearl](/docs/agents/shroud/overview#pearl).
