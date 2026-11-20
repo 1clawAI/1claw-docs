@@ -21,7 +21,7 @@ If you add or rename models in production, update those TOML files first, then r
 - Set **`X-Shroud-Provider`** to the provider name (see [Shroud guide](/docs/agents/shroud/overview#supported-providers)).
 - Pass the model as **`model` in the JSON body** (OpenAI-style chat) or **`X-Shroud-Model`**, using the exact strings in the tables below.
 - For **`google`** / **`gemini`**, IDs are the short Gemini model names (e.g. `gemini-2.5-pro`).
-- For **`openrouter`**, the allowlist is empty in config, meaning **any OpenRouter model slug** is accepted (e.g. `anthropic/claude-3.5-sonnet`). OpenRouter’s catalog is authoritative.
+- For **`openrouter`**, the allowlist is empty in config, meaning **any OpenRouter model slug** is accepted (e.g. `anthropic/claude-sonnet-4.6`). OpenRouter’s catalog is authoritative.
 
 ---
 
@@ -52,14 +52,8 @@ If you add or rename models in production, update those TOML files first, then r
 | `gpt-4o-mini` |
 | `gpt-4.1` |
 | `gpt-4.1-mini` |
-| `gpt-4.1-nano` |
-| `o1` |
-| `o1-mini` |
-| `o1-pro` |
 | `o3` |
-| `o3-mini` |
 | `o3-pro` |
-| `o4-mini` |
 
 ---
 
@@ -75,18 +69,13 @@ If you add or rename models in production, update those TOML files first, then r
 | `claude-opus-4-8` |
 | `claude-opus-4-7` |
 | `claude-opus-4-6` |
-| `claude-opus-4-1` |
-| `claude-opus-4` |
 | `claude-sonnet-5-5` |
 | `claude-sonnet-5` |
 | `claude-sonnet-4-6` |
-| `claude-sonnet-4` |
-| `claude-3-7-sonnet` |
 | `claude-sonnet-4-5-20250929` |
 | `claude-haiku-5-5` |
 | `claude-haiku-4-5` |
 | `claude-haiku-4-5-20251001` |
-| `claude-3-5-haiku-20241022` |
 
 ---
 
@@ -105,8 +94,6 @@ If you add or rename models in production, update those TOML files first, then r
 | `gemini-2.5-pro` | |
 | `gemini-2.5-flash` | Default called out in Shroud provider config comments |
 | `gemini-2.5-flash-lite` | |
-| `gemini-2.0-flash` | Still on the allowlist; Google may deprecate or return errors for some accounts |
-| `gemini-2.0-flash-lite` | Still on the allowlist; Google may deprecate or return errors for some accounts |
 
 ---
 
@@ -125,9 +112,8 @@ If you add or rename models in production, update those TOML files first, then r
 
 | Model ID |
 |----------|
-| `command-r-plus` |
-| `command-r` |
-| `command-light` |
+| `command-a-plus-05-2026` |
+| `command-a-03-2025` |
 
 ---
 
@@ -180,9 +166,11 @@ Store your LLM Gateway key at `providers/bankr/api-key` in the vault (or pass `X
 
 When your org has [LLM Token Billing](/docs/guides/billing-and-usage#llm-token-billing-optional-add-on) enabled, Shroud can route traffic through the Stripe AI Gateway instead of your provider API key. You still send the same **`X-Shroud-Provider`** (`openai`, `anthropic`, `google`, `mistral`, `cohere`, etc.).
 
-Shroud rewrites the request body so Stripe receives **`provider/model`** (e.g. `openai/gpt-4o-mini`, `google/gemini-2.5-pro`) when the body’s `model` has no `/`. If you already pass a qualified id (contains `/`), it is left unchanged.
+Shroud rewrites the request body so Stripe receives **`provider/model`** (e.g. `openai/gpt-5.1`, `google/gemini-2.5-pro`) when the body’s `model` has no `/`. If you already pass a qualified id (contains `/`), it is left unchanged.
 
-The **`stripe`** provider entry in Shroud also uses an empty model allowlist; gateway-side availability follows Stripe’s documentation, not the fixed tables above.
+Token Billing can only route models that Stripe's AI Gateway carries, which is a subset of the tables above. As of November 2026 that includes GPT-5.4, 5.2 and 5.1, Claude Sonnet 4.6, Opus 4.6 and Haiku 4.5, and Gemini 2.5 and 3.1 previews, but not yet GPT-6.x, Claude 5.x or Gemini 4; use your own provider key for those. The dashboard's model picker shows the live Stripe catalog in Token Billing mode.
+
+For the GPT-5 and GPT-6 families and the o-series, OpenAI rejects `max_tokens`; Shroud renames it to `max_completion_tokens` for those models, so older clients keep working.
 
 ---
 
